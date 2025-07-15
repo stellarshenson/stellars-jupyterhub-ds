@@ -96,7 +96,7 @@ services:
     security_opt:
       - seccomp:unconfined #optional
     depends_on:
-      jupyterlab:
+      jupyterhub:
         condition: service_healthy 
       traefik:
         condition: service_started
