@@ -103,7 +103,7 @@ services:
     ports:
       - "9911:9911"
     networks:
-      - hupyterhub-network
+      - jupyterhub-network
     restart: unless-stopped
     privileged: true
 
