@@ -6,37 +6,45 @@ FROM jupyterhub/jupyterhub:latest AS target
 # File Author / Maintainer
 LABEL maintainer="Konrad Jelen <konrad.jelenext@delaval.com>"
 
-# update sources list and increase timeouts
+########################################################
+#  FIX PACKAGES AND REMOVE UNNECESSARY                 #
+########################################################
+
+## update sources list and increase timeouts
 COPY ./conf/apt /etc/apt
 COPY ./conf/apt-packages.yml /apt-packages.yml
-COPY --chmod=755  ./conf/bin/*.sh ./conf/bin/*.py /
-COPY --chmod=755  ./conf/bin/start-platform.d /start-platform.d
 
-# install yaml parser repository and yq tool, in the parent system you need
-# RUN apt update && apt install -y software-properties-common
-# RUN add-apt-repository ppa:rmescandon/yq -y && apt update && apt install yq -y
-# and then copy /etc/apt/sources.list.d to docker image
+## install yaml parser repository and yq tool, in the parent system you need
 ENV DEBIAN_FRONTEND=noninteractive 
 RUN apt update && apt install yq -y 
 
-# install required packages, list will be taken from apt-packages.yml
+## install required packages, list will be taken from apt-packages.yml
 RUN <<-EOF
     echo "installing OS packages from manifest"
     apt install -y `yq eval '.packages[]' /apt-packages.yml | sed 's/$/ /' | tr -d '\r\n'`
     apt update && apt upgrade -y
 EOF
 
-# Install dockerspawner, nativeauthenticator
-# hadolint ignore=DL3013
+
+########################################################
+#  INSTALL PLATFORM SCRIPTS AND RESOURCES              #
+########################################################
+
+## copy resources
+COPY --chmod=755  ./conf/bin/*.sh ./conf/bin/*.py /
+COPY --chmod=755  ./conf/bin/start-platform.d /start-platform.d
+COPY ./templates/certs /mnt/certs
+
+## install dockerspawner, nativeauthenticator
 RUN python3 -m pip install --no-cache-dir \
     dockerspawner \
     jupyterhub-nativeauthenticator
 
-# expose ports
+## expose ports
 EXPOSE 8000
 
-# run with the provided config file
-CMD ["jupyterhub", "-f", "/srv/jupyterhub/jupyterhub_config.py"]
+## run with the provided config file
+CMD ["/start-platform.sh"]
 
 # EOF
 

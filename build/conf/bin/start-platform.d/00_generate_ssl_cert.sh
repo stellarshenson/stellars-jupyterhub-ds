@@ -7,7 +7,7 @@
 # skip this step if no certificate dir
 CERTS_DIR="/mnt/certs"
 if [[ -z $(find $CERTS_DIR -name '*.crt') ]]; then
-	/mkcert.sh "$CERTS_DIR" "stellars-jupyterlab-ds"
+	/mkcert.sh "$CERTS_DIR" "stellars-jupyterhub-ds"
 fi
 
 

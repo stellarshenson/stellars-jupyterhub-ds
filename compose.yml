@@ -23,12 +23,20 @@ services:
       - "443:443"
       - "8080:8080"
     volumes:
+      # access to docker socket to see if service is healthy
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./certs:/mnt/certs # named volume to hold certificates
+      # named volume to hold certificates
+      - vol_certs:/mnt/certs 
+    depends_on:
+      jupyterhub:
+        condition: service_healthy
     networks:
       - jupyterhub-network
     restart: unless-stopped
 
+  # service for management of a series of users and their jupyterlab
+  # environments. it is internally managed via a proxy that redirects 
+  # users to their dedicated environments
   jupyterhub:
     build:
       context: build
@@ -36,17 +44,16 @@ services:
     image: stellars/stellars-jupyterhub-ds:latest
     container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-jupyterhub
     volumes:
-      # The JupyterHub configuration file
-      - "./conf/jupyterhub_config.py:/srv/jupyterhub/jupyterhub_config.py:ro"
-      # Bind Docker socket on the host so we can connect to the daemon from
-      # within the container
-      - "/var/run/docker.sock:/var/run/docker.sock:rw"
-      # Bind Docker volume on host for JupyterHub database and cookie secrets
-      - "vol_hub_data:/data"
+      # JupyterHub configuration file
+      - ./conf/jupyterhub_config.py:/srv/jupyterhub/jupyterhub_config.py:ro
+      # docker socket on the host so we can connect to the daemon from within the container
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      # bind Docker volume on host for JupyterHub database and cookie secrets
+      - vol_hub_data:/data
       # this is where certificates will be generated
-      - "vol_certs:/mnt/certs"
+      - vol_certs:/mnt/certs
     ports:
-      - "8000:8000"
+      - 8000:8000
     environment:
       # This username will be a JupyterHub admin
       JUPYTERHUB_ADMIN: admin
@@ -77,6 +84,12 @@ services:
       - "traefik.http.services.jupyterlab-svc.loadbalancer.server.port=8000"
     networks:
       - jupyterhub-network
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f jupytehub-singleuser > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
     restart: unless-stopped
 
 volumes:

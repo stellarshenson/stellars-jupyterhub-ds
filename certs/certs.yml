@@ -1,8 +1,0 @@
-# traefik certificates
-tls:
-  stores:
-    default:
-      defaultCertificate:
-        certFile: /mnt/certs/stellars-jupyterhub-ds.crt
-        keyFile:  /mnt/certs/stellars-jupyterhub-ds.key
-
