@@ -85,6 +85,29 @@ services:
       start_period: 5s
     restart: unless-stopped
 
+  ## watchtower for automatic docker image refresh
+  ## exposing port to force docker to allow only one instance of service
+  watchtower:
+    container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-watchtower
+    image: containrrr/watchtower:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --cleanup --schedule "0 0 * * *" # run every day at midnight
+    security_opt:
+      - seccomp:unconfined #optional
+    depends_on:
+      jupyterlab:
+        condition: service_healthy 
+      traefik:
+        condition: service_started
+    ports:
+      - "9911:9911"
+    networks:
+      - proxy-network
+    restart: unless-stopped
+    privileged: true
+
+
 volumes:
   vol_hub_data:
   vol_certs:
