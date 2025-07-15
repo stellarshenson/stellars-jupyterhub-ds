@@ -20,16 +20,6 @@ c.DockerSpawner.environment = {
     'JUPYTERLAB_STARTUP_MODE': 'jupyterhub'
 }
 
-# Register MLflow route with JupyterHub proxy
-def register_mlflow_route(spawner):
-    proxy_api_url = "http://proxy:8001/api/routes"
-    route_spec = {
-        f"/user/{spawner.user.name}/mlflow/": f"http://{spawner.container_name}:5000/"
-    }
-    # Register with hub proxy
-
-c.DockerSpawner.post_start_hook = register_mlflow_route
-
 # Spawn containers from this image
 c.DockerSpawner.image = os.environ["DOCKER_NOTEBOOK_IMAGE"]
 
@@ -42,11 +32,13 @@ c.DockerSpawner.network_name = NETWORK_NAME
 
 # Explicitly set notebook directory because we'll be mounting a volume to it.
 # Most `jupyter/docker-stacks` *-notebook images run the Notebook server as
-DOCKER_NOTEBOOK_DIR = os.environ.get("DOCKER_NOTEBOOK_DIR")
+DOCKER_NOTEBOOK_DIR = "/home/lab/workspace"
+DOCKER_HOME_DIR = "/home/lab"
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")
+JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")
 
 # Modify volume mounting
-c.DockerSpawner.volumes = {"jupyterhub-shared-lab": "/mnt/shared"}
+c.DockerSpawner.volumes = {}
 
 # Force container user
 c.DockerSpawner.container_user = "lab"
@@ -57,13 +49,26 @@ c.DockerSpawner.name_template = "jupyterlab-{username}"
 
 # Mount the real user's Docker volume on the host to the notebook user's
 # notebook directory in the container
-c.DockerSpawner.volumes = {"jupyterhub-user-{username}": DOCKER_NOTEBOOK_DIR}
+c.DockerSpawner.volumes = {
+    "jupyterlab-{username}_home": DOCKER_HOME_DIR,
+    "jupyterlab-{username}_workspace": DOCKER_NOTEBOOK_DIR,
+    "jupyterlab-{username}_cache": "/mnt/cache",
+    "jupyterlab-{username}_mlflow": "/mnt/mlflow",
+    "jupyterlab-shared": "/mnt/shared"
+}
 
 # Ensure containers can accept proxy connections
 c.DockerSpawner.args = [
     '--ServerApp.allow_origin=*',
     '--ServerApp.disable_check_xsrf=True'
 ]
+
+# fix for the iframes loading local pages
+c.JupyterHub.tornado_settings = {
+    'headers': {
+        'Content-Security-Policy': "frame-ancestors 'self'; default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:;"
+    }
+}
 
 # Update internal routing for spawned containers
 c.JupyterHub.hub_connect_url = 'http://jupyterhub:8080' + JUPYTERHUB_BASE_URL + '/hub'
@@ -83,17 +88,19 @@ c.JupyterHub.base_url = JUPYTERHUB_BASE_URL + '/'
 c.JupyterHub.cookie_secret_file = "/data/jupyterhub_cookie_secret"
 c.JupyterHub.db_url = "sqlite:////data/jupyterhub.sqlite"
 
-# Allow all signed-up users to login
-c.Authenticator.allow_all = True
-
 # Authenticate users with Native Authenticator
 c.JupyterHub.authenticator_class = "nativeauthenticator.NativeAuthenticator"
 
 # Allow anyone to sign-up without approval
+# Allow all signed-up users to login
 c.NativeAuthenticator.open_signup = False
+c.NativeAuthenticator.enable_signup = True  
+c.NativeAuthenticator.enable_admin_access = True
+c.Authenticator.allow_all = True
 
 # Allowed admins
-JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")
 if JUPYTERHUB_ADMIN:
     c.Authenticator.admin_users = [JUPYTERHUB_ADMIN]
+    c.JupyterHub.admin_access = True
 
+# EOF

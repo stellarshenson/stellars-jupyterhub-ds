@@ -62,8 +62,6 @@ services:
       DOCKER_NETWORK_NAME: jupyterhub-network
       # JupyterHub will spawn this Notebook image for users
       DOCKER_NOTEBOOK_IMAGE: stellars/stellars-jupyterlab-ds:latest
-      # Notebook directory inside user image
-      DOCKER_NOTEBOOK_DIR: /home/lab/workspace
       # default prefix
       JUPYTERHUB_BASE_URL: /jupyterhub
     labels:
