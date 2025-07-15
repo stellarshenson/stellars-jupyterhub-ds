@@ -3,6 +3,8 @@
 
 # Configuration file for JupyterHub
 import os
+import json
+import requests
 
 c = get_config()  
 
@@ -17,6 +19,16 @@ c.JupyterHub.spawner_class = "dockerspawner.DockerSpawner"
 c.DockerSpawner.environment = {
     'JUPYTERLAB_STARTUP_MODE': 'jupyterhub'
 }
+
+# Register MLflow route with JupyterHub proxy
+def register_mlflow_route(spawner):
+    proxy_api_url = "http://proxy:8001/api/routes"
+    route_spec = {
+        f"/user/{spawner.user.name}/mlflow/": f"http://{spawner.container_name}:5000/"
+    }
+    # Register with hub proxy
+
+c.DockerSpawner.post_start_hook = register_mlflow_route
 
 # Spawn containers from this image
 c.DockerSpawner.image = os.environ["DOCKER_NOTEBOOK_IMAGE"]
@@ -40,9 +52,19 @@ c.DockerSpawner.volumes = {"jupyterhub-shared-lab": "/mnt/shared"}
 c.DockerSpawner.container_user = "lab"
 c.DockerSpawner.notebook_dir = DOCKER_NOTEBOOK_DIR
 
+# Set container name prefix
+c.DockerSpawner.name_template = "jupyterlab-{username}"
+
 # Mount the real user's Docker volume on the host to the notebook user's
 # notebook directory in the container
 c.DockerSpawner.volumes = {"jupyterhub-user-{username}": DOCKER_NOTEBOOK_DIR}
+
+# Ensure containers can accept proxy connections
+c.DockerSpawner.args = [
+    '--allow-root',
+    '--NotebookApp.allow_origin=*',
+    '--NotebookApp.disable_check_xsrf=True'
+]
 
 # Override the user server URL template
 #c.DockerSpawner.default_url = JUPYTERHUB_BASE_URL 
@@ -61,15 +83,6 @@ c.DockerSpawner.debug = False
 c.JupyterHub.hub_ip = "jupyterhub"
 c.JupyterHub.hub_port = 8080
 c.JupyterHub.base_url = JUPYTERHUB_BASE_URL + '/'
-
-# Custom server options to expose MLflow
-c.DockerSpawner.server_options = {
-    'MLflow': {
-        'display_name': 'MLflow UI',
-        'port': 5000,
-        'path': '/user/{username}/mlflow'
-    }
-}
 
 # Persist hub data on volume mounted inside container
 c.JupyterHub.cookie_secret_file = "/data/jupyterhub_cookie_secret"

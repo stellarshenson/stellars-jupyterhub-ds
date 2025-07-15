@@ -76,14 +76,6 @@ services:
       - "traefik.http.routers.jupyterhub-rtr.tls=true"
       - "traefik.http.services.jupyterhub-svc.loadbalancer.server.scheme=http"
       - "traefik.http.services.jupyterhub-svc.loadbalancer.server.port=8000"
-
-      # ⚙  Jupyterlab Service (8000)
-      - "traefik.http.routers.jupyterlab-rtr.rule=Path(`/user`) || PathPrefix(`/user/`)"
-      - "traefik.http.routers.jupyterlab-rtr.entrypoints=websecure"
-      - "traefik.http.routers.jupyterlab-rtr.service=jupyterlab-svc"
-      - "traefik.http.routers.jupyterlab-rtr.tls=true"
-      - "traefik.http.services.jupyterlab-svc.loadbalancer.server.scheme=http"
-      - "traefik.http.services.jupyterlab-svc.loadbalancer.server.port=8000"
     networks:
       - jupyterhub-network
     healthcheck:
