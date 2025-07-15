@@ -22,38 +22,45 @@ c.DockerSpawner.environment = {
 c.DockerSpawner.image = os.environ["DOCKER_NOTEBOOK_IMAGE"]
 
 # Connect containers to this Docker network
-network_name = os.environ["DOCKER_NETWORK_NAME"]
+NETWORK_NAME = os.environ["DOCKER_NETWORK_NAME"]
+
+
 c.DockerSpawner.use_internal_ip = True
-c.DockerSpawner.network_name = network_name
+c.DockerSpawner.network_name = NETWORK_NAME
 
 # Explicitly set notebook directory because we'll be mounting a volume to it.
 # Most `jupyter/docker-stacks` *-notebook images run the Notebook server as
-# user `jovyan`, and set the notebook directory to `/home/jovyan/work`.
-# We follow the same convention.
-notebook_dir = os.environ.get("DOCKER_NOTEBOOK_DIR")
-
-# Force container user
-c.DockerSpawner.container_user = "lab"
-c.DockerSpawner.notebook_dir = "/home/lab/work"
+DOCKER_NOTEBOOK_DIR = os.environ.get("DOCKER_NOTEBOOK_DIR")
+JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")
 
 # Modify volume mounting
 c.DockerSpawner.volumes = {"jupyterhub-shared-lab": "/mnt/shared"}
 
-c.DockerSpawner.notebook_dir = notebook_dir
+# Force container user
+c.DockerSpawner.container_user = "lab"
+c.DockerSpawner.notebook_dir = DOCKER_NOTEBOOK_DIR
 
 # Mount the real user's Docker volume on the host to the notebook user's
 # notebook directory in the container
-c.DockerSpawner.volumes = {"jupyterhub-user-{username}": notebook_dir}
+c.DockerSpawner.volumes = {"jupyterhub-user-{username}": DOCKER_NOTEBOOK_DIR}
+
+# Override the user server URL template
+#c.DockerSpawner.default_url = JUPYTERHUB_BASE_URL 
+# + '/user/{username}'
+
+# Update internal routing for spawned containers
+c.JupyterHub.hub_connect_url = 'http://jupyterhub:8080' + JUPYTERHUB_BASE_URL + '/hub'
 
 # Remove containers once they are stopped
 c.DockerSpawner.remove = True
 
 # For debugging arguments passed to spawned containers
-c.DockerSpawner.debug = True
+c.DockerSpawner.debug = False
 
 # User containers will access hub by container name on the Docker network
 c.JupyterHub.hub_ip = "jupyterhub"
 c.JupyterHub.hub_port = 8080
+c.JupyterHub.base_url = JUPYTERHUB_BASE_URL + '/'
 
 # Custom server options to expose MLflow
 c.DockerSpawner.server_options = {
@@ -78,7 +85,7 @@ c.JupyterHub.authenticator_class = "nativeauthenticator.NativeAuthenticator"
 c.NativeAuthenticator.open_signup = False
 
 # Allowed admins
-admin = os.environ.get("JUPYTERHUB_ADMIN")
-if admin:
-    c.Authenticator.admin_users = [admin]
+JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")
+if JUPYTERHUB_ADMIN:
+    c.Authenticator.admin_users = [JUPYTERHUB_ADMIN]
 

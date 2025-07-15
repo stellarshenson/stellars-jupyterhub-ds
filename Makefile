@@ -35,7 +35,7 @@ clean:
 	@echo 'removing dangling and unused images, containers, nets and volumes'
 	@docker compose --env-file .env -f compose.yml down --remove-orphans
 	@yes | docker image prune
-
+	@yes | docker network prune
 
 ## prints the list of available commands
 help:

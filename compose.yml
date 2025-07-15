@@ -63,12 +63,14 @@ services:
       DOCKER_NOTEBOOK_IMAGE: stellars/stellars-jupyterlab-ds:latest
       # Notebook directory inside user image
       DOCKER_NOTEBOOK_DIR: /home/lab/workspace
+      # default prefix
+      JUPYTERHUB_BASE_URL: /jupyterhub
     labels:
       # Enable proxy support from Traefik
       - "traefik.enable=true"
 
       # ⚙  Jupyterhub Service (8000)
-      - "traefik.http.routers.jupyterhub-rtr.rule=Path(`/hub`) || PathPrefix(`/hub/`)"
+      - "traefik.http.routers.jupyterhub-rtr.rule=Path(`/jupyterhub`) || PathPrefix(`/jupyterhub/`)"
       - "traefik.http.routers.jupyterhub-rtr.entrypoints=websecure"
       - "traefik.http.routers.jupyterhub-rtr.service=jupyterhub-svc"
       - "traefik.http.routers.jupyterhub-rtr.tls=true"
