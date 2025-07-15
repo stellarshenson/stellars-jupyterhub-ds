@@ -5,6 +5,7 @@
 import os
 import json
 import requests
+import nativeauthenticator
 
 c = get_config()  
 
@@ -36,6 +37,9 @@ DOCKER_NOTEBOOK_DIR = "/home/lab/workspace"
 DOCKER_HOME_DIR = "/home/lab"
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")
 JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")
+
+# Prevent auto-spawn for admin users
+c.JupyterHub.default_url = JUPYTERHUB_BASE_URL + '/hub/home'  # Redirect admin to admin panel instead
 
 # Modify volume mounting
 c.DockerSpawner.volumes = {}
@@ -90,6 +94,8 @@ c.JupyterHub.db_url = "sqlite:////data/jupyterhub.sqlite"
 
 # Authenticate users with Native Authenticator
 c.JupyterHub.authenticator_class = 'native'
+# enable UI for native authenticator
+c.JupyterHub.template_paths = [f"{os.path.dirname(nativeauthenticator.__file__)}/templates/"]
 
 # Allow anyone to sign-up without approval
 # Allow all signed-up users to login
