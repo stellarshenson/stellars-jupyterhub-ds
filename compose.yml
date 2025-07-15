@@ -33,6 +33,7 @@ services:
     build:
       context: build
       dockerfile: Dockerfile.jupyterhub
+    image: stellars/stellars-jupyterhub-ds:latest
     container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-jupyterhub
     volumes:
       # The JupyterHub configuration file
