@@ -54,6 +54,7 @@ services:
       - vol_certs:/mnt/certs
     ports:
       - 8000:8000
+      - 8001:8001
     environment:
       # This username will be a JupyterHub admin
       JUPYTERHUB_ADMIN: admin

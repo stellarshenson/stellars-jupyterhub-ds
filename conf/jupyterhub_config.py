@@ -61,14 +61,9 @@ c.DockerSpawner.volumes = {"jupyterhub-user-{username}": DOCKER_NOTEBOOK_DIR}
 
 # Ensure containers can accept proxy connections
 c.DockerSpawner.args = [
-    '--allow-root',
-    '--NotebookApp.allow_origin=*',
-    '--NotebookApp.disable_check_xsrf=True'
+    '--ServerApp.allow_origin=*',
+    '--ServerApp.disable_check_xsrf=True'
 ]
-
-# Override the user server URL template
-#c.DockerSpawner.default_url = JUPYTERHUB_BASE_URL 
-# + '/user/{username}'
 
 # Update internal routing for spawned containers
 c.JupyterHub.hub_connect_url = 'http://jupyterhub:8080' + JUPYTERHUB_BASE_URL + '/hub'
