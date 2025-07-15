@@ -89,7 +89,7 @@ c.JupyterHub.cookie_secret_file = "/data/jupyterhub_cookie_secret"
 c.JupyterHub.db_url = "sqlite:////data/jupyterhub.sqlite"
 
 # Authenticate users with Native Authenticator
-c.JupyterHub.authenticator_class = "nativeauthenticator.NativeAuthenticator"
+c.JupyterHub.authenticator_class = 'native'
 
 # Allow anyone to sign-up without approval
 # Allow all signed-up users to login
@@ -99,8 +99,7 @@ c.NativeAuthenticator.enable_admin_access = True
 c.Authenticator.allow_all = True
 
 # Allowed admins
-if JUPYTERHUB_ADMIN:
-    c.Authenticator.admin_users = [JUPYTERHUB_ADMIN]
-    c.JupyterHub.admin_access = True
+c.Authenticator.admin_users = [JUPYTERHUB_ADMIN]
+c.JupyterHub.admin_access = True
 
 # EOF
