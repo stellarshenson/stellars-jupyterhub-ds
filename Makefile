@@ -12,11 +12,11 @@
 
 ## build docker containers
 build:
-	@cd ./bin && ./build.sh
+	@cd ./scripts && ./build.sh
 
 ## build docker containers and output logs
 build_verbose:
-	@cd ./bin && ./build_verbose.sh
+	@cd ./scripts && ./build_verbose.sh
 
 ## pull docker image from dockerhub
 pull:
