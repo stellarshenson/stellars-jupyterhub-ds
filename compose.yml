@@ -56,14 +56,11 @@ services:
       - 8000:8000
       - 8001:8001
     environment:
-      # This username will be a JupyterHub admin
-      JUPYTERHUB_ADMIN: admin
-      # All containers will join this network
-      DOCKER_NETWORK_NAME: jupyterhub-network
-      # JupyterHub will spawn this Notebook image for users
-      DOCKER_NOTEBOOK_IMAGE: stellars/stellars-jupyterlab-ds:latest
-      # default prefix
-      JUPYTERHUB_BASE_URL: /jupyterhub
+      - JUPYTERHUB_ADMIN=admin # this username will be a JupyterHub admin
+      - DOCKER_NETWORK_NAME=jupyterhub-network # spawned containers will join this network
+      - DOCKER_NOTEBOOK_IMAGE=stellars/stellars-jupyterlab-ds:latest # jupyterlab image to spawn 
+      - JUPYTERHUB_BASE_URL=/jupyterhub # default prefix
+      - GPU_SUPPORT_ENABLED=1
     labels:
       # Enable proxy support from Traefik
       - "traefik.enable=true"
@@ -78,7 +75,7 @@ services:
     networks:
       - jupyterhub-network
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f jupytehub-singleuser > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "pgrep -f jupytehub > /dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
