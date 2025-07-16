@@ -16,6 +16,7 @@ c = get_config()
 # Spawn single-user servers as Docker containers
 c.JupyterHub.spawner_class = "dockerspawner.DockerSpawner"
 
+
 # Environment variables for MLflow integration
 c.DockerSpawner.environment = {
     'JUPYTERLAB_STARTUP_MODE': 'jupyterhub'

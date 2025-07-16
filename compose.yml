@@ -52,9 +52,6 @@ services:
       - jupyterhub_data:/data
       # this is where certificates will be generated
       - jupyterhub_certs:/mnt/certs
-    ports:
-      - 8000:8000
-      - 8001:8001
     environment:
       - JUPYTERHUB_ADMIN=admin # this username will be a JupyterHub admin
       - DOCKER_NETWORK_NAME=jupyterhub-network # spawned containers will join this network
