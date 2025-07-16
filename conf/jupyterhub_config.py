@@ -54,11 +54,11 @@ c.DockerSpawner.name_template = "jupyterlab-{username}"
 # Mount the real user's Docker volume on the host to the notebook user's
 # notebook directory in the container
 c.DockerSpawner.volumes = {
-    "jupyterlab-{username}_home": DOCKER_HOME_DIR,
-    "jupyterlab-{username}_workspace": DOCKER_NOTEBOOK_DIR,
-    "jupyterlab-{username}_cache": "/mnt/cache",
-    "jupyterlab-{username}_mlflow": "/mnt/mlflow",
-    "jupyterlab-shared": "/mnt/shared"
+    "jupyterlab-{username}_vol_home": DOCKER_HOME_DIR,
+    "jupyterlab-{username}_vol_workspace": DOCKER_NOTEBOOK_DIR,
+    "jupyterlab-{username}_vol_cache": "/mnt/cache",
+    "jupyterlab-{username}_vol_mlflow": "/mnt/mlflow",
+    "jupyterlab_vol_shared": "/mnt/shared"
 }
 
 # Ensure containers can accept proxy connections
