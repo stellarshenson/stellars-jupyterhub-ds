@@ -39,13 +39,13 @@ services:
   # users to their dedicated environments
   jupyterhub:
     build:
-      context: build
+      context: services/jupyterhub
       dockerfile: Dockerfile.jupyterhub
     image: stellars/stellars-jupyterhub-ds:latest
     container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-jupyterhub
     volumes:
       # JupyterHub configuration file
-      - ./conf/jupyterhub_config.py:/srv/jupyterhub/jupyterhub_config.py:ro
+      - ./config/jupyterhub_config.py:/srv/jupyterhub/jupyterhub_config.py:ro
       # docker socket on the host so we can connect to the daemon from within the container
       - /var/run/docker.sock:/var/run/docker.sock:rw
       # bind Docker volume on host for JupyterHub database and cookie secrets
