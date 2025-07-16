@@ -34,7 +34,6 @@ c.DockerSpawner.network_name = NETWORK_NAME
 # Explicitly set notebook directory because we'll be mounting a volume to it.
 # Most `jupyter/docker-stacks` *-notebook images run the Notebook server as
 DOCKER_NOTEBOOK_DIR = "/home/lab/workspace"
-DOCKER_HOME_DIR = "/home/lab"
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")
 JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")
 
@@ -54,11 +53,12 @@ c.DockerSpawner.name_template = "jupyterlab-{username}"
 # Mount the real user's Docker volume on the host to the notebook user's
 # notebook directory in the container
 c.DockerSpawner.volumes = {
-    "jupyterlab-{username}_vol_home": DOCKER_HOME_DIR,
-    "jupyterlab-{username}_vol_workspace": DOCKER_NOTEBOOK_DIR,
-    "jupyterlab-{username}_vol_cache": "/mnt/cache",
-    "jupyterlab-{username}_vol_mlflow": "/mnt/mlflow",
-    "jupyterlab_vol_shared": "/mnt/shared"
+    "jupyterlab-{username}_home": "/home",
+    "jupyterlab-{username}_workspace": DOCKER_NOTEBOOK_DIR,
+    "jupyterlab-{username}_cache": "/mnt/cache",
+    "jupyterlab-{username}_certs": "/mnt/certs",
+    "jupyterlab-{username}_mlflow": "/mnt/mlflow",
+    "jupyterlab_shared": "/mnt/shared"
 }
 
 # Ensure containers can accept proxy connections

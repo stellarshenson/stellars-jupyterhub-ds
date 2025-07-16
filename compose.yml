@@ -26,7 +26,7 @@ services:
       # access to docker socket to see if service is healthy
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # named volume to hold certificates
-      - vol_certs:/mnt/certs 
+      - jupyterhub_certs:/mnt/certs 
     depends_on:
       jupyterhub:
         condition: service_healthy
@@ -49,9 +49,9 @@ services:
       # docker socket on the host so we can connect to the daemon from within the container
       - /var/run/docker.sock:/var/run/docker.sock:rw
       # bind Docker volume on host for JupyterHub database and cookie secrets
-      - vol_hub_data:/data
+      - jupyterhub_data:/data
       # this is where certificates will be generated
-      - vol_certs:/mnt/certs
+      - jupyterhub_certs:/mnt/certs
     ports:
       - 8000:8000
       - 8001:8001
@@ -109,8 +109,8 @@ services:
 
 
 volumes:
-  vol_hub_data:
-  vol_certs:
+  jupyterhub_data:
+  jupyterhub_certs:
 
 networks:
   jupyterhub-network:
