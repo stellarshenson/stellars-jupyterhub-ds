@@ -32,8 +32,7 @@ This stack uses [NativeAuthenticator](https://github.com/jupyterhub/nativeauthen
 ## Deployment Notes
 
 - Ensure `config/jupyterhub_config.py` is correctly set for your environment (e.g., TLS, admin list).
-- Optional volume mounts and configuration can be modified in `compose.yml` for shared storage.
-
+- Optional volume mounts and configuration can be modified in `jupyterhub_config.py` for shared storage.
 
 
 
