@@ -52,7 +52,7 @@ services:
       - DOCKER_NETWORK_NAME=jupyterhub-network # spawned containers will join this network
       - JUPYTERHUB_BASE_URL=/jupyterhub # default prefix
       - GPU_SUPPORT_ENABLED=0
-      - JUPYTERHUB_SSL_ENABLED=0 # if using traefik - you do need direct SSL config
+      - JUPYTERHUB_SSL_ENABLED=1 # if using traefik - you do need direct SSL config
     labels:
       # Enable proxy support from Traefik
       - "traefik.enable=true"
@@ -82,7 +82,7 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-watchtower
     image: containrrr/watchtower:latest
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:rw # to control docker and refresh images
     command: --cleanup --schedule "0 0 * * *" # run every day at midnight
     security_opt:
       - seccomp:unconfined #optional
