@@ -76,8 +76,7 @@ c.DockerSpawner.name_template = "jupyterlab-{username}"
 c.DockerSpawner.volumes = {
     "jupyterlab-{username}_home": "/home",
     "jupyterlab-{username}_workspace": DOCKER_NOTEBOOK_DIR,
-    "jupyterlab-{username}_cache": "/mnt/cache",
-    "jupyterlab-{username}_certs": "/mnt/certs",
+    "jupyterlab-{username}_cache": "/home/lab/.cache",
     "jupyterlab-{username}_mlflow": "/mnt/mlflow",
     "jupyterlab_shared": "/mnt/shared"
 }
