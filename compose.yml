@@ -48,10 +48,10 @@ services:
       - jupyterhub_certs:/mnt/certs # SSL certificates
     environment:
       - JUPYTERHUB_ADMIN=admin # this username will be a JupyterHub admin
+      - DOCKER_NOTEBOOK_IMAGE=stellars/stellars-jupyterlab-ds:latest # jupyterlab image to spawn
       - DOCKER_NETWORK_NAME=jupyterhub-network # spawned containers will join this network
-      - DOCKER_NOTEBOOK_IMAGE=stellars/stellars-jupyterlab-ds:latest # jupyterlab image to spawn 
       - JUPYTERHUB_BASE_URL=/jupyterhub # default prefix
-      - GPU_SUPPORT_ENABLED=1
+      - GPU_SUPPORT_ENABLED=0
     labels:
       # Enable proxy support from Traefik
       - "traefik.enable=true"

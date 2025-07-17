@@ -9,40 +9,55 @@ import nativeauthenticator
 
 c = get_config()  
 
-# We rely on environment variables to configure JupyterHub so that we
-# avoid having to rebuild the JupyterHub container every time we change a
-# configuration parameter.
-
-# Spawn single-user servers as Docker containers
-c.JupyterHub.spawner_class = "dockerspawner.DockerSpawner"
-
-
-# Environment variables for MLflow integration
-c.DockerSpawner.environment = {
-    'JUPYTERLAB_STARTUP_MODE': 'jupyterhub'
-}
-
-# Spawn containers from this image
-c.DockerSpawner.image = os.environ["DOCKER_NOTEBOOK_IMAGE"]
-
-# Connect containers to this Docker network
-NETWORK_NAME = os.environ["DOCKER_NETWORK_NAME"]
-
-
-c.DockerSpawner.use_internal_ip = True
-c.DockerSpawner.network_name = NETWORK_NAME
-
-# Explicitly set notebook directory because we'll be mounting a volume to it.
-# Most `jupyter/docker-stacks` *-notebook images run the Notebook server as
+# standard variables imported from env
+GPU_SUPPORT_ENABLED= os.environ.get("GPU_SUPPORT_ENABLED")
 DOCKER_NOTEBOOK_DIR = "/home/lab/workspace"
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")
 JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")
+NETWORK_NAME = os.environ["DOCKER_NETWORK_NAME"]
 
-# Prevent auto-spawn for admin users
-c.JupyterHub.default_url = JUPYTERHUB_BASE_URL + '/hub/home'  # Redirect admin to admin panel instead
+# we use dockerspawner
+c.JupyterHub.spawner_class = "dockerspawner.DockerSpawner"
 
-# Modify volume mounting
-c.DockerSpawner.volumes = {}
+# default env variables passed to the spawned containers
+c.DockerSpawner.environment = {
+     'GPU_SUPPORT_ENABLED': 0,
+     'GPUSTAT_ENABLED': 0,
+     'TF_CPP_MIN_LOG_LEVEL':3, # tensorflow logs ERR only
+     'TENSORBOARD_LOGDIR':'/tmp/tensorboard',
+     'MLFLOW_TRACKING_URI': 'http://localhost:5000',
+     'MLFLOW_PORT':5000,
+     'MLFLOW_HOST':'*',
+     'ENABLE_SERVICE_MLFLOW':1,
+     'ENABLE_SERVICE_GLANCES':1,
+     'ENABLE_SERVICE_TENSORBOARD':1,
+     'GPU_SUPPORT_ENABLED': GPU_SUPPORT_ENABLED,
+     'GPUSTAT_ENABLED': GPU_SUPPORT_ENABLED
+}
+
+# configure access to GPU if possible
+if GPU_SUPPORT_ENABLED:
+    c.DockerSpawner.extra_container_config = {
+        'runtime': 'nvidia',
+        'device_requests': [
+            {
+                'Driver': 'nvidia',
+                'Count': -1,  # -1 means "all available GPUs"
+                'Capabilities': [['gpu']]
+            }
+        ]
+    }
+
+# spawn containers from this image
+c.DockerSpawner.image = os.environ["DOCKER_NOTEBOOK_IMAGE"]
+
+# networking congfiguration
+c.DockerSpawner.use_internal_ip = True
+c.DockerSpawner.network_name = NETWORK_NAME
+
+# prevent auto-spawn for admin users
+# Redirect admin to admin panel instead
+c.JupyterHub.default_url = JUPYTERHUB_BASE_URL + '/hub/home'  
 
 # Force container user
 c.DockerSpawner.container_user = "lab"
@@ -68,44 +83,37 @@ c.DockerSpawner.args = [
     '--ServerApp.disable_check_xsrf=True'
 ]
 
-# fix for the iframes loading local pages
-c.JupyterHub.tornado_settings = {
-    'headers': {
-        'Content-Security-Policy': "frame-ancestors 'self'; default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:;"
-    }
-}
-
-# Update internal routing for spawned containers
+# update internal routing for spawned containers
 c.JupyterHub.hub_connect_url = 'http://jupyterhub:8080' + JUPYTERHUB_BASE_URL + '/hub'
 
-# Remove containers once they are stopped
+# remove containers once they are stopped
 c.DockerSpawner.remove = True
 
-# For debugging arguments passed to spawned containers
+# for debugging arguments passed to spawned containers
 c.DockerSpawner.debug = False
 
-# User containers will access hub by container name on the Docker network
+# user containers will access hub by container name on the Docker network
 c.JupyterHub.hub_ip = "jupyterhub"
 c.JupyterHub.hub_port = 8080
 c.JupyterHub.base_url = JUPYTERHUB_BASE_URL + '/'
 
-# Persist hub data on volume mounted inside container
+# persist hub data on volume mounted inside container
 c.JupyterHub.cookie_secret_file = "/data/jupyterhub_cookie_secret"
 c.JupyterHub.db_url = "sqlite:////data/jupyterhub.sqlite"
 
-# Authenticate users with Native Authenticator
-c.JupyterHub.authenticator_class = 'native'
+# authenticate users with Native Authenticator
 # enable UI for native authenticator
+c.JupyterHub.authenticator_class = 'native'
 c.JupyterHub.template_paths = [f"{os.path.dirname(nativeauthenticator.__file__)}/templates/"]
 
-# Allow anyone to sign-up without approval
-# Allow all signed-up users to login
+# allow anyone to sign-up without approval
+# allow all signed-up users to login
 c.NativeAuthenticator.open_signup = False
 c.NativeAuthenticator.enable_signup = True  
 c.NativeAuthenticator.enable_admin_access = True
 c.Authenticator.allow_all = True
 
-# Allowed admins
+# allowed admins
 c.Authenticator.admin_users = [JUPYTERHUB_ADMIN]
 c.JupyterHub.admin_access = True
 
