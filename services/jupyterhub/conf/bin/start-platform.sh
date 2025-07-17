@@ -9,7 +9,7 @@ for file in $START_PLATFORM_DIR/*; do
 done
 
 # run jupyterhub, env params are configured in Dockerfile and docker-compose yml 
-jupyterhub -f /srv/jupyterhub/jupyterhub_config.py
+jupyterhub -f /srv/jupyterhub/jupyterhub_config.py $@
 
 # EOF
 
