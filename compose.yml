@@ -52,6 +52,7 @@ services:
       - DOCKER_NETWORK_NAME=jupyterhub-network # spawned containers will join this network
       - JUPYTERHUB_BASE_URL=/jupyterhub # default prefix
       - GPU_SUPPORT_ENABLED=0
+      - JUPYTERHUB_SSL_ENABLED=0 # if using traefik - you do need direct SSL config
     labels:
       # Enable proxy support from Traefik
       - "traefik.enable=true"
@@ -65,6 +66,8 @@ services:
       - "traefik.http.services.jupyterhub-svc.loadbalancer.server.port=8000"
     networks:
       - jupyterhub-network
+    ports:
+      - "8000:8000"
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f jupytehub > /dev/null || exit 1"]
       interval: 10s

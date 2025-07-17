@@ -10,11 +10,17 @@ import nativeauthenticator
 c = get_config()  
 
 # standard variables imported from env
-GPU_SUPPORT_ENABLED= os.environ.get("GPU_SUPPORT_ENABLED")
+JUPYTERHUB_SSL_ENABLED =  int(os.environ.get("JUPYTERHUB_SSL_ENABLED", 1))
+GPU_SUPPORT_ENABLED= int(os.environ.get("GPU_SUPPORT_ENABLED", 0))
 DOCKER_NOTEBOOK_DIR = "/home/lab/workspace"
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")
 JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")
 NETWORK_NAME = os.environ["DOCKER_NETWORK_NAME"]
+
+# ensure that we are using SSL, it should be enabled by default
+if JUPYTERHUB_SSL_ENABLED == 1:
+    c.JupyterHub.ssl_cert = '/mnt/certs/server.crt'
+    c.JupyterHub.ssl_key = '/mnt/certs/server.key'
 
 # we use dockerspawner
 c.JupyterHub.spawner_class = "dockerspawner.DockerSpawner"
@@ -36,7 +42,7 @@ c.DockerSpawner.environment = {
 }
 
 # configure access to GPU if possible
-if GPU_SUPPORT_ENABLED:
+if GPU_SUPPORT_ENABLED == 1:
     c.DockerSpawner.extra_container_config = {
         'runtime': 'nvidia',
         'device_requests': [
@@ -60,7 +66,6 @@ c.DockerSpawner.network_name = NETWORK_NAME
 c.JupyterHub.default_url = JUPYTERHUB_BASE_URL + '/hub/home'  
 
 # Force container user
-c.DockerSpawner.container_user = "lab"
 c.DockerSpawner.notebook_dir = DOCKER_NOTEBOOK_DIR
 
 # Set container name prefix
@@ -110,7 +115,6 @@ c.JupyterHub.template_paths = [f"{os.path.dirname(nativeauthenticator.__file__)}
 # allow all signed-up users to login
 c.NativeAuthenticator.open_signup = False
 c.NativeAuthenticator.enable_signup = True  
-c.NativeAuthenticator.enable_admin_access = True
 c.Authenticator.allow_all = True
 
 # allowed admins

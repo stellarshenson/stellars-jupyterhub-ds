@@ -3,6 +3,6 @@ tls:
   stores:
     default:
       defaultCertificate:
-        certFile: /mnt/certs/stellars-jupyterhub-ds.crt
-        keyFile:  /mnt/certs/stellars-jupyterhub-ds.key
+        certFile: /mnt/certs/server.crt
+        keyFile:  /mnt/certs/server.key
 
