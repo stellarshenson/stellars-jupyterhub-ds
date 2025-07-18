@@ -1,5 +1,12 @@
-# Copyright (c) Jupyter Development Team.
-# Distributed under the terms of the Modified BSD License.
+# --------------------------------------------------------------------------------------------------
+#
+#   Stellars Jupyterhub DS Platform 
+#   Project Home: https://github.com/stellarshenson/stellars-jupyterhub-ds
+#   This compose file support both GPU and non-GPU platforms
+#
+#   Jupyter hub      - https://localhost/jupyterhub
+#
+# --------------------------------------------------------------------------------------------------
 
 services:
 
