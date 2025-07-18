@@ -56,3 +56,25 @@ services:
     environment:
       - GPU_SUPPORT_ENABLED=1 # enable NVIDIA GPU
 ```
+
+#### Enable shared CIFS mount
+```yaml
+  jupyterhub:
+    volumes:
+      - ./config/jupyterhub_config_override.py:/srv/jupyterhub/jupyterhub_config.py:ro # config file (read only)
+      - jupyterhub_shared_nas:/mnt/shared # cifs share
+    
+volumes:
+  # remote drive for large datasets
+  jupyterhub_shared_nas:
+    driver: local
+    name: jupyterhub_shared_nas
+    driver_opts:
+      type: cifs
+      device: //nas_ip_or_dns_name/data
+      o: username=xxxx,password=yyyy,uid=1000,gid=1000
+```
+
+in the config file you will refer to this volume by its name `jupyterhub_shared_nas`
+
+<!-- EOF -->
