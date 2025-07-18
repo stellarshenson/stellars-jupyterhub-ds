@@ -18,7 +18,7 @@ Visit the project page for stellars-jupyterlab-ds: https://github.com/stellarshe
 ### Docker Compose
 1. Download `compose.yml` and `config/jupyterhub_config.py` config file
 2. Run: `docker compose up --no-build`
-3. Open `https://localhost/jupyterhub` in your browser 
+3. Open https://localhost/jupyterhub in your browser 
 4. Add `admin` user through self-sign-in (user will be authorised automatically)
 5. Log in as `admin`
 
