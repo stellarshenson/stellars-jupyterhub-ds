@@ -43,12 +43,11 @@ c.DockerSpawner.environment = {
 
 # configure access to GPU if possible
 if GPU_SUPPORT_ENABLED == 1:
-    c.DockerSpawner.extra_container_config = {
-        'runtime': 'nvidia',
+    c.DockerSpawner.extra_host_config = {
         'device_requests': [
             {
                 'Driver': 'nvidia',
-                'Count': -1,  # -1 means "all available GPUs"
+                'Count': -1,
                 'Capabilities': [['gpu']]
             }
         ]
