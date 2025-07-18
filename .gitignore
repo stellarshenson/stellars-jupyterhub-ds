@@ -86,7 +86,9 @@ target/
 *.swo
 
 # overrides
-compose_override.yml
+**/*_override.yml
+**/*_override.py
+
 
 # Mypy cache
 .mypy_cache/
