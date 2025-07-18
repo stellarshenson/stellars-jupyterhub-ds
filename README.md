@@ -35,5 +35,23 @@ This stack uses [NativeAuthenticator](https://github.com/jupyterhub/nativeauthen
 - Ensure `config/jupyterhub_config.py` is correctly set for your environment (e.g., TLS, admin list).
 - Optional volume mounts and configuration can be modified in `jupyterhub_config.py` for shared storage.
 
+## Customisation
+
+You should customise the deployment by creating a `compose_override.yml` file.  
+Example below introduces custom config file `jupyterhub_config_override.py` to use for your deployment:
+```yaml
+# Copyright (c) Jupyter Development Team.
+# Distributed under the terms of the Modified BSD License.
+
+services:
+
+  # service for management of a series of users and their jupyterlab
+  # environments. it is internally managed via a proxy that redirects
+  # users to their dedicated environments
+  jupyterhub:
+    volumes:
+      - ./config/jupyterhub_config_override.py:/srv/jupyterhub/jupyterhub_config.py:ro # config file (read only)
+```
+
 
 

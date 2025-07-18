@@ -4,7 +4,8 @@ CURRENT_DIR=`dirname $CURRENT_FILE`
 cd $CURRENT_DIR
 
 # Run the command for when GPU is not available
-if [ -f './compose-override.yml' ]; then
+if [ -f './compose_override.yml' ]; then
+    echo "using compose override"
     docker compose --env-file .env \
 	-f compose.yml \
 	-f compose_override.yml \
