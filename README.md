@@ -38,20 +38,21 @@ This stack uses [NativeAuthenticator](https://github.com/jupyterhub/nativeauthen
 ## Customisation
 
 You should customise the deployment by creating a `compose_override.yml` file.  
+
+#### Custom configuration file
 Example below introduces custom config file `jupyterhub_config_override.py` to use for your deployment:
+
 ```yaml
-# Copyright (c) Jupyter Development Team.
-# Distributed under the terms of the Modified BSD License.
-
 services:
-
-  # service for management of a series of users and their jupyterlab
-  # environments. it is internally managed via a proxy that redirects
-  # users to their dedicated environments
   jupyterhub:
     volumes:
       - ./config/jupyterhub_config_override.py:/srv/jupyterhub/jupyterhub_config.py:ro # config file (read only)
 ```
 
-
-
+#### Enable GPU
+```yaml
+services:
+  jupyterhub:
+    environment:
+      - GPU_SUPPORT_ENABLED=1 # enable NVIDIA GPU
+```
