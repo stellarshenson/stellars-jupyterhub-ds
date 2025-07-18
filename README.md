@@ -1,4 +1,5 @@
 # Stellars JupyterHub for Data Science Platform
+![Docker Image](https://img.shields.io/docker/image-size/stellars/stellars-jupyterhub-ds/latest?style=flat-square)
 
 **Multi-user JupyterHub 4 with Miniforge, Data Science stack, and NativeAuthenticator.**
 
