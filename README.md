@@ -58,6 +58,8 @@ services:
 ```
 
 #### Enable shared CIFS mount
+
+Changes in your `compose_override.yml`:
 ```yaml
   jupyterhub:
     volumes:
@@ -75,6 +77,16 @@ volumes:
       o: username=xxxx,password=yyyy,uid=1000,gid=1000
 ```
 
-in the config file you will refer to this volume by its name `jupyterhub_shared_nas`
+in the config file you will refer to this volume by its name `jupyterhub_shared_nas`:
+```python
+# Mount the real user's Docker volume on the host to the notebook user's
+# notebook directory in the container
+c.DockerSpawner.volumes = {
+    "jupyterlab-{username}_home": "/home",
+    "jupyterlab-{username}_workspace": DOCKER_NOTEBOOK_DIR,
+    "jupyterlab-{username}_cache": "/home/lab/.cache",
+    "jupyterhub_shared_nas": "/mnt/shared"
+}
+```
 
 <!-- EOF -->
