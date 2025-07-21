@@ -34,6 +34,7 @@ c.DockerSpawner.environment = {
      'MLFLOW_TRACKING_URI': 'http://localhost:5000',
      'MLFLOW_PORT':5000,
      'MLFLOW_HOST':'*',
+     'MLFLOW_WORKERS':1,
      'ENABLE_SERVICE_MLFLOW':1,
      'ENABLE_SERVICE_GLANCES':1,
      'ENABLE_SERVICE_TENSORBOARD':1,
