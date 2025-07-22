@@ -71,8 +71,7 @@ c.DockerSpawner.notebook_dir = DOCKER_NOTEBOOK_DIR
 # Set container name prefix
 c.DockerSpawner.name_template = "jupyterlab-{username}"
 
-# Mount the real user's Docker volume on the host to the notebook user's
-# notebook directory in the container
+# User mounts in the spawned container
 c.DockerSpawner.volumes = {
     "jupyterlab-{username}_home": "/home",
     "jupyterlab-{username}_workspace": DOCKER_NOTEBOOK_DIR,
