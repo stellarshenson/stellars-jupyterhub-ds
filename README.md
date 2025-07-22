@@ -50,6 +50,8 @@ services:
 ```
 
 #### Enable GPU
+
+Changes in your `compose_override.yml`:
 ```yaml
 services:
   jupyterhub:
@@ -78,9 +80,9 @@ volumes:
 ```
 
 in the config file you will refer to this volume by its name `jupyterhub_shared_nas`:
+
 ```python
-# Mount the real user's Docker volume on the host to the notebook user's
-# notebook directory in the container
+# User mounts in the spawned container
 c.DockerSpawner.volumes = {
     "jupyterlab-{username}_home": "/home",
     "jupyterlab-{username}_workspace": DOCKER_NOTEBOOK_DIR,
