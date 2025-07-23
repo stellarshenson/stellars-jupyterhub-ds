@@ -56,7 +56,7 @@ Changes in your `compose_override.yml`:
 services:
   jupyterhub:
     environment:
-      - GPU_SUPPORT_ENABLED=1 # enable NVIDIA GPU
+      - ENABLE_GPU_SUPPORT=1 # enable NVIDIA GPU
 ```
 
 #### Enable shared CIFS mount
