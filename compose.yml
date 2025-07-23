@@ -58,8 +58,8 @@ services:
       - DOCKER_NOTEBOOK_IMAGE=stellars/stellars-jupyterlab-ds:latest # jupyterlab image to spawn
       - DOCKER_NETWORK_NAME=jupyterhub-network # spawned containers will join this network
       - JUPYTERHUB_BASE_URL=/jupyterhub # default prefix
-      - GPU_SUPPORT_ENABLED=0 # this enables NVIDIA GPU support for images
-      - JUPYTERHUB_SSL_ENABLED=0 # if using traefik - you do need direct SSL config
+      - ENABLE_GPU_SUPPORT=0 # this enables NVIDIA GPU support for images
+      - ENABLE_JUPYTERHUB_SSL=0 # if using traefik - you do need direct SSL config
     labels:
       # Enable proxy support from Traefik
       - "traefik.enable=true"

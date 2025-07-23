@@ -10,15 +10,15 @@ import nativeauthenticator
 c = get_config()  
 
 # standard variables imported from env
-JUPYTERHUB_SSL_ENABLED =  int(os.environ.get("JUPYTERHUB_SSL_ENABLED", 1))
-GPU_SUPPORT_ENABLED= int(os.environ.get("GPU_SUPPORT_ENABLED", 0))
+ENABLE_JUPYTERHUB_SSL =  int(os.environ.get("ENABLE_JUPYTERHUB_SSL", 1))
+ENABLE_GPU_SUPPORT= int(os.environ.get("ENABLE_GPU_SUPPORT", 0))
 DOCKER_NOTEBOOK_DIR = "/home/lab/workspace"
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")
 JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")
 NETWORK_NAME = os.environ["DOCKER_NETWORK_NAME"]
 
 # ensure that we are using SSL, it should be enabled by default
-if JUPYTERHUB_SSL_ENABLED == 1:
+if ENABLE_JUPYTERHUB_SSL == 1:
     c.JupyterHub.ssl_cert = '/mnt/certs/server.crt'
     c.JupyterHub.ssl_key = '/mnt/certs/server.key'
 
@@ -27,8 +27,6 @@ c.JupyterHub.spawner_class = "dockerspawner.DockerSpawner"
 
 # default env variables passed to the spawned containers
 c.DockerSpawner.environment = {
-     'GPU_SUPPORT_ENABLED': 0,
-     'GPUSTAT_ENABLED': 0,
      'TF_CPP_MIN_LOG_LEVEL':3, # tensorflow logs ERR only
      'TENSORBOARD_LOGDIR':'/tmp/tensorboard',
      'MLFLOW_TRACKING_URI': 'http://localhost:5000',
@@ -38,12 +36,12 @@ c.DockerSpawner.environment = {
      'ENABLE_SERVICE_MLFLOW':1,
      'ENABLE_SERVICE_GLANCES':1,
      'ENABLE_SERVICE_TENSORBOARD':1,
-     'GPU_SUPPORT_ENABLED': GPU_SUPPORT_ENABLED,
-     'GPUSTAT_ENABLED': GPU_SUPPORT_ENABLED
+     'ENABLE_GPU_SUPPORT': ENABLE_GPU_SUPPORT,
+     'ENABLE_GPUSTAT': ENABLE_GPU_SUPPORT
 }
 
 # configure access to GPU if possible
-if GPU_SUPPORT_ENABLED == 1:
+if ENABLE_GPU_SUPPORT == 1:
     c.DockerSpawner.extra_host_config = {
         'device_requests': [
             {
