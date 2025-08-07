@@ -37,6 +37,7 @@ COPY ./templates/certs /mnt/certs
 
 ## install dockerspawner, nativeauthenticator
 RUN pip install -U --no-cache-dir \
+    docker \
     dockerspawner \
     jupyterhub-nativeauthenticator
 
