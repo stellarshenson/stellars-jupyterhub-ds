@@ -10,15 +10,17 @@ import docker # for gpu autodetection
 
 c = get_config()  
 
-# NVIDIA GPU auto-detection, unfortunately through docker exception
-def detect_nvidia():
+# NVIDIA GPU auto-detection 
+def detect_nvidia(nvidia_autodetect_image='nvidia/cuda:12.9.1-base-ubuntu24.04'):
+    """ function to run docker image with nvidia driver, and execute `nvidia-smi` utility
+    to verify if nvidia GPU is present and in functional state """
     client = docker.DockerClient('unix://var/run/docker.sock')
     # spin up a container to test if nvidia works
     result = 0
     container = None
     try:
         client.containers.run(
-            image='nvidia/cuda:12.9.1-base-ubuntu24.04',
+            image=nvidia_autodetect_image,
             command='nvidia-smi',
             runtime='nvidia',
             name='jupyterhub_nvidia_autodetect',
@@ -35,22 +37,26 @@ def detect_nvidia():
         pass
     return result
 
-NVIDIA_DETECTED = detect_nvidia()
 
 # standard variables imported from env
 ENABLE_JUPYTERHUB_SSL =  int(os.environ.get("ENABLE_JUPYTERHUB_SSL", 1))
-ENABLE_GPU_SUPPORT= int(os.environ.get("ENABLE_GPU_SUPPORT", 2)) 
+ENABLE_GPU_SUPPORT = int(os.environ.get("ENABLE_GPU_SUPPORT", 2)) 
+ENABLE_SERVICE_MLFLOW = int(os.environ.get("ENABLE_SERVICE_MLFLOW", 1)) 
+ENABLE_SERVICE_GLANCES = int(os.environ.get("ENABLE_SERVICE_GLANCES", 1)) 
+ENABLE_SERVICE_TENSORBOARD = int(os.environ.get("ENABLE_SERVICE_TENSORBOARD", 1)) 
+TF_CPP_MIN_LOG_LEVEL = int(os.environ.get("TF_CPP_MIN_LOG_LEVEL", 3)) 
 DOCKER_NOTEBOOK_DIR = "/home/lab/workspace"
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")
 JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")
 NETWORK_NAME = os.environ["DOCKER_NETWORK_NAME"]
+NVIDIA_AUTODETECT_IMAGE = os.environ.get("NVIDIA_AUTODETECT_IMAGE", 'nvidia/cuda:12.9.1-base-ubuntu24.04') 
 
-# enable gpu autodetect and GPU found
+# perform autodetection when ENABLE_GPU_SUPPORT is set to autodetect
 # gpu support: 0 - disabled, 1 - enabled, 2 - autodetect
-if ENABLE_GPU_SUPPORT == 2 and NVIDIA_DETECTED:
-    ENABLE_GPU_SUPPORT = 1 # means - gpu enabled
-elif ENABLE_GPU_SUPPORT == 2 and not NVIDIA_DETECTED:
-    ENABLE_GPU_SUPPORT = 0 # means - disable 
+if ENABLE_GPU_SUPPORT == 2:
+    NVIDIA_DETECTED = detect_nvidia()
+    if NVIDIA_DETECTED: ENABLE_GPU_SUPPORT = 1 # means - gpu enabled
+    else: ENABLE_GPU_SUPPORT = 0 # means - disable 
 
 # ensure that we are using SSL, it should be enabled by default
 if ENABLE_JUPYTERHUB_SSL == 1:
@@ -62,15 +68,15 @@ c.JupyterHub.spawner_class = "dockerspawner.DockerSpawner"
 
 # default env variables passed to the spawned containers
 c.DockerSpawner.environment = {
-     'TF_CPP_MIN_LOG_LEVEL':3, # tensorflow logs ERR only
+     'TF_CPP_MIN_LOG_LEVEL':TF_CPP_MIN_LOG_LEVEL, # tensorflow logging level: 3 - err only
      'TENSORBOARD_LOGDIR':'/tmp/tensorboard',
      'MLFLOW_TRACKING_URI': 'http://localhost:5000',
      'MLFLOW_PORT':5000,
      'MLFLOW_HOST':'*',
      'MLFLOW_WORKERS':1,
-     'ENABLE_SERVICE_MLFLOW':1,
-     'ENABLE_SERVICE_GLANCES':1,
-     'ENABLE_SERVICE_TENSORBOARD':1,
+     'ENABLE_SERVICE_MLFLOW': ENABLE_SERVICE_MLFLOW,
+     'ENABLE_SERVICE_GLANCES': ENABLE_SERVICE_GLANCES,
+     'ENABLE_SERVICE_TENSORBOARD': ENABLE_SERVICE_TENSORBOARD,
      'ENABLE_GPU_SUPPORT': ENABLE_GPU_SUPPORT,
      'ENABLE_GPUSTAT': ENABLE_GPU_SUPPORT,
      'NVIDIA_DETECTED': NVIDIA_DETECTED,
