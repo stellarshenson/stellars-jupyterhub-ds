@@ -88,7 +88,7 @@ c.DockerSpawner.volumes = {
     "jupyterlab-{username}_home": "/home",
     "jupyterlab-{username}_workspace": DOCKER_NOTEBOOK_DIR,
     "jupyterlab-{username}_cache": "/home/lab/.cache",
-    "jupyterlab_shared": "/mnt/shared"
+    "jupyterhub_shared": "/mnt/shared" # shared drive across hub
 }
 
 # Ensure containers can accept proxy connections
