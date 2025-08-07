@@ -49,7 +49,7 @@ NETWORK_NAME = os.environ["DOCKER_NETWORK_NAME"]
 # gpu support: 0 - disabled, 1 - enabled, 2 - autodetect
 if ENABLE_GPU_SUPPORT == 2 and NVIDIA_DETECTED:
     ENABLE_GPU_SUPPORT = 1 # means - gpu enabled
-elif ENABLE_GPU_SUPPORT == 2 and not NVIDIA_DETECTED
+elif ENABLE_GPU_SUPPORT == 2 and not NVIDIA_DETECTED:
     ENABLE_GPU_SUPPORT = 0 # means - disable 
 
 # ensure that we are using SSL, it should be enabled by default
