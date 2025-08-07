@@ -13,20 +13,28 @@ c = get_config()
 # NVIDIA GPU auto-detection, unfortunately through docker exception
 def detect_nvidia():
     client = docker.DockerClient('unix://var/run/docker.sock')
+    # spin up a container to test if nvidia works
+    result = 0
+    container = None
     try:
-        output = client.containers.run(
+        client.containers.run(
             image='nvidia/cuda:12.9.1-base-ubuntu24.04',
             command='nvidia-smi',
             runtime='nvidia',
             name='jupyterhub_nvidia_autodetect',
-            remove=True,
-            auto_remove=True,
             stderr=True,
-            stdout=True
+            stdout=True,
         )
-        return 1
+        result = 1
     except:
-        return 0
+        result = 0
+    # cleanup that container
+    try:
+        container = client.get('jupyterhub_nvidia_autodetect')
+        container.remove()
+    except:
+        pass
+    return result
 
 NVIDIA_DETECTED = detect_nvidia()
 
