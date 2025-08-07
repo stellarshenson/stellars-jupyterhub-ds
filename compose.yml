@@ -53,6 +53,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:rw # docker socket to use spawner
       - jupyterhub_data:/data # database and cookie secrets
       - jupyterhub_certs:/mnt/certs # SSL certificates
+      - jupyterhub_shared:/mnt/shared # shared volume across environments
       - /var/run/docker.sock:/var/run/docker.sock:ro # for nvidia autodetection
     environment:
       - JUPYTERHUB_ADMIN=admin # this username will be a JupyterHub admin
@@ -106,10 +107,11 @@ services:
     restart: unless-stopped
     privileged: true
 
-
 volumes:
   jupyterhub_data:
   jupyterhub_certs:
+  jupyterhub_shared:
+    name: jupyterhub_shared
 
 networks:
   jupyterhub-network:
