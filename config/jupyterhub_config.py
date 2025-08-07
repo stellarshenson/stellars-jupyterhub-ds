@@ -6,16 +6,29 @@ import os
 import json
 import requests
 import nativeauthenticator
+import docker # for gpu autodetection
 
 c = get_config()  
 
+# NVIDIA GPU auto-detection
+NVIDIA_DETECTED = 0
+docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+docker_info = docker_client.info()
+if "nvidia" in docker_info.get("Runtimes", {}):
+    NVIDIA_DETECTED = 1
+
 # standard variables imported from env
 ENABLE_JUPYTERHUB_SSL =  int(os.environ.get("ENABLE_JUPYTERHUB_SSL", 1))
-ENABLE_GPU_SUPPORT= int(os.environ.get("ENABLE_GPU_SUPPORT", 0))
+ENABLE_GPU_SUPPORT= int(os.environ.get("ENABLE_GPU_SUPPORT", 2)) 
 DOCKER_NOTEBOOK_DIR = "/home/lab/workspace"
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")
 JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")
 NETWORK_NAME = os.environ["DOCKER_NETWORK_NAME"]
+
+# enable gpu autodetect and GPU found
+# gpu support: 0 - disabled, 1 - enabled, 2 - autodetect
+if ENABLE_GPU_SUPPORT == 2 and NVIDIA_DETECTED:
+    ENABLE_GPU_SUPPORT = 1 # means - gpu enabled
 
 # ensure that we are using SSL, it should be enabled by default
 if ENABLE_JUPYTERHUB_SSL == 1:
@@ -37,7 +50,8 @@ c.DockerSpawner.environment = {
      'ENABLE_SERVICE_GLANCES':1,
      'ENABLE_SERVICE_TENSORBOARD':1,
      'ENABLE_GPU_SUPPORT': ENABLE_GPU_SUPPORT,
-     'ENABLE_GPUSTAT': ENABLE_GPU_SUPPORT
+     'ENABLE_GPUSTAT': ENABLE_GPU_SUPPORT,
+     'NVIDIA_DETECTED': NVIDIA_DETECTED,
 }
 
 # configure access to GPU if possible

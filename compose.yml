@@ -53,12 +53,13 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:rw # docker socket to use spawner
       - jupyterhub_data:/data # database and cookie secrets
       - jupyterhub_certs:/mnt/certs # SSL certificates
+      - /var/run/docker.sock:/var/run/docker.sock:ro # for nvidia autodetection
     environment:
       - JUPYTERHUB_ADMIN=admin # this username will be a JupyterHub admin
       - DOCKER_NOTEBOOK_IMAGE=stellars/stellars-jupyterlab-ds:latest # jupyterlab image to spawn
       - DOCKER_NETWORK_NAME=jupyterhub-network # spawned containers will join this network
       - JUPYTERHUB_BASE_URL=/jupyterhub # default prefix
-      - ENABLE_GPU_SUPPORT=0 # this enables NVIDIA GPU support for images
+      - ENABLE_GPU_SUPPORT=2 # gpu status: 0 - disabled, 1 - enabled, 2 - auto-detect
       - ENABLE_JUPYTERHUB_SSL=0 # if using traefik - you do need direct SSL config
     labels:
       # Enable proxy support from Traefik
