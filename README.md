@@ -5,6 +5,8 @@
 
 This platform is built to support multiple data scientists on a shared environment with isolated sessions. Powered by JupyterHub, it ensures secure, user-specific access via the `NativeAuthenticator` plugin. It includes a full data science stack with GPU support (optional), and integrates seamlessly into modern Docker-based workflows.
 
+By default system is capable of **automatically detecting** NVIDIA CUDA-supported GPU
+
 This deployment provides access to a centralized JupyterHub instance for managing user sessions. Optional integrations such as TensorBoard, MLFlow, or Optuna can be added manually via service extensions.
 
 ## References
@@ -51,12 +53,15 @@ services:
 
 #### Enable GPU
 
+No changes required in the configuration if you allow NVidia autodetection to be performed.
+Otherwise change the `ENABLE_GPU_SUPPORT = 1`
+
 Changes in your `compose_override.yml`:
 ```yaml
 services:
   jupyterhub:
     environment:
-      - ENABLE_GPU_SUPPORT=1 # enable NVIDIA GPU
+      - ENABLE_GPU_SUPPORT=1 # enable NVIDIA GPU, values: 0 - disabled, 1 - enabled, 2 - auto-detect
 ```
 
 #### Enable shared CIFS mount
