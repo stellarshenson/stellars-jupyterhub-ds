@@ -30,8 +30,7 @@ def detect_nvidia():
         result = 0
     # cleanup that container
     try:
-        container = client.get('jupyterhub_nvidia_autodetect')
-        container.remove()
+        container = client.containers.get('jupyterhub_nvidia_autodetect').remove(force=True)
     except:
         pass
     return result
