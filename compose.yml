@@ -36,7 +36,7 @@ services:
       jupyterhub:
         condition: service_healthy
     networks:
-      - jupyterhub-network
+      - jupyterhub_network
     restart: unless-stopped
 
   # service for management of a series of users and their jupyterlab
@@ -58,7 +58,7 @@ services:
     environment:
       - JUPYTERHUB_ADMIN=admin # this username will be a JupyterHub admin
       - DOCKER_NOTEBOOK_IMAGE=stellars/stellars-jupyterlab-ds:latest # jupyterlab image to spawn
-      - DOCKER_NETWORK_NAME=jupyterhub-network # spawned containers will join this network
+      - DOCKER_NETWORK_NAME=jupyterhub_network # spawned containers will join this network
       - JUPYTERHUB_BASE_URL=/jupyterhub # default prefix
       - ENABLE_GPU_SUPPORT=2 # gpu status: 0 - disabled, 1 - enabled, 2 - auto-detect
       - ENABLE_JUPYTERHUB_SSL=0 # if using traefik - you do need direct SSL config
@@ -74,7 +74,7 @@ services:
       - "traefik.http.services.jupyterhub-svc.loadbalancer.server.scheme=http"
       - "traefik.http.services.jupyterhub-svc.loadbalancer.server.port=8000"
     networks:
-      - jupyterhub-network
+      - jupyterhub_network
     ports:
       - "8000:8000"
     healthcheck:
@@ -103,7 +103,7 @@ services:
     ports:
       - "9911:9911"
     networks:
-      - jupyterhub-network
+      - jupyterhub_network
     restart: unless-stopped
     privileged: true
 
@@ -114,6 +114,6 @@ volumes:
     name: jupyterhub_shared
 
 networks:
-  jupyterhub-network:
-    name: jupyterhub-network
+  jupyterhub_network:
+    name: jupyterhub_network
 
