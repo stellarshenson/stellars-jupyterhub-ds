@@ -62,6 +62,11 @@ services:
       - JUPYTERHUB_BASE_URL=/jupyterhub # default prefix
       - ENABLE_GPU_SUPPORT=2 # gpu status: 0 - disabled, 1 - enabled, 2 - auto-detect
       - ENABLE_JUPYTERHUB_SSL=0 # if using traefik - you do need direct SSL config
+      - ENABLE_SERVICE_MLFLOW=1 # enable mlflow for experiment tracking
+      - ENABLE_SERVICE_GLANCES=1 # enable resources monitor
+      - ENABLE_SERVICE_TENSORBOARD=1 # enable tensorflow training tracker
+      - TF_CPP_MIN_LOG_LEVEL=3 # make tensorflow less verbose
+      - NVIDIA_AUTODETECT_IMAGE=nvidia/cuda:12.9.1-base-ubuntu24.04 # image with `nvidia-smi` for gpu autodetection
     labels:
       # Enable proxy support from Traefik
       - "traefik.enable=true"
