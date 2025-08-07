@@ -54,7 +54,7 @@ NVIDIA_AUTODETECT_IMAGE = os.environ.get("NVIDIA_AUTODETECT_IMAGE", 'nvidia/cuda
 # perform autodetection when ENABLE_GPU_SUPPORT is set to autodetect
 # gpu support: 0 - disabled, 1 - enabled, 2 - autodetect
 if ENABLE_GPU_SUPPORT == 2:
-    NVIDIA_DETECTED = detect_nvidia()
+    NVIDIA_DETECTED = detect_nvidia(NVIDIA_AUTODETECT_IMAGE)
     if NVIDIA_DETECTED: ENABLE_GPU_SUPPORT = 1 # means - gpu enabled
     else: ENABLE_GPU_SUPPORT = 0 # means - disable 
 
