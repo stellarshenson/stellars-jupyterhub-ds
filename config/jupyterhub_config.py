@@ -10,12 +10,23 @@ import docker # for gpu autodetection
 
 c = get_config()  
 
-# NVIDIA GPU auto-detection
-NVIDIA_DETECTED = 0
-docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
-docker_info = docker_client.info()
-if "nvidia" in docker_info.get("Runtimes", {}):
-    NVIDIA_DETECTED = 1
+# NVIDIA GPU auto-detection, unfortunately through docker exception
+def detect_nvidia():
+    client = docker.DockerClient('unix://var/run/docker.sock')
+    try:
+        output = client.containers.run(
+            image='nvidia/cuda:12.9.1-base-ubuntu24.04',
+            command='nvidia-smi',
+            runtime='nvidia',
+            remove=True,
+           stderr=True,
+            stdout=True
+        )
+        return 1
+    except:
+        return 0
+
+NVIDIA_DETECTED = detect_nvidia()
 
 # standard variables imported from env
 ENABLE_JUPYTERHUB_SSL =  int(os.environ.get("ENABLE_JUPYTERHUB_SSL", 1))
