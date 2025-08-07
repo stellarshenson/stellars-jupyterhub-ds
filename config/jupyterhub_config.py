@@ -18,8 +18,10 @@ def detect_nvidia():
             image='nvidia/cuda:12.9.1-base-ubuntu24.04',
             command='nvidia-smi',
             runtime='nvidia',
+            name='jupyterhub_nvidia_autodetect',
             remove=True,
-           stderr=True,
+            auto_remove=True,
+            stderr=True,
             stdout=True
         )
         return 1
