@@ -50,9 +50,9 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-jupyterhub
     volumes:
       - ./config/jupyterhub_config.py:/srv/jupyterhub/jupyterhub_config.py:ro # config file (read only)
+      - ./certs:/mnt/certs # SSL certificates
       - /var/run/docker.sock:/var/run/docker.sock:rw # docker socket to use spawner
       - jupyterhub_data:/data # database and cookie secrets
-      - jupyterhub_certs:/mnt/certs # SSL certificates
       - jupyterhub_shared:/mnt/shared # shared volume across environments
       - /var/run/docker.sock:/var/run/docker.sock:ro # for nvidia autodetection
     environment:
