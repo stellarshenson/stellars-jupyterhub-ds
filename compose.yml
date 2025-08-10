@@ -114,7 +114,6 @@ services:
 
 volumes:
   jupyterhub_data:
-  jupyterhub_certs:
   jupyterhub_shared:
     name: jupyterhub_shared
 
