@@ -11,7 +11,7 @@ import docker # for gpu autodetection
 c = get_config()  
 
 # NVIDIA GPU auto-detection 
-def detect_nvidia(nvidia_autodetect_image='nvidia/cuda:13.0.0-base-ubuntu24.04'):
+def detect_nvidia(nvidia_autodetect_image='nvidia/cuda:12.9.1-base-ubuntu24.04'):
     """ function to run docker image with nvidia driver, and execute `nvidia-smi` utility
     to verify if nvidia GPU is present and in functional state """
     client = docker.DockerClient('unix://var/run/docker.sock')
