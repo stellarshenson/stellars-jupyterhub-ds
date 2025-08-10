@@ -33,7 +33,6 @@ EOF
 ## copy resources
 COPY --chmod=755  ./conf/bin/*.sh ./conf/bin/*.py /
 COPY --chmod=755  ./conf/bin/start-platform.d /start-platform.d
-COPY ./templates/certs /mnt/certs
 
 ## install dockerspawner, nativeauthenticator
 RUN pip install -U --no-cache-dir \
