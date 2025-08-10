@@ -31,7 +31,7 @@ services:
       - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro # docker socket to use services labels
-      - ./certs:/mnt/certs # certificates (generated in jupyterhub image)
+      - jupyterhub_certs:/mnt/certs # certificates (generated in jupyterhub image)
     depends_on:
       jupyterhub:
         condition: service_healthy
@@ -50,7 +50,7 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-jupyterhub
     volumes:
       - ./config/jupyterhub_config.py:/srv/jupyterhub/jupyterhub_config.py:ro # config file (read only)
-      - ./certs:/mnt/certs # SSL certificates
+      - jupyterhub_certs:/mnt/certs # certificates (generated in jupyterhub image)
       - /var/run/docker.sock:/var/run/docker.sock:rw # docker socket to use spawner
       - jupyterhub_data:/data # database and cookie secrets
       - jupyterhub_shared:/mnt/shared # shared volume across environments
@@ -114,6 +114,7 @@ services:
 
 volumes:
   jupyterhub_data:
+  jupyterhub_certs:
   jupyterhub_shared:
     name: jupyterhub_shared
 
