@@ -156,6 +156,55 @@ volumes:
 
 User containers will access this at `/mnt/shared`.
 
+## User Self-Service Features
+
+The platform provides two self-service features accessible from the user control panel (`/hub/home`):
+
+### Reset Home Volume
+
+**Purpose**: Allows users to delete their home directory volume and start fresh with a clean environment.
+
+**Requirements**:
+- User's JupyterLab server must be stopped
+- Volume `jupyterlab-{username}_home` must exist
+
+**Implementation**:
+- API Endpoint: `DELETE /hub/api/users/{username}/reset-home-volume`
+- Handler: `services/jupyterhub/conf/bin/custom_handlers.py::ResetHomeVolumeHandler`
+- Uses Docker API to safely remove the volume
+- Only affects home volume - workspace and cache volumes are preserved
+
+**Permissions**:
+- Users can reset their own home volume
+- Admins can reset any user's home volume
+- Enforced via `@admin_or_self` decorator
+
+### Restart Server
+
+**Purpose**: Provides one-click Docker container restart without recreating the container.
+
+**Requirements**:
+- User's JupyterLab server must be running
+- Container `jupyterlab-{username}` must exist
+
+**Implementation**:
+- API Endpoint: `POST /hub/api/users/{username}/restart-server`
+- Handler: `services/jupyterhub/conf/bin/custom_handlers.py::RestartServerHandler`
+- Uses Docker's native `container.restart(timeout=10)` method
+- Preserves container identity, volumes, and configuration
+- Does NOT recreate container (unlike JupyterHub's stop/spawn cycle)
+
+**Permissions**:
+- Users can restart their own server
+- Admins can restart any user's server
+- Enforced via `@admin_or_self` decorator
+
+**UI Location**:
+- Custom template: `services/jupyterhub/templates/home.html`
+- Reset button visible when server is stopped
+- Restart button visible when server is running
+- Both include confirmation modals with warnings
+
 ## Troubleshooting
 
 **GPU not detected**:

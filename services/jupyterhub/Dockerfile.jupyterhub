@@ -34,6 +34,7 @@ EOF
 COPY --chmod=755  ./conf/bin/*.sh ./conf/bin/*.py /
 COPY --chmod=755  ./conf/bin/start-platform.d /start-platform.d
 COPY --chmod=600  ./templates/certs /mnt/certs
+COPY --chmod=644  ./templates/*.html /srv/jupyterhub/templates/
 
 ## install dockerspawner, nativeauthenticator
 RUN pip install -U --no-cache-dir \
