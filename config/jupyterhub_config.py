@@ -146,7 +146,10 @@ c.JupyterHub.db_url = "sqlite:////data/jupyterhub.sqlite"
 # authenticate users with Native Authenticator
 # enable UI for native authenticator
 c.JupyterHub.authenticator_class = 'native'
-c.JupyterHub.template_paths = [f"{os.path.dirname(nativeauthenticator.__file__)}/templates/"]
+c.JupyterHub.template_paths = [
+    "/srv/jupyterhub/templates/",  # Custom templates
+    f"{os.path.dirname(nativeauthenticator.__file__)}/templates/"  # NativeAuthenticator templates
+]
 
 # allow anyone to sign-up without approval
 # allow all signed-up users to login
@@ -157,5 +160,17 @@ c.Authenticator.allow_all = True
 # allowed admins
 c.Authenticator.admin_users = [JUPYTERHUB_ADMIN]
 c.JupyterHub.admin_access = True
+
+# Custom API handlers for volume management and server control
+import sys
+sys.path.insert(0, '/start-platform.d')
+sys.path.insert(0, '/')
+
+from custom_handlers import ResetHomeVolumeHandler, RestartServerHandler
+
+c.JupyterHub.extra_handlers = [
+    (r'/api/users/([^/]+)/reset-home-volume', ResetHomeVolumeHandler),
+    (r'/api/users/([^/]+)/restart-server', RestartServerHandler),
+]
 
 # EOF
