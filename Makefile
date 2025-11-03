@@ -4,7 +4,7 @@
 # GLOBALS                                                                       #
 #################################################################################
 .DEFAULT_GOAL := help
-.PHONY: help build push start clean increment_version tag
+.PHONY: help build push start stop clean increment_version tag
 
 # Include project configuration
 include project.env
@@ -60,6 +60,15 @@ tag:
 ## start jupyterhub (fg)
 start:
 	@./start.sh
+
+## stop and remove containers
+stop:
+	@echo 'stopping and removing containers'
+	@if [ -f './compose_override.yml' ]; then \
+		docker compose --env-file .env -f compose.yml -f compose_override.yml down; \
+	else \
+		docker compose --env-file .env -f compose.yml down; \
+	fi
 
 ## clean orphaned containers
 clean:
