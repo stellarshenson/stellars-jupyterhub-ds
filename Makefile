@@ -4,14 +4,34 @@
 # GLOBALS                                                                       #
 #################################################################################
 .DEFAULT_GOAL := help
-.PHONY: help build push start clean
+.PHONY: help build push start clean increment_version tag
+
+# Include project configuration
+include project.env
+
+# Use VERSION from project.env as TAG (strip quotes)
+TAG := $(subst ",,$(VERSION))
 
 #################################################################################
 # COMMANDS                                                                      #
 #################################################################################
 
+## increment patch version in project.env
+increment_version:
+	@echo "Incrementing patch version..."
+	@awk -F= '/^VERSION=/ { \
+		gsub(/"/, "", $$2); \
+		match($$2, /^([0-9]+\.[0-9]+\.)([0-9]+)(_.*$$)/, parts); \
+		new_patch = parts[2] + 1; \
+		new_version = parts[1] new_patch parts[3]; \
+		print "VERSION=\"" new_version "\""; \
+		print "Version updated: " $$2 " -> " new_version > "/dev/stderr"; \
+		next; \
+	} \
+	{ print }' project.env > project.env.tmp && mv project.env.tmp project.env
+
 ## build docker containers
-build:
+build: increment_version
 	@cd ./scripts && ./build.sh
 
 ## build docker containers and output logs
@@ -23,12 +43,23 @@ pull:
 	docker pull stellars/stellars-jupyterhub-ds:latest
 
 ## push docker containers to repo
-push:
+push: tag
 	docker push stellars/stellars-jupyterhub-ds:latest
+	docker push stellars/stellars-jupyterhub-ds:$(TAG)
 
-## start jupyterlab (fg)
+tag:
+	@if git tag -l | grep -q "^$(TAG)$$"; then \
+		echo "Git tag $(TAG) already exists, skipping tagging"; \
+	else \
+		echo "Creating git tag: $(TAG)"; \
+		git tag $(TAG); \
+		echo "Creating docker tag: $(TAG)"; \
+		docker tag stellars/stellars-jupyterhub-ds:latest stellars/stellars-jupyterhub-ds:$(TAG); \
+	fi
+
+## start jupyterhub (fg)
 start:
-	@cd ./bin && ./start.sh
+	@./start.sh
 
 ## clean orphaned containers
 clean:
