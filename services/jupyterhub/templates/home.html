@@ -1,207 +1,248 @@
 {% extends "page.html" %}
-
+{% if announcement_home is string %}
+  {% set announcement = announcement_home %}
+{% endif %}
 {% block main %}
-
-<div class="container">
-  <div class="row">
-    <div class="col-md-8 offset-md-2">
+  <div class="container">
+    <h1 class="visually-hidden">JupyterHub home page</h1>
+    <div class="row">
       <div class="text-center">
-        <h1>Welcome, {{ user.name }}!</h1>
+        {% if default_server.active %}<a id="stop" role="button" class="btn btn-lg btn-danger">Stop My Server</a>{% endif %}
+        <a id="start"
+           role="button"
+           class="btn btn-lg btn-primary"
+           href="{{ url }}">
+          {% if not default_server.active %}Start{% endif %}
+          My Server
+        </a>
 
-        {% if user.server %}
-          <div class="card mt-4">
-            <div class="card-body">
-              <h5 class="card-title">Your Server is Running</h5>
-              <p class="card-text">Your Jupyter server is active and ready to use.</p>
-              <a href="/user/{{ user.name }}/lab" class="btn btn-lg btn-primary">
-                <i class="fa fa-flask"></i> Go to JupyterLab
-              </a>
-              <button id="restart-server-btn"
-                      class="btn btn-lg btn-warning"
-                      data-username="{{ user.name }}"
-                      data-toggle="modal"
-                      data-target="#restart-server-modal">
-                <i class="fa fa-refresh"></i> Restart Server
-              </button>
-              <a href="/hub/home" class="btn btn-lg btn-danger"
-                 data-method="delete"
-                 data-confirm="Are you sure you want to stop your server?">
-                <i class="fa fa-stop"></i> Stop Server
-              </a>
-            </div>
-          </div>
+        {# Custom buttons: Restart Server when active, Reset Home Volume when stopped #}
+        {% if default_server.active %}
+        <button id="restart-server-btn"
+                class="btn btn-lg btn-warning"
+                data-username="{{ user.name }}"
+                data-toggle="modal"
+                data-target="#restart-server-modal">
+          Restart Server
+        </button>
         {% else %}
-          <div class="card mt-4">
-            <div class="card-body">
-              <h5 class="card-title">Your Server is Stopped</h5>
-              <p class="card-text">Start your Jupyter server to begin working.</p>
-              <a href="/hub/spawn" class="btn btn-lg btn-primary">
-                <i class="fa fa-play"></i> Start Server
-              </a>
-              <button id="reset-home-volume-btn"
-                      class="btn btn-lg btn-danger"
-                      data-username="{{ user.name }}"
-                      data-toggle="modal"
-                      data-target="#reset-volume-modal">
-                <i class="fa fa-trash"></i> Reset Home Volume
-              </button>
-            </div>
-          </div>
+        <button id="reset-home-volume-btn"
+                class="btn btn-lg btn-secondary"
+                data-username="{{ user.name }}"
+                data-toggle="modal"
+                data-target="#reset-volume-modal">
+          Reset Home Volume
+        </button>
         {% endif %}
+      </div>
+    </div>
+    {% if allow_named_servers %}
+      <h2>Named Servers</h2>
+      <p>
+        In addition to your default server,
+        you may have additional
+        {% if named_server_limit_per_user > 0 %}{{ named_server_limit_per_user }}{% endif %}
+        server(s) with names.
+        This allows you to have more than one server running at the same time.
+      </p>
+      {% set named_spawners = user.all_spawners(include_default=False)|list %}
+      <table class="server-table table table-striped">
+        <thead>
+          <tr>
+            <th>Server name</th>
+            <th>URL</th>
+            <th>Last activity</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="home-server-row add-server-row">
+            <td colspan="4">
+              <div class="input-group">
+                <input class="new-server-name form-control"
+                       aria-label="server name"
+                       placeholder="name-your-server">
+                <button role="button"
+                        type="button"
+                        class="new-server-btn btn btn-xs btn-primary">Add New Server</button>
+              </div>
+            </td>
+          </tr>
+          {% for spawner in named_spawners %}
+            <tr class="home-server-row" data-server-name="{{ spawner.name }}">
+              {# name #}
+              <td>{{ spawner.name }}</td>
+              {# url #}
+              <td>
+                <a class="server-link {% if not spawner.ready %}hidden{% endif %}"
+                   href="{{ user.server_url(spawner.name) }}">{{ user.server_url(spawner.name) }}</a>
+              </td>
+              {# activity #}
+              <td class='time-col'>
+                {% if spawner.last_activity %}
+                  {{ spawner.last_activity.isoformat() + 'Z' }}
+                {% else %}
+                  Never
+                {% endif %}
+              </td>
+              {# actions #}
+              <td>
+                <a role="button"
+                   class="stop-server btn btn-xs btn-danger{% if not spawner.active %} hidden{% endif %}"
+                   id="stop-{{ spawner.name }}">stop</a>
+                <a role="button"
+                   class="start-server btn btn-xs btn-primary {% if spawner.active %}hidden{% endif %}"
+                   id="start-{{ spawner.name }}"
+                   href="{{ base_url }}spawn/{{ user.name }}/{{ spawner.name }}">start</a>
+                <button role="button"
+                        class="delete-server btn btn-xs btn-danger{% if spawner.active %} hidden{% endif %}"
+                        id="delete-{{ spawner.name }}">delete</button>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
 
-        {% if user.admin %}
-          <div class="card mt-4">
-            <div class="card-body">
-              <h5 class="card-title">Admin Panel</h5>
-              <p class="card-text">Manage users and servers.</p>
-              <a href="/hub/admin" class="btn btn-lg btn-info">
-                <i class="fa fa-dashboard"></i> Admin Panel
-              </a>
-            </div>
+  <!-- Reset Home Volume Modal -->
+  <div class="modal fade" id="reset-volume-modal" tabindex="-1" role="dialog" aria-labelledby="resetVolumeModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="resetVolumeModalLabel">Reset Home Volume</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-danger">
+            <strong>Warning:</strong> This action cannot be undone!
           </div>
-        {% endif %}
-
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Reset Home Volume Modal -->
-<div class="modal fade" id="reset-volume-modal" tabindex="-1" role="dialog" aria-labelledby="resetVolumeModalLabel" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="resetVolumeModalLabel">Reset Home Volume</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      <div class="modal-body">
-        <div class="alert alert-danger">
-          <strong><i class="fa fa-exclamation-triangle"></i> Warning:</strong> This action cannot be undone!
+          <p>This will permanently delete all files in your home directory:</p>
+          <code class="d-block bg-light p-2 mb-3">jupyterlab-{{ user.name }}_home</code>
+          <p class="mt-3">Your workspace and cache volumes will <strong>NOT</strong> be affected.</p>
+          <p><strong>Are you sure you want to continue?</strong></p>
         </div>
-        <p>This will permanently delete all files in your home directory:</p>
-        <code id="volume-name-display" class="d-block bg-light p-2 mb-3">jupyterlab-{{ user.name }}_home</code>
-        <p class="mt-3">Your workspace and cache volumes will <strong>NOT</strong> be affected.</p>
-        <p><strong>Are you sure you want to continue?</strong></p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-danger" id="confirm-reset-btn">
-          <i class="fa fa-check"></i> Yes, Reset Home Volume
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Restart Server Modal -->
-<div class="modal fade" id="restart-server-modal" tabindex="-1" role="dialog" aria-labelledby="restartServerModalLabel" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="restartServerModalLabel">Restart Server</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      <div class="modal-body">
-        <div class="alert alert-warning">
-          <strong><i class="fa fa-info-circle"></i> Notice:</strong> Your server will be temporarily unavailable during restart.
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirm-reset-btn">
+            Yes, Reset Home Volume
+          </button>
         </div>
-        <p>This will restart your JupyterLab container using Docker's native restart:</p>
-        <ul>
-          <li>Gracefully stops the container</li>
-          <li>Restarts the same container (does not recreate)</li>
-          <li>Preserves all volumes and configuration</li>
-        </ul>
-        <p class="mt-3"><strong>Any unsaved work in notebooks will be lost.</strong></p>
-        <p class="mt-2">Your files on disk are safe and will remain intact.</p>
-        <p><strong>Are you sure you want to restart?</strong></p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-warning" id="confirm-restart-btn">
-          <i class="fa fa-check"></i> Yes, Restart Server
-        </button>
       </div>
     </div>
   </div>
-</div>
 
+  <!-- Restart Server Modal -->
+  <div class="modal fade" id="restart-server-modal" tabindex="-1" role="dialog" aria-labelledby="restartServerModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="restartServerModalLabel">Restart Server</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-warning">
+            <strong>Notice:</strong> Your server will be temporarily unavailable during restart.
+          </div>
+          <p>This will restart your JupyterLab container using Docker's native restart:</p>
+          <ul>
+            <li>Gracefully stops the container</li>
+            <li>Restarts the same container (does not recreate)</li>
+            <li>Preserves all volumes and configuration</li>
+          </ul>
+          <p class="mt-3"><strong>Any unsaved work in notebooks will be lost.</strong></p>
+          <p class="mt-2">Your files on disk are safe and will remain intact.</p>
+          <p><strong>Are you sure you want to restart?</strong></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-warning" id="confirm-restart-btn">
+            Yes, Restart Server
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock main %}
 
 {% block script %}
-{{ super() }}
-<script>
-$(document).ready(function() {
-    const username = "{{ user.name }}";
+  {{ super() }}
+  <script type="text/javascript">
+    require(["home"]);
+  </script>
+  <script>
+  $(document).ready(function() {
+      const username = "{{ user.name }}";
 
-    // Reset Home Volume handler
-    $('#confirm-reset-btn').on('click', function() {
-        const apiUrl = `/hub/api/users/${username}/reset-home-volume`;
-        const $btn = $(this);
+      // Reset Home Volume handler
+      $('#confirm-reset-btn').on('click', function() {
+          const apiUrl = `{{ base_url }}api/users/${username}/reset-home-volume`;
+          const $btn = $(this);
 
-        // Disable button and show loading state
-        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Resetting...');
+          // Disable button and show loading state
+          $btn.prop('disabled', true).text('Resetting...');
 
-        $.ajax({
-            url: apiUrl,
-            type: 'DELETE',
-            headers: {
-                'X-XSRFToken': getCookie('_xsrf')
-            },
-            success: function(response) {
-                $('#reset-volume-modal').modal('hide');
-                alert('Home volume successfully reset. Your home directory will be recreated on next server start.');
-                location.reload();
-            },
-            error: function(xhr) {
-                $('#reset-volume-modal').modal('hide');
-                const errorMsg = xhr.responseJSON?.message || xhr.statusText || 'Failed to reset volume';
-                alert(`Error: ${errorMsg}`);
-                $btn.prop('disabled', false).html('<i class="fa fa-check"></i> Yes, Reset Home Volume');
-            }
-        });
-    });
+          $.ajax({
+              url: apiUrl,
+              type: 'DELETE',
+              headers: {
+                  'X-XSRFToken': getCookie('_xsrf')
+              },
+              success: function(response) {
+                  $('#reset-volume-modal').modal('hide');
+                  alert('Home volume successfully reset. Your home directory will be recreated on next server start.');
+                  location.reload();
+              },
+              error: function(xhr) {
+                  $('#reset-volume-modal').modal('hide');
+                  const errorMsg = xhr.responseJSON?.message || xhr.statusText || 'Failed to reset volume';
+                  alert(`Error: ${errorMsg}`);
+                  $btn.prop('disabled', false).text('Yes, Reset Home Volume');
+              }
+          });
+      });
 
-    // Restart Server handler
-    $('#confirm-restart-btn').on('click', function() {
-        const apiUrl = `/hub/api/users/${username}/restart-server`;
-        const $btn = $(this);
+      // Restart Server handler
+      $('#confirm-restart-btn').on('click', function() {
+          const apiUrl = `{{ base_url }}api/users/${username}/restart-server`;
+          const $btn = $(this);
 
-        // Disable button and show loading state
-        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Restarting...');
+          // Disable button and show loading state
+          $btn.prop('disabled', true).text('Restarting...');
 
-        $.ajax({
-            url: apiUrl,
-            type: 'POST',
-            headers: {
-                'X-XSRFToken': getCookie('_xsrf')
-            },
-            success: function(response) {
-                $('#restart-server-modal').modal('hide');
-                alert('Server successfully restarted. Redirecting to your server...');
-                // Wait a moment for restart to complete, then redirect
-                setTimeout(function() {
-                    window.location.href = `/user/${username}/lab`;
-                }, 2000);
-            },
-            error: function(xhr) {
-                $('#restart-server-modal').modal('hide');
-                const errorMsg = xhr.responseJSON?.message || xhr.statusText || 'Failed to restart server';
-                alert(`Error: ${errorMsg}`);
-                $btn.prop('disabled', false).html('<i class="fa fa-check"></i> Yes, Restart Server');
-            }
-        });
-    });
+          $.ajax({
+              url: apiUrl,
+              type: 'POST',
+              headers: {
+                  'X-XSRFToken': getCookie('_xsrf')
+              },
+              success: function(response) {
+                  $('#restart-server-modal').modal('hide');
+                  alert('Server successfully restarted. Redirecting to your server...');
+                  // Wait a moment for restart to complete, then redirect
+                  setTimeout(function() {
+                      window.location.href = `{{ base_url }}user/${username}/lab`;
+                  }, 2000);
+              },
+              error: function(xhr) {
+                  $('#restart-server-modal').modal('hide');
+                  const errorMsg = xhr.responseJSON?.message || xhr.statusText || 'Failed to restart server';
+                  alert(`Error: ${errorMsg}`);
+                  $btn.prop('disabled', false).text('Yes, Restart Server');
+              }
+          });
+      });
 
-    // Helper function to get cookie value
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-    }
-});
-</script>
+      // Helper function to get cookie value
+      function getCookie(name) {
+          const value = `; ${document.cookie}`;
+          const parts = value.split(`; ${name}=`);
+          if (parts.length === 2) return parts.pop().split(';').shift();
+      }
+  });
+  </script>
 {% endblock script %}
