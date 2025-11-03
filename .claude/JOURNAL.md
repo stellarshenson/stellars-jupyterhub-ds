@@ -15,3 +15,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 4. **Task - Version management implementation**: Added version tracking and tagging system matching stellars-jupyterlab-ds pattern<br>
     **Result**: Created `project.env` with project metadata and version 1.0.0_jh-4.x, updated `Makefile` with increment_version and tag targets, auto-increment on build, dual-tag push (latest and versioned), leveraging existing Docker socket access for both planned features
+
+5. **Task - Implement user self-service features**: Implemented Reset Home Volume and Restart Server features from FEATURE_PLAN.md<br>
+    **Result**: Created custom API handlers in `services/jupyterhub/conf/bin/custom_handlers.py` with ResetHomeVolumeHandler and RestartServerHandler classes, created custom `home.html` template with buttons and confirmation modals, registered handlers in `jupyterhub_config.py` with @admin_or_self permissions, updated Dockerfile to copy templates and handlers, added feature documentation to `.claude/CLAUDE.md` - both features use Docker API directly via /var/run/docker.sock for volume management and container restart operations
