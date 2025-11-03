@@ -4,20 +4,28 @@ Custom JupyterHub API handlers for volume management and server control
 """
 
 from jupyterhub.handlers import BaseHandler
-from jupyterhub.utils import admin_or_self
+from tornado import web
 import docker
 
 
 class ResetHomeVolumeHandler(BaseHandler):
     """Handler for resetting user home volumes"""
 
-    @admin_or_self
     async def delete(self, username):
         """
         Delete a user's home volume (only when server is stopped)
 
         DELETE /hub/api/users/{username}/reset-home-volume
         """
+        # 0. Check permissions: user must be admin or requesting their own volume
+        current_user = self.current_user
+        if current_user is None:
+            raise web.HTTPError(403, "Not authenticated")
+
+        if not (current_user.admin or current_user.name == username):
+            self.log.warning(f"User {current_user.name} attempted to reset {username}'s volume without permission")
+            raise web.HTTPError(403, "Permission denied")
+
         # 1. Verify user exists
         user = self.find_user(username)
         if not user:
@@ -64,13 +72,21 @@ class ResetHomeVolumeHandler(BaseHandler):
 class RestartServerHandler(BaseHandler):
     """Handler for restarting user servers"""
 
-    @admin_or_self
     async def post(self, username):
         """
         Restart a user's server using Docker container restart
 
         POST /hub/api/users/{username}/restart-server
         """
+        # 0. Check permissions: user must be admin or requesting their own server
+        current_user = self.current_user
+        if current_user is None:
+            raise web.HTTPError(403, "Not authenticated")
+
+        if not (current_user.admin or current_user.name == username):
+            self.log.warning(f"User {current_user.name} attempted to restart {username}'s server without permission")
+            raise web.HTTPError(403, "Permission denied")
+
         # 1. Verify user exists
         user = self.find_user(username)
         if not user:
