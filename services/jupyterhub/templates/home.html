@@ -16,22 +16,24 @@
           My Server
         </a>
 
-        {# Custom buttons: Restart Server when active, Reset Home Volume when stopped #}
+        {# Custom buttons: Restart Server when active, Manage Volumes when stopped #}
         {% if default_server.active %}
         <button id="restart-server-btn"
                 class="btn btn-lg btn-warning"
                 data-username="{{ user.name }}"
-                data-toggle="modal"
-                data-target="#restart-server-modal">
+                data-bs-toggle="modal"
+                data-bs-target="#restart-server-modal">
+          <i class="fa fa-rotate" aria-hidden="true"></i>
           Restart Server
         </button>
         {% else %}
-        <button id="reset-home-volume-btn"
+        <button id="manage-volumes-btn"
                 class="btn btn-lg btn-secondary"
                 data-username="{{ user.name }}"
-                data-toggle="modal"
-                data-target="#reset-volume-modal">
-          Reset Home Volume
+                data-bs-toggle="modal"
+                data-bs-target="#manage-volumes-modal">
+          <i class="fa fa-database" aria-hidden="true"></i>
+          Manage Volumes
         </button>
         {% endif %}
       </div>
@@ -105,29 +107,63 @@
     {% endif %}
   </div>
 
-  <!-- Reset Home Volume Modal -->
-  <div class="modal fade" id="reset-volume-modal" tabindex="-1" role="dialog" aria-labelledby="resetVolumeModalLabel" aria-hidden="true">
+  <!-- Manage Volumes Modal -->
+  <div class="modal fade" id="manage-volumes-modal" tabindex="-1" role="dialog" aria-labelledby="manageVolumesModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="resetVolumeModalLabel">Reset Home Volume</h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-          </button>
+          <h5 class="modal-title" id="manageVolumesModalLabel">Manage Volumes</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <div class="alert alert-danger">
             <strong>Warning:</strong> This action cannot be undone!
           </div>
-          <p>This will permanently delete all files in your home directory:</p>
-          <code class="d-block bg-light p-2 mb-3">jupyterlab-{{ user.name }}_home</code>
-          <p class="mt-3">Your workspace and cache volumes will <strong>NOT</strong> be affected.</p>
-          <p><strong>Are you sure you want to continue?</strong></p>
+          <p>Select which volumes to reset. All files in selected volumes will be permanently deleted:</p>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input volume-checkbox" type="checkbox" id="volume-home" value="home">
+            <label class="form-check-label" for="volume-home">
+              <strong>Home Volume</strong>
+              <br>
+              <code class="text-muted">jupyterlab-{{ user.name }}_home</code>
+              <br>
+              <small class="text-muted">Contains: User home directory files, configurations</small>
+            </label>
+          </div>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input volume-checkbox" type="checkbox" id="volume-workspace" value="workspace">
+            <label class="form-check-label" for="volume-workspace">
+              <strong>Workspace Volume</strong>
+              <br>
+              <code class="text-muted">jupyterlab-{{ user.name }}_workspace</code>
+              <br>
+              <small class="text-muted">Contains: Project files, notebooks, code</small>
+            </label>
+          </div>
+
+          <div class="form-check mb-3">
+            <input class="form-check-input volume-checkbox" type="checkbox" id="volume-cache" value="cache">
+            <label class="form-check-label" for="volume-cache">
+              <strong>Cache Volume</strong>
+              <br>
+              <code class="text-muted">jupyterlab-{{ user.name }}_cache</code>
+              <br>
+              <small class="text-muted">Contains: Temporary files, pip cache, conda cache</small>
+            </label>
+          </div>
+
+          <div id="volume-warning" class="alert alert-warning d-none">
+            <strong>Notice:</strong> <span id="volume-count">0</span> volume(s) selected for deletion.
+          </div>
+
+          <p class="mt-3"><strong>Are you sure you want to continue?</strong></p>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-danger" id="confirm-reset-btn">
-            Yes, Reset Home Volume
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirm-reset-btn" disabled>
+            Reset Selected Volumes
           </button>
         </div>
       </div>
@@ -140,9 +176,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="restartServerModalLabel">Restart Server</h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-          </button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <div class="alert alert-warning">
@@ -159,7 +193,7 @@
           <p><strong>Are you sure you want to restart?</strong></p>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-warning" id="confirm-restart-btn">
             Yes, Restart Server
           </button>
@@ -172,29 +206,98 @@
 {% block script %}
   {{ super() }}
   <script type="text/javascript">
-    require(["home"]);
-  </script>
-  <script>
-  $(document).ready(function() {
-      const username = "{{ user.name }}";
-      console.log('[Custom Handlers] Page loaded, username:', username);
-      console.log('[Custom Handlers] Base URL:', '{{ base_url }}');
+    require(["jquery", "home"], function($) {
+      console.log('[Custom Handlers] Module loaded');
 
-      // Helper function to get cookie value
-      function getCookie(name) {
-          const value = `; ${document.cookie}`;
-          const parts = value.split(`; ${name}=`);
-          if (parts.length === 2) return parts.pop().split(';').shift();
-      }
+      $(document).ready(function() {
+          const username = "{{ user.name }}";
+          console.log('[Custom Handlers] Page loaded, username:', username);
+          console.log('[Custom Handlers] Base URL:', '{{ base_url }}');
 
-      // Reset Home Volume handler
-      $('#confirm-reset-btn').on('click', function() {
-          const apiUrl = `{{ base_url }}api/users/${username}/reset-home-volume`;
+          // Helper function to get cookie value
+          function getCookie(name) {
+              const value = `; ${document.cookie}`;
+              const parts = value.split(`; ${name}=`);
+              if (parts.length === 2) return parts.pop().split(';').shift();
+          }
+
+          // Log when modals are triggered
+          $('#manage-volumes-btn').on('click', function() {
+              console.log('[Manage Volumes] Modal button clicked, opening confirmation dialog');
+          });
+
+          $('#restart-server-btn').on('click', function() {
+              console.log('[Restart Server] Modal button clicked, opening confirmation dialog');
+          });
+
+          // Get modal instances
+          const manageVolumesModalEl = document.getElementById('manage-volumes-modal');
+          const restartServerModalEl = document.getElementById('restart-server-modal');
+
+          // Log when modals are shown/hidden
+          if (manageVolumesModalEl) {
+              manageVolumesModalEl.addEventListener('show.bs.modal', function() {
+                  console.log('[Manage Volumes] Modal dialog opened');
+              });
+              manageVolumesModalEl.addEventListener('hide.bs.modal', function() {
+                  console.log('[Manage Volumes] Modal dialog closed');
+              });
+          }
+
+          // Handle volume checkbox changes
+          $('.volume-checkbox').on('change', function() {
+              const checkedCount = $('.volume-checkbox:checked').length;
+              const $confirmBtn = $('#confirm-reset-btn');
+              const $warning = $('#volume-warning');
+              const $count = $('#volume-count');
+
+              console.log('[Manage Volumes] Checkbox changed, selected count:', checkedCount);
+
+              // Enable/disable confirm button
+              $confirmBtn.prop('disabled', checkedCount === 0);
+
+              // Show/hide warning and update count
+              if (checkedCount > 0) {
+                  $warning.removeClass('d-none');
+                  $count.text(checkedCount);
+              } else {
+                  $warning.addClass('d-none');
+              }
+          });
+
+          if (restartServerModalEl) {
+              restartServerModalEl.addEventListener('show.bs.modal', function() {
+                  console.log('[Restart Server] Modal dialog opened');
+              });
+              restartServerModalEl.addEventListener('hide.bs.modal', function() {
+                  console.log('[Restart Server] Modal dialog closed');
+              });
+          }
+
+          // Manage Volumes handler
+          $('#confirm-reset-btn').on('click', function() {
+          const apiUrl = `{{ base_url }}api/users/${username}/manage-volumes`;
           const $btn = $(this);
-          console.log('[Reset Volume] Button clicked, URL:', apiUrl);
+
+          // Collect selected volumes
+          const selectedVolumes = [];
+          $('.volume-checkbox:checked').each(function() {
+              selectedVolumes.push($(this).val());
+          });
+
+          console.log('[Manage Volumes] Confirm button clicked');
+          console.log('[Manage Volumes] Selected volumes:', selectedVolumes);
+          console.log('[Manage Volumes] API URL:', apiUrl);
+          console.log('[Manage Volumes] CSRF Token:', getCookie('_xsrf') ? 'present' : 'missing');
+
+          if (selectedVolumes.length === 0) {
+              console.warn('[Manage Volumes] No volumes selected');
+              return;
+          }
 
           // Disable button and show loading state
           $btn.prop('disabled', true).text('Resetting...');
+          console.log('[Manage Volumes] Sending DELETE request...');
 
           $.ajax({
               url: apiUrl,
@@ -202,18 +305,28 @@
               headers: {
                   'X-XSRFToken': getCookie('_xsrf')
               },
+              data: JSON.stringify({ volumes: selectedVolumes }),
+              contentType: 'application/json',
               success: function(response) {
-                  console.log('[Reset Volume] Success:', response);
-                  $('#reset-volume-modal').modal('hide');
-                  alert('Home volume successfully reset. Your home directory will be recreated on next server start.');
+                  console.log('[Manage Volumes] API call successful');
+                  console.log('[Manage Volumes] Response:', response);
+                  const modal = bootstrap.Modal.getInstance(manageVolumesModalEl);
+                  if (modal) modal.hide();
+
+                  const resetCount = response.reset_volumes ? response.reset_volumes.length : selectedVolumes.length;
+                  alert(`Successfully reset ${resetCount} volume(s). Selected volumes will be recreated on next server start.`);
+                  console.log('[Manage Volumes] Reloading page...');
                   location.reload();
               },
               error: function(xhr) {
-                  console.log('[Reset Volume] Error:', xhr.status, xhr.responseText);
-                  $('#reset-volume-modal').modal('hide');
-                  const errorMsg = xhr.responseJSON?.message || xhr.statusText || 'Failed to reset volume';
+                  console.error('[Manage Volumes] API call failed');
+                  console.error('[Manage Volumes] Status:', xhr.status);
+                  console.error('[Manage Volumes] Response:', xhr.responseText);
+                  const modal = bootstrap.Modal.getInstance(manageVolumesModalEl);
+                  if (modal) modal.hide();
+                  const errorMsg = xhr.responseJSON?.message || xhr.statusText || 'Failed to reset volumes';
                   alert(`Error: ${errorMsg}`);
-                  $btn.prop('disabled', false).text('Yes, Reset Home Volume');
+                  $btn.prop('disabled', false).text('Reset Selected Volumes');
               }
           });
       });
@@ -222,10 +335,13 @@
       $('#confirm-restart-btn').on('click', function() {
           const apiUrl = `{{ base_url }}api/users/${username}/restart-server`;
           const $btn = $(this);
-          console.log('[Restart Server] Button clicked, URL:', apiUrl);
+          console.log('[Restart Server] Confirm button clicked');
+          console.log('[Restart Server] API URL:', apiUrl);
+          console.log('[Restart Server] CSRF Token:', getCookie('_xsrf') ? 'present' : 'missing');
 
           // Disable button and show loading state
           $btn.prop('disabled', true).text('Restarting...');
+          console.log('[Restart Server] Sending POST request...');
 
           $.ajax({
               url: apiUrl,
@@ -234,17 +350,20 @@
                   'X-XSRFToken': getCookie('_xsrf')
               },
               success: function(response) {
-                  console.log('[Restart Server] Success:', response);
-                  $('#restart-server-modal').modal('hide');
-                  alert('Server successfully restarted. Redirecting to your server...');
-                  // Wait a moment for restart to complete, then redirect
-                  setTimeout(function() {
-                      window.location.href = `{{ base_url }}user/${username}/lab`;
-                  }, 2000);
+                  console.log('[Restart Server] API call successful');
+                  console.log('[Restart Server] Response:', response);
+                  const modal = bootstrap.Modal.getInstance(restartServerModalEl);
+                  if (modal) modal.hide();
+                  alert('Server successfully restarted. Page will refresh.');
+                  console.log('[Restart Server] Refreshing page...');
+                  location.reload();
               },
               error: function(xhr) {
-                  console.log('[Restart Server] Error:', xhr.status, xhr.responseText);
-                  $('#restart-server-modal').modal('hide');
+                  console.error('[Restart Server] API call failed');
+                  console.error('[Restart Server] Status:', xhr.status);
+                  console.error('[Restart Server] Response:', xhr.responseText);
+                  const modal = bootstrap.Modal.getInstance(restartServerModalEl);
+                  if (modal) modal.hide();
                   const errorMsg = xhr.responseJSON?.message || xhr.statusText || 'Failed to restart server';
                   alert(`Error: ${errorMsg}`);
                   $btn.prop('disabled', false).text('Yes, Restart Server');
@@ -252,11 +371,35 @@
           });
       });
 
-      // Debug: Check if buttons exist
-      console.log('[Custom Handlers] Restart button exists:', $('#restart-server-btn').length > 0);
-      console.log('[Custom Handlers] Reset button exists:', $('#reset-home-volume-btn').length > 0);
-      console.log('[Custom Handlers] Confirm restart button exists:', $('#confirm-restart-btn').length > 0);
-      console.log('[Custom Handlers] Confirm reset button exists:', $('#confirm-reset-btn').length > 0);
-  });
+          // Add page refresh after Stop Server completes
+          $('#stop').on('click', function() {
+              console.log('[Stop Server] Stop button clicked, will refresh page after stop completes');
+              // JupyterHub's home.js handles the actual stop
+              // We just need to refresh after it completes
+              // Monitor for when button changes state (becomes start button)
+              const checkInterval = setInterval(function() {
+                  if ($('#stop').length === 0 && $('#start').length > 0) {
+                      console.log('[Stop Server] Server stopped, refreshing page...');
+                      clearInterval(checkInterval);
+                      setTimeout(function() {
+                          location.reload();
+                      }, 1000);
+                  }
+              }, 500);
+
+              // Safety timeout to clear interval after 30 seconds
+              setTimeout(function() {
+                  clearInterval(checkInterval);
+              }, 30000);
+          });
+
+          // Debug: Check if buttons exist
+          console.log('[Custom Handlers] Restart button exists:', $('#restart-server-btn').length > 0);
+          console.log('[Custom Handlers] Manage volumes button exists:', $('#manage-volumes-btn').length > 0);
+          console.log('[Custom Handlers] Confirm restart button exists:', $('#confirm-restart-btn').length > 0);
+          console.log('[Custom Handlers] Confirm reset button exists:', $('#confirm-reset-btn').length > 0);
+          console.log('[Custom Handlers] Stop button exists:', $('#stop').length > 0);
+      });
+    });
   </script>
 {% endblock script %}
