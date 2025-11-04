@@ -4,7 +4,7 @@
 # GLOBALS                                                                       #
 #################################################################################
 .DEFAULT_GOAL := help
-.PHONY: help build push start stop clean increment_version tag
+.PHONY: help build push start stop clean increment_version tag logs
 
 # Include project configuration
 include project.env
@@ -68,6 +68,15 @@ stop:
 		docker compose --env-file .env -f compose.yml -f compose_override.yml down; \
 	else \
 		docker compose --env-file .env -f compose.yml down; \
+	fi
+
+## follow container logs to docker.log
+logs:
+	@echo 'following container logs to docker.log (press Ctrl+C to stop)'
+	@if [ -f './compose_override.yml' ]; then \
+		docker compose --env-file .env -f compose.yml -f compose_override.yml logs -f 2>&1 | tee docker.log; \
+	else \
+		docker compose --env-file .env -f compose.yml logs -f 2>&1 | tee docker.log; \
 	fi
 
 ## clean orphaned containers
