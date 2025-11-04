@@ -11,18 +11,41 @@ By default system is capable of **automatically detecting** NVIDIA CUDA-supporte
 
 This deployment provides access to a centralized JupyterHub instance for managing user sessions. Optional integrations such as TensorBoard, MLFlow, or Optuna can be added manually via service extensions.
 
-## Features
+## Architecture
 
-- **GPU Auto-Detection**: Automatic NVIDIA CUDA GPU detection and configuration for spawned user containers
-- **User Self-Service**: Users can restart their JupyterLab containers and selectively reset persistent volumes (home/workspace/cache) without admin intervention
-- **Isolated Environments**: Each user gets dedicated JupyterLab container with persistent volumes via DockerSpawner
-- **Native Authentication**: Built-in user management with NativeAuthenticator supporting self-registration and admin approval
-- **Shared Storage**: Optional CIFS/NAS mount support for shared datasets across all users
-- **Production Ready**: Traefik reverse proxy with TLS termination, automatic container updates via Watchtower
+```mermaid
+graph TB
+    User[User Browser] -->|HTTPS| Traefik[Traefik Proxy<br/>TLS Termination]
+    Traefik --> Hub[JupyterHub<br/>Port 8000]
 
-### Self-Service Volume Management
+    Hub -->|Authenticates| Auth[NativeAuthenticator<br/>User Management]
+    Hub -->|Spawns via| Spawner[DockerSpawner]
 
-Users can restart their server or selectively reset volumes when the server is stopped:
+    Spawner -->|Creates| Lab1[JupyterLab<br/>User: alice]
+    Spawner -->|Creates| Lab2[JupyterLab<br/>User: bob]
+    Spawner -->|Creates| Lab3[JupyterLab<br/>User: charlie]
+
+    Lab1 -->|Mounts| Vol1[alice_home<br/>alice_workspace<br/>alice_cache]
+    Lab2 -->|Mounts| Vol2[bob_home<br/>bob_workspace<br/>bob_cache]
+    Lab3 -->|Mounts| Vol3[charlie_home<br/>charlie_workspace<br/>charlie_cache]
+
+    Lab1 -->|Shared| Shared[jupyterhub_shared<br/>CIFS/NAS Optional]
+    Lab2 -->|Shared| Shared
+    Lab3 -->|Shared| Shared
+
+    style Hub fill:#fef3c7,stroke:#f59e0b,stroke-width:3px
+    style Traefik fill:#e0f2fe,stroke:#0284c7,stroke-width:3px
+    style Auth fill:#d1fae5,stroke:#10b981,stroke-width:3px
+    style Spawner fill:#e9d5ff,stroke:#a855f7,stroke-width:3px
+    style Lab1 fill:#dbeafe,stroke:#3b82f6,stroke-width:2px
+    style Lab2 fill:#dbeafe,stroke:#3b82f6,stroke-width:2px
+    style Lab3 fill:#dbeafe,stroke:#3b82f6,stroke-width:2px
+    style Shared fill:#fee2e2,stroke:#ef4444,stroke-width:2px
+```
+
+Users access JupyterHub through Traefik reverse proxy with TLS termination. After authentication via NativeAuthenticator, JupyterHub spawns isolated JupyterLab containers per user using DockerSpawner. Each user gets dedicated persistent volumes for home directory, workspace files, and cache data, with optional shared storage for collaborative datasets.
+
+## User Interface
 
 ![Restart Server](.resources/screenshot-restart-server.png)
 *Restart running JupyterLab container directly from the user control panel*
@@ -32,6 +55,15 @@ Users can restart their server or selectively reset volumes when the server is s
 
 ![Volume Selection](.resources/screenshot-volumes-modal.png)
 *Select individual volumes to reset - home directory, workspace files, or cache data*
+
+## Features
+
+- **GPU Auto-Detection**: Automatic NVIDIA CUDA GPU detection and configuration for spawned user containers
+- **User Self-Service**: Users can restart their JupyterLab containers and selectively reset persistent volumes (home/workspace/cache) without admin intervention
+- **Isolated Environments**: Each user gets dedicated JupyterLab container with persistent volumes via DockerSpawner
+- **Native Authentication**: Built-in user management with NativeAuthenticator supporting self-registration and admin approval
+- **Shared Storage**: Optional CIFS/NAS mount support for shared datasets across all users
+- **Production Ready**: Traefik reverse proxy with TLS termination, automatic container updates via Watchtower
 
 ## References
 
