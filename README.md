@@ -11,6 +11,28 @@ By default system is capable of **automatically detecting** NVIDIA CUDA-supporte
 
 This deployment provides access to a centralized JupyterHub instance for managing user sessions. Optional integrations such as TensorBoard, MLFlow, or Optuna can be added manually via service extensions.
 
+## Features
+
+- **GPU Auto-Detection**: Automatic NVIDIA CUDA GPU detection and configuration for spawned user containers
+- **User Self-Service**: Users can restart their JupyterLab containers and selectively reset persistent volumes (home/workspace/cache) without admin intervention
+- **Isolated Environments**: Each user gets dedicated JupyterLab container with persistent volumes via DockerSpawner
+- **Native Authentication**: Built-in user management with NativeAuthenticator supporting self-registration and admin approval
+- **Shared Storage**: Optional CIFS/NAS mount support for shared datasets across all users
+- **Production Ready**: Traefik reverse proxy with TLS termination, automatic container updates via Watchtower
+
+### Self-Service Volume Management
+
+Users can restart their server or selectively reset volumes when the server is stopped:
+
+![Restart Server](.resources/screenshot-restart-server.png)
+*Restart running JupyterLab container directly from the user control panel*
+
+![Manage Volumes](.resources/screenshot-volumes.png)
+*Access volume management when server is stopped*
+
+![Volume Selection](.resources/screenshot-volumes-modal.png)
+*Select individual volumes to reset - home directory, workspace files, or cache data*
+
 ## References
 
 This project spawns user environments using docker image: `stellars/stellars-jupyterlab-ds`  
