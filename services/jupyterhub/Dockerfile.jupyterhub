@@ -11,8 +11,8 @@ LABEL maintainer="Konrad Jelen <konrad.jelenext@delaval.com>"
 ########################################################
 
 ## update sources list and increase timeouts
-COPY ./conf/apt /etc/apt
-COPY ./conf/apt-packages.yml /apt-packages.yml
+COPY services/jupyterhub/conf/apt /etc/apt
+COPY services/jupyterhub/conf/apt-packages.yml /apt-packages.yml
 
 ## install yaml parser repository and yq tool, in the parent system you need
 ENV DEBIAN_FRONTEND=noninteractive 
@@ -31,11 +31,12 @@ EOF
 ########################################################
 
 ## copy resources
-COPY --chmod=755  ./conf/bin/*.sh /
-COPY --chmod=755  ./conf/bin/*.py /srv/jupyterhub/
-COPY --chmod=755  ./conf/bin/start-platform.d /start-platform.d
-COPY --chmod=600  ./templates/certs /mnt/certs
-COPY --chmod=644  ./templates/*.html /srv/jupyterhub/templates/
+COPY --chmod=755  services/jupyterhub/conf/bin/*.sh /
+COPY --chmod=755  services/jupyterhub/conf/bin/*.py /srv/jupyterhub/
+COPY --chmod=755  services/jupyterhub/conf/bin/start-platform.d /start-platform.d
+COPY --chmod=600  services/jupyterhub/templates/certs /mnt/certs
+COPY --chmod=644  services/jupyterhub/templates/*.html /srv/jupyterhub/templates/
+COPY --chmod=644  config/jupyterhub_config.py /srv/jupyterhub/jupyterhub_config.py
 
 ## install dockerspawner, nativeauthenticator
 RUN pip install -U --no-cache-dir \

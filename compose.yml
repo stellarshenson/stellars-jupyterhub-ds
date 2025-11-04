@@ -44,8 +44,8 @@ services:
   # users to their dedicated environments
   jupyterhub:
     build:
-      context: services/jupyterhub
-      dockerfile: Dockerfile.jupyterhub
+      context: .
+      dockerfile: services/jupyterhub/Dockerfile.jupyterhub
     image: stellars/stellars-jupyterhub-ds:latest
     container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-jupyterhub
     volumes:
