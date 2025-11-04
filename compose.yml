@@ -47,6 +47,7 @@ services:
       context: .
       dockerfile: services/jupyterhub/Dockerfile.jupyterhub
     image: stellars/stellars-jupyterhub-ds:latest
+    pull_policy: build
     container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-jupyterhub
     volumes:
       - ./config/jupyterhub_config.py:/srv/jupyterhub/jupyterhub_config.py:ro # config file (read only)
