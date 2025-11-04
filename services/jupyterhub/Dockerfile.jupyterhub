@@ -1,7 +1,7 @@
 ##############################################################################################
 ##############################################################################################
 
-FROM jupyterhub/jupyterhub:latest AS target
+FROM jupyterhub/jupyterhub:5.4.2 AS target
 
 # File Author / Maintainer
 LABEL maintainer="Konrad Jelen <konrad.jelenext@delaval.com>"
