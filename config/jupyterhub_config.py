@@ -167,6 +167,7 @@ c.JupyterHub.admin_access = True
 
 # Custom API handlers for volume management and server control
 import sys
+sys.path.insert(0, '/srv/jupyterhub')
 sys.path.insert(0, '/start-platform.d')
 sys.path.insert(0, '/')
 
