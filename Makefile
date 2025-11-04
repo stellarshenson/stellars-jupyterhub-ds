@@ -85,6 +85,7 @@ clean:
 	@docker compose --env-file .env -f compose.yml down --remove-orphans
 	@yes | docker image prune
 	@yes | docker network prune
+	@echo ""
 
 ## prints the list of available commands
 help:
