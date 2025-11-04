@@ -5,7 +5,6 @@
 **User Self-Service Capabilities**
 - **Restart Server**: Users can restart their running JupyterLab containers directly from the control panel without admin intervention
 - **Manage Volumes**: Selective reset of persistent volumes (home/workspace/cache) when server is stopped - users choose which volumes to reset via checkbox interface
-- **Auto-refresh**: Page automatically refreshes after Stop/Manage/Restart actions for seamless UX
 
 ## Technical Improvements
 

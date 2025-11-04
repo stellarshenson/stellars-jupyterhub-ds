@@ -7,11 +7,17 @@
     <h1 class="visually-hidden">JupyterHub home page</h1>
     <div class="row">
       <div class="text-center">
-        {% if default_server.active %}<a id="stop" role="button" class="btn btn-lg btn-danger">Stop My Server</a>{% endif %}
+        {% if default_server.active %}
+        <a id="stop" role="button" class="btn btn-lg btn-danger">
+          <i class="fa fa-stop" aria-hidden="true"></i>
+          Stop My Server
+        </a>
+        {% endif %}
         <a id="start"
            role="button"
            class="btn btn-lg btn-primary"
            href="{{ url }}">
+          <i class="fa fa-play" aria-hidden="true"></i>
           {% if not default_server.active %}Start{% endif %}
           My Server
         </a>
@@ -372,27 +378,58 @@
       });
 
           // Add page refresh after Stop Server completes
-          $('#stop').on('click', function() {
-              console.log('[Stop Server] Stop button clicked, will refresh page after stop completes');
-              // JupyterHub's home.js handles the actual stop
-              // We just need to refresh after it completes
-              // Monitor for when button changes state (becomes start button)
-              const checkInterval = setInterval(function() {
-                  if ($('#stop').length === 0 && $('#start').length > 0) {
-                      console.log('[Stop Server] Server stopped, waiting before refresh...');
-                      clearInterval(checkInterval);
-                      setTimeout(function() {
-                          console.log('[Stop Server] Refreshing page now');
-                          location.reload();
-                      }, 3000);  // Wait 3 seconds after stop completes before refreshing
-                  }
-              }, 500);
+          // Watch for when JupyterHub's home.js modifies the DOM after stop
+          console.log('[Stop Server] Setting up DOM observer');
 
-              // Safety timeout to clear interval after 30 seconds
-              setTimeout(function() {
-                  clearInterval(checkInterval);
-              }, 30000);
-          });
+          const targetNode = document.querySelector('.text-center');
+          if (targetNode) {
+              const observer = new MutationObserver(function(mutations) {
+                  // Check if stop button was hidden (JupyterHub uses .hide() which sets display:none)
+                  const stopButton = document.getElementById('stop');
+                  const startButton = document.getElementById('start');
+
+                  // Check visibility using offsetParent (null = hidden)
+                  const stopVisible = stopButton && stopButton.offsetParent !== null;
+                  const startVisible = startButton && startButton.offsetParent !== null;
+
+                  console.log('[Stop Server] Mutation detected - stop visible:', stopVisible, 'start visible:', startVisible);
+
+                  if (!stopVisible && startVisible) {
+                      // Check if start button text was changed by JupyterHub (indicates stop completed)
+                      const startText = startButton.textContent.trim();
+                      console.log('[Stop Server] Start button text:', startText);
+
+                      if (startText === 'Start My Server') {
+                          console.log('[Stop Server] JupyterHub updated DOM after stop, updating UI and refreshing...');
+                          observer.disconnect();
+
+                          // Re-inject the play icon that JupyterHub removed
+                          const iconHtml = '<i class="fa fa-play" aria-hidden="true"></i> Start My Server';
+                          $(startButton).html(iconHtml);
+
+                          // Hide Restart Server button and show Manage Volumes button
+                          $('#restart-server-btn').hide();
+                          $('#manage-volumes-btn').show();
+                          console.log('[Stop Server] Updated button visibility - showing Manage Volumes');
+
+                          setTimeout(function() {
+                              console.log('[Stop Server] Refreshing now');
+                              location.reload();
+                          }, 1000);  // Give user a moment to see the corrected button state
+                      }
+                  }
+              });
+
+              observer.observe(targetNode, {
+                  childList: true,
+                  subtree: true,
+                  attributes: true,
+                  attributeFilter: ['style', 'class'],
+                  characterData: true
+              });
+
+              console.log('[Stop Server] Observer attached to button container');
+          }
 
           // Debug: Check if buttons exist
           console.log('[Custom Handlers] Restart button exists:', $('#restart-server-btn').length > 0);
