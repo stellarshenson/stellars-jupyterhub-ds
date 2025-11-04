@@ -379,11 +379,12 @@
               // Monitor for when button changes state (becomes start button)
               const checkInterval = setInterval(function() {
                   if ($('#stop').length === 0 && $('#start').length > 0) {
-                      console.log('[Stop Server] Server stopped, refreshing page...');
+                      console.log('[Stop Server] Server stopped, waiting before refresh...');
                       clearInterval(checkInterval);
                       setTimeout(function() {
+                          console.log('[Stop Server] Refreshing page now');
                           location.reload();
-                      }, 1000);
+                      }, 3000);  // Wait 3 seconds after stop completes before refreshing
                   }
               }, 500);
 
