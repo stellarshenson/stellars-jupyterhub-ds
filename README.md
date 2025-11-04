@@ -33,14 +33,14 @@ graph TB
     Lab2 -->|Shared| Shared
     Lab3 -->|Shared| Shared
 
-    style Hub fill:#fef3c7,stroke:#f59e0b,stroke-width:3px
-    style Traefik fill:#e0f2fe,stroke:#0284c7,stroke-width:3px
-    style Auth fill:#d1fae5,stroke:#10b981,stroke-width:3px
-    style Spawner fill:#e9d5ff,stroke:#a855f7,stroke-width:3px
-    style Lab1 fill:#dbeafe,stroke:#3b82f6,stroke-width:2px
-    style Lab2 fill:#dbeafe,stroke:#3b82f6,stroke-width:2px
-    style Lab3 fill:#dbeafe,stroke:#3b82f6,stroke-width:2px
-    style Shared fill:#fee2e2,stroke:#ef4444,stroke-width:2px
+    style Hub stroke:#f59e0b,stroke-width:3px
+    style Traefik stroke:#0284c7,stroke-width:3px
+    style Auth stroke:#10b981,stroke-width:3px
+    style Spawner stroke:#a855f7,stroke-width:3px
+    style Lab1 stroke:#3b82f6,stroke-width:2px
+    style Lab2 stroke:#3b82f6,stroke-width:2px
+    style Lab3 stroke:#3b82f6,stroke-width:2px
+    style Shared stroke:#ef4444,stroke-width:2px
 ```
 
 Users access JupyterHub through Traefik reverse proxy with TLS termination. After authentication via NativeAuthenticator, JupyterHub spawns isolated JupyterLab containers per user using DockerSpawner. Each user gets dedicated persistent volumes for home directory, workspace files, and cache data, with optional shared storage for collaborative datasets.
