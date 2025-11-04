@@ -72,7 +72,7 @@ c.DockerSpawner.environment = {
      'TENSORBOARD_LOGDIR':'/tmp/tensorboard',
      'MLFLOW_TRACKING_URI': 'http://localhost:5000',
      'MLFLOW_PORT':5000,
-     'MLFLOW_HOST':'*',
+     'MLFLOW_HOST':'0.0.0.0',  # new 3.5 mlflow launched with guinicorn requires this
      'MLFLOW_WORKERS':1,
      'ENABLE_SERVICE_MLFLOW': ENABLE_SERVICE_MLFLOW,
      'ENABLE_SERVICE_GLANCES': ENABLE_SERVICE_GLANCES,
