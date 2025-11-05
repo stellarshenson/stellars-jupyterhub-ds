@@ -156,6 +156,43 @@ volumes:
 
 User containers will access this at `/mnt/shared`.
 
+## Privileged User Access - Docker Socket
+
+**Purpose**: Allows administrators to grant specific users read-write access to the Docker socket (`/var/run/docker.sock`) within their spawned JupyterLab containers.
+
+**Security Warning**: Docker socket access grants effective root-level control over the host system. Only grant this permission to trusted users who require container orchestration capabilities.
+
+**Implementation**:
+- Uses JupyterHub's native group system with built-in group protection
+- Group name: `docker-privileged` (built-in, cannot be deleted)
+- Managed through admin panel at `/hub/admin`
+- **Single source of truth**: Built-in groups list defined in `config/jupyterhub_config.py::BUILTIN_GROUPS`
+- Startup script reads from config: `services/jupyterhub/conf/bin/start-platform.d/02_ensure_groups.py`
+- Runtime protection hook: `config/jupyterhub_config.py::pre_spawn_hook`
+
+**Usage**:
+1. Admin logs into JupyterHub and navigates to Admin Panel
+2. Click "Groups" to view all groups
+3. Click on `docker-privileged` group (automatically created at startup)
+4. Add users to the group who need docker.sock access
+5. Users must restart their server for changes to take effect
+
+**Technical Details**:
+- `docker-privileged` is a built-in protected group that automatically recreates if deleted
+- Pre-spawn hook checks user's group membership before container launch
+- If user is in `docker-privileged` group, `/var/run/docker.sock` is mounted with rw permissions
+- Non-privileged users never have docker.sock mounted
+- Changes require server restart (stop/start cycle)
+- Group is recreated on JupyterHub restart and before every container spawn
+
+**Adding New Built-in Groups**:
+To add more protected groups, edit only `config/jupyterhub_config.py`:
+```python
+# Built-in groups that cannot be deleted (auto-recreated if missing)
+BUILTIN_GROUPS = ['docker-privileged', 'new-group-name']
+```
+The startup script will automatically read this list and create missing groups.
+
 ## User Self-Service Features
 
 The platform provides two self-service features accessible from the user control panel (`/hub/home`):
