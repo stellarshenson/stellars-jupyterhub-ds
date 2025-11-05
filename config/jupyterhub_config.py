@@ -119,6 +119,37 @@ c.DockerSpawner.volumes = {
     "jupyterhub_shared": "/mnt/shared" # shared drive across hub
 }
 
+# Built-in groups that cannot be deleted (auto-recreated if missing)
+BUILTIN_GROUPS = ['docker-privileged']
+
+# Pre-spawn hook to conditionally mount docker.sock for privileged users
+async def pre_spawn_hook(spawner):
+    """Grant docker.sock access to users in 'docker-privileged' group"""
+    from jupyterhub.orm import Group
+
+    # Ensure built-in groups exist (protection against deletion)
+    for group_name in BUILTIN_GROUPS:
+        existing_group = spawner.db.query(Group).filter(Group.name == group_name).first()
+        if not existing_group:
+            spawner.log.warning(f"Built-in group '{group_name}' was missing - recreating")
+            new_group = Group(name=group_name)
+            spawner.db.add(new_group)
+            spawner.db.commit()
+
+    username = spawner.user.name
+    user_groups = [g.name for g in spawner.user.groups]
+
+    # Check if user is in docker-privileged group
+    if 'docker-privileged' in user_groups:
+        spawner.log.info(f"Granting docker.sock access to privileged user: {username}")
+        # Add docker.sock mount with read-write permissions
+        spawner.volumes['/var/run/docker.sock'] = '/var/run/docker.sock'
+    else:
+        # Ensure docker.sock is not mounted for non-privileged users
+        spawner.volumes.pop('/var/run/docker.sock', None)
+
+c.DockerSpawner.pre_spawn_hook = pre_spawn_hook
+
 # Ensure containers can accept proxy connections
 c.DockerSpawner.args = [
     '--ServerApp.allow_origin=*',

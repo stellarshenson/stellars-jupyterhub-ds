@@ -60,6 +60,7 @@ Users access JupyterHub through Traefik reverse proxy with TLS termination. Afte
 
 - **GPU Auto-Detection**: Automatic NVIDIA CUDA GPU detection and configuration for spawned user containers
 - **User Self-Service**: Users can restart their JupyterLab containers and selectively reset persistent volumes (home/workspace/cache) without admin intervention
+- **Privileged Access Control**: Group-based docker.sock access for trusted users enabling container orchestration from within JupyterLab
 - **Isolated Environments**: Each user gets dedicated JupyterLab container with persistent volumes via DockerSpawner
 - **Native Authentication**: Built-in user management with NativeAuthenticator supporting self-registration and admin approval
 - **Shared Storage**: Optional CIFS/NAS mount support for shared datasets across all users
@@ -151,5 +152,29 @@ c.DockerSpawner.volumes = {
     "jupyterhub_shared_nas": "/mnt/shared"
 }
 ```
+
+#### Grant Docker Socket Access to Privileged Users
+
+**Security Warning**: Docker socket access grants effective root-level control over the host system. Only grant this permission to trusted users.
+
+The platform supports granting specific users read-write access to `/var/run/docker.sock` within their JupyterLab containers. This enables container orchestration, Docker builds, and Docker Compose operations from within user environments.
+
+**How to Grant Access**:
+
+1. Log in as admin and navigate to Admin Panel (`https://localhost/jupyterhub/hub/admin`)
+2. Click "Groups" in the navigation
+3. Click on the `docker-privileged` group (automatically created at startup)
+4. Add users who need docker.sock access to this group
+5. Users must restart their server (Stop My Server -> Start My Server) for changes to take effect
+
+**Technical Details**:
+
+The `docker-privileged` group is a built-in protected group that cannot be permanently deleted. It is automatically created at JupyterHub startup and recreated before every container spawn if missing. A pre-spawn hook (`config/jupyterhub_config.py::pre_spawn_hook`) checks user group membership before spawning containers. Users in the `docker-privileged` group will have `/var/run/docker.sock` mounted with read-write permissions in their JupyterLab environment.
+
+**Use Cases**:
+- Building custom Docker images from within JupyterLab
+- Running Docker Compose stacks for local development
+- Container orchestration and management tasks
+- Advanced DevOps workflows requiring Docker API access
 
 <!-- EOF -->
