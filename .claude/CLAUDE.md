@@ -160,7 +160,7 @@ User containers will access this at `/mnt/shared`.
 
 **Purpose**: Allows administrators to grant specific users read-write access to the Docker socket (`/var/run/docker.sock`) within their spawned JupyterLab containers.
 
-**Security Warning**: Docker socket access grants effective root-level control over the host system. Only grant this permission to trusted users who require container orchestration capabilities.
+**Security Warning**: Docker socket access grants effective root-level control over the Docker host. Only grant this permission to trusted users who require container orchestration capabilities.
 
 **Implementation**:
 - Uses JupyterHub's native group system with built-in group protection

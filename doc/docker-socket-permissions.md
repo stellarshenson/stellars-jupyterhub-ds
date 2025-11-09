@@ -15,4 +15,4 @@ async def pre_spawn_hook(spawner):
 - Managed via admin panel at `/hub/admin` -> Groups
 - User must restart server after membership change
 
-**Security**: Docker socket = root-equivalent host access. Only grant to trusted users.
+**Security**: Docker socket = root-equivalent Docker host access. Only grant to trusted users.
