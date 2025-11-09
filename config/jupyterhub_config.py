@@ -8,7 +8,12 @@ import requests
 import nativeauthenticator
 import docker # for gpu autodetection
 
-c = get_config()  
+# Only call get_config() when running as JupyterHub config (not when imported as module)
+try:
+    c = get_config()
+except NameError:
+    # Being imported as a module, not loaded by JupyterHub
+    c = None  
 
 # NVIDIA GPU auto-detection 
 def detect_nvidia(nvidia_autodetect_image='nvidia/cuda:12.9.1-base-ubuntu24.04'):
@@ -58,61 +63,57 @@ if ENABLE_GPU_SUPPORT == 2:
     if NVIDIA_DETECTED: ENABLE_GPU_SUPPORT = 1 # means - gpu enabled
     else: ENABLE_GPU_SUPPORT = 0 # means - disable 
 
-# ensure that we are using SSL, it should be enabled by default
-if ENABLE_JUPYTERHUB_SSL == 1:
-    c.JupyterHub.ssl_cert = '/mnt/certs/server.crt'
-    c.JupyterHub.ssl_key = '/mnt/certs/server.key'
+# Apply JupyterHub configuration (only when loaded by JupyterHub, not when imported)
+if c is not None:
+    # ensure that we are using SSL, it should be enabled by default
+    if ENABLE_JUPYTERHUB_SSL == 1:
+        c.JupyterHub.ssl_cert = '/mnt/certs/server.crt'
+        c.JupyterHub.ssl_key = '/mnt/certs/server.key'
 
-# we use dockerspawner
-c.JupyterHub.spawner_class = "dockerspawner.DockerSpawner"
+    # we use dockerspawner
+    c.JupyterHub.spawner_class = "dockerspawner.DockerSpawner"
 
-# default env variables passed to the spawned containers
-c.DockerSpawner.environment = {
-     'TF_CPP_MIN_LOG_LEVEL':TF_CPP_MIN_LOG_LEVEL, # tensorflow logging level: 3 - err only
-     'TENSORBOARD_LOGDIR':'/tmp/tensorboard',
-     'MLFLOW_TRACKING_URI': 'http://localhost:5000',
-     'MLFLOW_PORT':5000,
-     'MLFLOW_HOST':'0.0.0.0',  # new 3.5 mlflow launched with guinicorn requires this
-     'MLFLOW_WORKERS':1,
-     'ENABLE_SERVICE_MLFLOW': ENABLE_SERVICE_MLFLOW,
-     'ENABLE_SERVICE_GLANCES': ENABLE_SERVICE_GLANCES,
-     'ENABLE_SERVICE_TENSORBOARD': ENABLE_SERVICE_TENSORBOARD,
-     'ENABLE_GPU_SUPPORT': ENABLE_GPU_SUPPORT,
-     'ENABLE_GPUSTAT': ENABLE_GPU_SUPPORT,
-     'NVIDIA_DETECTED': NVIDIA_DETECTED,
-}
-
-# configure access to GPU if possible
-if ENABLE_GPU_SUPPORT == 1:
-    c.DockerSpawner.extra_host_config = {
-        'device_requests': [
-            {
-                'Driver': 'nvidia',
-                'Count': -1,
-                'Capabilities': [['gpu']]
-            }
-        ]
+    # default env variables passed to the spawned containers
+    c.DockerSpawner.environment = {
+         'TF_CPP_MIN_LOG_LEVEL':TF_CPP_MIN_LOG_LEVEL, # tensorflow logging level: 3 - err only
+         'TENSORBOARD_LOGDIR':'/tmp/tensorboard',
+         'MLFLOW_TRACKING_URI': 'http://localhost:5000',
+         'MLFLOW_PORT':5000,
+         'MLFLOW_HOST':'0.0.0.0',  # new 3.5 mlflow launched with guinicorn requires this
+         'MLFLOW_WORKERS':1,
+         'ENABLE_SERVICE_MLFLOW': ENABLE_SERVICE_MLFLOW,
+         'ENABLE_SERVICE_GLANCES': ENABLE_SERVICE_GLANCES,
+         'ENABLE_SERVICE_TENSORBOARD': ENABLE_SERVICE_TENSORBOARD,
+         'ENABLE_GPU_SUPPORT': ENABLE_GPU_SUPPORT,
+         'ENABLE_GPUSTAT': ENABLE_GPU_SUPPORT,
+         'NVIDIA_DETECTED': NVIDIA_DETECTED,
     }
 
-# spawn containers from this image
-c.DockerSpawner.image = os.environ["DOCKER_NOTEBOOK_IMAGE"]
+    # configure access to GPU if possible
+    if ENABLE_GPU_SUPPORT == 1:
+        c.DockerSpawner.extra_host_config = {
+            'device_requests': [
+                {
+                    'Driver': 'nvidia',
+                    'Count': -1,
+                    'Capabilities': [['gpu']]
+                }
+            ]
+        }
 
-# networking congfiguration
-c.DockerSpawner.use_internal_ip = True
-c.DockerSpawner.network_name = NETWORK_NAME
+    # spawn containers from this image
+    c.DockerSpawner.image = os.environ["DOCKER_NOTEBOOK_IMAGE"]
 
-# prevent auto-spawn for admin users
-# Redirect admin to admin panel instead
-c.JupyterHub.default_url = JUPYTERHUB_BASE_URL + '/hub/home'  
+    # networking congfiguration
+    c.DockerSpawner.use_internal_ip = True
+    c.DockerSpawner.network_name = NETWORK_NAME
 
-# Force container user
-c.DockerSpawner.notebook_dir = DOCKER_NOTEBOOK_DIR
+    # prevent auto-spawn for admin users
+    # Redirect admin to admin panel instead
+    c.JupyterHub.default_url = JUPYTERHUB_BASE_URL + '/hub/home'  
 
-# Set container name prefix
-c.DockerSpawner.name_template = "jupyterlab-{username}"
-
-# User mounts in the spawned container
-c.DockerSpawner.volumes = {
+# User mounts in the spawned container (defined as constant for import by handlers)
+DOCKER_SPAWNER_VOLUMES = {
     "jupyterlab-{username}_home": "/home",
     "jupyterlab-{username}_workspace": DOCKER_NOTEBOOK_DIR,
     "jupyterlab-{username}_cache": "/home/lab/.cache",
@@ -120,23 +121,34 @@ c.DockerSpawner.volumes = {
 }
 
 # Helper function to extract user-specific volume suffixes
-def get_user_volume_suffixes():
-    """Extract volume suffixes from DockerSpawner.volumes that follow jupyterlab-{username}_<suffix> pattern"""
+def get_user_volume_suffixes(volumes_dict):
+    """Extract volume suffixes from volumes dict that follow jupyterlab-{username}_<suffix> pattern"""
     suffixes = []
-    for volume_name in c.DockerSpawner.volumes.keys():
+    for volume_name in volumes_dict.keys():
         # Match pattern: jupyterlab-{username}_<suffix>
         if volume_name.startswith("jupyterlab-{username}_"):
             suffix = volume_name.replace("jupyterlab-{username}_", "")
             suffixes.append(suffix)
     return suffixes
 
-# Store user volume suffixes for use in templates and handlers
-USER_VOLUME_SUFFIXES = get_user_volume_suffixes()
+# Store user volume suffixes for use in templates and handlers (importable by custom_handlers.py)
+USER_VOLUME_SUFFIXES = get_user_volume_suffixes(DOCKER_SPAWNER_VOLUMES)
 
-# Make volume suffixes available to templates
-c.JupyterHub.template_vars = {
-    'user_volume_suffixes': USER_VOLUME_SUFFIXES
-}
+# Apply configuration only when running as JupyterHub config
+if c is not None:
+    # Force container user
+    c.DockerSpawner.notebook_dir = DOCKER_NOTEBOOK_DIR
+
+    # Set container name prefix
+    c.DockerSpawner.name_template = "jupyterlab-{username}"
+
+    # Set volumes from constant
+    c.DockerSpawner.volumes = DOCKER_SPAWNER_VOLUMES
+
+    # Make volume suffixes available to templates
+    c.JupyterHub.template_vars = {
+        'user_volume_suffixes': USER_VOLUME_SUFFIXES
+    }
 
 # Built-in groups that cannot be deleted (auto-recreated if missing)
 BUILTIN_GROUPS = ['docker-privileged']
@@ -167,72 +179,74 @@ async def pre_spawn_hook(spawner):
         # Ensure docker.sock is not mounted for non-privileged users
         spawner.volumes.pop('/var/run/docker.sock', None)
 
-c.DockerSpawner.pre_spawn_hook = pre_spawn_hook
+# Apply remaining configuration (only when loaded by JupyterHub, not when imported)
+if c is not None:
+    c.DockerSpawner.pre_spawn_hook = pre_spawn_hook
 
-# Ensure containers can accept proxy connections
-c.DockerSpawner.args = [
-    '--ServerApp.allow_origin=*',
-    '--ServerApp.disable_check_xsrf=True'
-]
+    # Ensure containers can accept proxy connections
+    c.DockerSpawner.args = [
+        '--ServerApp.allow_origin=*',
+        '--ServerApp.disable_check_xsrf=True'
+    ]
 
-# update internal routing for spawned containers
-c.JupyterHub.hub_connect_url = 'http://jupyterhub:8080' + JUPYTERHUB_BASE_URL + '/hub'
+    # update internal routing for spawned containers
+    c.JupyterHub.hub_connect_url = 'http://jupyterhub:8080' + JUPYTERHUB_BASE_URL + '/hub'
 
-# remove containers once they are stopped
-c.DockerSpawner.remove = True
+    # remove containers once they are stopped
+    c.DockerSpawner.remove = True
 
-# for debugging arguments passed to spawned containers
-c.DockerSpawner.debug = False
+    # for debugging arguments passed to spawned containers
+    c.DockerSpawner.debug = False
 
-# user containers will access hub by container name on the Docker network
-c.JupyterHub.hub_ip = "jupyterhub"
-c.JupyterHub.hub_port = 8080
-c.JupyterHub.base_url = JUPYTERHUB_BASE_URL + '/'
+    # user containers will access hub by container name on the Docker network
+    c.JupyterHub.hub_ip = "jupyterhub"
+    c.JupyterHub.hub_port = 8080
+    c.JupyterHub.base_url = JUPYTERHUB_BASE_URL + '/'
 
-# persist hub data on volume mounted inside container
-c.JupyterHub.cookie_secret_file = "/data/jupyterhub_cookie_secret"
-c.JupyterHub.db_url = "sqlite:////data/jupyterhub.sqlite"
+    # persist hub data on volume mounted inside container
+    c.JupyterHub.cookie_secret_file = "/data/jupyterhub_cookie_secret"
+    c.JupyterHub.db_url = "sqlite:////data/jupyterhub.sqlite"
 
-# authenticate users with Native Authenticator
-# enable UI for native authenticator
-c.JupyterHub.authenticator_class = 'native'
+    # authenticate users with Native Authenticator
+    # enable UI for native authenticator
+    c.JupyterHub.authenticator_class = 'native'
 
-# Template paths - must include default JupyterHub templates
-import jupyterhub
-c.JupyterHub.template_paths = [
-    "/srv/jupyterhub/templates/",  # Custom templates (highest priority)
-    f"{os.path.dirname(nativeauthenticator.__file__)}/templates/",  # NativeAuthenticator templates
-    f"{os.path.dirname(jupyterhub.__file__)}/templates"  # Default JupyterHub templates
-]
+    # Template paths - must include default JupyterHub templates
+    import jupyterhub
+    c.JupyterHub.template_paths = [
+        "/srv/jupyterhub/templates/",  # Custom templates (highest priority)
+        f"{os.path.dirname(nativeauthenticator.__file__)}/templates/",  # NativeAuthenticator templates
+        f"{os.path.dirname(jupyterhub.__file__)}/templates"  # Default JupyterHub templates
+    ]
 
-# allow anyone to sign-up without approval
-# allow all signed-up users to login
-c.NativeAuthenticator.open_signup = False
-c.NativeAuthenticator.enable_signup = True  
-c.Authenticator.allow_all = True
+    # allow anyone to sign-up without approval
+    # allow all signed-up users to login
+    c.NativeAuthenticator.open_signup = False
+    c.NativeAuthenticator.enable_signup = True
+    c.Authenticator.allow_all = True
 
-# allowed admins
-c.Authenticator.admin_users = [JUPYTERHUB_ADMIN]
-c.JupyterHub.admin_access = True
+    # allowed admins
+    c.Authenticator.admin_users = [JUPYTERHUB_ADMIN]
+    c.JupyterHub.admin_access = True
 
-# Custom API handlers for volume management and server control
-import sys
-sys.path.insert(0, '/srv/jupyterhub')
-sys.path.insert(0, '/start-platform.d')
-sys.path.insert(0, '/')
+    # Custom API handlers for volume management and server control
+    import sys
+    sys.path.insert(0, '/srv/jupyterhub')
+    sys.path.insert(0, '/start-platform.d')
+    sys.path.insert(0, '/')
 
-from custom_handlers import (
-    ManageVolumesHandler,
-    RestartServerHandler,
-    NotificationsPageHandler,
-    BroadcastNotificationHandler
-)
+    from custom_handlers import (
+        ManageVolumesHandler,
+        RestartServerHandler,
+        NotificationsPageHandler,
+        BroadcastNotificationHandler
+    )
 
-c.JupyterHub.extra_handlers = [
-    (r'/api/users/([^/]+)/manage-volumes', ManageVolumesHandler),
-    (r'/api/users/([^/]+)/restart-server', RestartServerHandler),
-    (r'/api/notifications/broadcast', BroadcastNotificationHandler),
-    (r'/notifications', NotificationsPageHandler),
-]
+    c.JupyterHub.extra_handlers = [
+        (r'/api/users/([^/]+)/manage-volumes', ManageVolumesHandler),
+        (r'/api/users/([^/]+)/restart-server', RestartServerHandler),
+        (r'/api/notifications/broadcast', BroadcastNotificationHandler),
+        (r'/notifications', NotificationsPageHandler),
+    ]
 
 # EOF
