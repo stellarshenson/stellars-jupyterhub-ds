@@ -47,8 +47,11 @@ Users access JupyterHub through Traefik reverse proxy with TLS termination. Afte
 
 ## User Interface
 
-![Restart Server](.resources/screenshot-restart-server.png)
-*Restart running JupyterLab container directly from the user control panel*
+![User Control Panel](.resources/screenshot-home.png)
+*User control panel with server restart and volume management options*
+
+![Admin Notification Broadcast](.resources/screenshot-send-notification.png)
+*Admin panel for broadcasting notifications to all active JupyterLab servers*
 
 ![Manage Volumes](.resources/screenshot-volumes.png)
 *Access volume management when server is stopped*
