@@ -7,7 +7,7 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 ## Features
 
 - **GPU Auto-Detection**: Automatic NVIDIA CUDA GPU detection and configuration for spawned user containers
-- **Notification Broadcast**: Admins can send notifications to all active JupyterLab servers simultaneously through the integrated notification panel at `/hub/notifications`. Supports multiple notification types (info, success, warning, error), 140-character messages, and dismiss buttons. Requires [jupyterlab_notifications_extension](https://github.com/stellarshenson/jupyterlab_notifications_extension) installed on spawned JupyterLab servers
+- **Notification Broadcast**: Admin broadcast to all active servers via `/hub/notifications`. Supports six notification types, 140-character limit. Requires [jupyterlab_notifications_extension](https://github.com/stellarshenson/jupyterlab_notifications_extension)
 - **User Self-Service**: Users can restart their JupyterLab containers and selectively reset persistent volumes (home/workspace/cache) without admin intervention
 - **Privileged Access Control**: Group-based docker.sock access for trusted users enabling container orchestration from within JupyterLab
 - **Isolated Environments**: Each user gets dedicated JupyterLab container with persistent volumes via DockerSpawner
