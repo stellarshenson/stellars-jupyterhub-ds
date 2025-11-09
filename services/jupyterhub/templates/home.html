@@ -139,38 +139,16 @@
           </div>
           <p>Select which volumes to reset. All files in selected volumes will be permanently deleted:</p>
 
+          {% for volume_suffix in user_volume_suffixes %}
           <div class="form-check mb-2">
-            <input class="form-check-input volume-checkbox" type="checkbox" id="volume-home" value="home">
-            <label class="form-check-label" for="volume-home">
-              <strong>Home Volume</strong>
+            <input class="form-check-input volume-checkbox" type="checkbox" id="volume-{{ volume_suffix }}" value="{{ volume_suffix }}">
+            <label class="form-check-label" for="volume-{{ volume_suffix }}">
+              <strong>{{ volume_suffix }}</strong>
               <br>
-              <code class="text-muted">jupyterlab-{{ user.name }}_home</code>
-              <br>
-              <small class="text-muted">Contains: User home directory files, configurations</small>
+              <code class="text-muted">jupyterlab-{{ user.name }}_{{ volume_suffix }}</code>
             </label>
           </div>
-
-          <div class="form-check mb-2">
-            <input class="form-check-input volume-checkbox" type="checkbox" id="volume-workspace" value="workspace">
-            <label class="form-check-label" for="volume-workspace">
-              <strong>Workspace Volume</strong>
-              <br>
-              <code class="text-muted">jupyterlab-{{ user.name }}_workspace</code>
-              <br>
-              <small class="text-muted">Contains: Project files, notebooks, code</small>
-            </label>
-          </div>
-
-          <div class="form-check mb-3">
-            <input class="form-check-input volume-checkbox" type="checkbox" id="volume-cache" value="cache">
-            <label class="form-check-label" for="volume-cache">
-              <strong>Cache Volume</strong>
-              <br>
-              <code class="text-muted">jupyterlab-{{ user.name }}_cache</code>
-              <br>
-              <small class="text-muted">Contains: Temporary files, pip cache, conda cache</small>
-            </label>
-          </div>
+          {% endfor %}
 
           <div id="volume-warning" class="alert alert-warning d-none">
             <strong>Notice:</strong> <span id="volume-count">0</span> volume(s) selected for deletion.

@@ -51,8 +51,9 @@ class ManageVolumesHandler(BaseHandler):
             self.log.warning(f"[Manage Volumes] No volumes specified or invalid format")
             return self.send_error(400, "No volumes specified")
 
-        # Validate volume types
-        valid_volumes = {'home', 'workspace', 'cache'}
+        # Validate volume types against configured USER_VOLUME_SUFFIXES
+        from jupyterhub_config import USER_VOLUME_SUFFIXES
+        valid_volumes = set(USER_VOLUME_SUFFIXES)
         invalid_volumes = set(requested_volumes) - valid_volumes
         if invalid_volumes:
             self.log.warning(f"[Manage Volumes] Invalid volume types: {invalid_volumes}")
