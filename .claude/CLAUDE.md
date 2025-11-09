@@ -217,40 +217,44 @@ The startup script will automatically read this list and create missing groups.
   - Per-user delivery status table
 
 **How It Works**:
-1. Admin composes notification with message, variant (info/success/warning/error), and auto-close option
+1. Admin composes notification with message, type (default/info/success/warning/error/in-progress), and auto-close option
 2. Backend queries all active spawners from JupyterHub database
 3. For each active server:
-   - Retrieves user's API token from JupyterHub token store
-   - Constructs internal URL: `http://jupyterlab-{username}:8888/jupyterlab_notifications_extension/ingest`
-   - Sends authenticated POST request with notification payload
+   - Generates temporary API token (5-minute expiry) for authentication
+   - Constructs internal URL: `http://jupyterlab-{username}:8888{base_url}jupyterlab-notifications-extension/ingest`
+   - Sends authenticated POST request with notification payload including Dismiss action button
 4. Concurrent delivery using `asyncio.gather()` (5-second timeout per server)
 5. Returns aggregated results with success/failure counts and per-user status
 
 **Authentication**:
-- Uses JupyterHub API tokens for authentication with each JupyterLab server
-- Tokens retrieved from `user.api_tokens` collection
+- Generates temporary JupyterHub API tokens for each broadcast (5-minute expiry)
+- Created via `user.new_api_token(note="notification-broadcast", expires_in=300)`
 - Transmitted via `Authorization: Bearer <token>` header
 - Tokens never logged or exposed in responses
+- Tokens automatically expire after 5 minutes limiting security exposure
 
 **Error Handling**:
 - Connection timeout: "Server not responding"
 - HTTP 401/403: "Authentication failed"
 - HTTP 404: "Notification extension not installed"
-- Token retrieval failure: "No API token found"
+- HTTP 500: "Server error processing notification"
 - Gracefully reports failures without blocking successful deliveries
+- One-line logging per server showing username, message preview, notification type, and outcome (SUCCESS/FAILED/ERROR)
 
 **UI Features**:
-- Message textarea with 500-character limit and live character counter
-- Variant selector (info, success, warning, error)
-- Auto-close toggle (default: disabled)
+- Message textarea with 140-character limit and live character counter (Twitter-style brevity)
+- Type selector (default, info, success, warning, error, in-progress)
+- Auto-close toggle (default: disabled for important messages)
 - Bootstrap alert showing delivery summary
 - Expandable table with per-user delivery status
 - Loading spinner during broadcast
+- Dismiss button included in all notifications for manual closure
 
 **Extension Dependency**:
 - Requires https://github.com/stellarshenson/jupyterlab_notifications_extension on spawned servers
 - Extension must be installed in the `stellars/stellars-jupyterlab-ds` image
-- Provides `/jupyterlab_notifications_extension/ingest` endpoint
+- Provides `/jupyterlab-notifications-extension/ingest` endpoint (note the hyphen, not underscore)
+- Full endpoint pattern: `http://jupyterlab-{username}:8888{base_url}jupyterlab-notifications-extension/ingest`
 
 ## User Self-Service Features
 
