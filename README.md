@@ -96,7 +96,9 @@ volumes:
   - /var/run/docker.sock:/var/run/docker.sock:rw
 ```
 
-**Security Note**: The JupyterHub container has full access to the Docker daemon. Ensure the host system is properly secured and only trusted administrators have access to JupyterHub configuration.
+<div class="alert alert-block alert-warning">
+<b>Security Note:</b> The JupyterHub container has full access to the Docker daemon. Only trusted administrators should have access to JupyterHub configuration.
+</div>
 
 ## Quickstart
 
@@ -181,7 +183,9 @@ c.DockerSpawner.volumes = {
 
 #### Grant Docker Socket Access to Privileged Users
 
-**Security Warning**: Docker socket access grants effective root-level control over the host system. Only grant this permission to trusted users.
+<div class="alert alert-block alert-warning">
+<b>Security Warning:</b> Docker socket access grants effective root-level control over the Docker host. Only grant this permission to trusted users.
+</div>
 
 The platform supports granting specific users read-write access to `/var/run/docker.sock` within their JupyterLab containers. This enables container orchestration, Docker builds, and Docker Compose operations from within user environments.
 
