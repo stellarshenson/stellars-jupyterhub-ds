@@ -8,6 +8,10 @@ JupyterHub templates extended using Jinja2 to add custom UI features (server res
 - Changes require Docker rebuild with `--no-cache` flag
 - JupyterHub 5.4.2 uses Bootstrap 5 (not Bootstrap 4)
 
+**Template Variables** (via `c.JupyterHub.template_vars`):
+- `user_volume_suffixes`: List of volume suffixes from `DOCKER_SPAWNER_VOLUMES`
+- `volume_descriptions`: Optional dict mapping suffixes to descriptions
+
 **JavaScript Integration**:
 All custom JavaScript wrapped in RequireJS to ensure library loading:
 ```javascript

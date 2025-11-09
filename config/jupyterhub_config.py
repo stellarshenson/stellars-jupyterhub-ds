@@ -120,6 +120,14 @@ DOCKER_SPAWNER_VOLUMES = {
     "jupyterhub_shared": "/mnt/shared" # shared drive across hub
 }
 
+# Optional descriptions for user volumes (shown in UI)
+# If a volume suffix is not listed here, no description will be shown
+VOLUME_DESCRIPTIONS = {
+    'home': 'User home directory files, configurations',
+    'workspace': 'Project files, notebooks, code',
+    'cache': 'Temporary files, pip cache, conda cache'
+}
+
 # Helper function to extract user-specific volume suffixes
 def get_user_volume_suffixes(volumes_dict):
     """Extract volume suffixes from volumes dict that follow jupyterlab-{username}_<suffix> pattern"""
@@ -145,9 +153,10 @@ if c is not None:
     # Set volumes from constant
     c.DockerSpawner.volumes = DOCKER_SPAWNER_VOLUMES
 
-    # Make volume suffixes available to templates
+    # Make volume suffixes and descriptions available to templates
     c.JupyterHub.template_vars = {
-        'user_volume_suffixes': USER_VOLUME_SUFFIXES
+        'user_volume_suffixes': USER_VOLUME_SUFFIXES,
+        'volume_descriptions': VOLUME_DESCRIPTIONS
     }
 
 # Built-in groups that cannot be deleted (auto-recreated if missing)
