@@ -119,6 +119,25 @@ c.DockerSpawner.volumes = {
     "jupyterhub_shared": "/mnt/shared" # shared drive across hub
 }
 
+# Helper function to extract user-specific volume suffixes
+def get_user_volume_suffixes():
+    """Extract volume suffixes from DockerSpawner.volumes that follow jupyterlab-{username}_<suffix> pattern"""
+    suffixes = []
+    for volume_name in c.DockerSpawner.volumes.keys():
+        # Match pattern: jupyterlab-{username}_<suffix>
+        if volume_name.startswith("jupyterlab-{username}_"):
+            suffix = volume_name.replace("jupyterlab-{username}_", "")
+            suffixes.append(suffix)
+    return suffixes
+
+# Store user volume suffixes for use in templates and handlers
+USER_VOLUME_SUFFIXES = get_user_volume_suffixes()
+
+# Make volume suffixes available to templates
+c.JupyterHub.template_vars = {
+    'user_volume_suffixes': USER_VOLUME_SUFFIXES
+}
+
 # Built-in groups that cannot be deleted (auto-recreated if missing)
 BUILTIN_GROUPS = ['docker-privileged']
 
