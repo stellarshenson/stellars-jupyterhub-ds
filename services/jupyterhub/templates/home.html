@@ -146,6 +146,10 @@
               <strong>{{ volume_suffix }}</strong>
               <br>
               <code class="text-muted">jupyterlab-{{ user.name }}_{{ volume_suffix }}</code>
+              {% if volume_descriptions and volume_suffix in volume_descriptions %}
+              <br>
+              <small class="text-muted">{{ volume_descriptions[volume_suffix] }}</small>
+              {% endif %}
             </label>
           </div>
           {% endfor %}

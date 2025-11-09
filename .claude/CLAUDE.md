@@ -258,52 +258,52 @@ The startup script will automatically read this list and create missing groups.
 
 ## User Self-Service Features
 
-The platform provides two self-service features accessible from the user control panel (`/hub/home`):
+### Manage Volumes
 
-### Reset Home Volume
-
-**Purpose**: Allows users to delete their home directory volume and start fresh with a clean environment.
+Selective volume reset allowing users to delete chosen persistent volumes (home, workspace, cache).
 
 **Requirements**:
 - User's JupyterLab server must be stopped
-- Volume `jupyterlab-{username}_home` must exist
+- Volumes dynamically read from `DOCKER_SPAWNER_VOLUMES` config
 
 **Implementation**:
-- API Endpoint: `DELETE /hub/api/users/{username}/reset-home-volume`
-- Handler: `services/jupyterhub/conf/bin/custom_handlers.py::ResetHomeVolumeHandler`
-- Uses Docker API to safely remove the volume
-- Only affects home volume - workspace and cache volumes are preserved
+- API Endpoint: `DELETE /hub/api/users/{username}/manage-volumes`
+- Handler: `services/jupyterhub/conf/bin/custom_handlers.py::ManageVolumesHandler`
+- Template: `services/jupyterhub/templates/home.html` with dynamic checkbox generation
+- Volume list extracted via `get_user_volume_suffixes(DOCKER_SPAWNER_VOLUMES)`
+- Optional descriptions from `VOLUME_DESCRIPTIONS` dict (config file)
+- Validates requested volumes against `USER_VOLUME_SUFFIXES`
 
-**Permissions**:
-- Users can reset their own home volume
-- Admins can reset any user's home volume
-- Enforced via `@admin_or_self` decorator
+**Configuration** (`config/jupyterhub_config.py`):
+```python
+DOCKER_SPAWNER_VOLUMES = {
+    "jupyterlab-{username}_home": "/home",
+    "jupyterlab-{username}_workspace": DOCKER_NOTEBOOK_DIR,
+    "jupyterlab-{username}_cache": "/home/lab/.cache",
+}
+
+VOLUME_DESCRIPTIONS = {
+    'home': 'User home directory files, configurations',
+    'workspace': 'Project files, notebooks, code',
+    'cache': 'Temporary files, pip cache, conda cache'
+}
+```
+
+**Permissions**: Users can manage own volumes, admins can manage any user's volumes
 
 ### Restart Server
 
-**Purpose**: Provides one-click Docker container restart without recreating the container.
+One-click Docker container restart without recreation. Preserves volumes and configuration.
 
-**Requirements**:
-- User's JupyterLab server must be running
-- Container `jupyterlab-{username}` must exist
+**Requirements**: User's JupyterLab server must be running
 
 **Implementation**:
 - API Endpoint: `POST /hub/api/users/{username}/restart-server`
 - Handler: `services/jupyterhub/conf/bin/custom_handlers.py::RestartServerHandler`
 - Uses Docker's native `container.restart(timeout=10)` method
-- Preserves container identity, volumes, and configuration
 - Does NOT recreate container (unlike JupyterHub's stop/spawn cycle)
 
-**Permissions**:
-- Users can restart their own server
-- Admins can restart any user's server
-- Enforced via `@admin_or_self` decorator
-
-**UI Location**:
-- Custom template: `services/jupyterhub/templates/home.html`
-- Reset button visible when server is stopped
-- Restart button visible when server is running
-- Both include confirmation modals with warnings
+**Permissions**: Users can restart own server, admins can restart any user's server
 
 ## Troubleshooting
 
