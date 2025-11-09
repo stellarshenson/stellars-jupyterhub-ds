@@ -59,6 +59,7 @@ Users access JupyterHub through Traefik reverse proxy with TLS termination. Afte
 ## Features
 
 - **GPU Auto-Detection**: Automatic NVIDIA CUDA GPU detection and configuration for spawned user containers
+- **Notification Broadcast**: Admins can send notifications to all active JupyterLab servers simultaneously through the integrated notification panel at `/hub/notifications`. Supports multiple notification types (info, success, warning, error), 140-character messages, and dismiss buttons. Requires [jupyterlab_notifications_extension](https://github.com/stellarshenson/jupyterlab_notifications_extension) installed on spawned JupyterLab servers
 - **User Self-Service**: Users can restart their JupyterLab containers and selectively reset persistent volumes (home/workspace/cache) without admin intervention
 - **Privileged Access Control**: Group-based docker.sock access for trusted users enabling container orchestration from within JupyterLab
 - **Isolated Environments**: Each user gets dedicated JupyterLab container with persistent volumes via DockerSpawner
@@ -68,9 +69,26 @@ Users access JupyterHub through Traefik reverse proxy with TLS termination. Afte
 
 ## References
 
-This project spawns user environments using docker image: `stellars/stellars-jupyterlab-ds`  
+This project spawns user environments using docker image: `stellars/stellars-jupyterlab-ds`
 
 Visit the project page for stellars-jupyterlab-ds: https://github.com/stellarshenson/stellars-jupyterlab-ds
+
+## Requirements
+
+**Docker Socket Access Required**: This JupyterHub implementation requires read-write access to the Docker socket (`/var/run/docker.sock`) mounted into the JupyterHub container. This is essential for:
+
+- **DockerSpawner**: Spawning and managing isolated JupyterLab containers for each user
+- **Volume Management**: Allowing users to reset their persistent volumes (home/workspace/cache)
+- **Container Control**: Enabling server restart functionality from the user control panel
+- **Privileged Access**: Supporting optional docker.sock access for trusted users within their JupyterLab environments
+
+The `compose.yml` file includes this mount by default:
+```yaml
+volumes:
+  - /var/run/docker.sock:/var/run/docker.sock:rw
+```
+
+**Security Note**: The JupyterHub container has full access to the Docker daemon. Ensure the host system is properly secured and only trusted administrators have access to JupyterHub configuration.
 
 ## Quickstart
 

@@ -1,0 +1,244 @@
+{% extends "page.html" %}
+
+{% block main %}
+<div class="container">
+  <h1>Broadcast Notifications</h1>
+  <p class="text-muted">Send notifications to all active JupyterLab servers</p>
+
+  <hr>
+
+  <div class="row">
+    <div class="col-md-8">
+      <form id="notification-form">
+        <div class="mb-3">
+          <label for="message" class="form-label">Message <span class="text-danger">*</span></label>
+          <textarea
+            class="form-control"
+            id="message"
+            name="message"
+            rows="4"
+            maxlength="140"
+            placeholder="Type your notification message here..."
+            required></textarea>
+          <div class="form-text">Maximum 140 characters. <span id="char-count">0/140</span></div>
+        </div>
+
+        <div class="mb-3">
+          <label for="variant" class="form-label">Notification Type <span class="text-danger">*</span></label>
+          <select class="form-select" id="variant" name="variant" required>
+            <option value="default">Default</option>
+            <option value="info" selected>Info (Blue)</option>
+            <option value="success">Success (Green)</option>
+            <option value="warning">Warning (Yellow)</option>
+            <option value="error">Error (Red)</option>
+            <option value="in-progress">In Progress</option>
+          </select>
+        </div>
+
+        <div class="mb-3 form-check">
+          <input type="checkbox" class="form-check-input" id="autoClose" name="autoClose">
+          <label class="form-check-label" for="autoClose">
+            Auto-close notification (automatically dismiss after a few seconds)
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg" id="send-btn">
+          <i class="fa fa-paper-plane" aria-hidden="true"></i>
+          Send to All Active Servers
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- Results section (hidden by default) -->
+  <div id="results-section" style="display: none;" class="mt-4">
+    <h3>Broadcast Results</h3>
+    <div id="results-alert"></div>
+
+    <button
+      class="btn btn-secondary btn-sm mb-3"
+      type="button"
+      data-bs-toggle="collapse"
+      data-bs-target="#details-table"
+      aria-expanded="false"
+      aria-controls="details-table"
+      id="toggle-details-btn">
+      Show Details
+    </button>
+
+    <div class="collapse" id="details-table">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Status</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody id="details-tbody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+require(["jquery"], function($) {
+  "use strict";
+
+  // Character counter
+  $('#message').on('input', function() {
+    var length = $(this).val().length;
+    $('#char-count').text(length + '/140');
+  });
+
+  // Form submission
+  $('#notification-form').on('submit', function(e) {
+    e.preventDefault();
+
+    // Get form data
+    var message = $('#message').val().trim();
+    var variant = $('#variant').val();
+    var autoClose = $('#autoClose').is(':checked');
+
+    // Validate
+    if (!message) {
+      alert('Please enter a message');
+      return;
+    }
+
+    if (message.length > 140) {
+      alert('Message cannot exceed 140 characters');
+      return;
+    }
+
+    // Disable button and show loading
+    var $sendBtn = $('#send-btn');
+    var originalHtml = $sendBtn.html();
+    $sendBtn.prop('disabled', true);
+    $sendBtn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...');
+
+    // Hide previous results
+    $('#results-section').hide();
+
+    // Send request
+    $.ajax({
+      url: '{{ base_url }}api/notifications/broadcast',
+      method: 'POST',
+      contentType: 'application/json',
+      headers: {
+        'X-XSRFToken': getCookie('_xsrf')
+      },
+      data: JSON.stringify({
+        message: message,
+        variant: variant,
+        autoClose: autoClose
+      }),
+      success: function(data) {
+        displayResults(data);
+        // Clear form
+        $('#message').val('');
+        $('#char-count').text('0/140');
+        $('#autoClose').prop('checked', false);
+      },
+      error: function(xhr) {
+        var errorMsg = 'Failed to send notification';
+        if (xhr.responseJSON && xhr.responseJSON.message) {
+          errorMsg = xhr.responseJSON.message;
+        }
+        alert('Error: ' + errorMsg);
+      },
+      complete: function() {
+        // Re-enable button
+        $sendBtn.prop('disabled', false);
+        $sendBtn.html(originalHtml);
+      }
+    });
+  });
+
+  function displayResults(data) {
+    var total = data.total || 0;
+    var successful = data.successful || 0;
+    var failed = data.failed || 0;
+    var details = data.details || [];
+
+    // Show results section
+    $('#results-section').show();
+
+    // Build alert message
+    var alertClass = 'alert-success';
+    var alertIcon = '<i class="fa fa-check-circle"></i>';
+    var alertMessage = '';
+
+    if (total === 0) {
+      alertClass = 'alert-info';
+      alertIcon = '<i class="fa fa-info-circle"></i>';
+      alertMessage = 'No active servers found';
+    } else if (failed === 0) {
+      alertMessage = alertIcon + ' Notification sent successfully to all ' + total + ' server(s)';
+    } else if (successful === 0) {
+      alertClass = 'alert-danger';
+      alertIcon = '<i class="fa fa-times-circle"></i>';
+      alertMessage = alertIcon + ' Failed to send notification to all ' + total + ' server(s)';
+    } else {
+      alertClass = 'alert-warning';
+      alertIcon = '<i class="fa fa-exclamation-triangle"></i>';
+      alertMessage = alertIcon + ' Notification sent with partial success<br>' +
+        '<strong>Delivered:</strong> ' + successful + '/' + total + ' servers | ' +
+        '<strong>Failed:</strong> ' + failed + '/' + total + ' servers';
+    }
+
+    $('#results-alert').html('<div class="alert ' + alertClass + '">' + alertMessage + '</div>');
+
+    // Build details table
+    var tbody = $('#details-tbody');
+    tbody.empty();
+
+    if (details.length > 0) {
+      details.forEach(function(detail) {
+        var statusBadge = '';
+        var errorCell = '';
+
+        if (detail.status === 'success') {
+          statusBadge = '<span class="badge bg-success"><i class="fa fa-check"></i> Success</span>';
+          errorCell = '-';
+        } else {
+          statusBadge = '<span class="badge bg-danger"><i class="fa fa-times"></i> Failed</span>';
+          errorCell = detail.error || 'Unknown error';
+        }
+
+        var row = '<tr>' +
+          '<td>' + escapeHtml(detail.username) + '</td>' +
+          '<td>' + statusBadge + '</td>' +
+          '<td>' + escapeHtml(errorCell) + '</td>' +
+          '</tr>';
+
+        tbody.append(row);
+      });
+
+      // Update button text
+      $('#toggle-details-btn').text('Show Details (' + details.length + ' servers)');
+    }
+  }
+
+  function getCookie(name) {
+    var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    if (match) return match[2];
+  }
+
+  function escapeHtml(text) {
+    var map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+  }
+});
+</script>
+{% endblock %}

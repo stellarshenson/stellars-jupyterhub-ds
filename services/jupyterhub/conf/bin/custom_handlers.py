@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-Custom JupyterHub API handlers for volume management and server control
+Custom JupyterHub API handlers for volume management, server control, and notifications
 """
 
 from jupyterhub.handlers import BaseHandler
 from tornado import web
+from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
 import docker
 import json
+import asyncio
 
 
 class ManageVolumesHandler(BaseHandler):
@@ -197,3 +199,239 @@ class RestartServerHandler(BaseHandler):
         finally:
             docker_client.close()
             self.log.info(f"[Restart Server] Docker client closed")
+
+
+class NotificationsPageHandler(BaseHandler):
+    """Handler for rendering the notifications broadcast page"""
+
+    @web.authenticated
+    async def get(self):
+        """
+        Render the notifications broadcast page (admin only)
+
+        GET /notifications
+        """
+        current_user = self.current_user
+
+        # Only admins can access notifications panel
+        if not current_user.admin:
+            raise web.HTTPError(403, "Only administrators can access this page")
+
+        self.log.info(f"[Notifications Page] Admin {current_user.name} accessed notifications panel")
+
+        # Render the template (sync=True to get string instead of awaitable)
+        html = self.render_template("notifications.html", sync=True, user=current_user)
+        self.finish(html)
+
+
+class BroadcastNotificationHandler(BaseHandler):
+    """Handler for broadcasting notifications to all active JupyterLab servers"""
+
+    async def post(self):
+        """
+        Broadcast a notification to all active JupyterLab servers
+
+        POST /hub/api/notifications/broadcast
+        Body: {
+            "message": "string",
+            "variant": "info|success|warning|error",
+            "autoClose": false
+        }
+        """
+        self.log.info(f"[Broadcast Notification] API endpoint called")
+
+        # 0. Check permissions: only admins can broadcast
+        current_user = self.current_user
+        if current_user is None:
+            self.log.warning(f"[Broadcast Notification] Authentication failed - no current user")
+            raise web.HTTPError(403, "Not authenticated")
+
+        if not current_user.admin:
+            self.log.warning(f"[Broadcast Notification] Permission denied - user {current_user.name} is not admin")
+            raise web.HTTPError(403, "Only administrators can broadcast notifications")
+
+        self.log.info(f"[Broadcast Notification] Request from admin: {current_user.name}")
+
+        # 1. Parse request body
+        try:
+            body = self.request.body.decode('utf-8')
+            data = json.loads(body) if body else {}
+            message = data.get('message', '').strip()
+            variant = data.get('variant', 'info')
+            auto_close = data.get('autoClose', False)
+
+            self.log.info(f"[Broadcast Notification] Message: {message[:50]}..., Variant: {variant}, AutoClose: {auto_close}")
+        except Exception as e:
+            self.log.error(f"[Broadcast Notification] Failed to parse request body: {e}")
+            return self.send_error(400, "Invalid request body")
+
+        # 2. Validate input
+        if not message:
+            self.log.warning(f"[Broadcast Notification] Empty message provided")
+            return self.send_error(400, "Message cannot be empty")
+
+        if len(message) > 140:
+            self.log.warning(f"[Broadcast Notification] Message too long: {len(message)} characters")
+            return self.send_error(400, "Message cannot exceed 140 characters")
+
+        valid_variants = ['default', 'info', 'success', 'warning', 'error', 'in-progress']
+        if variant not in valid_variants:
+            self.log.warning(f"[Broadcast Notification] Invalid variant: {variant}")
+            return self.send_error(400, f"Variant must be one of: {', '.join(valid_variants)}")
+
+        # 3. Get all active spawners
+        self.log.info(f"[Broadcast Notification] Querying active spawners")
+        active_spawners = []
+
+        from jupyterhub import orm
+        for orm_user in self.db.query(orm.User).all():
+            # Use find_user to get the wrapped user object with spawner property
+            user = self.find_user(orm_user.name)
+            if user and user.spawner and user.spawner.active:
+                active_spawners.append((user, user.spawner))
+
+        self.log.info(f"[Broadcast Notification] Found {len(active_spawners)} active server(s)")
+
+        if not active_spawners:
+            self.log.info(f"[Broadcast Notification] No active servers found")
+            return self.finish({
+                "total": 0,
+                "successful": 0,
+                "failed": 0,
+                "details": [],
+                "message": "No active servers found"
+            })
+
+        # 4. Broadcast to all active servers concurrently
+        notification_payload = {
+            "message": message,
+            "type": variant,
+            "autoClose": auto_close,
+            "actions": [
+                {
+                    "label": "Dismiss",
+                    "caption": "Close this notification",
+                    "displayType": "default"
+                }
+            ]
+        }
+
+        tasks = []
+        for user, spawner in active_spawners:
+            task = self._send_notification(user, spawner, notification_payload)
+            tasks.append(task)
+
+        # Gather all results
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # 5. Compile response
+        successful = 0
+        failed = 0
+        details = []
+
+        for (user, spawner), result in zip(active_spawners, results):
+            if isinstance(result, dict) and result.get('status') == 'success':
+                successful += 1
+                details.append({
+                    "username": user.name,
+                    "status": "success"
+                })
+            else:
+                failed += 1
+                error_msg = str(result) if isinstance(result, Exception) else result.get('error', 'Unknown error')
+                details.append({
+                    "username": user.name,
+                    "status": "failed",
+                    "error": error_msg
+                })
+
+        total = len(active_spawners)
+        self.log.info(f"[Broadcast Notification] Complete: {successful}/{total} successful, {failed}/{total} failed")
+
+        response = {
+            "total": total,
+            "successful": successful,
+            "failed": failed,
+            "details": details
+        }
+
+        self.set_status(200)
+        self.finish(response)
+
+    async def _send_notification(self, user, spawner, notification_payload):
+        """
+        Send notification to a single JupyterLab server
+
+        Args:
+            user: JupyterHub user object
+            spawner: User's spawner object
+            notification_payload: Notification data dict
+
+        Returns:
+            dict: {"status": "success"} or {"status": "failed", "error": "message"}
+        """
+        username = user.name
+
+        try:
+            # 1. Get or create API token for the user
+            self.log.info(f"[Broadcast Notification] Getting API token for user: {username}")
+
+            # Generate a new API token for notification purposes
+            # Note: APIToken.token is write-only, we cannot read existing tokens
+            # We create a new token with note identifying it as for notifications
+            token = user.new_api_token(note="notification-broadcast", expires_in=300)
+            self.log.info(f"[Broadcast Notification] Generated temporary API token for {username}")
+
+            # 2. Construct JupyterLab URL
+            # Use the spawner's internal connection URL (direct container access)
+            # The spawner.server.url contains the public-facing URL
+            if not spawner.server:
+                self.log.warning(f"[Broadcast Notification] Spawner for {username} has no server")
+                return {"status": "failed", "error": "Server not available"}
+
+            # Get the base URL from spawner server (e.g., /jupyterhub/user/konrad/)
+            base_url = spawner.server.base_url
+            # Construct internal container URL
+            container_url = f"http://jupyterlab-{username}:8888"
+            endpoint = f"{container_url}{base_url}jupyterlab-notifications-extension/ingest"
+
+            self.log.info(f"[Notification] Constructed endpoint for {username}: {endpoint}")
+
+            # 3. Make HTTP request
+            http_client = AsyncHTTPClient()
+
+            request = HTTPRequest(
+                url=endpoint,
+                method="POST",
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {token}"
+                },
+                body=json.dumps(notification_payload),
+                request_timeout=5.0,
+                connect_timeout=5.0
+            )
+
+            response = await http_client.fetch(request, raise_error=False)
+
+            if response.code == 200:
+                self.log.info(f"[Notification] {username}: '{notification_payload['message'][:50]}' ({notification_payload['type']}) - SUCCESS")
+                return {"status": "success"}
+            else:
+                error_msg = f"HTTP {response.code}: {response.reason}"
+                self.log.warning(f"[Notification] {username}: '{notification_payload['message'][:50]}' ({notification_payload['type']}) - FAILED: {error_msg}")
+                return {"status": "failed", "error": error_msg}
+
+        except Exception as e:
+            error_msg = str(e)
+
+            # Provide more specific error messages
+            if "Connection refused" in error_msg or "Connection timed out" in error_msg:
+                error_msg = "Server not responding"
+            elif "404" in error_msg:
+                error_msg = "Notification extension not installed"
+            elif "401" in error_msg or "403" in error_msg:
+                error_msg = "Authentication failed"
+
+            self.log.error(f"[Notification] {username}: '{notification_payload['message'][:50]}' ({notification_payload['type']}) - ERROR: {error_msg}")
+            return {"status": "failed", "error": error_msg}
