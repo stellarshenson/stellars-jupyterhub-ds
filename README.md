@@ -48,20 +48,20 @@ graph TB
     User[User Browser] -->|HTTPS| Traefik[Traefik Proxy<br/>TLS Termination]
     Traefik --> Hub[JupyterHub<br/>Port 8000]
 
-    Hub -->|Authenticates| Auth[NativeAuthenticator<br/>User Management]
+    Hub -->|Authenticates| Auth[NativeAuthenticator]
     Hub -->|Spawns via| Spawner[DockerSpawner]
 
-    Spawner -->|Creates| Lab1[JupyterLab<br/>User: alice]
-    Spawner -->|Creates| Lab2[JupyterLab<br/>User: bob]
-    Spawner -->|Creates| Lab3[JupyterLab<br/>User: charlie]
+    Spawner -->|Creates| Lab1[JupyterLab<br/>alice]
+    Spawner -->|Creates| Lab2[JupyterLab<br/>bob]
+    Spawner -->|Creates| Lab3[JupyterLab<br/>charlie]
 
-    Lab1 -->|Mounts| Vol1[alice_home<br/>alice_workspace<br/>alice_cache]
-    Lab2 -->|Mounts| Vol2[bob_home<br/>bob_workspace<br/>bob_cache]
-    Lab3 -->|Mounts| Vol3[charlie_home<br/>charlie_workspace<br/>charlie_cache]
+    Lab1 --> Vol1[Volumes<br/>home/workspace/cache]
+    Lab2 --> Vol2[Volumes<br/>home/workspace/cache]
+    Lab3 --> Vol3[Volumes<br/>home/workspace/cache]
 
-    Lab1 -->|Shared| Shared[jupyterhub_shared<br/>CIFS/NAS Optional]
-    Lab2 -->|Shared| Shared
-    Lab3 -->|Shared| Shared
+    Lab1 --> Shared[Shared Storage<br/>CIFS/NAS]
+    Lab2 --> Shared
+    Lab3 --> Shared
 
     style Hub stroke:#f59e0b,stroke-width:3px
     style Traefik stroke:#0284c7,stroke-width:3px
