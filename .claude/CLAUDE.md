@@ -193,6 +193,65 @@ BUILTIN_GROUPS = ['docker-privileged', 'new-group-name']
 ```
 The startup script will automatically read this list and create missing groups.
 
+## Notification Broadcast System
+
+**Purpose**: Allows administrators to broadcast notifications to all active JupyterLab servers simultaneously.
+
+**Access**: Admin-only feature accessible at `/notifications`
+
+**Requirements**:
+- User must be an administrator
+- Target JupyterLab servers must have `jupyterlab_notifications_extension` installed
+- Servers must be active (running)
+
+**Implementation**:
+- **Page Handler**: `services/jupyterhub/conf/bin/custom_handlers.py::NotificationsPageHandler`
+  - Route: `/notifications`
+  - Renders the broadcast interface
+- **API Handler**: `services/jupyterhub/conf/bin/custom_handlers.py::BroadcastNotificationHandler`
+  - Route: `/api/notifications/broadcast`
+  - Handles the actual broadcasting logic
+- **Template**: `services/jupyterhub/templates/notifications.html`
+  - Form for composing notifications
+  - Results display with success/failure counts
+  - Per-user delivery status table
+
+**How It Works**:
+1. Admin composes notification with message, variant (info/success/warning/error), and auto-close option
+2. Backend queries all active spawners from JupyterHub database
+3. For each active server:
+   - Retrieves user's API token from JupyterHub token store
+   - Constructs internal URL: `http://jupyterlab-{username}:8888/jupyterlab_notifications_extension/ingest`
+   - Sends authenticated POST request with notification payload
+4. Concurrent delivery using `asyncio.gather()` (5-second timeout per server)
+5. Returns aggregated results with success/failure counts and per-user status
+
+**Authentication**:
+- Uses JupyterHub API tokens for authentication with each JupyterLab server
+- Tokens retrieved from `user.api_tokens` collection
+- Transmitted via `Authorization: Bearer <token>` header
+- Tokens never logged or exposed in responses
+
+**Error Handling**:
+- Connection timeout: "Server not responding"
+- HTTP 401/403: "Authentication failed"
+- HTTP 404: "Notification extension not installed"
+- Token retrieval failure: "No API token found"
+- Gracefully reports failures without blocking successful deliveries
+
+**UI Features**:
+- Message textarea with 500-character limit and live character counter
+- Variant selector (info, success, warning, error)
+- Auto-close toggle (default: disabled)
+- Bootstrap alert showing delivery summary
+- Expandable table with per-user delivery status
+- Loading spinner during broadcast
+
+**Extension Dependency**:
+- Requires https://github.com/stellarshenson/jupyterlab_notifications_extension on spawned servers
+- Extension must be installed in the `stellars/stellars-jupyterlab-ds` image
+- Provides `/jupyterlab_notifications_extension/ingest` endpoint
+
 ## User Self-Service Features
 
 The platform provides two self-service features accessible from the user control panel (`/hub/home`):

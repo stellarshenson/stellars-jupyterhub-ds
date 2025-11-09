@@ -202,11 +202,18 @@ sys.path.insert(0, '/srv/jupyterhub')
 sys.path.insert(0, '/start-platform.d')
 sys.path.insert(0, '/')
 
-from custom_handlers import ManageVolumesHandler, RestartServerHandler
+from custom_handlers import (
+    ManageVolumesHandler,
+    RestartServerHandler,
+    NotificationsPageHandler,
+    BroadcastNotificationHandler
+)
 
 c.JupyterHub.extra_handlers = [
     (r'/api/users/([^/]+)/manage-volumes', ManageVolumesHandler),
     (r'/api/users/([^/]+)/restart-server', RestartServerHandler),
+    (r'/api/notifications/broadcast', BroadcastNotificationHandler),
+    (r'/notifications', NotificationsPageHandler),
 ]
 
 # EOF
