@@ -2,14 +2,44 @@
 ![Docker Pulls](https://img.shields.io/docker/pulls/stellars/stellars-jupyterhub-ds?style=flat-square)
 ![Docker Image](https://img.shields.io/docker/image-size/stellars/stellars-jupyterhub-ds/latest?style=flat-square)
 
+Multi-user JupyterHub 4 deployment platform with data science stack, GPU support, and NativeAuthenticator. The platform spawns isolated JupyterLab environments per user using DockerSpawner, backed by the `stellars/stellars-jupyterlab-ds` image.
 
-**Multi-user JupyterHub 4 with Miniforge, Data Science stack, and NativeAuthenticator.**
+## Features
 
-This platform is built to support multiple data scientists on a shared environment with isolated sessions. Powered by JupyterHub, it ensures secure, user-specific access via the `NativeAuthenticator` plugin. It includes a full data science stack with GPU support (optional), and integrates seamlessly into modern Docker-based workflows.
+- **GPU Auto-Detection**: Automatic NVIDIA CUDA GPU detection and configuration for spawned user containers
+- **Notification Broadcast**: Admins can send notifications to all active JupyterLab servers simultaneously through the integrated notification panel at `/hub/notifications`. Supports multiple notification types (info, success, warning, error), 140-character messages, and dismiss buttons. Requires [jupyterlab_notifications_extension](https://github.com/stellarshenson/jupyterlab_notifications_extension) installed on spawned JupyterLab servers
+- **User Self-Service**: Users can restart their JupyterLab containers and selectively reset persistent volumes (home/workspace/cache) without admin intervention
+- **Privileged Access Control**: Group-based docker.sock access for trusted users enabling container orchestration from within JupyterLab
+- **Isolated Environments**: Each user gets dedicated JupyterLab container with persistent volumes via DockerSpawner
+- **Native Authentication**: Built-in user management with NativeAuthenticator supporting self-registration and admin approval
+- **Shared Storage**: Optional CIFS/NAS mount support for shared datasets across all users
+- **Production Ready**: Traefik reverse proxy with TLS termination, automatic container updates via Watchtower
 
-By default system is capable of **automatically detecting** NVIDIA CUDA-supported GPU
+## User Interface
 
-This deployment provides access to a centralized JupyterHub instance for managing user sessions. Optional integrations such as TensorBoard, MLFlow, or Optuna can be added manually via service extensions.
+**User Control Panel**
+
+User control panel with server restart and volume management options.
+
+![User Control Panel](.resources/screenshot-home.png)
+
+**Volume Management**
+
+Access volume management when server is stopped.
+
+![Manage Volumes](.resources/screenshot-volumes.png)
+
+**Volume Selection**
+
+Select individual volumes to reset - home directory, workspace files, or cache data.
+
+![Volume Selection](.resources/screenshot-volumes-modal.png)
+
+**Admin Notification Broadcast**
+
+Admin panel for broadcasting notifications to all active JupyterLab servers.
+
+![Admin Notification Broadcast](.resources/screenshot-send-notification.png)
 
 ## Architecture
 
@@ -44,43 +74,6 @@ graph TB
 ```
 
 Users access JupyterHub through Traefik reverse proxy with TLS termination. After authentication via NativeAuthenticator, JupyterHub spawns isolated JupyterLab containers per user using DockerSpawner. Each user gets dedicated persistent volumes for home directory, workspace files, and cache data, with optional shared storage for collaborative datasets.
-
-## User Interface
-
-**User Control Panel**
-
-User control panel with server restart and volume management options.
-
-![User Control Panel](.resources/screenshot-home.png)
-
-**Volume Management**
-
-Access volume management when server is stopped.
-
-![Manage Volumes](.resources/screenshot-volumes.png)
-
-**Volume Selection**
-
-Select individual volumes to reset - home directory, workspace files, or cache data.
-
-![Volume Selection](.resources/screenshot-volumes-modal.png)
-
-**Admin Notification Broadcast**
-
-Admin panel for broadcasting notifications to all active JupyterLab servers.
-
-![Admin Notification Broadcast](.resources/screenshot-send-notification.png)
-
-## Features
-
-- **GPU Auto-Detection**: Automatic NVIDIA CUDA GPU detection and configuration for spawned user containers
-- **Notification Broadcast**: Admins can send notifications to all active JupyterLab servers simultaneously through the integrated notification panel at `/hub/notifications`. Supports multiple notification types (info, success, warning, error), 140-character messages, and dismiss buttons. Requires [jupyterlab_notifications_extension](https://github.com/stellarshenson/jupyterlab_notifications_extension) installed on spawned JupyterLab servers
-- **User Self-Service**: Users can restart their JupyterLab containers and selectively reset persistent volumes (home/workspace/cache) without admin intervention
-- **Privileged Access Control**: Group-based docker.sock access for trusted users enabling container orchestration from within JupyterLab
-- **Isolated Environments**: Each user gets dedicated JupyterLab container with persistent volumes via DockerSpawner
-- **Native Authentication**: Built-in user management with NativeAuthenticator supporting self-registration and admin approval
-- **Shared Storage**: Optional CIFS/NAS mount support for shared datasets across all users
-- **Production Ready**: Traefik reverse proxy with TLS termination, automatic container updates via Watchtower
 
 ## References
 
