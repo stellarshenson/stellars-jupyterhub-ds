@@ -187,7 +187,7 @@ c.DockerSpawner.volumes = {
 <b>Security Warning:</b> Docker socket access grants effective root-level control over the Docker host. Only grant this permission to trusted users.
 </div>
 
-The platform supports granting specific users read-write access to `/var/run/docker.sock` within their JupyterLab containers. This enables container orchestration, Docker builds, and Docker Compose operations from within user environments.
+The platform supports granting specific users read-write access to `/var/run/docker.sock` within their JupyterLab containers via the `docker-privileged` group. This enables container orchestration, Docker builds, and Docker Compose operations from within user environments.
 
 **How to Grant Access**:
 
