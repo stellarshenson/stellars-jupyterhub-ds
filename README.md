@@ -228,15 +228,15 @@ graph TB
         M1HOME["/home"]
         M1WORK["/home/lab/workspace"]
         M1CACHE["/home/lab/.cache"]
-        M1SHARED["/mnt/shared"]
     end
 
     subgraph CONTAINER2["User Container: user2"]
         M2HOME["/home"]
         M2WORK["/home/lab/workspace"]
         M2CACHE["/home/lab/.cache"]
-        M2SHARED["/mnt/shared"]
     end
+
+    MSHARED["/mnt/shared<br/>Shared across all users"]
 
     VOLHOME1 -.->|Mount| M1HOME
     VOLWORK1 -.->|Mount| M1WORK
@@ -246,15 +246,15 @@ graph TB
     VOLWORK2 -.->|Mount| M2WORK
     VOLCACHE2 -.->|Mount| M2CACHE
 
-    VOLSHARED -.->|Mount| M1SHARED
-    VOLSHARED -.->|Mount| M2SHARED
+    VOLSHARED -.->|Mount| MSHARED
+    MSHARED -.->|Accessible from| CONTAINER1
+    MSHARED -.->|Accessible from| CONTAINER2
 
     style HOST stroke:#f59e0b,stroke-width:3px
     style CONTAINER1 stroke:#3b82f6,stroke-width:3px
     style CONTAINER2 stroke:#3b82f6,stroke-width:3px
     style VOLSHARED stroke:#10b981,stroke-width:3px
-    style M1SHARED stroke:#10b981,stroke-width:2px
-    style M2SHARED stroke:#10b981,stroke-width:2px
+    style MSHARED stroke:#10b981,stroke-width:3px
 ```
 
 Each user receives four persistent volumes. Three user-specific volumes store home directory files, workspace projects, and cache data. The shared volume provides collaborative storage accessible across all user environments. Volume names follow the pattern `jupyterlab-{username}_<suffix>` for per-user isolation. The shared volume can be configured as CIFS mount for NAS integration.
