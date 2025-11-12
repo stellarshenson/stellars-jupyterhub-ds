@@ -224,6 +224,16 @@ graph TB
         VOLSHARED["jupyterhub_shared<br/>Docker Volume - Shared"]
     end
 
+    VOLHOME1 -.->|Mount| M1HOME
+    VOLWORK1 -.->|Mount| M1WORK
+    VOLCACHE1 -.->|Mount| M1CACHE
+
+    VOLHOME2 -.->|Mount| M2HOME
+    VOLWORK2 -.->|Mount| M2WORK
+    VOLCACHE2 -.->|Mount| M2CACHE
+
+    VOLSHARED --> MSHARED
+
     subgraph CONTAINER1["User Container: user1"]
         M1HOME["/home"]
         M1WORK["/home/lab/workspace"]
@@ -238,17 +248,8 @@ graph TB
 
     MSHARED["/mnt/shared<br/>Shared across all users"]
 
-    VOLHOME1 -.->|Mount| M1HOME
-    VOLWORK1 -.->|Mount| M1WORK
-    VOLCACHE1 -.->|Mount| M1CACHE
-
-    VOLHOME2 -.->|Mount| M2HOME
-    VOLWORK2 -.->|Mount| M2WORK
-    VOLCACHE2 -.->|Mount| M2CACHE
-
-    VOLSHARED -.->|Mount| MSHARED
-    MSHARED -.->|Accessible from| CONTAINER1
-    MSHARED -.->|Accessible from| CONTAINER2
+    MSHARED -.-> CONTAINER1
+    MSHARED -.-> CONTAINER2
 
     style HOST stroke:#f59e0b,stroke-width:3px
     style CONTAINER1 stroke:#3b82f6,stroke-width:3px
