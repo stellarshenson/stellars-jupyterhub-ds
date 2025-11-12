@@ -213,33 +213,33 @@ Users manage their servers through the home page. Running servers can be restart
 ```mermaid
 graph TB
     subgraph HOST["Docker Host"]
-        VOL_HOME[jupyterlab-username_home<br/>Docker Volume]
-        VOL_WORKSPACE[jupyterlab-username_workspace<br/>Docker Volume]
-        VOL_CACHE[jupyterlab-username_cache<br/>Docker Volume]
-        VOL_SHARED[jupyterhub_shared<br/>Docker Volume - Shared]
+        VOLHOME["jupyterlab-(username)_home<br/>Docker Volume"]
+        VOLWORK["jupyterlab-(username)_workspace<br/>Docker Volume"]
+        VOLCACHE["jupyterlab-(username)_cache<br/>Docker Volume"]
+        VOLSHARED["jupyterhub_shared<br/>Docker Volume - Shared"]
     end
 
-    subgraph CONTAINER["User Container: jupyterlab-username"]
-        MOUNT_HOME[/home<br/>User home directory]
-        MOUNT_WORKSPACE[/home/lab/workspace<br/>Working directory]
-        MOUNT_CACHE[/home/lab/.cache<br/>Cache directory]
-        MOUNT_SHARED[/mnt/shared<br/>Shared storage]
+    subgraph CONTAINER["User Container: jupyterlab-(username)"]
+        MHOME["/home<br/>User home directory"]
+        MWORK["/home/lab/workspace<br/>Working directory"]
+        MCACHE["/home/lab/.cache<br/>Cache directory"]
+        MSHARED["/mnt/shared<br/>Shared storage"]
     end
 
-    VOL_HOME -.->|Mount| MOUNT_HOME
-    VOL_WORKSPACE -.->|Mount| MOUNT_WORKSPACE
-    VOL_CACHE -.->|Mount| MOUNT_CACHE
-    VOL_SHARED -.->|Mount| MOUNT_SHARED
+    VOLHOME -.->|Mount| MHOME
+    VOLWORK -.->|Mount| MWORK
+    VOLCACHE -.->|Mount| MCACHE
+    VOLSHARED -.->|Mount| MSHARED
 
-    MOUNT_HOME -.->|Contains| HOME_DATA[.bashrc, .ssh, configs]
-    MOUNT_WORKSPACE -.->|Contains| WORKSPACE_DATA[notebooks, projects, code]
-    MOUNT_CACHE -.->|Contains| CACHE_DATA[pip cache, conda pkgs]
-    MOUNT_SHARED -.->|Contains| SHARED_DATA[Datasets, shared resources]
+    MHOME -.->|Contains| HOMEDATA[".bashrc, .ssh, configs"]
+    MWORK -.->|Contains| WORKDATA["notebooks, projects, code"]
+    MCACHE -.->|Contains| CACHEDATA["pip cache, conda pkgs"]
+    MSHARED -.->|Contains| SHAREDDATA["Datasets, shared resources"]
 
     style HOST stroke:#f59e0b,stroke-width:3px
     style CONTAINER stroke:#3b82f6,stroke-width:3px
-    style VOL_SHARED stroke:#10b981,stroke-width:2px
-    style MOUNT_SHARED stroke:#10b981,stroke-width:2px
+    style VOLSHARED stroke:#10b981,stroke-width:2px
+    style MSHARED stroke:#10b981,stroke-width:2px
 ```
 
 Each user receives four persistent volumes. Three user-specific volumes store home directory files, workspace projects, and cache data. The shared volume provides collaborative storage accessible across all user environments. Volume names follow the pattern `jupyterlab-{username}_<suffix>` for per-user isolation. The shared volume can be configured as CIFS mount for NAS integration.
