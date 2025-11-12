@@ -1,13 +1,37 @@
+# Created by https://www.toptal.com/developers/gitignore/api/linux
+# Edit at https://www.toptal.com/developers/gitignore?templates=linux
+**/.ipynb_checkpoints
+**/.claude
+**/.claude/*
+
+# EOF
+*.bundle.*
+lib/
+node_modules/
+*.log
+.eslintcache
+.stylelintcache
+*.egg-info/
+.ipynb_checkpoints
+*.tsbuildinfo
+stellars_jupyterlab_darcula_theme/labextension
+# Version file is handled by hatchling
+stellars_jupyterlab_darcula_theme/_version.py
+
+# Created by https://www.gitignore.io/api/python
+# Edit at https://www.gitignore.io/?templates=python
+
+### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+*$py.class
 
 # C extensions
 *.so
 
 # Distribution / packaging
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -19,9 +43,12 @@ lib64/
 parts/
 sdist/
 var/
-*.egg-info/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
 .installed.cfg
 *.egg
+MANIFEST
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -36,19 +63,23 @@ pip-delete-this-directory.txt
 # Unit test / coverage reports
 htmlcov/
 .tox/
+.nox/
 .coverage
 .coverage.*
 .cache
 nosetests.xml
+coverage/
 coverage.xml
 *.cover
+.hypothesis/
+.pytest_cache/
 
 # Translations
 *.mo
 *.pot
 
-# Django stuff:
-*.log
+# Scrapy stuff:
+.scrapy
 
 # Sphinx documentation
 docs/_build/
@@ -56,39 +87,42 @@ docs/_build/
 # PyBuilder
 target/
 
-# DotEnv configuration
-.env
+# pyenv
+.python-version
 
-# Database
-*.db
-*.rdb
+# celery beat schedule file
+celerybeat-schedule
 
-# Pycharm
-.idea
+# SageMath parsed files
+*.sage.py
 
-# VS Code
-.vscode/
+# Spyder project settings
+.spyderproject
+.spyproject
 
-# Spyder
-.spyproject/
+# Rope project settings
+.ropeproject
 
-# Jupyter NB Checkpoints
-.ipynb_checkpoints/
+# Mr Developer
+.mr.developer.cfg
+.project
+.pydevproject
 
-# exclude data from source control by default
-/data/
+# mkdocs documentation
+/site
 
-# Mac OS-specific storage files
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# End of https://www.gitignore.io/api/python
+
+# OSX files
 .DS_Store
 
-# vim
-*.swp
-*.swo
-
-# overrides
-**/*_override.yml
-**/*_override.py
-
-
-# Mypy cache
-.mypy_cache/
+# Yarn cache
+.yarn/
