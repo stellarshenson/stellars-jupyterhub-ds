@@ -75,6 +75,139 @@ graph TB
 
 Users access JupyterHub through Traefik reverse proxy with TLS termination. After authentication via NativeAuthenticator, JupyterHub spawns isolated JupyterLab containers per user using DockerSpawner. Each user gets dedicated persistent volumes for home directory, workspace files, and cache data, with optional shared storage for collaborative datasets.
 
+## Configuration Flow
+
+```mermaid
+graph TB
+    subgraph ENV["Environment Variables (compose.yml)"]
+        ADMIN[JUPYTERHUB_ADMIN<br/>Admin username]
+        BASEURL[JUPYTERHUB_BASE_URL<br/>URL prefix]
+        IMG[DOCKER_NOTEBOOK_IMAGE<br/>User container image]
+        NET[DOCKER_NETWORK_NAME<br/>Container network]
+        SSL[ENABLE_JUPYTERHUB_SSL<br/>0=off, 1=on]
+        GPU[ENABLE_GPU_SUPPORT<br/>0=off, 1=on, 2=auto]
+        TFLOG[TF_CPP_MIN_LOG_LEVEL<br/>TensorFlow verbosity]
+        NVIMG[NVIDIA_AUTODETECT_IMAGE<br/>CUDA test image]
+
+        subgraph SVCEN["ENABLE_SERVICE_*<br/>Passed to Lab as env"]
+            direction LR
+            MLF[ENABLE_SERVICE_MLFLOW]
+            GLN[ENABLE_SERVICE_GLANCES]
+            TNS[ENABLE_SERVICE_TENSORBOARD]
+            SVC_MORE[...]
+        end
+    end
+
+    subgraph CONFIG["jupyterhub_config.py"]
+        AUTH[NativeAuthenticator<br/>open_signup=False, enable_signup=True]
+        SPAWN[DockerSpawner<br/>spawner_class, remove=True]
+        NBDIR[DOCKER_NOTEBOOK_DIR<br/>/home/lab/workspace]
+        VOLS[DOCKER_SPAWNER_VOLUMES<br/>home/workspace/cache/shared]
+        VOLDESC[VOLUME_DESCRIPTIONS<br/>Optional UI labels]
+        GROUPS[BUILTIN_GROUPS<br/>docker-privileged]
+        HOOK[pre_spawn_hook<br/>Group check + docker.sock]
+        HANDLERS[extra_handlers<br/>ManageVolumes, RestartServer, Notifications]
+        TEMPLATES[template_paths<br/>Custom + Native + Default]
+    end
+
+    subgraph RUNTIME["Spawned User Container"]
+        LAB[JupyterLab Server<br/>Port 8888]
+        SERVICES[Services: MLflow, Glances, TensorBoard<br/>Controlled by ENABLE_SERVICE_* env]
+        GPUACCESS[GPU Access<br/>device_requests if enabled]
+    end
+
+    ADMIN --> AUTH
+    BASEURL --> CONFIG
+    IMG --> SPAWN
+    NET --> SPAWN
+    SSL --> CONFIG
+    TFLOG --> |Passed as env| LAB
+    NVIMG --> |Used for auto-detect| CONFIG
+
+    GPU --> |Auto-detect via nvidia-smi| SPAWN
+    GPU --> |Passed as env| LAB
+    GPU --> |device_requests| GPUACCESS
+
+    SVCEN --> |Passed as env| LAB
+    SVCEN --> |Controls startup| SERVICES
+
+    AUTH --> |Validates| SPAWN
+    SPAWN --> |Creates| LAB
+    NBDIR --> SPAWN
+    VOLS --> |Mounts| LAB
+    VOLDESC --> HANDLERS
+    GROUPS --> HOOK
+    HOOK --> |Conditionally mounts<br/>docker.sock| LAB
+    HANDLERS --> |API endpoints| LAB
+    TEMPLATES --> |Custom UI| LAB
+
+    style ENV stroke:#f59e0b,stroke-width:3px
+    style SVCEN stroke:#a855f7,stroke-width:2px
+    style CONFIG stroke:#10b981,stroke-width:3px
+    style RUNTIME stroke:#3b82f6,stroke-width:3px
+    style HOOK stroke:#ef4444,stroke-width:2px
+    style HANDLERS stroke:#ef4444,stroke-width:2px
+```
+
+Environment variables defined in `compose.yml` are consumed by `config/jupyterhub_config.py` to configure authentication, spawner behavior, and GPU detection. The configuration defines `DOCKER_SPAWNER_VOLUMES` for persistent storage, `VOLUME_DESCRIPTIONS` for optional UI labels, and `BUILTIN_GROUPS` for protected group management. When spawning user containers, these settings control which services are enabled (MLflow, Glances, TensorBoard), whether GPU access is granted via `device_requests`, and what volumes are mounted. The pre-spawn hook checks user group membership against `BUILTIN_GROUPS` to conditionally mount docker.sock for privileged users.
+
+## GPU Auto-Detection
+
+```mermaid
+graph LR
+    START[ENABLE_GPU_SUPPORT=2] --> CHECK{Check value}
+    CHECK -->|0| DISABLED[GPU Disabled]
+    CHECK -->|1| ENABLED[GPU Enabled]
+    CHECK -->|2| DETECT[Auto-detect]
+
+    DETECT --> SPAWN[Spawn test container<br/>nvidia/cuda:12.9.1-base]
+    SPAWN --> RUN[Execute nvidia-smi<br/>with runtime=nvidia]
+
+    RUN --> SUCCESS{Success?}
+    SUCCESS -->|Yes| SET_ON[Set ENABLE_GPU_SUPPORT=1<br/>Set NVIDIA_DETECTED=1]
+    SUCCESS -->|No| SET_OFF[Set ENABLE_GPU_SUPPORT=0<br/>Set NVIDIA_DETECTED=0]
+
+    SET_ON --> CLEANUP1[Remove test container<br/>jupyterhub_nvidia_autodetect]
+    SET_OFF --> CLEANUP2[Remove test container<br/>jupyterhub_nvidia_autodetect]
+
+    CLEANUP1 --> APPLY_ON[Apply device_requests<br/>to spawned containers]
+    CLEANUP2 --> APPLY_OFF[No GPU access<br/>for spawned containers]
+
+    ENABLED --> APPLY_ON
+    DISABLED --> APPLY_OFF
+
+    style START stroke:#f59e0b,stroke-width:3px
+    style DETECT stroke:#a855f7,stroke-width:3px
+    style SET_ON stroke:#10b981,stroke-width:2px
+    style SET_OFF stroke:#ef4444,stroke-width:2px
+    style APPLY_ON stroke:#10b981,stroke-width:3px
+    style APPLY_OFF stroke:#6b7280,stroke-width:2px
+```
+
+When `ENABLE_GPU_SUPPORT=2` (auto-detect mode), JupyterHub spawns a temporary CUDA container running `nvidia-smi` with `runtime=nvidia`. If the command succeeds, GPU support is enabled and `device_requests` are added to spawned user containers. If it fails, GPU support is disabled. The test container is always removed after detection. Manual override is possible by setting `ENABLE_GPU_SUPPORT=1` (force enable) or `ENABLE_GPU_SUPPORT=0` (force disable).
+
+## User Self-Service Workflow
+
+```mermaid
+graph LR
+    HOME[Home Page] --> RUNNING{Server State}
+
+    RUNNING -->|Running| RESTART[Restart Server<br/>container.restart]
+    RUNNING -->|Stopped| START[Start Server<br/>spawner.start]
+    RUNNING -->|Stopped| VOLUMES[Manage Volumes<br/>Select + Delete]
+
+    RESTART --> |Docker API| REFRESH1[Page Refresh]
+    VOLUMES --> |Docker API| DELETE[volume.remove]
+    DELETE --> REFRESH2[Page Refresh]
+
+    style HOME stroke:#0284c7,stroke-width:3px
+    style RESTART stroke:#10b981,stroke-width:2px
+    style VOLUMES stroke:#ef4444,stroke-width:2px
+    style START stroke:#a855f7,stroke-width:2px
+```
+
+Users manage their servers through the home page. Running servers can be restarted via Docker API without recreation. Stopped servers can be started normally or have volumes selectively deleted through a modal interface presenting checkboxes for home, workspace, and cache volumes with optional descriptions from configuration.
+
 ## References
 
 This project spawns user environments using docker image: [stellars/stellars-jupyterlab-ds](https://hub.docker.com/r/stellars/stellars-jupyterlab-ds)
@@ -96,9 +229,8 @@ volumes:
   - /var/run/docker.sock:/var/run/docker.sock:rw
 ```
 
-<div class="alert alert-block alert-warning">
-<b>Security Note:</b> The JupyterHub container has full access to the Docker daemon. Only trusted administrators should have access to JupyterHub configuration.
-</div>
+> [!WARNING]
+> The JupyterHub container has full access to the Docker daemon. Only trusted administrators should have access to JupyterHub configuration.
 
 ## Quickstart
 
@@ -183,9 +315,8 @@ c.DockerSpawner.volumes = {
 
 #### Grant Docker Socket Access to Privileged Users
 
-<div class="alert alert-block alert-warning">
-<b>Security Warning:</b> Docker socket access grants effective root-level control over the Docker host. Only grant this permission to trusted users.
-</div>
+> [!WARNING]
+> Docker socket access grants effective root-level control over the Docker host. Only grant this permission to trusted users.
 
 The platform supports granting specific users read-write access to `/var/run/docker.sock` within their JupyterLab containers via the `docker-privileged` group. This enables container orchestration, Docker builds, and Docker Compose operations from within user environments.
 
