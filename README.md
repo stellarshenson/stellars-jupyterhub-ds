@@ -219,7 +219,7 @@ graph TB
         VOLSHARED["jupyterhub_shared<br/>Docker Volume - Shared"]
     end
 
-    subgraph CONTAINER["User Container: jupyterlab-(username)"]
+    subgraph CONTAINER["User Container"]
         MHOME["/home<br/>User home directory"]
         MWORK["/home/lab/workspace<br/>Working directory"]
         MCACHE["/home/lab/.cache<br/>Cache directory"]
