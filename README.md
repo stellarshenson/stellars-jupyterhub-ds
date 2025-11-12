@@ -248,8 +248,8 @@ graph TB
 
     MSHARED["/mnt/shared<br/>Shared across all users"]
 
-    MSHARED -.-> CONTAINER1
-    MSHARED -.-> CONTAINER2
+    MSHARED ----> CONTAINER1
+    MSHARED ----> CONTAINER2
 
     style HOST stroke:#f59e0b,stroke-width:3px
     style CONTAINER1 stroke:#3b82f6,stroke-width:3px
@@ -259,6 +259,8 @@ graph TB
 ```
 
 Each user receives four persistent volumes. Three user-specific volumes store home directory files, workspace projects, and cache data. The shared volume provides collaborative storage accessible across all user environments. Volume names follow the pattern `jupyterlab-{username}_<suffix>` for per-user isolation. The shared volume can be configured as CIFS mount for NAS integration.
+
+Users can selectively reset their personal volumes (home, workspace, cache) at any time through the Manage Volumes feature when their server is stopped. The shared volume cannot be reset by individual users as it contains collaborative data accessible to all users.
 
 ## References
 
