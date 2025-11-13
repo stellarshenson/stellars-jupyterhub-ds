@@ -1,6 +1,9 @@
 # Stellars JupyterHub for Data Science Platform
-![Docker Pulls](https://img.shields.io/docker/pulls/stellars/stellars-jupyterhub-ds?style=flat-square)
-![Docker Image](https://img.shields.io/docker/image-size/stellars/stellars-jupyterhub-ds/latest?style=flat-square)
+![GitHub Actions](https://github.com/stellarshenson/stellars-jupyterhub-ds/actions/workflows/docker-build.yml/badge.svg)
+![Docker Image](https://img.shields.io/docker/image-size/stellars/stellars-jupyterhub-ds/latest?style=flat)
+![Docker Pulls](https://img.shields.io/docker/pulls/stellars/stellars-jupyterhub-ds?style=flat)
+![JupyterLab 4](https://img.shields.io/badge/JupyterLab-%20%20%20%204%20%20%20%20-orange?style=flat)
+[![Brought To You By KOLOMOLO](https://img.shields.io/badge/Brought%20To%20You%20By-KOLOMOLO-00ffff?style=flat)](https://kolomolo.com)
 
 Multi-user JupyterHub 4 deployment platform with data science stack, GPU support, and NativeAuthenticator. The platform spawns isolated JupyterLab environments per user using DockerSpawner, backed by the [stellars/stellars-jupyterlab-ds](https://hub.docker.com/r/stellars/stellars-jupyterlab-ds) image (from [stellars-jupyterlab-ds](https://github.com/stellarshenson/stellars-jupyterlab-ds) project).
 
@@ -40,6 +43,7 @@ Select individual volumes to reset - home directory, workspace files, or cache d
 Admin panel for broadcasting notifications to all active JupyterLab servers.
 
 ![Admin Notification Broadcast](.resources/screenshot-send-notification.png)
+
 
 ## Architecture
 
