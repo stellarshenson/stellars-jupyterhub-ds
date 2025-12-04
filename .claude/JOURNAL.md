@@ -48,3 +48,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 15. **Task - Update watchtower image**: Replaced deprecated watchtower image with maintained fork<br>
     **Result**: Changed watchtower image from containrrr/watchtower:latest to nickfedor/watchtower:latest in compose.yml, new image is actively maintained and compatible with latest Docker versions, bumped version to 3.3.1
+
+16. **Task - Cleanup startup scripts**: Removed obsolete nvidia-smi script and renumbered ensure_groups<br>
+    **Result**: Deleted 01_nvidia-smi.sh (GPU detection handled in jupyterhub_config.py), renamed 02_ensure_groups.py to 01_ensure_groups.py for sequential ordering, bumped version to 3.3.2
