@@ -98,7 +98,7 @@ services:
     image: nickfedor/watchtower:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw # to control docker and refresh images
-    command: --cleanup --no-startup --schedule "0 0 * * *" # daily at midnight only, no check on startup
+    command: --cleanup --schedule "0 0 * * *" # daily at midnight only (no --update-on-start = no startup check)
     security_opt:
       - seccomp:unconfined #optional
     depends_on:
