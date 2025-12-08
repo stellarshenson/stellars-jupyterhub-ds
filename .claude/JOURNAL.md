@@ -51,3 +51,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 16. **Task - Cleanup startup scripts**: Removed obsolete nvidia-smi script and renumbered ensure_groups<br>
     **Result**: Deleted 01_nvidia-smi.sh (GPU detection now uses separate nvidia/cuda container spawned by jupyterhub_config.py), renamed 02_ensure_groups.py to 01_ensure_groups.py for sequential ordering, bumped version to 3.3.2
+
+17. **Task - Fix Watchtower refresh frequency**: Investigated and fixed Watchtower running image checks on every container restart instead of daily<br>
+    **Result**: Added `--no-startup` flag to Watchtower command in compose.yml, preventing image refresh checks on container startup/restart - now only runs at scheduled midnight (cron `0 0 * * *`)
