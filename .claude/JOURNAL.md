@@ -54,3 +54,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 17. **Task - Fix Watchtower refresh frequency**: Investigated and fixed Watchtower scheduling issues<br>
     **Result**: Removed unsupported `--no-startup` flag (caused crash), fixed cron expression from 5-field `0 0 * * *` to 6-field `0 0 0 * * *` (watchtower uses seconds) - was running hourly instead of daily at midnight UTC
+
+18. **Task - Refactor Docker access control groups**: Split into two groups with distinct purposes<br>
+    **Result**: Renamed `docker-privileged` to `docker-sock` (mounts docker.sock), created new `docker-privileged` (runs with --privileged flag). Updated pre_spawn_hook to check both groups and set spawner.volumes or spawner.privileged accordingly. Updated README.md, doc/docker-socket-permissions.md, .claude/CLAUDE.md with new group documentation

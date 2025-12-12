@@ -13,7 +13,7 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 - **GPU Auto-Detection**: Automatic NVIDIA CUDA GPU detection and configuration for spawned user containers
 - **Notification Broadcast**: Admin broadcast to all active servers via `/hub/notifications`. Supports six notification types, 140-character limit. Requires [jupyterlab_notifications_extension](https://github.com/stellarshenson/jupyterlab_notifications_extension)
 - **User Self-Service**: Users can restart their JupyterLab containers and selectively reset persistent volumes (home/workspace/cache) without admin intervention
-- **Privileged Access Control**: Group-based docker.sock access for trusted users enabling container orchestration from within JupyterLab
+- **Docker Access Control**: Group-based access via `docker-sock` (container orchestration) and `docker-privileged` (full container privileges)
 - **Isolated Environments**: Each user gets dedicated JupyterLab container with persistent volumes via DockerSpawner
 - **Native Authentication**: Built-in user management with NativeAuthenticator supporting self-registration and admin approval
 - **Shared Storage**: Optional CIFS/NAS mount support for shared datasets across all users
@@ -109,8 +109,8 @@ graph TB
         NBDIR[DOCKER_NOTEBOOK_DIR<br/>/home/lab/workspace]
         VOLS[DOCKER_SPAWNER_VOLUMES<br/>home/workspace/cache/shared]
         VOLDESC[VOLUME_DESCRIPTIONS<br/>Optional UI labels]
-        GROUPS[BUILTIN_GROUPS<br/>docker-privileged]
-        HOOK[pre_spawn_hook<br/>Group check + docker.sock]
+        GROUPS[BUILTIN_GROUPS<br/>docker-sock, docker-privileged]
+        HOOK[pre_spawn_hook<br/>Group check + privileges]
         HANDLERS[extra_handlers<br/>ManageVolumes, RestartServer, Notifications]
         TEMPLATES[template_paths<br/>Custom + Native + Default]
     end
@@ -280,7 +280,7 @@ Visit the project page for stellars-jupyterlab-ds: https://github.com/stellarshe
 - **DockerSpawner**: Spawning and managing isolated JupyterLab containers for each user
 - **Volume Management**: Allowing users to reset their persistent volumes (home/workspace/cache)
 - **Container Control**: Enabling server restart functionality from the user control panel
-- **Privileged Access**: Supporting optional docker.sock access for trusted users within their JupyterLab environments
+- **Docker Access**: Supporting docker.sock and privileged mode for trusted users within their JupyterLab environments
 
 The `compose.yml` file includes this mount by default:
 ```yaml
@@ -372,29 +372,25 @@ c.DockerSpawner.volumes = {
 }
 ```
 
-#### Grant Docker Socket Access to Privileged Users
+#### Docker Access Control Groups
 
 > [!WARNING]
-> Docker socket access grants effective root-level control over the Docker host. Only grant this permission to trusted users.
+> Both groups grant significant privileges. `docker-sock` provides Docker host control. `docker-privileged` provides full container privileges. Only grant to trusted users.
 
-The platform supports granting specific users read-write access to `/var/run/docker.sock` within their JupyterLab containers via the `docker-privileged` group. This enables container orchestration, Docker builds, and Docker Compose operations from within user environments.
+Two built-in groups control Docker access levels:
+
+- **`docker-sock`**: Mounts `/var/run/docker.sock` into the user container. Enables Docker CLI, container orchestration, image builds, and Docker Compose operations
+- **`docker-privileged`**: Runs user container with `--privileged` flag. Enables hardware access, loading kernel modules, nested virtualization, and operations requiring elevated capabilities
 
 **How to Grant Access**:
 
-1. Log in as admin and navigate to Admin Panel (`https://localhost/jupyterhub/hub/admin`)
-2. Click "Groups" in the navigation
-3. Click on the `docker-privileged` group (automatically created at startup)
-4. Add users who need docker.sock access to this group
-5. Users must restart their server (Stop My Server -> Start My Server) for changes to take effect
+1. Admin Panel → Groups (`/hub/admin`)
+2. Click on `docker-sock` or `docker-privileged` group
+3. Add users to the group
+4. Users restart their server for changes to take effect
 
 **Technical Details**:
 
-The `docker-privileged` group is a built-in protected group that cannot be permanently deleted. It is automatically created at JupyterHub startup and recreated before every container spawn if missing. A pre-spawn hook (`config/jupyterhub_config.py::pre_spawn_hook`) checks user group membership before spawning containers. Users in the `docker-privileged` group will have `/var/run/docker.sock` mounted with read-write permissions in their JupyterLab environment.
-
-**Use Cases**:
-- Building custom Docker images from within JupyterLab
-- Running Docker Compose stacks for local development
-- Container orchestration and management tasks
-- Advanced DevOps workflows requiring Docker API access
+Both groups are built-in protected groups (auto-recreated if deleted). Pre-spawn hook (`config/jupyterhub_config.py::pre_spawn_hook`) checks membership before spawning containers.
 
 <!-- EOF -->

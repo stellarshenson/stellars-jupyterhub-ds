@@ -160,11 +160,13 @@ if c is not None:
     }
 
 # Built-in groups that cannot be deleted (auto-recreated if missing)
-BUILTIN_GROUPS = ['docker-privileged']
+# docker-sock: grants /var/run/docker.sock access (container orchestration)
+# docker-privileged: runs container with --privileged flag (full host access)
+BUILTIN_GROUPS = ['docker-sock', 'docker-privileged']
 
-# Pre-spawn hook to conditionally mount docker.sock for privileged users
+# Pre-spawn hook to conditionally grant docker access based on group membership
 async def pre_spawn_hook(spawner):
-    """Grant docker.sock access to users in 'docker-privileged' group"""
+    """Grant docker access to users based on group membership"""
     from jupyterhub.orm import Group
 
     # Ensure built-in groups exist (protection against deletion)
@@ -179,14 +181,19 @@ async def pre_spawn_hook(spawner):
     username = spawner.user.name
     user_groups = [g.name for g in spawner.user.groups]
 
-    # Check if user is in docker-privileged group
-    if 'docker-privileged' in user_groups:
-        spawner.log.info(f"Granting docker.sock access to privileged user: {username}")
-        # Add docker.sock mount with read-write permissions
+    # docker-sock: mount docker.sock for container orchestration
+    if 'docker-sock' in user_groups:
+        spawner.log.info(f"Granting docker.sock access to user: {username}")
         spawner.volumes['/var/run/docker.sock'] = '/var/run/docker.sock'
     else:
-        # Ensure docker.sock is not mounted for non-privileged users
         spawner.volumes.pop('/var/run/docker.sock', None)
+
+    # docker-privileged: run container with --privileged flag
+    if 'docker-privileged' in user_groups:
+        spawner.log.info(f"Granting privileged container mode to user: {username}")
+        spawner.privileged = True
+    else:
+        spawner.privileged = False
 
 # Apply remaining configuration (only when loaded by JupyterHub, not when imported)
 if c is not None:

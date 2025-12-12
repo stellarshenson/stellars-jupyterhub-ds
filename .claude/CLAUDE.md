@@ -156,42 +156,29 @@ volumes:
 
 User containers will access this at `/mnt/shared`.
 
-## Privileged User Access - Docker Socket
+## Docker Access Control Groups
 
-**Purpose**: Allows administrators to grant specific users read-write access to the Docker socket (`/var/run/docker.sock`) within their spawned JupyterLab containers.
+**Purpose**: Group-based Docker access control for user containers.
 
-**Security Warning**: Docker socket access grants effective root-level control over the Docker host. Only grant this permission to trusted users who require container orchestration capabilities.
+**Security Warning**: Both groups grant significant privileges. `docker-sock` provides Docker host control. `docker-privileged` provides full container privileges. Only grant to trusted users.
+
+**Built-in Groups**:
+| Group | Effect | Use Case |
+|-------|--------|----------|
+| `docker-sock` | Mounts `/var/run/docker.sock` | Container orchestration, Docker builds |
+| `docker-privileged` | Runs container with `--privileged` flag | Hardware access, kernel modules |
 
 **Implementation**:
-- Uses JupyterHub's native group system with built-in group protection
-- Group name: `docker-privileged` (built-in, cannot be deleted)
-- Managed through admin panel at `/hub/admin`
-- **Single source of truth**: Built-in groups list defined in `config/jupyterhub_config.py::BUILTIN_GROUPS`
-- Startup script reads from config: `services/jupyterhub/conf/bin/start-platform.d/02_ensure_groups.py`
-- Runtime protection hook: `config/jupyterhub_config.py::pre_spawn_hook`
+- Single source of truth: `config/jupyterhub_config.py::BUILTIN_GROUPS`
+- Startup script: `services/jupyterhub/conf/bin/start-platform.d/01_ensure_groups.py`
+- Runtime hook: `config/jupyterhub_config.py::pre_spawn_hook`
 
-**Usage**:
-1. Admin logs into JupyterHub and navigates to Admin Panel
-2. Click "Groups" to view all groups
-3. Click on `docker-privileged` group (automatically created at startup)
-4. Add users to the group who need docker.sock access
-5. Users must restart their server for changes to take effect
+**Usage**: Admin Panel → Groups (`/hub/admin`) → Add users → Users restart server
 
 **Technical Details**:
-- `docker-privileged` is a built-in protected group that automatically recreates if deleted
-- Pre-spawn hook checks user's group membership before container launch
-- If user is in `docker-privileged` group, `/var/run/docker.sock` is mounted with rw permissions
-- Non-privileged users never have docker.sock mounted
+- Both groups auto-recreate if deleted (startup + pre-spawn hook)
+- Pre-spawn hook checks membership and sets `spawner.volumes` or `spawner.privileged`
 - Changes require server restart (stop/start cycle)
-- Group is recreated on JupyterHub restart and before every container spawn
-
-**Adding New Built-in Groups**:
-To add more protected groups, edit only `config/jupyterhub_config.py`:
-```python
-# Built-in groups that cannot be deleted (auto-recreated if missing)
-BUILTIN_GROUPS = ['docker-privileged', 'new-group-name']
-```
-The startup script will automatically read this list and create missing groups.
 
 ## Notification Broadcast System
 
