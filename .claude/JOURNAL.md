@@ -57,3 +57,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 18. **Task - Refactor Docker access control groups**: Split into two groups with distinct purposes<br>
     **Result**: Renamed `docker-privileged` to `docker-sock` (mounts docker.sock), created new `docker-privileged` (runs with --privileged flag). Updated pre_spawn_hook to check both groups and set spawner.volumes or spawner.privileged accordingly. Updated README.md, doc/docker-socket-permissions.md, .claude/CLAUDE.md with new group documentation
+
+19. **Task - Fix privileged container mode**: DockerSpawner privileged flag not working<br>
+    **Result**: Changed from `spawner.privileged = True` to `spawner.extra_host_config['privileged'] = True` - DockerSpawner requires extra_host_config dict for host configuration options. Bumped version to 3.4.1
