@@ -191,9 +191,9 @@ async def pre_spawn_hook(spawner):
     # docker-privileged: run container with --privileged flag
     if 'docker-privileged' in user_groups:
         spawner.log.info(f"Granting privileged container mode to user: {username}")
-        spawner.privileged = True
+        spawner.extra_host_config['privileged'] = True
     else:
-        spawner.privileged = False
+        spawner.extra_host_config.pop('privileged', None)
 
 # Apply remaining configuration (only when loaded by JupyterHub, not when imported)
 if c is not None:

@@ -15,7 +15,7 @@ async def pre_spawn_hook(spawner):
     if 'docker-sock' in user_groups:
         spawner.volumes['/var/run/docker.sock'] = '/var/run/docker.sock'
     if 'docker-privileged' in user_groups:
-        spawner.privileged = True
+        spawner.extra_host_config['privileged'] = True
 ```
 
 **Management**: Admin panel `/hub/admin` -> Groups. User must restart server after membership change.
