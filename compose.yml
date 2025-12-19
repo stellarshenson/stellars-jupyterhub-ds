@@ -96,6 +96,8 @@ services:
   watchtower:
     container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-watchtower
     image: nickfedor/watchtower:latest
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false" # exclude from self-updates
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw # to control docker and refresh images
     command: --cleanup --schedule "0 0 0 * * *" # daily at midnight UTC (6-field cron with seconds)
