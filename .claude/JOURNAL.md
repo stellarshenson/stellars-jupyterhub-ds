@@ -60,3 +60,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 19. **Task - Fix privileged container mode**: DockerSpawner privileged flag not working<br>
     **Result**: Changed from `spawner.privileged = True` to `spawner.extra_host_config['privileged'] = True` - DockerSpawner requires extra_host_config dict for host configuration options. Bumped version to 3.4.1
+
+20. **Task - Exclude watchtower from self-updates**: Prevent watchtower from updating itself<br>
+    **Result**: Added `com.centurylinklabs.watchtower.enable=false` label to watchtower service in compose.yml - legacy namespace kept by forks for backward compatibility
