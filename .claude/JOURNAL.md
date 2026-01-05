@@ -66,3 +66,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 21. **Task - Traefik host-based routing template**: Created deployment template for local Traefik with self-signed certificates<br>
     **Result**: Added `extra/traefik-host-based-routing/` template for creating `<name>_stellars_jupyterhub_ds` deployments with local Traefik reverse proxy (ports 80/443), self-signed wildcard certificates, and HTTP->HTTPS redirect. Includes compose_override.yml with YOURDOMAIN placeholder, Makefile (start/stop/pull/logs/status), start.sh (clone/pull + start), stop.sh, generate-certs.sh (creates wildcard cert and tls.yml for given domain), .gitignore (excludes certs and cloned repo). Updated extra/README.md with template listing
+
+22. **Task - Fix root path base URL redirect**: Fixed double-slash issue when JUPYTERHUB_BASE_URL=/<br>
+    **Result**: Added `JUPYTERHUB_BASE_URL_PREFIX` normalization in `config/jupyterhub_config.py`. When `JUPYTERHUB_BASE_URL` is `/`, `''`, or `None`, prefix becomes empty string. Updated three URL concatenations (default_url, hub_connect_url, base_url) to use prefix instead of raw BASE_URL. Prevents browser interpreting `//hub/home` as protocol-relative URL pointing to host `hub`
