@@ -4,7 +4,7 @@
 #
 # PORTS:  80 (HTTP -> redirects to 443)  |  443 (HTTPS)
 # CERT:   Self-signed cert for *.YOURDOMAIN in ./certs/
-# ACCESS: https://jupyterhub.YOURDOMAIN/
+# ACCESS: https://jupyterhub.YOURDOMAIN/ or https://jupyterhub.localhost/
 # TRUST:  Import certs/_.YOURDOMAIN/cert.pem to browser
 #
 # Replace YOURDOMAIN with your actual domain (e.g., lab.stellars-tech.eu)
