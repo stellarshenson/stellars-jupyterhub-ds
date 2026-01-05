@@ -36,7 +36,7 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout "${CERT_DIR}/key.pem" \
     -out "${CERT_DIR}/cert.pem" \
     -subj "/CN=*.${DOMAIN}" \
-    -addext "subjectAltName=DNS:*.${DOMAIN},DNS:${DOMAIN}"
+    -addext "subjectAltName=DNS:*.${DOMAIN},DNS:${DOMAIN},DNS:localhost,DNS:*.localhost"
 
 # Generate Traefik TLS configuration
 cat > "$TLS_CONFIG" << EOF
