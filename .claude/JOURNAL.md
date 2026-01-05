@@ -69,3 +69,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 22. **Task - Fix root path base URL redirect**: Fixed double-slash issue when JUPYTERHUB_BASE_URL=/<br>
     **Result**: Added `JUPYTERHUB_BASE_URL_PREFIX` normalization in `config/jupyterhub_config.py`. When `JUPYTERHUB_BASE_URL` is `/`, `''`, or `None`, prefix becomes empty string. Updated three URL concatenations (default_url, hub_connect_url, base_url) to use prefix instead of raw BASE_URL. Prevents browser interpreting `//hub/home` as protocol-relative URL pointing to host `hub`
+
+23. **Task - Update traefik-host-based-routing template**: Refactored deployment template for root path routing<br>
+    **Result**: Removed Makefile from `extra/traefik-host-based-routing/`. Updated `compose_override.yml` with `JUPYTERHUB_BASE_URL=/` and root path Traefik routing. Updated `start.sh` to pull images and use `--no-build`. Updated README to reflect simplified workflow without Makefile
