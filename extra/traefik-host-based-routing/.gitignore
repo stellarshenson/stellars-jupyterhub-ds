@@ -1,0 +1,23 @@
+# Logs
+logs/
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+
+# TLS certificates (private keys)
+certs/*.pem
+certs/**/*.pem
+
+# Cloned repository
+stellars-jupyterhub-ds/

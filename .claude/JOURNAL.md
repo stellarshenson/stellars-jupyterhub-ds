@@ -63,3 +63,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 20. **Task - Exclude watchtower from self-updates**: Prevent watchtower from updating itself<br>
     **Result**: Added `com.centurylinklabs.watchtower.enable=false` label to watchtower service in compose.yml - legacy namespace kept by forks for backward compatibility
+
+21. **Task - Traefik host-based routing template**: Created deployment template for local Traefik with self-signed certificates<br>
+    **Result**: Added `extra/traefik-host-based-routing/` template for creating `<name>_stellars_jupyterhub_ds` deployments with local Traefik reverse proxy (ports 80/443), self-signed wildcard certificates, and HTTP->HTTPS redirect. Includes compose_override.yml with YOURDOMAIN placeholder, Makefile (start/stop/pull/logs/status), start.sh (clone/pull + start), stop.sh, generate-certs.sh (creates wildcard cert and tls.yml for given domain), .gitignore (excludes certs and cloned repo). Updated extra/README.md with template listing

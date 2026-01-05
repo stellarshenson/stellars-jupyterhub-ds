@@ -1,0 +1,88 @@
+# =============================================================================
+# Compose Override - Local Traefik with Self-Signed Certificates
+# =============================================================================
+#
+# PORTS:  80 (HTTP -> redirects to 443)  |  443 (HTTPS)
+# CERT:   Self-signed cert for *.YOURDOMAIN in ./certs/
+# ACCESS: https://jupyterhub.YOURDOMAIN/jupyterhub
+# TRUST:  Import certs/_.YOURDOMAIN/cert.pem to browser
+#
+# Replace YOURDOMAIN with your actual domain (e.g., lab.stellars-tech.eu)
+#
+# =============================================================================
+
+services:
+
+  traefik:
+    image: traefik:latest
+    command:
+      # Entrypoints
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.http.tls=true"
+
+      # Docker provider
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+
+      # File provider for TLS certificates
+      - "--providers.file.directory=/certs"
+      - "--providers.file.watch=true"
+
+      # API and Dashboard
+      - "--api.dashboard=true"
+      - "--api.insecure=false"
+
+      # TLS configuration
+      - "--serverstransport.insecureskipverify=true"
+
+      # Logging
+      - "--log.level=INFO"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./certs:/certs:ro
+    networks:
+      - jupyterhub_network
+    labels:
+      - "traefik.enable=true"
+
+      # Global HTTP->HTTPS redirect
+      - "traefik.http.routers.http-catchall.rule=HostRegexp(`.+`)"
+      - "traefik.http.routers.http-catchall.entrypoints=web"
+      - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
+      - "traefik.http.routers.http-catchall.priority=1"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+
+      # Dashboard: traefik.YOURDOMAIN
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.YOURDOMAIN`)"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls=true"
+      - "traefik.http.routers.dashboard.service=api@internal"
+    restart: unless-stopped
+
+  jupyterhub:
+    ports: []
+    networks:
+      - jupyterhub_network
+    labels:
+      - "traefik.enable=true"
+
+      # JupyterHub router
+      - "traefik.http.routers.jupyterhub-rtr.rule=Host(`jupyterhub.YOURDOMAIN`) && (Path(`/jupyterhub`) || PathPrefix(`/jupyterhub/`))"
+      - "traefik.http.routers.jupyterhub-rtr.entrypoints=websecure"
+      - "traefik.http.routers.jupyterhub-rtr.tls=true"
+      - "traefik.http.routers.jupyterhub-rtr.service=jupyterhub-svc"
+      - "traefik.http.services.jupyterhub-svc.loadbalancer.server.scheme=http"
+      - "traefik.http.services.jupyterhub-svc.loadbalancer.server.port=8000"
+
+  watchtower:
+    networks:
+      - jupyterhub_network
+
+networks:
+  jupyterhub_network:
+    name: jupyterhub_network
