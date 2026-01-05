@@ -52,6 +52,11 @@ ENABLE_SERVICE_TENSORBOARD = int(os.environ.get("ENABLE_SERVICE_TENSORBOARD", 1)
 TF_CPP_MIN_LOG_LEVEL = int(os.environ.get("TF_CPP_MIN_LOG_LEVEL", 3)) 
 DOCKER_NOTEBOOK_DIR = "/home/lab/workspace"
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")
+# Normalize base URL - use empty string for root path to avoid double slashes
+if JUPYTERHUB_BASE_URL in ['/', '', None]:
+    JUPYTERHUB_BASE_URL_PREFIX = ''
+else:
+    JUPYTERHUB_BASE_URL_PREFIX = JUPYTERHUB_BASE_URL
 JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")
 NETWORK_NAME = os.environ["DOCKER_NETWORK_NAME"]
 NVIDIA_AUTODETECT_IMAGE = os.environ.get("NVIDIA_AUTODETECT_IMAGE", 'nvidia/cuda:12.9.1-base-ubuntu24.04') 
@@ -110,7 +115,7 @@ if c is not None:
 
     # prevent auto-spawn for admin users
     # Redirect admin to admin panel instead
-    c.JupyterHub.default_url = JUPYTERHUB_BASE_URL + '/hub/home'  
+    c.JupyterHub.default_url = JUPYTERHUB_BASE_URL_PREFIX + '/hub/home'  
 
 # User mounts in the spawned container (defined as constant for import by handlers)
 DOCKER_SPAWNER_VOLUMES = {
@@ -206,7 +211,7 @@ if c is not None:
     ]
 
     # update internal routing for spawned containers
-    c.JupyterHub.hub_connect_url = 'http://jupyterhub:8080' + JUPYTERHUB_BASE_URL + '/hub'
+    c.JupyterHub.hub_connect_url = 'http://jupyterhub:8080' + JUPYTERHUB_BASE_URL_PREFIX + '/hub'
 
     # remove containers once they are stopped
     c.DockerSpawner.remove = True
@@ -217,7 +222,7 @@ if c is not None:
     # user containers will access hub by container name on the Docker network
     c.JupyterHub.hub_ip = "jupyterhub"
     c.JupyterHub.hub_port = 8080
-    c.JupyterHub.base_url = JUPYTERHUB_BASE_URL + '/'
+    c.JupyterHub.base_url = JUPYTERHUB_BASE_URL_PREFIX + '/' if JUPYTERHUB_BASE_URL_PREFIX else '/'
 
     # persist hub data on volume mounted inside container
     c.JupyterHub.cookie_secret_file = "/data/jupyterhub_cookie_secret"
