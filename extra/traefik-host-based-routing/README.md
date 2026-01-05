@@ -10,19 +10,14 @@ Template for deploying stellars-jupyterhub-ds with local Traefik reverse proxy a
    cd /path/to/<name>_stellars_jupyterhub_ds
    ```
 
-2. Clone stellars-jupyterhub-ds:
-   ```bash
-   git clone https://github.com/stellarshenson/stellars-jupyterhub-ds.git
-   ```
-
-3. Generate certificates for your domain:
+2. Generate certificates for your domain:
    ```bash
    ./generate-certs.sh yourdomain.example.com
    ```
 
-4. Edit `compose_override.yml` - replace `YOURDOMAIN` with your domain
+3. Edit `compose_override.yml` - replace `YOURDOMAIN` with your domain
 
-5. Start:
+4. Start:
    ```bash
    ./start.sh
    ```
@@ -31,7 +26,6 @@ Template for deploying stellars-jupyterhub-ds with local Traefik reverse proxy a
 
 ```
 <name>_stellars_jupyterhub_ds/
-  Makefile                      # Deployment commands
   compose_override.yml          # Local Traefik + JupyterHub config
   start.sh                      # Pull latest + start services
   stop.sh                       # Stop services
@@ -41,7 +35,7 @@ Template for deploying stellars-jupyterhub-ds with local Traefik reverse proxy a
     _.yourdomain.example.com/   # Generated wildcard cert
       cert.pem                  # Certificate (import to browser)
       key.pem                   # Private key
-  stellars-jupyterhub-ds/       # Cloned repository
+  stellars-jupyterhub-ds/       # Cloned repository (gitignored)
 ```
 
 ## Configuration
@@ -55,7 +49,7 @@ Edit `compose_override.yml` to customize:
 ## Access
 
 After deployment:
-- JupyterHub: https://jupyterhub.yourdomain.example.com/jupyterhub
+- JupyterHub: https://jupyterhub.yourdomain.example.com/
 - Traefik: https://traefik.yourdomain.example.com
 
 Import `certs/_.<domain>/cert.pem` to browser for trusted HTTPS.
@@ -65,7 +59,9 @@ Import `certs/_.<domain>/cert.pem` to browser for trusted HTTPS.
 ```bash
 ./start.sh    # Pull latest + start services
 ./stop.sh     # Stop all services
-make logs     # Follow JupyterHub logs
-make status   # Show container status
-make pull     # Pull latest from upstream
+```
+
+To view logs:
+```bash
+docker compose -f stellars-jupyterhub-ds/compose.yml -f compose_override.yml logs -f jupyterhub
 ```
