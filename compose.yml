@@ -61,6 +61,7 @@ services:
       - DOCKER_NOTEBOOK_IMAGE=stellars/stellars-jupyterlab-ds:latest # jupyterlab image to spawn
       - DOCKER_NETWORK_NAME=jupyterhub_network # spawned containers will join this network
       - JUPYTERHUB_BASE_URL=/jupyterhub # default prefix
+      - CERTIFICATE_DOMAIN_NAME=localhost # domain name for self-signed certificate generation
       - ENABLE_GPU_SUPPORT=2 # gpu status: 0 - disabled, 1 - enabled, 2 - auto-detect
       - ENABLE_JUPYTERHUB_SSL=0 # if using traefik - you do need direct SSL config
       - ENABLE_SERVICE_MLFLOW=1 # enable mlflow for experiment tracking
