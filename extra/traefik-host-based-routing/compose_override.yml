@@ -58,7 +58,7 @@ services:
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
 
       # Dashboard: traefik.YOURDOMAIN
-      - "traefik.http.routers.dashboard.rule=Host(`traefik.YOURDOMAIN`)"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.YOURDOMAIN`) || Host(`traefik.localhost`)"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.tls=true"
       - "traefik.http.routers.dashboard.service=api@internal"
@@ -74,7 +74,8 @@ services:
       - "traefik.enable=true"
 
       # JupyterHub router (root path)
-      - "traefik.http.routers.jupyterhub-rtr.rule=Host(`jupyterhub.YOURDOMAIN`)"
+      - "traefik.http.routers.jupyterhub-rtr.rule=Host(`jupyterhub.YOURDOMAIN`) || Host(`jupyterhub.localhost`)"
+"
       - "traefik.http.routers.jupyterhub-rtr.entrypoints=websecure"
       - "traefik.http.routers.jupyterhub-rtr.tls=true"
       - "traefik.http.routers.jupyterhub-rtr.service=jupyterhub-svc"
