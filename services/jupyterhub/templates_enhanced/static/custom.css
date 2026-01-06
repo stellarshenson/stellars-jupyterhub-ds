@@ -1,0 +1,384 @@
+/*
+ * Stellars JupyterHub DS - Custom Compact Styling
+ * Inspired by jupyterlab_stellars_sublime_theme
+ */
+
+/* ==========================================================================
+   1. CSS Variables
+   ========================================================================== */
+
+:root {
+  /* Stellars Sublime color palette */
+  --stellars-layout-0: #252b32;
+  --stellars-layout-1: #303841;
+  --stellars-layout-2: #404b54;
+  --stellars-layout-3: #4d5a65;
+  --stellars-layout-4: #5d6d7a;
+
+  --stellars-text-primary: rgb(195, 195, 195);
+  --stellars-text-secondary: rgb(165, 165, 165);
+  --stellars-text-muted: rgb(125, 135, 145);
+
+  /* Compact spacing */
+  --compact-spacing-xs: 0.25rem;
+  --compact-spacing-sm: 0.4rem;
+  --compact-spacing-md: 0.6rem;
+  --compact-spacing-lg: 0.8rem;
+
+  /* Modern border radius */
+  --compact-border-radius: 3px;
+}
+
+/* ==========================================================================
+   2. Global Overrides - Compact Spacing
+   ========================================================================== */
+
+body {
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+
+.container {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* Reduce Bootstrap spacing utilities */
+.mb-3 { margin-bottom: 0.6rem !important; }
+.mb-4 { margin-bottom: 0.8rem !important; }
+.mt-3 { margin-top: 0.6rem !important; }
+.mt-4 { margin-top: 0.8rem !important; }
+.py-2 { padding-top: 0.3rem !important; padding-bottom: 0.3rem !important; }
+.py-3 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+.py-4 { padding-top: 0.75rem !important; padding-bottom: 0.75rem !important; }
+.px-4 { padding-left: 1rem !important; padding-right: 1rem !important; }
+
+/* ==========================================================================
+   3. Typography - Compact
+   ========================================================================== */
+
+h1 { font-size: 1.75rem; margin-bottom: 0.5rem; }
+h2 { font-size: 1.5rem; margin-bottom: 0.4rem; }
+h3 { font-size: 1.25rem; margin-bottom: 0.4rem; }
+h4 { font-size: 1.1rem; margin-bottom: 0.3rem; }
+h5 { font-size: 1rem; margin-bottom: 0.3rem; }
+
+p { margin-bottom: 0.5rem; }
+
+.small, small { font-size: 0.8125rem; }
+
+/* ==========================================================================
+   4. Tables - Compact with Banded Rows
+   ========================================================================== */
+
+.table {
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.table > :not(caption) > * > * {
+  padding: 0.4rem 0.6rem;
+  border-bottom-width: 1px;
+}
+
+.table > thead > tr > th {
+  padding: 0.5rem 0.6rem;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  border-bottom-width: 2px;
+}
+
+/* Light mode banded rows */
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.table-striped > tbody > tr:nth-of-type(even) > * {
+  background-color: transparent;
+}
+
+/* Hover effect */
+.table > tbody > tr:hover > * {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+/* Dark mode table styling */
+[data-bs-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > * {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+[data-bs-theme="dark"] .table-striped > tbody > tr:nth-of-type(even) > * {
+  background-color: transparent;
+}
+
+[data-bs-theme="dark"] .table > tbody > tr:hover > * {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* ==========================================================================
+   5. Buttons - Compact (preserve .btn-lg for home page)
+   ========================================================================== */
+
+.btn {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.875rem;
+  border-radius: var(--compact-border-radius);
+  font-weight: 500;
+}
+
+.btn-sm {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8125rem;
+}
+
+/* Keep btn-lg for home page primary actions but slightly smaller */
+.btn-lg {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+}
+
+/* Icon spacing in buttons */
+.btn i.fa, .btn i.fas, .btn i.far {
+  margin-right: 0.35rem;
+}
+
+/* Button groups */
+.btn-group .btn {
+  padding: 0.3rem 0.6rem;
+}
+
+/* ==========================================================================
+   6. Modals - Compact
+   ========================================================================== */
+
+.modal-header {
+  padding: 0.75rem 1rem;
+  border-bottom-width: 1px;
+}
+
+.modal-header .modal-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.modal-header .btn-close {
+  padding: 0.5rem;
+}
+
+.modal-body {
+  padding: 0.75rem 1rem;
+}
+
+.modal-footer {
+  padding: 0.5rem 1rem;
+  border-top-width: 1px;
+}
+
+.modal-footer .btn {
+  padding: 0.35rem 0.75rem;
+}
+
+/* Modal dialog sizing */
+.modal-dialog {
+  max-width: 500px;
+}
+
+.modal-lg {
+  max-width: 650px;
+}
+
+.modal-sm {
+  max-width: 350px;
+}
+
+/* ==========================================================================
+   7. Forms - Compact
+   ========================================================================== */
+
+.form-control {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.875rem;
+  border-radius: var(--compact-border-radius);
+}
+
+.form-control-lg {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9375rem;
+}
+
+.form-label {
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.form-text {
+  font-size: 0.8125rem;
+  margin-top: 0.2rem;
+}
+
+.form-check {
+  margin-bottom: 0.3rem;
+}
+
+.form-check-label {
+  font-size: 0.875rem;
+}
+
+textarea.form-control {
+  min-height: calc(1.4em + 0.7rem + 2px);
+}
+
+/* Input groups */
+.input-group-text {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.875rem;
+}
+
+/* ==========================================================================
+   8. Navbar - Compact
+   ========================================================================== */
+
+.navbar {
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
+}
+
+.navbar-brand {
+  padding-top: 0.2rem;
+  padding-bottom: 0.2rem;
+}
+
+.navbar-brand img.jpy-logo {
+  max-height: 28px;
+}
+
+.nav-link {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.875rem;
+}
+
+.navbar-nav .nav-item {
+  margin-right: 0.1rem;
+}
+
+.dropdown-menu {
+  font-size: 0.875rem;
+  padding: 0.3rem 0;
+  border-radius: var(--compact-border-radius);
+}
+
+.dropdown-item {
+  padding: 0.3rem 0.8rem;
+}
+
+/* ==========================================================================
+   9. Alerts - Compact
+   ========================================================================== */
+
+.alert {
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.875rem;
+  border-radius: var(--compact-border-radius);
+}
+
+.alert-heading {
+  font-size: 0.9375rem;
+}
+
+/* ==========================================================================
+   10. Cards - Compact
+   ========================================================================== */
+
+.card {
+  border-radius: var(--compact-border-radius);
+}
+
+.card-header {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.card-body {
+  padding: 0.75rem;
+}
+
+.card-footer {
+  padding: 0.5rem 0.75rem;
+}
+
+/* ==========================================================================
+   11. Badges - Compact
+   ========================================================================== */
+
+.badge {
+  padding: 0.25em 0.5em;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 2px;
+}
+
+/* ==========================================================================
+   12. List Groups - Compact
+   ========================================================================== */
+
+.list-group-item {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+/* ==========================================================================
+   13. Specific Page Overrides
+   ========================================================================== */
+
+/* Version footer */
+.version_footer {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem !important;
+}
+
+/* Server table on home page */
+#server-table td, #server-table th {
+  vertical-align: middle;
+}
+
+/* Credentials modal table */
+#credentials-table {
+  margin-bottom: 0;
+}
+
+/* Notifications results table */
+.table.table-striped tbody tr td {
+  vertical-align: middle;
+}
+
+/* Spinner modal - keep centered */
+#loading-modal .modal-body {
+  padding: 1.5rem;
+}
+
+/* ==========================================================================
+   14. Utility Classes
+   ========================================================================== */
+
+.text-compact {
+  font-size: 0.875rem;
+  line-height: 1.3;
+}
+
+.spacing-compact {
+  margin: 0.4rem 0;
+}
+
+/* Icon opacity for subtle icons */
+.icon-muted {
+  opacity: 0.4;
+}
+
+.icon-muted:hover {
+  opacity: 0.8;
+}
