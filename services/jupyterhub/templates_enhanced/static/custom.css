@@ -1063,10 +1063,10 @@ textarea.form-control {
 
 /* Subtle hover for user rows */
 .server-dashboard-container .user-row:hover {
-  background-color: rgba(0, 0, 0, 0.015) !important;
+  background-color: rgba(0, 0, 0, 0.008) !important;
 }
 
-/* Add Users button - compact styling */
+/* Add Users button - only adjust size, keep stock btn-light colors */
 .server-dashboard-container .add-users-button {
   padding: 0.2rem 0.5rem !important;
   font-size: 0.8rem !important;
@@ -1138,6 +1138,12 @@ textarea.form-control {
   margin-left: 0.2rem;
 }
 
+/* Expanded user detail row - remove padding from td */
+.server-dashboard-container td[data-testid$="-td"],
+.server-dashboard-container td[colspan="6"] {
+  padding: 0 !important;
+}
+
 /* Collapsed card styling */
 .server-dashboard-container .card {
   border: 1px solid rgba(0, 0, 0, 0.06) !important;
@@ -1184,6 +1190,19 @@ textarea.form-control {
   font-weight: 500;
   color: #868e96 !important;
   width: 140px;
+}
+
+/* Disable hover on expanded card tables */
+.server-dashboard-container .card .table tbody tr:hover,
+.server-dashboard-container .card .table tbody tr:hover > td,
+.server-dashboard-container .card .table tbody tr:hover > th,
+.server-dashboard-container .card .table-striped tbody tr:hover > *,
+.server-dashboard-container .card .table-hover tbody tr:hover > *,
+.server-dashboard-container .card .table-bordered tbody tr:hover > * {
+  background-color: transparent !important;
+  --bs-table-hover-bg: transparent !important;
+  --bs-table-bg-state: transparent !important;
+  box-shadow: none !important;
 }
 
 /* Nested empty tables (auth_state, pending, etc.) */
@@ -1238,10 +1257,16 @@ textarea.form-control {
   font-size: 0.8rem !important;
 }
 
-/* Collapse button */
+/* Collapse/expand button */
 .server-dashboard-container [data-testid$="-collapse-button"] {
-  padding: 0.2rem 0.5rem !important;
-  font-size: 0.8rem !important;
+  padding: 0.2rem 0.3rem !important;
+  font-size: 0.75rem !important;
+  line-height: 1 !important;
+}
+
+/* Username label - add spacing after expand button */
+.server-dashboard-container [data-testid^="user-name-div-"] {
+  padding-left: 0.4rem;
 }
 
 /* Search and filter row */
@@ -1292,7 +1317,7 @@ textarea.form-control {
 
 /* Dark mode - subtle hover for user rows */
 [data-bs-theme="dark"] .server-dashboard-container .user-row:hover {
-  background-color: rgba(255, 255, 255, 0.015) !important;
+  background-color: rgba(255, 255, 255, 0.008) !important;
 }
 
 /* Dark mode - checkbox label brighter */
@@ -1321,6 +1346,19 @@ textarea.form-control {
   border-bottom-color: rgba(255, 255, 255, 0.04) !important;
 }
 
+/* Dark mode - disable hover on expanded card tables */
+[data-bs-theme="dark"] .server-dashboard-container .card .table tbody tr:hover,
+[data-bs-theme="dark"] .server-dashboard-container .card .table tbody tr:hover > td,
+[data-bs-theme="dark"] .server-dashboard-container .card .table tbody tr:hover > th,
+[data-bs-theme="dark"] .server-dashboard-container .card .table-striped tbody tr:hover > *,
+[data-bs-theme="dark"] .server-dashboard-container .card .table-hover tbody tr:hover > *,
+[data-bs-theme="dark"] .server-dashboard-container .card .table-bordered tbody tr:hover > * {
+  background-color: transparent !important;
+  --bs-table-hover-bg: transparent !important;
+  --bs-table-bg-state: transparent !important;
+  box-shadow: none !important;
+}
+
 /* Dark mode - list items */
 [data-bs-theme="dark"] .server-dashboard-row-list-item {
   background-color: rgba(255, 255, 255, 0.08);
@@ -1328,7 +1366,86 @@ textarea.form-control {
 }
 
 /* ==========================================================================
-   15. Utility Classes
+   15. Groups Page Styling
+   ========================================================================== */
+
+/* Groups card */
+.server-dashboard-container .card .card-header h4,
+.container .card .card-header h4 {
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 0;
+  color: #495057;
+}
+
+/* Groups list */
+.server-dashboard-container .list-group,
+.container .list-group {
+  font-size: 0.85rem;
+}
+
+.server-dashboard-container .list-group-item,
+.container .list-group-item {
+  padding: 0.4rem 0.75rem;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+.server-dashboard-container .list-group-item a,
+.container .list-group-item a {
+  color: #495057;
+  text-decoration: none;
+}
+
+.server-dashboard-container .list-group-item a:hover,
+.container .list-group-item a:hover {
+  color: #0d6efd;
+}
+
+/* User count badge */
+.server-dashboard-container .list-group-item .badge,
+.container .list-group-item .badge {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.4rem;
+}
+
+/* Card footer buttons */
+.server-dashboard-container .card-footer,
+.container .card-footer {
+  padding: 0.5rem 0.75rem;
+  background-color: rgba(0, 0, 0, 0.01);
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+
+.server-dashboard-container .card-footer .btn,
+.container .card-footer .btn {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+/* Dark mode groups page */
+[data-bs-theme="dark"] .server-dashboard-container .card .card-header h4,
+[data-bs-theme="dark"] .container .card .card-header h4 {
+  color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .server-dashboard-container .list-group-item,
+[data-bs-theme="dark"] .container .list-group-item {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-bs-theme="dark"] .server-dashboard-container .list-group-item a,
+[data-bs-theme="dark"] .container .list-group-item a {
+  color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .server-dashboard-container .card-footer,
+[data-bs-theme="dark"] .container .card-footer {
+  background-color: rgba(255, 255, 255, 0.02);
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ==========================================================================
+   16. Utility Classes
    ========================================================================== */
 
 .text-compact {
