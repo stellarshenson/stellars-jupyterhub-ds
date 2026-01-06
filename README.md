@@ -15,7 +15,7 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 - **User Self-Service**: Users can restart their JupyterLab containers and selectively reset persistent volumes (home/workspace/cache) without admin intervention
 - **Docker Access Control**: Group-based access via `docker-sock` (container orchestration) and `docker-privileged` (full container privileges)
 - **Isolated Environments**: Each user gets dedicated JupyterLab container with persistent volumes via DockerSpawner
-- **Native Authentication**: Built-in user management with NativeAuthenticator supporting self-registration and admin approval
+- **Native Authentication**: Built-in user management with NativeAuthenticator supporting optional self-registration (`ENABLE_SIGNUP`) and admin approval
 - **Shared Storage**: Optional CIFS/NAS mount support for shared datasets across all users
 - **Production Ready**: Traefik reverse proxy with TLS termination, automatic container updates via Watchtower
 
@@ -91,6 +91,7 @@ graph TB
         NET[DOCKER_NETWORK_NAME<br/>Container network]
         SSL[ENABLE_JUPYTERHUB_SSL<br/>0=off, 1=on]
         GPU[ENABLE_GPU_SUPPORT<br/>0=off, 1=on, 2=auto]
+        SIGNUP[ENABLE_SIGNUP<br/>0=admin-only, 1=self-register]
         TFLOG[TF_CPP_MIN_LOG_LEVEL<br/>TensorFlow verbosity]
         NVIMG[NVIDIA_AUTODETECT_IMAGE<br/>CUDA test image]
 
@@ -104,7 +105,7 @@ graph TB
     end
 
     subgraph CONFIG["jupyterhub_config.py"]
-        AUTH[NativeAuthenticator<br/>open_signup=False, enable_signup=True]
+        AUTH[NativeAuthenticator<br/>open_signup=False]
         SPAWN[DockerSpawner<br/>spawner_class, remove=True]
         NBDIR[DOCKER_NOTEBOOK_DIR<br/>/home/lab/workspace]
         VOLS[DOCKER_SPAWNER_VOLUMES<br/>home/workspace/cache/shared]
@@ -122,6 +123,7 @@ graph TB
     end
 
     ADMIN --> AUTH
+    SIGNUP --> |enable_signup| AUTH
     BASEURL --> CONFIG
     IMG --> SPAWN
     NET --> SPAWN
@@ -338,6 +340,17 @@ services:
   jupyterhub:
     environment:
       - ENABLE_GPU_SUPPORT=1 # enable NVIDIA GPU, values: 0 - disabled, 1 - enabled, 2 - auto-detect
+```
+
+#### Disable self-registration
+
+By default, users can self-register and require admin approval. To disable self-registration entirely (admin must create users via `/hub/admin`):
+
+```yaml
+services:
+  jupyterhub:
+    environment:
+      - ENABLE_SIGNUP=0 # disable self-registration, admin creates users
 ```
 
 #### Enable shared CIFS mount

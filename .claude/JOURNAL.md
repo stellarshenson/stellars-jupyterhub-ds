@@ -72,3 +72,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 23. **Task - Update traefik-host-based-routing template**: Refactored deployment template for root path routing<br>
     **Result**: Removed Makefile from `extra/traefik-host-based-routing/`. Updated `compose_override.yml` with `JUPYTERHUB_BASE_URL=/` and root path Traefik routing. Updated `start.sh` to pull images and use `--no-build`. Updated README to reflect simplified workflow without Makefile
+
+24. **Task - User rename with authorization preservation**: Implemented admin API to rename users while preserving NativeAuthenticator authorization<br>
+    **Result**: Created `RenameUserHandler` in `custom_handlers.py` with PATCH `/hub/api/users/{username}/rename` endpoint. Handler updates both JupyterHub `User` and NativeAuthenticator `UserInfo` tables atomically, preserving `is_authorized` status. Requires admin privileges and stopped server. Includes validation (name uniqueness, server state), rollback on failure, and detailed logging. Registered handler in `jupyterhub_config.py`. Added Admin Features section to `.claude/CLAUDE.md` documenting the problem (UserInfo not synced on rename), solution (atomic update of both tables), and API contract

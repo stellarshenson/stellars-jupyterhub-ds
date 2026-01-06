@@ -292,6 +292,41 @@ One-click Docker container restart without recreation. Preserves volumes and con
 
 **Permissions**: Users can restart own server, admins can restart any user's server
 
+## Admin Features
+
+### Rename User
+
+Rename a user while preserving NativeAuthenticator authorization status.
+
+**Problem Solved**: When JupyterHub's built-in rename is used, the NativeAuthenticator `UserInfo` table is not updated, breaking the link between JupyterHub User and authentication data. This results in the user losing their authorization status.
+
+**Requirements**:
+- Admin privileges required
+- User's JupyterLab server must be stopped
+
+**Implementation**:
+- API Endpoint: `PATCH /hub/api/users/{username}/rename`
+- Handler: `services/jupyterhub/conf/bin/custom_handlers.py::RenameUserHandler`
+- Updates both JupyterHub `User` and NativeAuthenticator `UserInfo` tables atomically
+- Preserves `is_authorized` status during rename
+
+**Request Body**:
+```json
+{"new_name": "new_username"}
+```
+
+**Response**:
+```json
+{
+    "message": "User renamed successfully",
+    "old_name": "old_username",
+    "new_name": "new_username",
+    "is_authorized": true
+}
+```
+
+**Permissions**: Admin-only operation
+
 ## Troubleshooting
 
 **GPU not detected**:
