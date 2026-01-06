@@ -51,6 +51,20 @@
       </div>
     </div>
   </div>
+
+  <!-- Loading Spinner Modal -->
+  <div class="modal fade" id="loading-modal" tabindex="-1" role="dialog" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-body text-center py-4">
+          <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <div>Generating credentials...</div>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock main %}
 
 {% block footer %}
@@ -131,6 +145,9 @@
                         console.log('[Admin] Users created:', createdUsers);
                         pendingUsernames.push(...createdUsers);
 
+                        // Show loading spinner
+                        showLoadingSpinner();
+
                         // Debounce - wait for batch completion then fetch credentials
                         clearTimeout(window._credentialsFetchTimeout);
                         window._credentialsFetchTimeout = setTimeout(() => {
@@ -172,14 +189,32 @@
                 }
             } else {
                 console.error('[Admin] Failed to fetch credentials:', response.status);
+                hideLoadingSpinner();
             }
         } catch (e) {
             console.error('[Admin] Error fetching credentials:', e);
+            hideLoadingSpinner();
+        }
+    }
+
+    // Loading spinner functions
+    let loadingModal = null;
+    function showLoadingSpinner() {
+        const modalEl = document.getElementById('loading-modal');
+        if (!loadingModal) {
+            loadingModal = new bootstrap.Modal(modalEl);
+        }
+        loadingModal.show();
+    }
+    function hideLoadingSpinner() {
+        if (loadingModal) {
+            loadingModal.hide();
         }
     }
 
     // Show modal with credentials
     function showCredentialsModal(credentials) {
+        hideLoadingSpinner();
         const tbody = document.getElementById('credentials-body');
         tbody.innerHTML = '';
 

@@ -87,3 +87,9 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 28. **Task - Fix admin template URL handling**: Fixed fetch interceptor and nav links in templates_enhanced<br>
     **Result**: Fixed `isUserCreation` check in admin.html to strip query params (`?_xsrf=...`) before checking if URL ends with `api/users` - React admin adds XSRF token as query param which broke the endpoint detection. Fixed double "hub" prefix in page.html nav links - changed `{{ base_url }}hub/authorize` to `{{ base_url }}authorize` and `{{ base_url }}hub/change-password` to `{{ base_url }}change-password` since base_url already includes `/hub/`
+
+29. **Task - Fix credentials API route conflict**: Changed credentials endpoint from `/api/users/credentials` to `/api/admin/credentials`<br>
+    **Result**: JupyterHub's built-in `/api/users/*` handler was catching requests before custom handler, returning "Invalid JSON keys" error. Changed route in jupyterhub_config.py, admin.html, and custom_handlers.py docstring
+
+30. **Task - Credentials modal UX improvements**: Enhanced modal layout, scrolling, and loading feedback<br>
+    **Result**: Moved Copy/Download buttons to top of modal body. Added scrollable container (max-height 300px) for long user lists. Removed `<code>` styling for plain text display. Added loading spinner modal shown between user creation and credentials display. Improved Makefile version output format to show "Current version" and "New version" lines
