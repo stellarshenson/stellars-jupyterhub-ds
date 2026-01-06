@@ -1038,6 +1038,16 @@ textarea.form-control {
   vertical-align: middle !important;
 }
 
+/* Override table-hover background */
+.server-dashboard-container .table-hover {
+  --bs-table-hover-bg: rgba(var(--bs-emphasis-color-rgb), 0.03) !important;
+}
+
+.server-dashboard-container .table-hover > tbody > tr:hover > * {
+  --bs-table-accent-bg: rgba(var(--bs-emphasis-color-rgb), 0.03) !important;
+  background-color: rgba(var(--bs-emphasis-color-rgb), 0.03) !important;
+}
+
 /* Admin table header styling - brighter text */
 .server-dashboard-container .admin-table-head th {
   font-weight: 500 !important;
@@ -1308,7 +1318,6 @@ textarea.form-control {
 
 /* Dark mode admin overrides */
 [data-bs-theme="dark"] .server-dashboard-container {
-  color: #dee2e6 !important;
   background-color: transparent !important;
 }
 

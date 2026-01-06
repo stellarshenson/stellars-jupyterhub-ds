@@ -16,6 +16,7 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 - **Docker Access Control**: Group-based access via `docker-sock` (container orchestration) and `docker-privileged` (full container privileges)
 - **Isolated Environments**: Each user gets dedicated JupyterLab container with persistent volumes via DockerSpawner
 - **Native Authentication**: Built-in user management with NativeAuthenticator supporting optional self-registration (`ENABLE_SIGNUP`) and admin approval
+- **Admin User Creation**: Batch user creation from admin panel with auto-generated mnemonic passwords (e.g., `storm-apple-ocean`). Credentials modal with copy/download options
 - **Shared Storage**: Optional CIFS/NAS mount support for shared datasets across all users
 - **Production Ready**: Traefik reverse proxy with TLS termination, automatic container updates via Watchtower
 

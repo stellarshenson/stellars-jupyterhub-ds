@@ -114,3 +114,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 37. **Task - UI refinements and icon cleanup**: Admin panel styling and password toggle icon improvements<br>
     **Result**: Aligned admin action buttons to right (td.actions text-align), added transparent background for dark mode .server-dashboard-container, made table hover nearly invisible (--bs-table-hover-bg: rgba 0.003), replaced eye emoji with Font Awesome icons (fa-eye/fa-eye-slash) in all 4 password templates (signup, login, change-password, change-password-admin) - both button HTML and JavaScript toggle
+
+38. **Task - Table hover and README update**: Fixed Bootstrap table-hover styling and documented mnemonic passwords feature<br>
+    **Result**: Added --bs-table-accent-bg override for Bootstrap 5 table-hover (two-step variable process), reduced Shutdown Hub button margin from 30px to 5px, removed color override from dark mode .server-dashboard-container, updated README Features with admin user creation and mnemonic passwords (e.g., storm-apple-ocean)
