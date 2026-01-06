@@ -72,11 +72,20 @@
     // Intercept fetch to detect user creation
     const originalFetch = window.fetch;
     window.fetch = async function(...args) {
-        const [url, options] = args;
+        const [urlArg, options] = args;
+        // Convert URL object to string if needed
+        const url = typeof urlArg === 'string' ? urlArg : urlArg.toString();
+        const method = options?.method || 'GET';
+
+        console.log('[Admin Fetch]', method, url);
+
+        // Check for user creation
+        const isUserCreation = method === 'POST' && url.includes('api/users') && !url.includes('?');
 
         // Capture request body before fetch (for batch user creation)
         let requestUsernames = [];
-        if (options && options.method === 'POST' && url.includes('/api/users')) {
+        if (isUserCreation) {
+            console.log('[Admin] User creation POST detected!');
             try {
                 if (options.body) {
                     const bodyData = JSON.parse(options.body);
@@ -91,9 +100,10 @@
         }
 
         const response = await originalFetch.apply(this, args);
+        console.log('[Admin Fetch] Response status:', response.status);
 
         // Check if this is a POST to create users
-        if (options && options.method === 'POST' && url.includes('/api/users')) {
+        if (isUserCreation) {
             try {
                 // Only process successful responses
                 if (response.ok || response.status === 201) {
