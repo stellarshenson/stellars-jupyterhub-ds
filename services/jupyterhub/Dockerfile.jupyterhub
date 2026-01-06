@@ -3,8 +3,12 @@
 
 FROM jupyterhub/jupyterhub:5.4.2 AS target
 
+# Build arguments
+ARG VERSION=dev
+
 # File Author / Maintainer
 LABEL maintainer="Konrad Jelen <konrad.jelenext@delaval.com>"
+LABEL version="${VERSION}"
 
 ########################################################
 #  FIX PACKAGES AND REMOVE UNNECESSARY                 #
@@ -46,6 +50,7 @@ RUN pip install -U --no-cache-dir \
 
 ## default environment variables
 ENV ENABLE_SIGNUP=1
+ENV STELLARS_JUPYTERHUB_VERSION=${VERSION}
 
 ## expose ports
 EXPOSE 8000

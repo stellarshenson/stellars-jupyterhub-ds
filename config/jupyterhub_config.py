@@ -13,7 +13,34 @@ try:
     c = get_config()
 except NameError:
     # Being imported as a module, not loaded by JupyterHub
-    c = None  
+    c = None
+
+# SQLAlchemy event listener to sync NativeAuthenticator on user rename
+# This intercepts ALL User.name changes (admin panel, API, etc.) and syncs UserInfo.username
+from sqlalchemy import event
+from jupyterhub import orm
+
+@event.listens_for(orm.User.name, 'set')
+def sync_nativeauth_on_rename(target, value, oldvalue, initiator):
+    """Sync NativeAuthenticator UserInfo when User.name changes"""
+    if oldvalue == value or oldvalue is None:
+        return  # No change or initial set
+
+    try:
+        from nativeauthenticator.orm import UserInfo
+        from sqlalchemy.orm import object_session
+
+        session = object_session(target)
+        if session:
+            user_info = session.query(UserInfo).filter(UserInfo.username == oldvalue).first()
+            if user_info:
+                user_info.username = value
+                # Don't commit here - let the parent transaction handle it
+                print(f"[NativeAuth Sync] Queued UserInfo rename: {oldvalue} -> {value}")
+    except ImportError:
+        pass  # NativeAuthenticator not available
+    except Exception as e:
+        print(f"[NativeAuth Sync] Error: {e}")
 
 # NVIDIA GPU auto-detection 
 def detect_nvidia(nvidia_autodetect_image='nvidia/cuda:12.9.1-base-ubuntu24.04'):
@@ -159,10 +186,11 @@ if c is not None:
     # Set volumes from constant
     c.DockerSpawner.volumes = DOCKER_SPAWNER_VOLUMES
 
-    # Make volume suffixes and descriptions available to templates
+    # Make volume suffixes, descriptions, and version available to templates
     c.JupyterHub.template_vars = {
         'user_volume_suffixes': USER_VOLUME_SUFFIXES,
-        'volume_descriptions': VOLUME_DESCRIPTIONS
+        'volume_descriptions': VOLUME_DESCRIPTIONS,
+        'stellars_version': os.environ.get('STELLARS_JUPYTERHUB_VERSION', 'dev')
     }
 
 # Built-in groups that cannot be deleted (auto-recreated if missing)
@@ -261,17 +289,12 @@ if c is not None:
         ManageVolumesHandler,
         RestartServerHandler,
         NotificationsPageHandler,
-        BroadcastNotificationHandler,
-        RenameUserHandler,
-        SyncedUserAPIHandler
+        BroadcastNotificationHandler
     )
 
     c.JupyterHub.extra_handlers = [
-        # Override default user API to sync NativeAuthenticator on rename
-        (r'/api/users/([^/]+)', SyncedUserAPIHandler),
         (r'/api/users/([^/]+)/manage-volumes', ManageVolumesHandler),
         (r'/api/users/([^/]+)/restart-server', RestartServerHandler),
-        (r'/api/users/([^/]+)/rename', RenameUserHandler),
         (r'/api/notifications/broadcast', BroadcastNotificationHandler),
         (r'/notifications', NotificationsPageHandler),
     ]
