@@ -67,6 +67,7 @@ services:
       - ENABLE_SERVICE_MLFLOW=1 # enable mlflow for experiment tracking
       - ENABLE_SERVICE_GLANCES=1 # enable resources monitor
       - ENABLE_SERVICE_TENSORBOARD=1 # enable tensorflow training tracker
+      - ENABLE_SIGNUP=1 # user self-registration: 0 - disabled (admin creates users), 1 - enabled
       - TF_CPP_MIN_LOG_LEVEL=3 # make tensorflow less verbose
       - NVIDIA_AUTODETECT_IMAGE=nvidia/cuda:12.9.1-base-ubuntu24.04 # image with `nvidia-smi` for gpu autodetection
     labels:

@@ -45,10 +45,11 @@ def detect_nvidia(nvidia_autodetect_image='nvidia/cuda:12.9.1-base-ubuntu24.04')
 
 # standard variables imported from env
 ENABLE_JUPYTERHUB_SSL =  int(os.environ.get("ENABLE_JUPYTERHUB_SSL", 1))
-ENABLE_GPU_SUPPORT = int(os.environ.get("ENABLE_GPU_SUPPORT", 2)) 
-ENABLE_SERVICE_MLFLOW = int(os.environ.get("ENABLE_SERVICE_MLFLOW", 1)) 
-ENABLE_SERVICE_GLANCES = int(os.environ.get("ENABLE_SERVICE_GLANCES", 1)) 
-ENABLE_SERVICE_TENSORBOARD = int(os.environ.get("ENABLE_SERVICE_TENSORBOARD", 1)) 
+ENABLE_GPU_SUPPORT = int(os.environ.get("ENABLE_GPU_SUPPORT", 2))
+ENABLE_SERVICE_MLFLOW = int(os.environ.get("ENABLE_SERVICE_MLFLOW", 1))
+ENABLE_SERVICE_GLANCES = int(os.environ.get("ENABLE_SERVICE_GLANCES", 1))
+ENABLE_SERVICE_TENSORBOARD = int(os.environ.get("ENABLE_SERVICE_TENSORBOARD", 1))
+ENABLE_SIGNUP = int(os.environ.get("ENABLE_SIGNUP", 1))  # 0 - disabled (admin creates users), 1 - enabled (self-registration) 
 TF_CPP_MIN_LOG_LEVEL = int(os.environ.get("TF_CPP_MIN_LOG_LEVEL", 3)) 
 DOCKER_NOTEBOOK_DIR = "/home/lab/workspace"
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")
@@ -243,7 +244,7 @@ if c is not None:
     # allow anyone to sign-up without approval
     # allow all signed-up users to login
     c.NativeAuthenticator.open_signup = False
-    c.NativeAuthenticator.enable_signup = True
+    c.NativeAuthenticator.enable_signup = bool(ENABLE_SIGNUP)  # controlled by ENABLE_SIGNUP env var
     c.Authenticator.allow_all = True
 
     # allowed admins
@@ -260,12 +261,14 @@ if c is not None:
         ManageVolumesHandler,
         RestartServerHandler,
         NotificationsPageHandler,
-        BroadcastNotificationHandler
+        BroadcastNotificationHandler,
+        RenameUserHandler
     )
 
     c.JupyterHub.extra_handlers = [
         (r'/api/users/([^/]+)/manage-volumes', ManageVolumesHandler),
         (r'/api/users/([^/]+)/restart-server', RestartServerHandler),
+        (r'/api/users/([^/]+)/rename', RenameUserHandler),
         (r'/api/notifications/broadcast', BroadcastNotificationHandler),
         (r'/notifications', NotificationsPageHandler),
     ]

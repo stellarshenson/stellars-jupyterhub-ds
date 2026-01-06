@@ -44,6 +44,9 @@ RUN pip install -U --no-cache-dir \
     dockerspawner \
     jupyterhub-nativeauthenticator
 
+## default environment variables
+ENV ENABLE_SIGNUP=1
+
 ## expose ports
 EXPOSE 8000
 

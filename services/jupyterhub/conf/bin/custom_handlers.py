@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Custom JupyterHub API handlers for volume management, server control, and notifications
+Custom JupyterHub API handlers for volume management, server control, notifications, and user management
 """
 
 from jupyterhub.handlers import BaseHandler
@@ -436,3 +436,125 @@ class BroadcastNotificationHandler(BaseHandler):
 
             self.log.error(f"[Notification] {username}: '{notification_payload['message'][:50]}' ({notification_payload['type']}) - ERROR: {error_msg}")
             return {"status": "failed", "error": error_msg}
+
+
+class RenameUserHandler(BaseHandler):
+    """Handler for renaming users while preserving NativeAuthenticator authorization"""
+
+    async def patch(self, username):
+        """
+        Rename a user and update NativeAuthenticator UserInfo to preserve authorization
+
+        PATCH /hub/api/users/{username}/rename
+        Body: {"new_name": "new_username"}
+        """
+        self.log.info(f"[Rename User] API endpoint called for user: {username}")
+
+        # 0. Check permissions: only admins can rename users
+        current_user = self.current_user
+        if current_user is None:
+            self.log.warning(f"[Rename User] Authentication failed - no current user")
+            raise web.HTTPError(403, "Not authenticated")
+
+        if not current_user.admin:
+            self.log.warning(f"[Rename User] Permission denied - user {current_user.name} is not admin")
+            raise web.HTTPError(403, "Only administrators can rename users")
+
+        self.log.info(f"[Rename User] Request from admin: {current_user.name}")
+
+        # 1. Parse request body
+        try:
+            body = self.request.body.decode('utf-8')
+            data = json.loads(body) if body else {}
+            new_name = data.get('new_name', '').strip()
+
+            self.log.info(f"[Rename User] Requested rename: {username} -> {new_name}")
+        except Exception as e:
+            self.log.error(f"[Rename User] Failed to parse request body: {e}")
+            return self.send_error(400, "Invalid request body")
+
+        # 2. Validate new name
+        if not new_name:
+            self.log.warning(f"[Rename User] Empty new_name provided")
+            return self.send_error(400, "new_name is required")
+
+        if new_name == username:
+            self.log.warning(f"[Rename User] New name is the same as current name")
+            return self.send_error(400, "New name must be different from current name")
+
+        # Normalize username (basic sanitization)
+        new_name = new_name.lower()
+
+        # 3. Verify source user exists
+        user = self.find_user(username)
+        if not user:
+            self.log.warning(f"[Rename User] User {username} not found")
+            return self.send_error(404, "User not found")
+
+        # 4. Check target name is not taken
+        existing_user = self.find_user(new_name)
+        if existing_user:
+            self.log.warning(f"[Rename User] Target username {new_name} already exists")
+            return self.send_error(400, f"Username '{new_name}' is already taken")
+
+        # 5. Check if server is stopped (cannot rename while server is running)
+        if user.spawner and user.spawner.active:
+            self.log.warning(f"[Rename User] Cannot rename - server is running")
+            return self.send_error(400, "Cannot rename user while server is running. Stop the server first.")
+
+        # 6. Get NativeAuthenticator UserInfo before rename
+        try:
+            from nativeauthenticator.orm import UserInfo
+            old_user_info = self.db.query(UserInfo).filter(UserInfo.username == username).first()
+            was_authorized = old_user_info.is_authorized if old_user_info else False
+            self.log.info(f"[Rename User] UserInfo found: {old_user_info is not None}, authorized: {was_authorized}")
+        except ImportError:
+            self.log.warning(f"[Rename User] NativeAuthenticator not available, proceeding without UserInfo sync")
+            old_user_info = None
+            was_authorized = False
+
+        # 7. Rename in JupyterHub ORM
+        try:
+            from jupyterhub import orm
+            orm_user = self.db.query(orm.User).filter(orm.User.name == username).first()
+            if not orm_user:
+                self.log.error(f"[Rename User] ORM User not found for {username}")
+                return self.send_error(500, "Internal error: User not found in database")
+
+            old_name = orm_user.name
+            orm_user.name = new_name
+            self.db.commit()
+            self.log.info(f"[Rename User] JupyterHub User renamed: {old_name} -> {new_name}")
+        except Exception as e:
+            self.db.rollback()
+            self.log.error(f"[Rename User] Failed to rename JupyterHub user: {e}")
+            return self.send_error(500, f"Failed to rename user: {str(e)}")
+
+        # 8. Update NativeAuthenticator UserInfo
+        if old_user_info:
+            try:
+                old_user_info.username = new_name
+                self.db.commit()
+                self.log.info(f"[Rename User] NativeAuthenticator UserInfo updated: {username} -> {new_name}, authorized: {was_authorized}")
+            except Exception as e:
+                self.db.rollback()
+                # Try to rollback JupyterHub rename
+                try:
+                    orm_user.name = username
+                    self.db.commit()
+                except:
+                    pass
+                self.log.error(f"[Rename User] Failed to update UserInfo: {e}")
+                return self.send_error(500, f"Failed to update authentication info: {str(e)}")
+
+        # 9. Return success
+        response = {
+            "message": f"User renamed successfully",
+            "old_name": username,
+            "new_name": new_name,
+            "is_authorized": was_authorized
+        }
+
+        self.log.info(f"[Rename User] Operation complete: {username} -> {new_name}")
+        self.set_status(200)
+        self.finish(response)
