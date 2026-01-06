@@ -37,6 +37,7 @@
                 <tr>
                   <th>Username</th>
                   <th>Password</th>
+                  <th style="width: 40px;"></th>
                 </tr>
               </thead>
               <tbody id="credentials-body">
@@ -223,7 +224,22 @@
             row.innerHTML = `
                 <td>${escapeHtml(cred.username)}</td>
                 <td>${escapeHtml(cred.password)}</td>
+                <td><i class="fa fa-copy copy-row-btn" style="opacity: 0.4; cursor: pointer;" title="Copy to clipboard"></i></td>
             `;
+            // Add click handler for row copy
+            row.querySelector('.copy-row-btn').addEventListener('click', function() {
+                const text = 'Username: ' + cred.username + '\nPassword: ' + cred.password;
+                navigator.clipboard.writeText(text).then(() => {
+                    this.classList.remove('fa-copy');
+                    this.classList.add('fa-check');
+                    this.style.opacity = '1';
+                    setTimeout(() => {
+                        this.classList.remove('fa-check');
+                        this.classList.add('fa-copy');
+                        this.style.opacity = '0.4';
+                    }, 1500);
+                });
+            });
             tbody.appendChild(row);
         });
 
