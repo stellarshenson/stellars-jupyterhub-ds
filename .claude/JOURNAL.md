@@ -109,5 +109,5 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 35. **Task - Traefik template start.sh --refresh flag**: Added optional refresh flag to start.sh for pulling latest upstream<br>
     **Result**: Modified extra/traefik-host-based-routing/start.sh to clone repo only once on first run, skip git operations if repo exists (just uses existing), added --refresh flag to pull latest from origin/main when explicitly requested
 
-36. **Task - Volume migration scripts**: Created extra/volume-migration folder with scripts for renaming and migrating Docker volumes<br>
-    **Result**: Created rename-volume.sh (copies data to new volume name with optional --delete-source), migrate-user-volumes.sh (migrates all JupyterHub user volumes - home, workspace, cache - from old username to new), list-user-volumes.sh (lists all jupyterlab-* volumes with sizes), updated extra/README.md with new tool entry
+36. **Task - Volume renamer script**: Created extra/volume-renamer with script for renaming Docker volumes between users<br>
+    **Result**: Created rename-user-volumes.sh - renames all jupyterlab-* volumes from source pattern to target username, handles Docker's dot-to-hex encoding (. becomes -2e), supports --dry-run (show mappings without changes) and --keep-orig (preserve source volumes), compact help with generic examples (oldnick -> first.last)
