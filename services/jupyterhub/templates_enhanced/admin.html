@@ -1,0 +1,248 @@
+{% extends "page.html" %}
+{% block main %}
+  <div id="react-admin-hook">
+    <script id="jupyterhub-admin-config">
+      window.api_page_limit = parseInt("{{ api_page_limit|safe }}")
+      window.base_url = "{{ base_url|safe }}"
+    </script>
+    <script src={{ static_url("js/admin-react.js") }}></script>
+  </div>
+
+  <!-- User Credentials Modal -->
+  <div class="modal fade" id="user-credentials-modal" tabindex="-1" role="dialog" aria-labelledby="userCredentialsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="userCredentialsModalLabel">
+            <i class="fa fa-user-plus me-2"></i>New Users Created
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-success">
+            <strong>Success:</strong> Users created and authorized.
+            Share the credentials below with each user.
+          </div>
+          <table class="table table-striped" id="credentials-table">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Password</th>
+              </tr>
+            </thead>
+            <tbody id="credentials-body">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" id="copy-credentials-btn">
+            <i class="fa fa-copy me-1"></i>Copy to Clipboard
+          </button>
+          <button type="button" class="btn btn-primary" id="download-credentials-btn">
+            <i class="fa fa-download me-1"></i>Download as TXT
+          </button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock main %}
+
+{% block footer %}
+  <div class="py-2 px-4 bg-body-tertiary small version_footer">JupyterHub {{ server_version }}</div>
+{% endblock footer %}
+
+{% block script %}
+{{ super() }}
+<script type="text/javascript">
+(function() {
+    const baseUrl = "{{ base_url|safe }}";
+
+    // Store for tracking newly created users
+    let pendingUsernames = [];
+
+    // Helper to get CSRF token
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    // Intercept fetch to detect user creation
+    const originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+        const [url, options] = args;
+
+        // Capture request body before fetch (for batch user creation)
+        let requestUsernames = [];
+        if (options && options.method === 'POST' && url.includes('/api/users')) {
+            try {
+                if (options.body) {
+                    const bodyData = JSON.parse(options.body);
+                    if (bodyData.usernames && Array.isArray(bodyData.usernames)) {
+                        requestUsernames = bodyData.usernames;
+                        console.log('[Admin] Batch user creation request:', requestUsernames);
+                    }
+                }
+            } catch (e) {
+                // Body might not be JSON, ignore
+            }
+        }
+
+        const response = await originalFetch.apply(this, args);
+
+        // Check if this is a POST to create users
+        if (options && options.method === 'POST' && url.includes('/api/users')) {
+            try {
+                // Only process successful responses
+                if (response.ok || response.status === 201) {
+                    // Clone response to read body
+                    const clonedResponse = response.clone();
+                    const responseData = await clonedResponse.json();
+
+                    // Extract created usernames from response
+                    let createdUsers = [];
+                    if (Array.isArray(responseData)) {
+                        // Batch response: array of user objects
+                        createdUsers = responseData.map(u => u.name);
+                    } else if (responseData.name) {
+                        // Single user response
+                        createdUsers = [responseData.name];
+                    }
+
+                    if (createdUsers.length > 0) {
+                        console.log('[Admin] Users created:', createdUsers);
+                        pendingUsernames.push(...createdUsers);
+
+                        // Debounce - wait for batch completion then fetch credentials
+                        clearTimeout(window._credentialsFetchTimeout);
+                        window._credentialsFetchTimeout = setTimeout(() => {
+                            if (pendingUsernames.length > 0) {
+                                fetchAndShowCredentials([...pendingUsernames]);
+                                pendingUsernames = [];
+                            }
+                        }, 1000);
+                    }
+                }
+            } catch (e) {
+                console.error('[Admin] Error processing user creation:', e);
+            }
+        }
+
+        return response;
+    };
+
+    // Fetch credentials for created users and show modal
+    async function fetchAndShowCredentials(usernames) {
+        console.log('[Admin] Fetching credentials for:', usernames);
+
+        try {
+            const response = await originalFetch(`${baseUrl}api/users/credentials`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-XSRFToken': getCookie('_xsrf')
+                },
+                body: JSON.stringify({ usernames: usernames })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('[Admin] Credentials received:', data);
+
+                if (data.credentials && data.credentials.length > 0) {
+                    showCredentialsModal(data.credentials);
+                }
+            } else {
+                console.error('[Admin] Failed to fetch credentials:', response.status);
+            }
+        } catch (e) {
+            console.error('[Admin] Error fetching credentials:', e);
+        }
+    }
+
+    // Show modal with credentials
+    function showCredentialsModal(credentials) {
+        const tbody = document.getElementById('credentials-body');
+        tbody.innerHTML = '';
+
+        credentials.forEach(cred => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><code>${escapeHtml(cred.username)}</code></td>
+                <td><code>${escapeHtml(cred.password)}</code></td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        // Store credentials for download/copy
+        window._currentCredentials = credentials;
+
+        // Show modal
+        const modalEl = document.getElementById('user-credentials-modal');
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+
+    // HTML escape helper
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Format credentials for text output
+    function formatCredentialsText(credentials) {
+        let text = 'JupyterHub User Credentials\n';
+        text += '===========================\n\n';
+        credentials.forEach(cred => {
+            text += `Username: ${cred.username}\n`;
+            text += `Password: ${cred.password}\n\n`;
+        });
+        text += `Generated: ${new Date().toISOString()}\n`;
+        return text;
+    }
+
+    // Copy to clipboard handler
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('copy-credentials-btn')?.addEventListener('click', function() {
+            if (window._currentCredentials) {
+                const text = formatCredentialsText(window._currentCredentials);
+                navigator.clipboard.writeText(text).then(() => {
+                    const btn = this;
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="fa fa-check me-1"></i>Copied!';
+                    btn.classList.remove('btn-outline-secondary');
+                    btn.classList.add('btn-success');
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.classList.remove('btn-success');
+                        btn.classList.add('btn-outline-secondary');
+                    }, 2000);
+                }).catch(err => {
+                    console.error('[Admin] Failed to copy:', err);
+                    alert('Failed to copy to clipboard');
+                });
+            }
+        });
+
+        // Download as TXT handler
+        document.getElementById('download-credentials-btn')?.addEventListener('click', function() {
+            if (window._currentCredentials) {
+                const text = formatCredentialsText(window._currentCredentials);
+                const blob = new Blob([text], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `jupyterhub-credentials-${new Date().toISOString().slice(0,10)}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        });
+    });
+})();
+</script>
+{% endblock script %}
