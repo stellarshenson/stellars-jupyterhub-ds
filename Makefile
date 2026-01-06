@@ -18,14 +18,14 @@ TAG := $(subst ",,$(VERSION))
 
 ## increment patch version in project.env
 increment_version:
-	@echo "Incrementing patch version..."
 	@awk -F= '/^VERSION=/ { \
 		gsub(/"/, "", $$2); \
 		match($$2, /^([0-9]+\.[0-9]+\.)([0-9]+)(_.*$$)/, parts); \
 		new_patch = parts[2] + 1; \
 		new_version = parts[1] new_patch parts[3]; \
 		print "VERSION=\"" new_version "\""; \
-		print "Version updated: " $$2 " -> " new_version > "/dev/stderr"; \
+		print "Current version: " $$2 > "/dev/stderr"; \
+		print "New version: " new_version > "/dev/stderr"; \
 		next; \
 	} \
 	{ print }' project.env > project.env.tmp && mv project.env.tmp project.env
