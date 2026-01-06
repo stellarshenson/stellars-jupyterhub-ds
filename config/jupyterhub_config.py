@@ -42,6 +42,76 @@ def sync_nativeauth_on_rename(target, value, oldvalue, initiator):
     except Exception as e:
         print(f"[NativeAuth Sync] Error: {e}")
 
+
+@event.listens_for(orm.User, 'after_insert')
+def create_nativeauth_on_user_insert(mapper, connection, target):
+    """Auto-create NativeAuthenticator UserInfo when a new User is created via admin panel.
+    Generates a memorable password and auto-approves the user."""
+    username = target.name
+    try:
+        import bcrypt
+        import random
+        from sqlalchemy import text
+
+        # Check if UserInfo already exists (user might have signed up normally)
+        result = connection.execute(
+            text("SELECT id FROM users_info WHERE username = :username"),
+            {"username": username}
+        )
+        if result.fetchone():
+            print(f"[NativeAuth Auto-Create] UserInfo already exists for: {username}")
+            return
+
+        # Generate memorable 3-word password
+        words = ['apple', 'beach', 'cloud', 'dance', 'eagle', 'flame', 'grape', 'happy',
+                 'ivory', 'jolly', 'karma', 'lemon', 'mango', 'noble', 'ocean', 'piano',
+                 'quest', 'river', 'storm', 'tiger', 'urban', 'vivid', 'water', 'zebra']
+        password = '-'.join(random.sample(words, 3))
+
+        # Hash password with bcrypt
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+        # Insert into users_info with is_authorized=1 (auto-approved since admin created them)
+        connection.execute(
+            text("INSERT INTO users_info (username, password, is_authorized) VALUES (:username, :password, 1)"),
+            {"username": username, "password": hashed_password.decode('utf-8')}
+        )
+
+        # Cache password for admin retrieval
+        from custom_handlers import cache_password
+        cache_password(username, password)
+
+        print(f"[NativeAuth Auto-Create] User '{username}' created and authorized")
+
+    except Exception as e:
+        print(f"[NativeAuth Auto-Create] Error for {username}: {e}")
+
+
+@event.listens_for(orm.User, 'after_delete')
+def remove_nativeauth_on_user_delete(mapper, connection, target):
+    """Remove NativeAuthenticator UserInfo when a User is deleted."""
+    username = target.name
+    try:
+        from sqlalchemy import text
+
+        result = connection.execute(
+            text("DELETE FROM users_info WHERE username = :username"),
+            {"username": username}
+        )
+        if result.rowcount > 0:
+            print(f"[NativeAuth Cleanup] Removed UserInfo for deleted user: {username}")
+
+        # Clear cached password if any
+        try:
+            from custom_handlers import clear_cached_password
+            clear_cached_password(username)
+        except ImportError:
+            pass
+
+    except Exception as e:
+        print(f"[NativeAuth Cleanup] Error removing UserInfo for {username}: {e}")
+
+
 # NVIDIA GPU auto-detection 
 def detect_nvidia(nvidia_autodetect_image='nvidia/cuda:12.9.1-base-ubuntu24.04'):
     """ function to run docker image with nvidia driver, and execute `nvidia-smi` utility
@@ -289,13 +359,15 @@ if c is not None:
         ManageVolumesHandler,
         RestartServerHandler,
         NotificationsPageHandler,
-        BroadcastNotificationHandler
+        BroadcastNotificationHandler,
+        GetUserCredentialsHandler
     )
 
     c.JupyterHub.extra_handlers = [
         (r'/api/users/([^/]+)/manage-volumes', ManageVolumesHandler),
         (r'/api/users/([^/]+)/restart-server', RestartServerHandler),
         (r'/api/notifications/broadcast', BroadcastNotificationHandler),
+        (r'/api/users/credentials', GetUserCredentialsHandler),
         (r'/notifications', NotificationsPageHandler),
     ]
 
