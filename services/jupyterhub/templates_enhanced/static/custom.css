@@ -1139,6 +1139,15 @@ textarea.form-control {
   text-align: right !important;
 }
 
+/* Reduce spacing before Shutdown Hub button */
+.server-dashboard-container .admin-header-buttons #shutdown-button {
+  margin-left: 5px !important;
+}
+
+.server-dashboard-container .admin-header-buttons span[style*="margin-left"] {
+  margin-left: 5px !important;
+}
+
 .server-dashboard-container .actions .btn {
   padding: 0.2rem 0.5rem !important;
   font-size: 0.8rem !important;
