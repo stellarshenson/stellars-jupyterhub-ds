@@ -39,7 +39,7 @@ COPY --chmod=755  services/jupyterhub/conf/bin/*.sh /
 COPY --chmod=755  services/jupyterhub/conf/bin/*.py /srv/jupyterhub/
 COPY --chmod=755  services/jupyterhub/conf/bin/start-platform.d /start-platform.d
 COPY --chmod=600  services/jupyterhub/templates/certs /mnt/certs
-COPY --chmod=644  services/jupyterhub/templates/*.html /srv/jupyterhub/templates/
+COPY --chmod=644  services/jupyterhub/templates_enhanced/*.html /srv/jupyterhub/templates/
 COPY --chmod=644  config/jupyterhub_config.py /srv/jupyterhub/jupyterhub_config.py
 
 ## install dockerspawner, nativeauthenticator
