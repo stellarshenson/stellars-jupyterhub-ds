@@ -1,6 +1,6 @@
 #!/bin/sh
 export DOCKER_DEFAULT_PLATFORM=linux/amd64
-export COMPOSE_BAKE=false
+export COMPOSE_BAKE=true
 
 # Source project.env to get VERSION
 set -a
