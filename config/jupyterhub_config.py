@@ -256,11 +256,12 @@ if c is not None:
     # Set volumes from constant
     c.DockerSpawner.volumes = DOCKER_SPAWNER_VOLUMES
 
-    # Make volume suffixes, descriptions, and version available to templates
+    # Make volume suffixes, descriptions, version, and custom logo available to templates
     c.JupyterHub.template_vars = {
         'user_volume_suffixes': USER_VOLUME_SUFFIXES,
         'volume_descriptions': VOLUME_DESCRIPTIONS,
-        'stellars_version': os.environ.get('STELLARS_JUPYTERHUB_VERSION', 'dev')
+        'stellars_version': os.environ.get('STELLARS_JUPYTERHUB_VERSION', 'dev'),
+        'custom_logo_uri': os.environ.get('JUPYTERHUB_CUSTOM_LOGO_URI', '')
     }
 
 # Built-in groups that cannot be deleted (auto-recreated if missing)

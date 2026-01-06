@@ -121,10 +121,17 @@
           {% block logo %}
             <span id="jupyterhub-logo" class="navbar-brand">
               <a href="{{ logo_url or base_url }}">
+                {% if custom_logo_uri %}
+                <img src='{{ custom_logo_uri }}'
+                     alt='Logo'
+                     class='jpy-logo'
+                     title='Home' />
+                {% else %}
                 <img src='{{ base_url }}logo'
                      alt='JupyterHub logo'
                      class='jpy-logo'
                      title='Home' />
+                {% endif %}
               </a>
             </span>
           {% endblock logo %}
