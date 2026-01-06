@@ -93,3 +93,12 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 30. **Task - Credentials modal UX improvements**: Enhanced modal layout, scrolling, and loading feedback<br>
     **Result**: Moved Copy/Download buttons to top of modal body. Added scrollable container (max-height 300px) for long user lists. Removed `<code>` styling for plain text display. Added loading spinner modal shown between user creation and credentials display. Improved Makefile version output format to show "Current version" and "New version" lines
+
+31. **Task - Fix password storage and enable bake**: Fixed NativeAuthenticator password storage format and Docker build configuration<br>
+    **Result**: Changed password storage from decoded string to bytes - bcrypt.hashpw() returns bytes which NativeAuthenticator ORM expects as LargeBinary. Previous string storage caused "argument 'salt': 'str' object cannot be converted to 'PyBytes'" error on login. Enabled COMPOSE_BAKE=true in build.sh, build_verbose.sh, and .claude/commands/build.md to use Docker's bake builder (removes deprecation warning). Tagged STABLE_3.5.10
+
+32. **Task - Per-row copy icon in credentials modal**: Added individual copy functionality for each credential row<br>
+    **Result**: Added third column with subtle copy icon (40% opacity) for each row in credentials table. Click handler copies "Username: xxx\nPassword: yyy" to clipboard. Icon changes to checkmark briefly (1.5s) after successful copy, then returns to copy icon
+
+33. **Task - Comment out console logs**: Removed debug console output from admin template<br>
+    **Result**: Commented out all console.log and console.error statements in admin.html (11 total) - fetch interceptor logs, user creation detection, credentials fetch/receive, error handlers. Version display in home.html remains active as only console output
