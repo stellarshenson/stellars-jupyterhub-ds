@@ -23,25 +23,29 @@
             <strong>Success:</strong> Users created and authorized.
             Share the credentials below with each user.
           </div>
-          <table class="table table-striped" id="credentials-table">
-            <thead>
-              <tr>
-                <th>Username</th>
-                <th>Password</th>
-              </tr>
-            </thead>
-            <tbody id="credentials-body">
-              <!-- Populated dynamically -->
-            </tbody>
-          </table>
+          <div class="mb-3">
+            <button type="button" class="btn btn-outline-secondary me-2" id="copy-credentials-btn">
+              <i class="fa fa-copy me-1"></i>Copy to Clipboard
+            </button>
+            <button type="button" class="btn btn-primary" id="download-credentials-btn">
+              <i class="fa fa-download me-1"></i>Download as TXT
+            </button>
+          </div>
+          <div style="max-height: 300px; overflow-y: auto;">
+            <table class="table table-striped" id="credentials-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Password</th>
+                </tr>
+              </thead>
+              <tbody id="credentials-body">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" id="copy-credentials-btn">
-            <i class="fa fa-copy me-1"></i>Copy to Clipboard
-          </button>
-          <button type="button" class="btn btn-primary" id="download-credentials-btn">
-            <i class="fa fa-download me-1"></i>Download as TXT
-          </button>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         </div>
       </div>
@@ -182,8 +186,8 @@
         credentials.forEach(cred => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td><code>${escapeHtml(cred.username)}</code></td>
-                <td><code>${escapeHtml(cred.password)}</code></td>
+                <td>${escapeHtml(cred.username)}</td>
+                <td>${escapeHtml(cred.password)}</td>
             `;
             tbody.appendChild(row);
         });
