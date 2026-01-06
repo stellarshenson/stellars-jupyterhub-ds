@@ -4,11 +4,58 @@ Custom JupyterHub API handlers for volume management, server control, notificati
 """
 
 from jupyterhub.handlers import BaseHandler
+from jupyterhub.apihandlers.users import UserAPIHandler
 from tornado import web
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
 import docker
 import json
 import asyncio
+
+
+class SyncedUserAPIHandler(UserAPIHandler):
+    """
+    Extended UserAPIHandler that syncs NativeAuthenticator UserInfo table on rename.
+
+    When JupyterHub's built-in user rename is used (via admin panel or API),
+    the NativeAuthenticator users_info table is NOT updated, breaking the link
+    between JupyterHub User and authentication data.
+
+    This handler intercepts the PATCH request and syncs the UserInfo username
+    after a successful rename.
+    """
+
+    async def patch(self, user_name):
+        """Override patch to sync NativeAuthenticator on rename"""
+        # Get the request data to check if this is a rename
+        data = self.get_json_body()
+        new_name = data.get('name') if data else None
+        is_rename = new_name and new_name != user_name
+
+        # Store old UserInfo reference before the rename
+        old_user_info = None
+        if is_rename:
+            try:
+                from nativeauthenticator.orm import UserInfo
+                old_user_info = self.db.query(UserInfo).filter(UserInfo.username == user_name).first()
+                if old_user_info:
+                    self.log.info(f"[SyncedUserAPI] Found UserInfo for {user_name}, will sync after rename")
+            except ImportError:
+                self.log.debug("[SyncedUserAPI] NativeAuthenticator not available")
+            except Exception as e:
+                self.log.warning(f"[SyncedUserAPI] Error querying UserInfo: {e}")
+
+        # Call parent handler to do the actual rename
+        await super().patch(user_name)
+
+        # After successful rename, sync NativeAuthenticator UserInfo
+        if is_rename and old_user_info:
+            try:
+                old_user_info.username = new_name
+                self.db.commit()
+                self.log.info(f"[SyncedUserAPI] Synced UserInfo: {user_name} -> {new_name}")
+            except Exception as e:
+                self.log.error(f"[SyncedUserAPI] Failed to sync UserInfo: {e}")
+                # Don't fail the request - the JupyterHub rename succeeded
 
 
 class ManageVolumesHandler(BaseHandler):
