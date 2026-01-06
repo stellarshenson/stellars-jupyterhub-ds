@@ -8,7 +8,7 @@ Use the Bash tool to run the following command from the project root:
 
 ```bash
 export DOCKER_DEFAULT_PLATFORM=linux/amd64 && \
-export COMPOSE_BAKE=false && \
+export COMPOSE_BAKE=true && \
 docker compose -f compose.yml build --progress=plain
 ```
 

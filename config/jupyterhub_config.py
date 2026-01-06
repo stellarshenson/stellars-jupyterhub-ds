@@ -74,7 +74,7 @@ def create_nativeauth_on_user_insert(mapper, connection, target):
         # Insert into users_info with is_authorized=1 (auto-approved since admin created them)
         connection.execute(
             text("INSERT INTO users_info (username, password, is_authorized) VALUES (:username, :password, 1)"),
-            {"username": username, "password": hashed_password.decode('utf-8')}
+            {"username": username, "password": hashed_password}
         )
 
         # Cache password for admin retrieval
