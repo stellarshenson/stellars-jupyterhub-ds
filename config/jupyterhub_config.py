@@ -262,10 +262,13 @@ if c is not None:
         RestartServerHandler,
         NotificationsPageHandler,
         BroadcastNotificationHandler,
-        RenameUserHandler
+        RenameUserHandler,
+        SyncedUserAPIHandler
     )
 
     c.JupyterHub.extra_handlers = [
+        # Override default user API to sync NativeAuthenticator on rename
+        (r'/api/users/([^/]+)', SyncedUserAPIHandler),
         (r'/api/users/([^/]+)/manage-volumes', ManageVolumesHandler),
         (r'/api/users/([^/]+)/restart-server', RestartServerHandler),
         (r'/api/users/([^/]+)/rename', RenameUserHandler),
