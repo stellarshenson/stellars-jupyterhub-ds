@@ -111,7 +111,7 @@
         const url = typeof urlArg === 'string' ? urlArg : urlArg.toString();
         const method = options?.method || 'GET';
 
-        console.log('[Admin Fetch]', method, url);
+        // console.log('[Admin Fetch]', method, url);
 
         // Check for user creation - POST to api/users (may have ?_xsrf query param)
         // Exclude URLs with other query params like include_stopped_servers
@@ -121,13 +121,13 @@
         // Capture request body before fetch (for batch user creation)
         let requestUsernames = [];
         if (isUserCreation) {
-            console.log('[Admin] User creation POST detected!');
+            // console.log('[Admin] User creation POST detected!');
             try {
                 if (options.body) {
                     const bodyData = JSON.parse(options.body);
                     if (bodyData.usernames && Array.isArray(bodyData.usernames)) {
                         requestUsernames = bodyData.usernames;
-                        console.log('[Admin] Batch user creation request:', requestUsernames);
+                        // console.log('[Admin] Batch user creation request:', requestUsernames);
                     }
                 }
             } catch (e) {
@@ -136,7 +136,7 @@
         }
 
         const response = await originalFetch.apply(this, args);
-        console.log('[Admin Fetch] Response status:', response.status);
+        // console.log('[Admin Fetch] Response status:', response.status);
 
         // Check if this is a POST to create users
         if (isUserCreation) {
@@ -158,7 +158,7 @@
                     }
 
                     if (createdUsers.length > 0) {
-                        console.log('[Admin] Users created:', createdUsers);
+                        // console.log('[Admin] Users created:', createdUsers);
                         pendingUsernames.push(...createdUsers);
 
                         // Show loading spinner
@@ -175,7 +175,7 @@
                     }
                 }
             } catch (e) {
-                console.error('[Admin] Error processing user creation:', e);
+                // console.error('[Admin] Error processing user creation:', e);
             }
         }
 
@@ -184,7 +184,7 @@
 
     // Fetch credentials for created users and show modal
     async function fetchAndShowCredentials(usernames) {
-        console.log('[Admin] Fetching credentials for:', usernames);
+        // console.log('[Admin] Fetching credentials for:', usernames);
 
         try {
             const response = await originalFetch(`${baseUrl}api/admin/credentials`, {
@@ -198,17 +198,17 @@
 
             if (response.ok) {
                 const data = await response.json();
-                console.log('[Admin] Credentials received:', data);
+                // console.log('[Admin] Credentials received:', data);
 
                 if (data.credentials && data.credentials.length > 0) {
                     showCredentialsModal(data.credentials);
                 }
             } else {
-                console.error('[Admin] Failed to fetch credentials:', response.status);
+                // console.error('[Admin] Failed to fetch credentials:', response.status);
                 hideLoadingSpinner();
             }
         } catch (e) {
-            console.error('[Admin] Error fetching credentials:', e);
+            // console.error('[Admin] Error fetching credentials:', e);
             hideLoadingSpinner();
         }
     }
@@ -288,7 +288,7 @@
                         btn.classList.add('btn-outline-secondary');
                     }, 2000);
                 }).catch(err => {
-                    console.error('[Admin] Failed to copy:', err);
+                    // console.error('[Admin] Failed to copy:', err);
                     alert('Failed to copy to clipboard');
                 });
             }
