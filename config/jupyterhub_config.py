@@ -367,7 +367,7 @@ if c is not None:
         (r'/api/users/([^/]+)/manage-volumes', ManageVolumesHandler),
         (r'/api/users/([^/]+)/restart-server', RestartServerHandler),
         (r'/api/notifications/broadcast', BroadcastNotificationHandler),
-        (r'/api/users/credentials', GetUserCredentialsHandler),
+        (r'/api/admin/credentials', GetUserCredentialsHandler),
         (r'/notifications', NotificationsPageHandler),
     ]
 
