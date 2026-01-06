@@ -150,7 +150,7 @@
         console.log('[Admin] Fetching credentials for:', usernames);
 
         try {
-            const response = await originalFetch(`${baseUrl}api/users/credentials`, {
+            const response = await originalFetch(`${baseUrl}api/admin/credentials`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

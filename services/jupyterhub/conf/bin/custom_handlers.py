@@ -477,7 +477,7 @@ class GetUserCredentialsHandler(BaseHandler):
         """
         Retrieve cached credentials for newly created users (admin only)
 
-        POST /hub/api/users/credentials
+        POST /hub/api/admin/credentials
         Body: {"usernames": ["user1", "user2", ...]}
         Returns: {"credentials": [{"username": "...", "password": "..."}, ...]}
         """
