@@ -79,8 +79,10 @@
 
         console.log('[Admin Fetch]', method, url);
 
-        // Check for user creation
-        const isUserCreation = method === 'POST' && url.includes('api/users') && !url.includes('?');
+        // Check for user creation - POST to api/users (may have ?_xsrf query param)
+        // Exclude URLs with other query params like include_stopped_servers
+        const urlPath = url.split('?')[0];
+        const isUserCreation = method === 'POST' && urlPath.endsWith('api/users');
 
         // Capture request body before fetch (for batch user creation)
         let requestUsernames = [];
