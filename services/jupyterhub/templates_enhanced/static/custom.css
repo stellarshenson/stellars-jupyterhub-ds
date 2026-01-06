@@ -1061,15 +1061,23 @@ textarea.form-control {
   color: #495057 !important;
 }
 
-/* Subtle hover for user rows */
+/* Subtle hover for user rows - nearly invisible */
 .server-dashboard-container .user-row:hover {
-  background-color: rgba(0, 0, 0, 0.008) !important;
+  background-color: rgba(0, 0, 0, 0.003) !important;
 }
 
-/* Add Users button - only adjust size, keep stock btn-light colors */
+/* Add Users button */
 .server-dashboard-container .add-users-button {
   padding: 0.2rem 0.5rem !important;
   font-size: 0.8rem !important;
+}
+
+/* Dark mode Add Users button */
+[data-bs-theme="dark"] .server-dashboard-container .add-users-button.btn-light {
+  background-color: #f8f9fa !important;
+  background-image: none !important;
+  border-color: #6c757d !important;
+  color: #000000 !important;
 }
 
 /* Add Users form panel */
@@ -1315,9 +1323,9 @@ textarea.form-control {
   color: #dee2e6 !important;
 }
 
-/* Dark mode - subtle hover for user rows */
+/* Dark mode - subtle hover for user rows - nearly invisible */
 [data-bs-theme="dark"] .server-dashboard-container .user-row:hover {
-  background-color: rgba(255, 255, 255, 0.008) !important;
+  background-color: rgba(255, 255, 255, 0.003) !important;
 }
 
 /* Dark mode - checkbox label brighter */
