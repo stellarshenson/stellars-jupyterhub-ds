@@ -353,6 +353,21 @@ services:
       - ENABLE_SIGNUP=0 # disable self-registration, admin creates users
 ```
 
+#### Custom Logo
+
+Replace the default JupyterHub logo with a custom logo via environment variable. Supports URLs, file:/// paths, or data URIs:
+
+```yaml
+services:
+  jupyterhub:
+    environment:
+      - JUPYTERHUB_CUSTOM_LOGO_URI=https://example.com/logo.png
+      # Or data URI: data:image/png;base64,iVBORw0KGgo...
+      # Or file path: file:///mnt/shared/logo.png
+```
+
+Leave empty (default) to use the stock JupyterHub logo.
+
 #### Enable shared CIFS mount
 
 Changes in your `compose_override.yml`:

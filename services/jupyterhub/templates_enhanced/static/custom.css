@@ -346,14 +346,654 @@ textarea.form-control {
   vertical-align: middle;
 }
 
-/* Credentials modal table */
+/* ==========================================================================
+   Credentials Modal - Enhanced Styling
+   ========================================================================== */
+
+#user-credentials-modal .modal-header {
+  padding: 0.5rem 0.75rem;
+}
+
+#user-credentials-modal .modal-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+#user-credentials-modal .modal-body {
+  padding: 0.5rem 0.75rem;
+}
+
+#user-credentials-modal .alert {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+}
+
+#user-credentials-modal .alert strong {
+  font-weight: 600;
+}
+
+/* Credentials modal buttons - compact like admin */
+#user-credentials-modal .btn {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+#user-credentials-modal .mb-3 {
+  margin-bottom: 0.5rem !important;
+}
+
+/* Credentials table styling */
 #credentials-table {
+  margin-bottom: 0;
+  font-size: 0.8rem;
+}
+
+#credentials-table thead th {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6c757d;
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: none;
+}
+
+#credentials-table tbody td {
+  padding: 0.25rem 0.5rem;
+  vertical-align: middle;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+#credentials-table tbody tr:nth-of-type(odd) {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+#credentials-table tbody tr:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+/* Copy icon in credentials table */
+#credentials-table .copy-row-btn {
+  opacity: 0.4;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+#credentials-table .copy-row-btn:hover {
+  opacity: 0.8;
+}
+
+#user-credentials-modal .modal-footer {
+  padding: 0.4rem 0.75rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Dark mode credentials modal */
+[data-bs-theme="dark"] #credentials-table thead th {
+  color: #adb5bd;
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-bs-theme="dark"] #credentials-table tbody td {
+  color: #dee2e6;
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-bs-theme="dark"] #credentials-table tbody tr:nth-of-type(odd) {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+[data-bs-theme="dark"] #credentials-table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-bs-theme="dark"] #user-credentials-modal .modal-footer {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ==========================================================================
+   General Page Styling (Authorization, Tokens, etc.)
+   ========================================================================== */
+
+/* Page headings */
+.container > h1,
+.container > h2,
+.container > h3 {
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+  color: #495057;
+}
+
+.container > h2 { font-size: 1rem; }
+.container > h3 { font-size: 0.9rem; }
+
+[data-bs-theme="dark"] .container > h1,
+[data-bs-theme="dark"] .container > h2,
+[data-bs-theme="dark"] .container > h3 {
+  color: #dee2e6;
+}
+
+/* Page description text */
+.container > p {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-bottom: 0.5rem;
+}
+
+[data-bs-theme="dark"] .container > p {
+  color: #adb5bd;
+}
+
+/* General tables in container */
+.container > .table,
+.container .table {
+  font-size: 0.8rem;
+}
+
+.container .table thead th {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6c757d;
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: none;
+}
+
+.container .table tbody td {
+  padding: 0.25rem 0.5rem;
+  vertical-align: middle;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  color: #495057;
+}
+
+/* Banded rows */
+.container .table tbody tr:nth-of-type(odd) {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.container .table tbody tr:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+/* Success row - subtle green tint */
+.container .table tbody tr.success {
+  background-color: rgba(25, 135, 84, 0.03);
+}
+
+.container .table tbody tr.success:hover {
+  background-color: rgba(25, 135, 84, 0.06);
+}
+
+/* Buttons in tables - compact but readable */
+.container .table .btn,
+.container .table .btn-default,
+.container .table .btn-jupyter,
+.container .table .btn-danger {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+  border-radius: 3px;
+}
+
+.container .table .btn-default,
+.container .btn-default {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  color: #495057;
+}
+
+.container .table .btn-default:hover,
+.container .btn-default:hover {
+  background-color: #e9ecef;
+  border-color: #ced4da;
+}
+
+.container .table .btn-jupyter,
+.container .btn-jupyter {
+  background-color: #2c7bb6;
+  border: 1px solid #2c7bb6;
+  color: #fff;
+}
+
+.container .table .btn-jupyter:hover,
+.container .btn-jupyter:hover {
+  background-color: #246a9e;
+  border-color: #246a9e;
+}
+
+/* Forms in container */
+.container form {
+  margin-bottom: 0.75rem;
+}
+
+.container form .form-group {
+  margin-bottom: 0.5rem;
+}
+
+.container form label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-bottom: 0.2rem;
+  color: #495057;
+}
+
+.container form input[type="text"],
+.container form input[type="password"],
+.container form textarea,
+.container form select {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  border-radius: 3px;
+}
+
+.container form .btn {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+/* Code/token display */
+.container code,
+.container pre {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.3rem;
+  border-radius: 2px;
+}
+
+/* Dark mode general pages */
+[data-bs-theme="dark"] .container .table thead th {
+  color: #adb5bd;
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-bs-theme="dark"] .container .table tbody td {
+  color: #dee2e6;
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-bs-theme="dark"] .container .table tbody tr:nth-of-type(odd) {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+[data-bs-theme="dark"] .container .table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+[data-bs-theme="dark"] .container .table tbody tr.success {
+  background-color: rgba(25, 135, 84, 0.08);
+}
+
+[data-bs-theme="dark"] .container .table tbody tr.success:hover {
+  background-color: rgba(25, 135, 84, 0.12);
+}
+
+[data-bs-theme="dark"] .container .table .btn-default,
+[data-bs-theme="dark"] .container .btn-default {
+  background-color: #343a40;
+  border-color: #495057;
+  color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .container .table .btn-default:hover,
+[data-bs-theme="dark"] .container .btn-default:hover {
+  background-color: #3d444b;
+  border-color: #5c636a;
+}
+
+[data-bs-theme="dark"] .container form label {
+  color: #dee2e6;
+}
+
+/* ==========================================================================
+   Token Page Specific Styling
+   ========================================================================== */
+
+/* Token request form */
+#request-token-form {
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.01);
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+#request-token-form .form-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-bottom: 0.2rem;
+}
+
+#request-token-form .form-control,
+#request-token-form .form-select {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+#request-token-form .form-text {
+  font-size: 0.7rem;
+  color: #6c757d;
+}
+
+#request-token-form .btn-lg {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+/* Token result card */
+#token-area .card {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+#token-area .card-header {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+#token-area .card-body {
+  padding: 0.5rem 0.75rem;
+}
+
+#token-area .card-text {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+#token-result {
+  font-family: monospace;
+  font-size: 0.8rem;
+  background: rgba(0, 0, 0, 0.03);
+  padding: 0.3rem 0.5rem;
+  border-radius: 3px;
+  word-break: break-all;
+}
+
+/* API Tokens section */
+#api-tokens-section h2 {
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+#api-tokens-section > .col > p {
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin-bottom: 0.5rem;
+}
+
+/* Token table */
+#api-tokens-table {
+  font-size: 0.75rem;
+}
+
+#api-tokens-table thead th {
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6c757d;
+  padding: 0.25rem 0.4rem;
+}
+
+#api-tokens-table tbody td {
+  padding: 0.2rem 0.4rem;
+  vertical-align: middle;
+}
+
+/* Token row */
+.token-row {
+  font-size: 0.75rem;
+}
+
+/* Scope details */
+.token-row details summary {
+  font-size: 0.7rem;
+  cursor: pointer;
+  color: #6c757d;
+}
+
+.token-row details summary:hover {
+  color: #495057;
+}
+
+.token-scope {
+  font-size: 0.65rem;
+  padding: 0.1rem 0.3rem;
+  margin: 0.1rem 0;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 2px;
+  display: block;
+}
+
+/* Revoke button */
+.revoke-token-btn {
+  padding: 0.2rem 0.5rem !important;
+  font-size: 0.8rem !important;
+}
+
+/* Dark mode token page */
+[data-bs-theme="dark"] #request-token-form {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-bs-theme="dark"] #request-token-form .form-text {
+  color: #868e96;
+}
+
+[data-bs-theme="dark"] #token-area .card {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-bs-theme="dark"] #token-area .card-text {
+  color: #868e96;
+}
+
+[data-bs-theme="dark"] #token-result {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-bs-theme="dark"] #api-tokens-section > .col > p {
+  color: #868e96;
+}
+
+[data-bs-theme="dark"] .token-row details summary {
+  color: #868e96;
+}
+
+[data-bs-theme="dark"] .token-row details summary:hover {
+  color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .token-scope {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ==========================================================================
+   Notifications Page Styling
+   ========================================================================== */
+
+/* Page header */
+#notification-form {
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.01);
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  max-width: 600px;
+}
+
+/* Form labels */
+#notification-form .form-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-bottom: 0.2rem;
+  color: #495057;
+}
+
+#notification-form .form-label .text-danger {
+  font-size: 0.7rem;
+}
+
+/* Message textarea */
+#notification-form #message {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.5rem;
+  resize: vertical;
+  min-height: 80px;
+  max-height: 200px;
+}
+
+/* Character counter */
+#notification-form .form-text {
+  font-size: 0.7rem;
+  color: #6c757d;
+}
+
+#notification-form #char-count {
+  font-weight: 500;
+  color: #868e96;
+}
+
+/* Notification type selector */
+#notification-form .form-select {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  max-width: 200px;
+}
+
+/* Auto-close checkbox */
+#notification-form .form-check {
+  margin-bottom: 0.5rem;
+}
+
+#notification-form .form-check-label {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+/* Send button - compact but prominent */
+#notification-form #send-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+#notification-form #send-btn i {
+  margin-right: 0.3rem;
+}
+
+/* Results section */
+#results-section {
+  margin-top: 1rem !important;
+}
+
+#results-section h3 {
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: #495057;
+}
+
+/* Results alert */
+#results-alert .alert {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+}
+
+#results-alert .alert i {
+  margin-right: 0.3rem;
+}
+
+/* Toggle details button */
+#toggle-details-btn {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+/* Details table */
+#details-table .table {
+  font-size: 0.8rem;
   margin-bottom: 0;
 }
 
-/* Notifications results table */
-.table.table-striped tbody tr td {
+#details-table .table thead th {
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6c757d;
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: none;
+}
+
+#details-table .table tbody td {
+  padding: 0.25rem 0.5rem;
   vertical-align: middle;
+  color: #495057;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+/* Banded rows */
+#details-table .table tbody tr:nth-of-type(odd) {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+#details-table .table tbody tr:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+/* Status badges */
+#details-table .badge {
+  padding: 0.15rem 0.35rem;
+  font-size: 0.7rem;
+}
+
+#details-table .badge i {
+  margin-right: 0.15rem;
+}
+
+/* Dark mode notifications page */
+[data-bs-theme="dark"] #notification-form {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-bs-theme="dark"] #notification-form .form-label {
+  color: #dee2e6;
+}
+
+[data-bs-theme="dark"] #notification-form .form-text,
+[data-bs-theme="dark"] #notification-form .form-check-label {
+  color: #868e96;
+}
+
+[data-bs-theme="dark"] #notification-form #char-count {
+  color: #adb5bd;
+}
+
+[data-bs-theme="dark"] #results-section h3 {
+  color: #dee2e6;
+}
+
+[data-bs-theme="dark"] #details-table .table thead th {
+  color: #adb5bd;
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-bs-theme="dark"] #details-table .table tbody td {
+  color: #dee2e6;
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-bs-theme="dark"] #details-table .table tbody tr:nth-of-type(odd) {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+[data-bs-theme="dark"] #details-table .table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
 /* Spinner modal - keep centered */
@@ -362,7 +1002,333 @@ textarea.form-control {
 }
 
 /* ==========================================================================
-   14. Utility Classes
+   14. Admin Panel (React App) Overrides
+   ========================================================================== */
+
+/* Base container - lighter text, tighter spacing */
+.server-dashboard-container {
+  color: #495057 !important;
+  font-size: 0.8125rem !important;
+  line-height: 1.3 !important;
+}
+
+/* Remove ugly borders from admin tables */
+.server-dashboard-container .table-bordered,
+.server-dashboard-container .table-bordered > thead > tr > th,
+.server-dashboard-container .table-bordered > thead > tr > td,
+.server-dashboard-container .table-bordered > tbody > tr > th,
+.server-dashboard-container .table-bordered > tbody > tr > td {
+  border: none !important;
+}
+
+/* Add subtle bottom border only */
+.server-dashboard-container .table > thead > tr > th {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+  background-color: transparent !important;
+}
+
+.server-dashboard-container .table > tbody > tr > td {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Compact padding for admin tables (override inline styles) */
+.server-dashboard-container .table th,
+.server-dashboard-container .table td {
+  padding: 0.25rem 0.5rem !important;
+  vertical-align: middle !important;
+}
+
+/* Admin table header styling - brighter text */
+.server-dashboard-container .admin-table-head th {
+  font-weight: 500 !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #495057 !important;
+}
+
+/* Banded user rows */
+.server-dashboard-container .user-row:nth-of-type(odd) {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+.server-dashboard-container .user-row:nth-of-type(even) {
+  background-color: transparent !important;
+}
+
+/* User row styling */
+.server-dashboard-container .user-row td {
+  color: #495057 !important;
+}
+
+/* Subtle hover for user rows */
+.server-dashboard-container .user-row:hover {
+  background-color: rgba(0, 0, 0, 0.015) !important;
+}
+
+/* Add Users button - compact styling */
+.server-dashboard-container .add-users-button {
+  padding: 0.2rem 0.5rem !important;
+  font-size: 0.8rem !important;
+}
+
+/* Add Users form panel */
+.server-dashboard-container .add-users-form,
+.server-dashboard-container [class*="add-users"],
+.server-dashboard-container form {
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.01);
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.server-dashboard-container form label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #495057;
+  margin-bottom: 0.2rem;
+}
+
+.server-dashboard-container form textarea {
+  font-size: 0.8rem;
+  padding: 0.4rem 0.5rem;
+  min-height: 80px;
+  resize: vertical;
+}
+
+.server-dashboard-container form .form-text,
+.server-dashboard-container form small {
+  font-size: 0.7rem;
+  color: #6c757d;
+}
+
+.server-dashboard-container form button[type="submit"],
+.server-dashboard-container form .btn-primary {
+  padding: 0.25rem 0.6rem !important;
+  font-size: 0.8rem !important;
+}
+
+/* Dark mode add users form */
+[data-bs-theme="dark"] .server-dashboard-container .add-users-form,
+[data-bs-theme="dark"] .server-dashboard-container [class*="add-users"],
+[data-bs-theme="dark"] .server-dashboard-container form {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-bs-theme="dark"] .server-dashboard-container form label {
+  color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .server-dashboard-container form .form-text,
+[data-bs-theme="dark"] .server-dashboard-container form small {
+  color: #868e96;
+}
+
+/* Compact buttons in admin actions */
+.server-dashboard-container .actions .btn {
+  padding: 0.2rem 0.5rem !important;
+  font-size: 0.8rem !important;
+  margin-right: 0.2rem;
+}
+
+/* Sort icons */
+.server-dashboard-container .sort-icon {
+  opacity: 0.4;
+  margin-left: 0.2rem;
+}
+
+/* Collapsed card styling */
+.server-dashboard-container .card {
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  margin-bottom: 0.3rem;
+  padding: 0 !important;
+  background-color: rgba(0, 0, 0, 0.01) !important;
+}
+
+.server-dashboard-container .card-group {
+  gap: 0.5rem;
+}
+
+.server-dashboard-container .card-title {
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  padding: 0.25rem 0.5rem !important;
+  margin-bottom: 0 !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  color: #495057 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Nested tables in expanded rows - remove borders */
+.server-dashboard-container .card .table {
+  margin: 0 !important;
+  font-size: 0.75rem !important;
+}
+
+.server-dashboard-container .card .table-bordered,
+.server-dashboard-container .card .table-bordered th,
+.server-dashboard-container .card .table-bordered td {
+  border: none !important;
+}
+
+.server-dashboard-container .card .table th,
+.server-dashboard-container .card .table td {
+  padding: 0.15rem 0.4rem !important;
+  color: #6c757d !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03) !important;
+}
+
+.server-dashboard-container .card .table th {
+  font-weight: 500;
+  color: #868e96 !important;
+  width: 140px;
+}
+
+/* Nested empty tables (auth_state, pending, etc.) */
+.server-dashboard-container .card .table .table {
+  background: transparent !important;
+}
+
+.server-dashboard-container .card .table .table td,
+.server-dashboard-container .card .table .table th {
+  border: none !important;
+  padding: 0 !important;
+}
+
+/* Server dashboard row list items (roles, groups) */
+.server-dashboard-row-list-item {
+  display: inline-block;
+  padding: 0.05rem 0.35rem;
+  margin: 0.05rem;
+  font-size: 0.7rem;
+  background-color: rgba(0, 0, 0, 0.04);
+  border-radius: 2px;
+  color: #6c757d;
+}
+
+/* Pagination footer */
+.server-dashboard-container .pagination-footer {
+  font-size: 0.75rem;
+  padding: 0.3rem 0;
+  color: #6c757d;
+}
+
+.server-dashboard-container .pagination-footer p {
+  margin-bottom: 0.25rem !important;
+}
+
+.server-dashboard-container .pagination-footer input {
+  width: 60px;
+  padding: 0.15rem 0.3rem;
+  font-size: 0.75rem;
+}
+
+/* Add users button row */
+.server-dashboard-container .noborder td {
+  padding: 0.4rem 0.5rem !important;
+  border: none !important;
+}
+
+/* Top action buttons */
+.server-dashboard-container .admin-header-buttons .btn {
+  margin-right: 0.2rem;
+  padding: 0.2rem 0.5rem !important;
+  font-size: 0.8rem !important;
+}
+
+/* Collapse button */
+.server-dashboard-container [data-testid$="-collapse-button"] {
+  padding: 0.2rem 0.5rem !important;
+  font-size: 0.8rem !important;
+}
+
+/* Search and filter row */
+.server-dashboard-container .row {
+  margin-bottom: 0.5rem !important;
+}
+
+.server-dashboard-container .form-control {
+  padding: 0.25rem 0.5rem !important;
+  font-size: 0.8rem !important;
+}
+
+.server-dashboard-container .form-check-label {
+  font-size: 0.8rem !important;
+  color: #6c757d !important;
+}
+
+/* Dark mode admin overrides */
+[data-bs-theme="dark"] .server-dashboard-container {
+  color: #dee2e6 !important;
+}
+
+/* Dark mode - brighter table header */
+[data-bs-theme="dark"] .server-dashboard-container .admin-table-head th {
+  color: #adb5bd !important;
+}
+
+[data-bs-theme="dark"] .server-dashboard-container .table > thead > tr > th {
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-bs-theme="dark"] .server-dashboard-container .table > tbody > tr > td {
+  border-bottom-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Dark mode - banded rows */
+[data-bs-theme="dark"] .server-dashboard-container .user-row:nth-of-type(odd) {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+[data-bs-theme="dark"] .server-dashboard-container .user-row:nth-of-type(even) {
+  background-color: transparent !important;
+}
+
+[data-bs-theme="dark"] .server-dashboard-container .user-row td {
+  color: #dee2e6 !important;
+}
+
+/* Dark mode - subtle hover for user rows */
+[data-bs-theme="dark"] .server-dashboard-container .user-row:hover {
+  background-color: rgba(255, 255, 255, 0.015) !important;
+}
+
+/* Dark mode - checkbox label brighter */
+[data-bs-theme="dark"] .server-dashboard-container .form-check-label {
+  color: #adb5bd !important;
+}
+
+/* Dark mode - card styling */
+[data-bs-theme="dark"] .server-dashboard-container .card {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+[data-bs-theme="dark"] .server-dashboard-container .card-title {
+  color: #adb5bd !important;
+  border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Dark mode - card table text brighter */
+[data-bs-theme="dark"] .server-dashboard-container .card .table th {
+  color: #868e96 !important;
+}
+
+[data-bs-theme="dark"] .server-dashboard-container .card .table td {
+  color: #dee2e6 !important;
+  border-bottom-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Dark mode - list items */
+[data-bs-theme="dark"] .server-dashboard-row-list-item {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #adb5bd;
+}
+
+/* ==========================================================================
+   15. Utility Classes
    ========================================================================== */
 
 .text-compact {
