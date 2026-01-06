@@ -72,6 +72,7 @@ services:
       - ENABLE_SIGNUP=1 # user self-registration: 0 - disabled (admin creates users), 1 - enabled
       - TF_CPP_MIN_LOG_LEVEL=3 # make tensorflow less verbose
       - NVIDIA_AUTODETECT_IMAGE=nvidia/cuda:12.9.1-base-ubuntu24.04 # image with `nvidia-smi` for gpu autodetection
+      - JUPYTERHUB_CUSTOM_LOGO_URI= # custom logo URL, file:/// path, or data URI (empty = stock logo)
     labels:
       # Enable proxy support from Traefik
       - "traefik.enable=true"

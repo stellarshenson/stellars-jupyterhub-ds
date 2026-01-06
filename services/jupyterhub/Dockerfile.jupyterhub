@@ -40,7 +40,7 @@ COPY --chmod=755  services/jupyterhub/conf/bin/*.py /srv/jupyterhub/
 COPY --chmod=755  services/jupyterhub/conf/bin/start-platform.d /start-platform.d
 COPY --chmod=600  services/jupyterhub/templates/certs /mnt/certs
 COPY --chmod=644  services/jupyterhub/templates_enhanced/*.html /srv/jupyterhub/templates/
-COPY --chmod=644  services/jupyterhub/templates_enhanced/static/custom.css /srv/jupyterhub/static/css/custom.css
+COPY --chmod=644  services/jupyterhub/templates_enhanced/static/custom.css /tmp/custom.css
 COPY --chmod=644  config/jupyterhub_config.py /srv/jupyterhub/jupyterhub_config.py
 
 ## install dockerspawner, nativeauthenticator
@@ -49,9 +49,16 @@ RUN pip install -U --no-cache-dir \
     dockerspawner \
     jupyterhub-nativeauthenticator
 
+## copy custom.css to JupyterHub's static directory
+RUN <<-EOF
+    echo "installing custom.css to JupyterHub static directory"
+    cp /tmp/custom.css /srv/venv/share/jupyterhub/static/css/custom.css
+EOF
+
 ## default environment variables
 ENV ENABLE_SIGNUP=1
 ENV STELLARS_JUPYTERHUB_VERSION=${VERSION}
+ENV JUPYTERHUB_CUSTOM_LOGO_URI=""
 
 ## expose ports
 EXPOSE 8000
