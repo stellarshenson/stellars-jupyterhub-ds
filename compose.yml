@@ -46,6 +46,8 @@ services:
     build:
       context: .
       dockerfile: services/jupyterhub/Dockerfile.jupyterhub
+      args:
+        - VERSION=${VERSION:-dev}
     image: stellars/stellars-jupyterhub-ds:latest
     pull_policy: build
     container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-jupyterhub

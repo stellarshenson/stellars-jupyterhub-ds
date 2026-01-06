@@ -207,7 +207,10 @@
   {{ super() }}
   <script type="text/javascript">
     require(["jquery", "home"], function($) {
-      console.log('[Custom Handlers] Module loaded');
+      // Version banner in browser console
+      console.log('%c Stellars JupyterHub DS %c {{ stellars_version }} ',
+        'background: #0d6efd; color: white; font-weight: bold; padding: 4px 8px;',
+        'background: #198754; color: white; font-weight: bold; padding: 4px 8px;');
 
       $(document).ready(function() {
           const username = "{{ user.name }}";
