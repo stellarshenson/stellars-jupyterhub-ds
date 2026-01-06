@@ -111,3 +111,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 36. **Task - Volume renamer script**: Created extra/volume-renamer with script for renaming Docker volumes between users<br>
     **Result**: Created rename-user-volumes.sh - renames all jupyterlab-* volumes from source pattern to target username, handles Docker's dot-to-hex encoding (. becomes -2e), supports --dry-run (show mappings without changes) and --keep-orig (preserve source volumes), compact help with generic examples (oldnick -> first.last)
+
+37. **Task - UI refinements and icon cleanup**: Admin panel styling and password toggle icon improvements<br>
+    **Result**: Aligned admin action buttons to right (td.actions text-align), added transparent background for dark mode .server-dashboard-container, made table hover nearly invisible (--bs-table-hover-bg: rgba 0.003), replaced eye emoji with Font Awesome icons (fa-eye/fa-eye-slash) in all 4 password templates (signup, login, change-password, change-password-admin) - both button HTML and JavaScript toggle

@@ -1064,6 +1064,7 @@ textarea.form-control {
 /* Subtle hover for user rows - nearly invisible */
 .server-dashboard-container .user-row:hover {
   background-color: rgba(0, 0, 0, 0.003) !important;
+  --bs-table-hover-bg: rgba(0, 0, 0, 0.003) !important;
 }
 
 /* Add Users button */
@@ -1134,6 +1135,10 @@ textarea.form-control {
 }
 
 /* Compact buttons in admin actions */
+.server-dashboard-container td.actions {
+  text-align: right !important;
+}
+
 .server-dashboard-container .actions .btn {
   padding: 0.2rem 0.5rem !important;
   font-size: 0.8rem !important;
@@ -1295,6 +1300,7 @@ textarea.form-control {
 /* Dark mode admin overrides */
 [data-bs-theme="dark"] .server-dashboard-container {
   color: #dee2e6 !important;
+  background-color: transparent !important;
 }
 
 /* Dark mode - brighter table header */
@@ -1326,6 +1332,7 @@ textarea.form-control {
 /* Dark mode - subtle hover for user rows - nearly invisible */
 [data-bs-theme="dark"] .server-dashboard-container .user-row:hover {
   background-color: rgba(255, 255, 255, 0.003) !important;
+  --bs-table-hover-bg: rgba(255, 255, 255, 0.003) !important;
 }
 
 /* Dark mode - checkbox label brighter */

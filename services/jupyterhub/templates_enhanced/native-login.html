@@ -13,10 +13,10 @@
             let pwd = document.getElementById("password_input");
             if (pwd.getAttribute("type") === "password") {
                 pwd.setAttribute("type", "text");
-                button.textContent = "🔑";
+                button.innerHTML = '<i class="fa fa-eye-slash"></i>';
             } else {
                 pwd.setAttribute("type", "password");
-                button.textContent = "👁";
+                button.innerHTML = '<i class="fa fa-eye"></i>';
             }
         });
     });
@@ -57,7 +57,7 @@
             <div class="input-group">
                 <input id="password_input" type="password" name="password" val="" autocapitalize="off" autocorrect="off" class="form-control" />
                 <span class="input-group-addon">
-                    <button id="eye" type="button" style="border:0;">👁</button>
+                    <button id="eye" type="button" style="border:0;background:transparent;"><i class="fa fa-eye"></i></button>
                 </span>
             </div>
             <p></p>
