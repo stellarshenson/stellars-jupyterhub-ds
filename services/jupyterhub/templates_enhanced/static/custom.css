@@ -1063,8 +1063,8 @@ textarea.form-control {
 
 /* Subtle hover for user rows - nearly invisible */
 .server-dashboard-container .user-row:hover {
-  background-color: rgba(0, 0, 0, 0.003) !important;
-  --bs-table-hover-bg: rgba(0, 0, 0, 0.003) !important;
+  background-color: rgba(var(--bs-emphasis-color-rgb), 0.003) !important;
+  --bs-table-hover-bg: rgba(var(--bs-emphasis-color-rgb), 0.003) !important;
 }
 
 /* Add Users button */
@@ -1340,8 +1340,8 @@ textarea.form-control {
 
 /* Dark mode - subtle hover for user rows - nearly invisible */
 [data-bs-theme="dark"] .server-dashboard-container .user-row:hover {
-  background-color: rgba(255, 255, 255, 0.003) !important;
-  --bs-table-hover-bg: rgba(255, 255, 255, 0.003) !important;
+  background-color: rgba(var(--bs-emphasis-color-rgb), 0.003) !important;
+  --bs-table-hover-bg: rgba(var(--bs-emphasis-color-rgb), 0.003) !important;
 }
 
 /* Dark mode - checkbox label brighter */
