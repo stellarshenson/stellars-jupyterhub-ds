@@ -129,7 +129,7 @@ for file in "$CERT_DIR"/*.cer "$CERT_DIR"/*.crt "$CERT_DIR"/*.pem "$CERT_DIR"/*.
 
     if [ "$ext" = "key" ]; then
         is_key=true
-    elif [ -f "$file" ] && grep -q -E "-----BEGIN (RSA |EC |ENCRYPTED |)PRIVATE KEY-----|-----BEGIN OPENSSH PRIVATE KEY-----" "$file" 2>/dev/null; then
+    elif [ -f "$file" ] && grep -q -E -- "-----BEGIN (RSA |EC |ENCRYPTED )?PRIVATE KEY-----|-----BEGIN OPENSSH PRIVATE KEY-----" "$file" 2>/dev/null; then
         is_key=true
     fi
 
