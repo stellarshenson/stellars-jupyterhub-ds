@@ -1,42 +1,45 @@
 {% extends "page.html" %}
 
 {% block main %}
-<div class="container">
+<div class="container authorization-container">
     <h1>Authorization area</h1>
 
-    <table class="table">
+    <table class="table table-sm">
         <thead>
             <tr>
                 <th>Username</th>
                 {% if ask_email %}<th>Email</th>{% endif %}
-                <th>Has 2FA?</th>
-                <th>Is authorized?</th>
-                <th></th>
-                <th></th>
-                <th></th>
+                <th>2FA</th>
+                <th>Authorized</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for user in users %}
             {% if user.is_authorized %}
-            <tr class="success" id={{ user.username }}>
+            <tr class="success" id="{{ user.username }}">
                 <td>{{ user.username }}</td>
                 {% if ask_email %}<td>{{ user.email }}</td>{% endif %}
                 <td>{{ user.has_2fa }}</td>
                 <td>Yes</td>
-                <td><a class="btn btn-default" href="{{ base_url }}authorize/{{ user.username }}" role="button">Unauthorize</a></td>
-                <td><a class="btn btn-jupyter" href="{{ base_url }}change-password/{{ user.username }}" role="button">Change password</a></td>
-                <td></td>
+                <td class="actions-cell">
+                    <a class="btn btn-default btn-sm" href="{{ base_url }}authorize/{{ user.username }}" role="button">Unauthorize</a>
+                    <a class="btn btn-jupyter btn-sm" href="{{ base_url }}change-password/{{ user.username }}" role="button">Change password</a>
+                </td>
             </tr>
             {% else %}
-            <tr id={{ user.username }}>
+            <tr id="{{ user.username }}">
                 <td>{{ user.username }}</td>
                 {% if ask_email %}<td>{{ user.email }}</td>{% endif %}
                 <td>{{ user.has_2fa }}</td>
                 <td>No</td>
-                <td><a class="btn btn-jupyter" href="{{ base_url }}authorize/{{ user.username }}" role="button">Authorize</a></td>
-                <td><a class="btn btn-jupyter" href="{{ base_url }}change-password/{{ user.username }}" role="button">Change password</a></td>
-                <td><a class="btn btn-jupyter" href="{{ base_url }}discard/{{ user.username }}" role="button">Discard</a></td>
+                <td class="actions-cell">
+                    <a class="btn btn-jupyter btn-sm" href="{{ base_url }}authorize/{{ user.username }}" role="button">Authorize</a>
+                    <a class="btn btn-jupyter btn-sm" href="{{ base_url }}change-password/{{ user.username }}" role="button">Change password</a>
+                    {% if user.username not in hub_usernames %}
+                    <a class="btn btn-danger btn-sm" href="{{ base_url }}discard/{{ user.username }}" role="button">Discard</a>
+                    {% endif %}
+                </td>
             </tr>
             {% endif %}
             {% endfor %}
