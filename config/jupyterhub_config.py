@@ -6,7 +6,46 @@ import os
 import json
 import requests
 import nativeauthenticator
+from nativeauthenticator import NativeAuthenticator
+from nativeauthenticator.handlers import AuthorizationAreaHandler as BaseAuthorizationHandler
 import docker # for gpu autodetection
+
+
+# Custom AuthorizationAreaHandler that passes hub_usernames to template
+class CustomAuthorizationAreaHandler(BaseAuthorizationHandler):
+    """Override to pass hub_usernames to template for server-side Discard button logic"""
+
+    async def get(self):
+        from nativeauthenticator.orm import UserInfo
+
+        # Get hub usernames (users with actual JupyterHub accounts)
+        hub_usernames = {u.name for u in self.db.query(orm.User).all()}
+
+        html = await self.render_template(
+            "authorization-area.html",
+            ask_email=self.authenticator.ask_email_on_signup,
+            users=self.db.query(UserInfo).all(),
+            hub_usernames=hub_usernames,  # NEW: pass to template
+        )
+        self.finish(html)
+
+
+# Custom NativeAuthenticator that uses our authorization handler
+class StellarsNativeAuthenticator(NativeAuthenticator):
+    """Custom authenticator that injects CustomAuthorizationAreaHandler"""
+
+    def get_handlers(self, app):
+        # Get default handlers from parent
+        handlers = super().get_handlers(app)
+
+        # Replace AuthorizationAreaHandler with our custom one
+        new_handlers = []
+        for pattern, handler in handlers:
+            if handler.__name__ == 'AuthorizationAreaHandler':
+                new_handlers.append((pattern, CustomAuthorizationAreaHandler))
+            else:
+                new_handlers.append((pattern, handler))
+        return new_handlers
 
 # Only call get_config() when running as JupyterHub config (not when imported as module)
 try:
@@ -328,9 +367,9 @@ if c is not None:
     c.JupyterHub.cookie_secret_file = "/data/jupyterhub_cookie_secret"
     c.JupyterHub.db_url = "sqlite:////data/jupyterhub.sqlite"
 
-    # authenticate users with Native Authenticator
-    # enable UI for native authenticator
-    c.JupyterHub.authenticator_class = 'native'
+    # authenticate users with Custom Native Authenticator
+    # (subclass that injects hub_usernames into authorization template)
+    c.JupyterHub.authenticator_class = StellarsNativeAuthenticator
 
     # Template paths - must include default JupyterHub templates
     import jupyterhub

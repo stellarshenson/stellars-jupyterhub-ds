@@ -117,3 +117,12 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 38. **Task - Table hover and README update**: Fixed Bootstrap table-hover styling and documented mnemonic passwords feature<br>
     **Result**: Added --bs-table-accent-bg override for Bootstrap 5 table-hover (two-step variable process), reduced Shutdown Hub button margin from 30px to 5px, removed color override from dark mode .server-dashboard-container, updated README Features with admin user creation and mnemonic passwords (e.g., storm-apple-ocean)
+
+39. **Task - Authorization page improvements**: Protected users with accounts from accidental discard<br>
+    **Result**: Added JavaScript to authorization-area.html that fetches /api/users and hides Discard buttons for usernames that exist in JupyterHub (initial custom handler approach failed - NativeAuthenticator handlers take precedence over extra_handlers), removed unused AuthorizationAreaHandler from config and custom_handlers.py, made authorization table compact with CSS for .authorization-container, fixed 403 error by adding X-XSRFToken header and credentials to fetch request
+
+40. **Task - Fix table hover color override**: Admin panel table hover color not being overridden despite CSS<br>
+    **Result**: Discovered Bootstrap 5 table-hover targets td/th cells specifically while our CSS used universal `> *` selector. Fixed by changing selectors to explicitly target `> td, > th` and using `transparent` instead of CSS variables. Updated three rule sets: table-hover override (lines 1055-1061), user-row hover (lines 1086-1092), and dark mode user-row hover (lines 1364-1370)
+
+41. **Task - Server-side authorization discard fix**: Replaced clunky JavaScript API call with server-side Jinja2 logic<br>
+    **Result**: Created StellarsNativeAuthenticator subclass that overrides get_handlers() to inject CustomAuthorizationAreaHandler, which passes hub_usernames set to template. Updated authorization-area.html to use `{% if user.username not in hub_usernames %}` instead of JavaScript fetch. Removes API call, XSRF token handling, and flash of Discard buttons before hiding

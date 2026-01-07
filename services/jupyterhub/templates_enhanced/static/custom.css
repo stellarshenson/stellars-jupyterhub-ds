@@ -552,6 +552,20 @@ textarea.form-control {
   border-color: #ced4da;
 }
 
+/* Authorization area - compact table */
+.authorization-container .table th,
+.authorization-container .table td {
+  padding: 0.3rem 0.5rem;
+}
+
+.authorization-container .actions-cell {
+  white-space: nowrap;
+}
+
+.authorization-container .actions-cell .btn {
+  margin-right: 0.25rem;
+}
+
 .container .table .btn-jupyter,
 .container .btn-jupyter {
   background-color: #2c7bb6;
@@ -1038,14 +1052,12 @@ textarea.form-control {
   vertical-align: middle !important;
 }
 
-/* Override table-hover background */
-.server-dashboard-container .table-hover {
-  --bs-table-hover-bg: rgba(var(--bs-emphasis-color-rgb), 0.03) !important;
-}
-
-.server-dashboard-container .table-hover > tbody > tr:hover > * {
-  --bs-table-accent-bg: rgba(var(--bs-emphasis-color-rgb), 0.03) !important;
-  background-color: rgba(var(--bs-emphasis-color-rgb), 0.03) !important;
+/* Override table-hover background - target td/th explicitly to match Bootstrap specificity */
+.server-dashboard-container .table-hover > tbody > tr:hover > td,
+.server-dashboard-container .table-hover > tbody > tr:hover > th {
+  --bs-table-hover-bg: transparent !important;
+  --bs-table-accent-bg: transparent !important;
+  background-color: transparent !important;
 }
 
 /* Admin table header styling - brighter text */
@@ -1071,10 +1083,12 @@ textarea.form-control {
   color: #495057 !important;
 }
 
-/* Subtle hover for user rows - nearly invisible */
-.server-dashboard-container .user-row:hover {
-  background-color: rgba(var(--bs-emphasis-color-rgb), 0.003) !important;
-  --bs-table-hover-bg: rgba(var(--bs-emphasis-color-rgb), 0.003) !important;
+/* Subtle hover for user rows - nearly invisible, target cells explicitly */
+.server-dashboard-container .user-row:hover > td,
+.server-dashboard-container .user-row:hover > th {
+  --bs-table-hover-bg: transparent !important;
+  --bs-table-accent-bg: transparent !important;
+  background-color: transparent !important;
 }
 
 /* Add Users button */
@@ -1347,10 +1361,12 @@ textarea.form-control {
   color: #dee2e6 !important;
 }
 
-/* Dark mode - subtle hover for user rows - nearly invisible */
-[data-bs-theme="dark"] .server-dashboard-container .user-row:hover {
-  background-color: rgba(var(--bs-emphasis-color-rgb), 0.003) !important;
-  --bs-table-hover-bg: rgba(var(--bs-emphasis-color-rgb), 0.003) !important;
+/* Dark mode - subtle hover for user rows - nearly invisible, target cells explicitly */
+[data-bs-theme="dark"] .server-dashboard-container .user-row:hover > td,
+[data-bs-theme="dark"] .server-dashboard-container .user-row:hover > th {
+  --bs-table-hover-bg: transparent !important;
+  --bs-table-accent-bg: transparent !important;
+  background-color: transparent !important;
 }
 
 /* Dark mode - checkbox label brighter */
