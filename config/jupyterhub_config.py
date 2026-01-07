@@ -8,6 +8,7 @@ import requests
 import nativeauthenticator
 from nativeauthenticator import NativeAuthenticator
 from nativeauthenticator.handlers import AuthorizationAreaHandler as BaseAuthorizationHandler
+from jupyterhub.scopes import needs_scope
 import docker # for gpu autodetection
 
 
@@ -15,8 +16,10 @@ import docker # for gpu autodetection
 class CustomAuthorizationAreaHandler(BaseAuthorizationHandler):
     """Override to pass hub_usernames to template for server-side Discard button logic"""
 
+    @needs_scope('admin:users')
     async def get(self):
         from nativeauthenticator.orm import UserInfo
+        from jupyterhub import orm
 
         # Get hub usernames (users with actual JupyterHub accounts)
         hub_usernames = {u.name for u in self.db.query(orm.User).all()}
@@ -295,12 +298,17 @@ if c is not None:
     # Set volumes from constant
     c.DockerSpawner.volumes = DOCKER_SPAWNER_VOLUMES
 
-    # Make volume suffixes, descriptions, version, and custom logo available to templates
+    # Custom logo - mount/copy logo file to /srv/jupyterhub/logo.svg (or set path via env)
+    # JupyterHub serves this at {{ base_url }}logo automatically
+    logo_file = os.environ.get('JUPYTERHUB_LOGO_FILE', '/srv/jupyterhub/logo.svg')
+    if os.path.exists(logo_file):
+        c.JupyterHub.logo_file = logo_file
+
+    # Make volume suffixes, descriptions, and version available to templates
     c.JupyterHub.template_vars = {
         'user_volume_suffixes': USER_VOLUME_SUFFIXES,
         'volume_descriptions': VOLUME_DESCRIPTIONS,
         'stellars_version': os.environ.get('STELLARS_JUPYTERHUB_VERSION', 'dev'),
-        'custom_logo_uri': os.environ.get('JUPYTERHUB_CUSTOM_LOGO_URI', '')
     }
 
 # Built-in groups that cannot be deleted (auto-recreated if missing)
