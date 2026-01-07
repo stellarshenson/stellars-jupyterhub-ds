@@ -39,6 +39,7 @@ fi
 
 echo "Starting JupyterHub platform..."
 docker compose -f stellars-jupyterhub-ds/compose.yml -f compose_override.yml pull
+docker pull stellars/stellars-jupyterlab-ds:latest
 docker compose -f stellars-jupyterhub-ds/compose.yml -f compose_override.yml up -d --no-build
 
 echo "Done. Access: https://jupyterhub.YOURDOMAIN/"
