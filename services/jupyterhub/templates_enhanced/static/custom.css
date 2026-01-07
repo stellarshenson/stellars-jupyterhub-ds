@@ -251,8 +251,8 @@ textarea.form-control {
   padding-bottom: 0.2rem;
 }
 
-.navbar-brand img.jpy-logo {
-  max-height: 28px;
+#jupyterhub-logo img.jpy-logo {
+  height: 2.25rem !important;
 }
 
 .nav-link {
