@@ -126,3 +126,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 41. **Task - Server-side authorization discard fix**: Replaced clunky JavaScript API call with server-side Jinja2 logic<br>
     **Result**: Created StellarsNativeAuthenticator subclass that overrides get_handlers() to inject CustomAuthorizationAreaHandler, which passes hub_usernames set to template. Updated authorization-area.html to use `{% if user.username not in hub_usernames %}` instead of JavaScript fetch. Removes API call, XSRF token handling, and flash of Discard buttons before hiding
+
+42. **Task - Custom logo support**: Added JUPYTERHUB_LOGO_FILE configuration for custom branding<br>
+    **Result**: Added logo_file config that checks for file at /srv/jupyterhub/logo.svg (or JUPYTERHUB_LOGO_FILE env var), JupyterHub serves it at {{ base_url }}logo automatically. Fixed CustomAuthorizationAreaHandler 403 by adding @needs_scope('admin:users') decorator and importing orm inside get() method. Simplified page.html logo block to always use base_url/logo
