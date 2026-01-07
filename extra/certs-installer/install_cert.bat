@@ -1,9 +1,28 @@
 @echo off
 setlocal enabledelayedexpansion
 
+REM Check for help flag
+if "%~1"=="-h" goto :show_help
+if "%~1"=="--help" goto :show_help
+if "%~1"=="/?" goto :show_help
+
+REM Optional argument: folder to search for certificates (default: current directory)
+set "CERT_DIR=%~1"
+if "%CERT_DIR%"=="" set "CERT_DIR=."
+
+REM Check if directory exists
+if not exist "%CERT_DIR%\" (
+    echo Error: Directory '%CERT_DIR%' not found.
+    echo Use --help for usage information.
+    pause
+    exit /b 1
+)
+
 echo ============================================
 echo   Certificate Installer - Root Trust Store
 echo ============================================
+echo.
+echo  Scanning directory: %CERT_DIR%
 echo.
 echo  WARNING: This script installs certificates
 echo  into your Trusted Root Certification
@@ -39,7 +58,7 @@ set "found=0"
 set "certcount=0"
 set "keycount=0"
 
-for %%F in (*.cer *.crt *.pem *.der *.key *.p12 *.pfx) do (
+for %%F in ("%CERT_DIR%\*.cer" "%CERT_DIR%\*.crt" "%CERT_DIR%\*.pem" "%CERT_DIR%\*.der" "%CERT_DIR%\*.key" "%CERT_DIR%\*.p12" "%CERT_DIR%\*.pfx") do (
     set "found=1"
     echo --------------------------------------------
     echo File: %%F
@@ -125,7 +144,7 @@ REM Cleanup temp file
 del "%TEMP%\certcheck.ps1" 2>nul
 
 if "!found!"=="0" (
-    echo No certificate or key files found in current directory.
+    echo No certificate or key files found in '%CERT_DIR%'.
     echo Supported extensions: .cer, .crt, .pem, .der, .key, .p12, .pfx
 )
 
@@ -137,3 +156,29 @@ echo ============================================
 echo.
 echo Done.
 pause
+exit /b
+
+:show_help
+echo Certificate Installer - Install certificates to Windows trust store
+echo.
+echo Usage: install_cert.bat [OPTIONS] [DIRECTORY]
+echo.
+echo Arguments:
+echo   DIRECTORY     Folder to search for certificates (default: current directory)
+echo.
+echo Options:
+echo   -h, --help, /?    Show this help message and exit
+echo.
+echo Supported file types:
+echo   .cer, .crt, .pem, .der   - X.509 certificates (will be installed)
+echo   .key                      - Private keys (skipped)
+echo   .p12, .pfx                - PKCS#12 bundles (skipped - use different tool)
+echo.
+echo Examples:
+echo   install_cert.bat                    # Scan current directory
+echo   install_cert.bat C:\path\to\certs   # Scan specific directory
+echo   install_cert.bat .\my-certs         # Scan relative path
+echo.
+echo Note: May require Administrator privileges for system-wide installation.
+pause
+exit /b
