@@ -1,8 +1,53 @@
 #!/bin/bash
 
+# Show help
+show_help() {
+    cat << 'EOF'
+Certificate Installer - Install certificates to system trust store
+
+Usage: install_cert.sh [OPTIONS] [DIRECTORY]
+
+Arguments:
+  DIRECTORY     Folder to search for certificates (default: current directory)
+
+Options:
+  -h, --help    Show this help message and exit
+
+Supported file types:
+  .cer, .crt, .pem, .der   - X.509 certificates (will be installed)
+  .key                      - Private keys (skipped)
+  .p12, .pfx                - PKCS#12 bundles (skipped - use different tool)
+
+Examples:
+  install_cert.sh                    # Scan current directory
+  install_cert.sh /path/to/certs     # Scan specific directory
+  install_cert.sh ./my-certs         # Scan relative path
+
+Note: Requires sudo privileges for system-wide certificate installation.
+EOF
+    exit 0
+}
+
+# Parse arguments
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    show_help
+fi
+
+# Optional argument: folder to search for certificates (default: current directory)
+CERT_DIR="${1:-.}"
+
+# Resolve to absolute path and check if exists
+if [ ! -d "$CERT_DIR" ]; then
+    echo "Error: Directory '$CERT_DIR' not found."
+    echo "Use --help for usage information."
+    exit 1
+fi
+
 echo "============================================"
 echo "  Certificate Installer - Root Trust Store"
 echo "============================================"
+echo ""
+echo " Scanning directory: $CERT_DIR"
 echo ""
 echo " WARNING: This script installs certificates"
 echo " into your system's trusted root store."
@@ -67,7 +112,7 @@ install_cert() {
     return 0
 }
 
-for file in *.cer *.crt *.pem *.der *.key *.p12 *.pfx; do
+for file in "$CERT_DIR"/*.cer "$CERT_DIR"/*.crt "$CERT_DIR"/*.pem "$CERT_DIR"/*.der "$CERT_DIR"/*.key "$CERT_DIR"/*.p12 "$CERT_DIR"/*.pfx; do
     # Skip if no files match the pattern
     [ -e "$file" ] || continue
 
@@ -171,7 +216,7 @@ for file in *.cer *.crt *.pem *.der *.key *.p12 *.pfx; do
 done
 
 if [ "$found" -eq 0 ]; then
-    echo "No certificate or key files found in current directory."
+    echo "No certificate or key files found in '$CERT_DIR'."
     echo "Supported extensions: .cer, .crt, .pem, .der, .key, .p12, .pfx"
 fi
 

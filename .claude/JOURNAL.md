@@ -129,3 +129,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 42. **Task - Custom logo support**: Added JUPYTERHUB_LOGO_FILE configuration for custom branding<br>
     **Result**: Added logo_file config that checks for file at /srv/jupyterhub/logo.svg (or JUPYTERHUB_LOGO_FILE env var), JupyterHub serves it at {{ base_url }}logo automatically. Fixed CustomAuthorizationAreaHandler 403 by adding @needs_scope('admin:users') decorator and importing orm inside get() method. Simplified page.html logo block to always use base_url/logo
+
+43. **Task - Enhance certs-installer scripts**: Added optional folder parameter and help option<br>
+    **Result**: Updated install_cert.sh and install_cert.bat to accept optional directory argument (default: current directory), added -h/--help/? flags showing usage, supported file types, and examples. Both scripts now display which directory is being scanned
