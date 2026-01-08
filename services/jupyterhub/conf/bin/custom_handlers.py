@@ -53,7 +53,7 @@ def encode_username_for_docker(username):
     e.g., 'user.name' -> 'user-2ename' (. = ASCII 46 = 0x2e)
     """
     from escapism import escape
-    return escape(username, escape_char='-')
+    return escape(username, escape_char='-').lower()
 
 
 class ManageVolumesHandler(BaseHandler):
