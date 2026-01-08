@@ -46,6 +46,12 @@ Admin panel for broadcasting notifications to all active JupyterLab servers.
 
 ![Admin Notification Broadcast](.resources/screenshot-send-notification.png)
 
+**New User Credentials**
+
+Admin creates users via Add Users form - credentials modal displays auto-generated mnemonic passwords.
+
+![New User Credentials](.resources/screenshot-new-user.png)
+
 
 ## Architecture
 
@@ -354,18 +360,23 @@ services:
       - ENABLE_SIGNUP=0 # disable self-registration, admin creates users
 ```
 
-#### Custom Logo
+#### Custom Branding
 
-Replace the default JupyterHub logo with a custom logo via environment variable. Supports URLs, file:/// paths, or data URIs:
+Replace the default JupyterHub logo with a custom logo. Mount your logo file and reference it via environment variable:
 
 ```yaml
 services:
   jupyterhub:
     environment:
-      - JUPYTERHUB_CUSTOM_LOGO_URI=https://example.com/logo.png
-      # Or data URI: data:image/png;base64,iVBORw0KGgo...
-      # Or file path: file:///mnt/shared/logo.png
+      - JUPYTERHUB_CUSTOM_LOGO_URI=file:///srv/jupyterhub/logo.svg
+    volumes:
+      - ./logo.svg:/srv/jupyterhub/logo.svg:ro
 ```
+
+Supported formats: SVG, PNG, JPG. Alternative options:
+- **URL**: `https://example.com/logo.png`
+- **Data URI**: `data:image/png;base64,iVBORw0KGgo...`
+- **Shared storage**: `file:///mnt/shared/logo.png`
 
 Leave empty (default) to use the stock JupyterHub logo.
 
