@@ -132,3 +132,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 43. **Task - Enhance certs-installer scripts**: Added optional folder parameter and help option<br>
     **Result**: Updated install_cert.sh and install_cert.bat to accept optional directory argument (default: current directory), added -h/--help/? flags showing usage, supported file types, and examples. Both scripts now display which directory is being scanned
+
+44. **Task - Fix volume reset encoding**: Fixed Docker volume/container name encoding for special characters<br>
+    **Result**: Added encode_username_for_docker() function using escapism library (same as DockerSpawner) to ensure compatibility with JupyterHub's naming scheme. Updated ManageVolumesHandler (line 152), RestartServerHandler (line 227), and BroadcastNotificationHandler (line 454) to use encoded usernames. Handles special characters like `.` -> `-2e`, `@` -> `-40` matching JupyterHub's default encoding

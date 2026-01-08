@@ -42,6 +42,20 @@ def clear_cached_password(username):
     _password_cache.pop(username, None)
 
 
+# =============================================================================
+# Docker Volume Name Encoding
+# =============================================================================
+
+def encode_username_for_docker(username):
+    """
+    Encode username for Docker volume/container names.
+    Uses escapism library (same as DockerSpawner) for compatibility.
+    e.g., 'user.name' -> 'user-2ename' (. = ASCII 46 = 0x2e)
+    """
+    from escapism import escape
+    return escape(username, escape_char='-')
+
+
 class ManageVolumesHandler(BaseHandler):
     """Handler for managing user volumes"""
 
@@ -122,7 +136,7 @@ class ManageVolumesHandler(BaseHandler):
         failed_volumes = []
 
         for volume_type in requested_volumes:
-            volume_name = f'jupyterlab-{username}_{volume_type}'
+            volume_name = f'jupyterlab-{encode_username_for_docker(username)}_{volume_type}'
             self.log.info(f"[Manage Volumes] Processing volume: {volume_name}")
 
             try:
@@ -197,7 +211,7 @@ class RestartServerHandler(BaseHandler):
         self.log.info(f"[Restart Server] Server is running, proceeding with restart")
 
         # 3. Get container name from spawner
-        container_name = f'jupyterlab-{username}'
+        container_name = f'jupyterlab-{encode_username_for_docker(username)}'
         self.log.info(f"[Restart Server] Container name: {container_name}")
 
         # 4. Connect to Docker and restart container
@@ -424,7 +438,7 @@ class BroadcastNotificationHandler(BaseHandler):
             # Get the base URL from spawner server (e.g., /jupyterhub/user/konrad/)
             base_url = spawner.server.base_url
             # Construct internal container URL
-            container_url = f"http://jupyterlab-{username}:8888"
+            container_url = f"http://jupyterlab-{encode_username_for_docker(username)}:8888"
             endpoint = f"{container_url}{base_url}jupyterlab-notifications-extension/ingest"
 
             self.log.info(f"[Notification] Constructed endpoint for {username}: {endpoint}")
