@@ -64,17 +64,17 @@ This Python configuration file controls all JupyterHub behavior:
 
 **Environment Variables** (set in compose.yml or compose_override.yml):
 - `JUPYTERHUB_ADMIN`: Admin username (default: `admin`)
-- `DOCKER_NOTEBOOK_IMAGE`: JupyterLab image to spawn (default: `stellars/stellars-jupyterlab-ds:latest`)
-- `DOCKER_NETWORK_NAME`: Network for spawned containers (default: `jupyterhub_network`)
+- `JUPYTERHUB_NOTEBOOK_IMAGE`: JupyterLab image to spawn (default: `stellars/stellars-jupyterlab-ds:latest`)
+- `JUPYTERHUB_NETWORK_NAME`: Network for spawned containers (default: `jupyterhub_network`)
 - `JUPYTERHUB_BASE_URL`: URL prefix (default: `/jupyterhub`)
-- `ENABLE_GPU_SUPPORT`: GPU mode - `0` (disabled), `1` (enabled), `2` (auto-detect)
-- `ENABLE_JUPYTERHUB_SSL`: Direct SSL config - `0` (disabled), `1` (enabled)
-- `ENABLE_SERVICE_MLFLOW`: Enable MLflow tracking (`0`/`1`)
-- `ENABLE_SERVICE_GLANCES`: Enable resource monitor (`0`/`1`)
-- `ENABLE_SERVICE_TENSORBOARD`: Enable TensorBoard (`0`/`1`)
-- `NVIDIA_AUTODETECT_IMAGE`: Image for GPU detection (default: `nvidia/cuda:12.9.1-base-ubuntu24.04`)
+- `JUPYTERHUB_GPU_ENABLED`: GPU mode - `0` (disabled), `1` (enabled), `2` (auto-detect)
+- `JUPYTERHUB_SSL_ENABLED`: Direct SSL config - `0` (disabled), `1` (enabled)
+- `JUPYTERHUB_SERVICE_MLFLOW`: Enable MLflow tracking (`0`/`1`)
+- `JUPYTERHUB_SERVICE_GLANCES`: Enable resource monitor (`0`/`1`)
+- `JUPYTERHUB_SERVICE_TENSORBOARD`: Enable TensorBoard (`0`/`1`)
+- `JUPYTERHUB_NVIDIA_IMAGE`: Image for GPU detection (default: `nvidia/cuda:12.9.1-base-ubuntu24.04`)
 
-**GPU Auto-Detection**: When `ENABLE_GPU_SUPPORT=2`, the platform attempts to run `nvidia-smi` in a CUDA container. If successful, GPU support is enabled for all spawned user containers via `device_requests`.
+**GPU Auto-Detection**: When `JUPYTERHUB_GPU_ENABLED=2`, the platform attempts to run `nvidia-smi` in a CUDA container. If successful, GPU support is enabled for all spawned user containers via `device_requests`.
 
 **User Container Configuration**:
 - Spawned containers use `DockerSpawner` with per-user volumes
@@ -96,7 +96,7 @@ services:
     volumes:
       - ./config/jupyterhub_config_override.py:/srv/jupyterhub/jupyterhub_config.py:ro
     environment:
-      - ENABLE_GPU_SUPPORT=1
+      - JUPYTERHUB_GPU_ENABLED=1
 ```
 
 **IMPORTANT**: `compose_override.yml` contains deployment-specific credentials (CIFS passwords, etc.) and should never be committed.
@@ -300,8 +300,8 @@ User renames via JupyterHub admin panel automatically sync to NativeAuthenticato
 
 **GPU not detected**:
 - Verify NVIDIA Docker runtime: `docker run --rm --gpus all nvidia/cuda:12.9.1-base-ubuntu24.04 nvidia-smi`
-- Check `NVIDIA_AUTODETECT_IMAGE` matches your CUDA version
-- Manually enable with `ENABLE_GPU_SUPPORT=1`
+- Check `JUPYTERHUB_NVIDIA_IMAGE` matches your CUDA version
+- Manually enable with `JUPYTERHUB_GPU_ENABLED=1`
 
 **Container spawn failures**:
 - Check Docker socket permissions: `/var/run/docker.sock` must be accessible

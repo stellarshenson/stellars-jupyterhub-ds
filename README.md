@@ -15,7 +15,7 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 - **User Self-Service**: Users can restart their JupyterLab containers and selectively reset persistent volumes (home/workspace/cache) without admin intervention
 - **Docker Access Control**: Group-based access via `docker-sock` (container orchestration) and `docker-privileged` (full container privileges)
 - **Isolated Environments**: Each user gets dedicated JupyterLab container with persistent volumes via DockerSpawner
-- **Native Authentication**: Built-in user management with NativeAuthenticator supporting optional self-registration (`ENABLE_SIGNUP`) and admin approval. Authorization page protects existing users from accidental discard - only pending signup requests can be discarded
+- **Native Authentication**: Built-in user management with NativeAuthenticator supporting optional self-registration (`JUPYTERHUB_SIGNUP_ENABLED`) and admin approval. Authorization page protects existing users from accidental discard - only pending signup requests can be discarded
 - **Admin User Creation**: Batch user creation from admin panel with auto-generated mnemonic passwords (e.g., `storm-apple-ocean`). Credentials modal with copy/download options
 - **Shared Storage**: Optional CIFS/NAS mount support for shared datasets across all users
 - **Idle Server Culler**: Automatic shutdown of inactive servers after configurable timeout (default: 24 hours). Frees resources when users leave servers running
@@ -95,19 +95,19 @@ graph TB
     subgraph ENV["Environment Variables (compose.yml)"]
         ADMIN[JUPYTERHUB_ADMIN<br/>Admin username]
         BASEURL[JUPYTERHUB_BASE_URL<br/>URL prefix]
-        IMG[DOCKER_NOTEBOOK_IMAGE<br/>User container image]
-        NET[DOCKER_NETWORK_NAME<br/>Container network]
-        SSL[ENABLE_JUPYTERHUB_SSL<br/>0=off, 1=on]
-        GPU[ENABLE_GPU_SUPPORT<br/>0=off, 1=on, 2=auto]
-        SIGNUP[ENABLE_SIGNUP<br/>0=admin-only, 1=self-register]
+        IMG[JUPYTERHUB_NOTEBOOK_IMAGE<br/>User container image]
+        NET[JUPYTERHUB_NETWORK_NAME<br/>Container network]
+        SSL[JUPYTERHUB_SSL_ENABLED<br/>0=off, 1=on]
+        GPU[JUPYTERHUB_GPU_ENABLED<br/>0=off, 1=on, 2=auto]
+        SIGNUP[JUPYTERHUB_SIGNUP_ENABLED<br/>0=admin-only, 1=self-register]
         TFLOG[TF_CPP_MIN_LOG_LEVEL<br/>TensorFlow verbosity]
-        NVIMG[NVIDIA_AUTODETECT_IMAGE<br/>CUDA test image]
+        NVIMG[JUPYTERHUB_NVIDIA_IMAGE<br/>CUDA test image]
 
-        subgraph SVCEN["ENABLE_SERVICE_*<br/>Passed to Lab as env"]
+        subgraph SVCEN["JUPYTERHUB_SERVICE_*<br/>Passed to Lab as env"]
             direction LR
-            MLF[ENABLE_SERVICE_MLFLOW]
-            GLN[ENABLE_SERVICE_GLANCES]
-            TNS[ENABLE_SERVICE_TENSORBOARD]
+            MLF[JUPYTERHUB_SERVICE_MLFLOW]
+            GLN[JUPYTERHUB_SERVICE_GLANCES]
+            TNS[JUPYTERHUB_SERVICE_TENSORBOARD]
             SVC_MORE[...]
         end
     end
@@ -170,7 +170,7 @@ Environment variables defined in `compose.yml` are consumed by `config/jupyterhu
 
 ```mermaid
 graph LR
-    START[ENABLE_GPU_SUPPORT=2] --> CHECK{Check value}
+    START[JUPYTERHUB_GPU_ENABLED=2] --> CHECK{Check value}
     CHECK -->|0| DISABLED[GPU Disabled]
     CHECK -->|1| ENABLED[GPU Enabled]
     CHECK -->|2| DETECT[Auto-detect]
@@ -179,8 +179,8 @@ graph LR
     SPAWN --> RUN[Execute nvidia-smi<br/>with runtime=nvidia]
 
     RUN --> SUCCESS{Success?}
-    SUCCESS -->|Yes| SET_ON[Set ENABLE_GPU_SUPPORT=1<br/>Set NVIDIA_DETECTED=1]
-    SUCCESS -->|No| SET_OFF[Set ENABLE_GPU_SUPPORT=0<br/>Set NVIDIA_DETECTED=0]
+    SUCCESS -->|Yes| SET_ON[Set JUPYTERHUB_GPU_ENABLED=1<br/>Set NVIDIA_DETECTED=1]
+    SUCCESS -->|No| SET_OFF[Set JUPYTERHUB_GPU_ENABLED=0<br/>Set NVIDIA_DETECTED=0]
 
     SET_ON --> CLEANUP1[Remove test container<br/>jupyterhub_nvidia_autodetect]
     SET_OFF --> CLEANUP2[Remove test container<br/>jupyterhub_nvidia_autodetect]
@@ -199,7 +199,7 @@ graph LR
     style APPLY_OFF stroke:#6b7280,stroke-width:2px
 ```
 
-When `ENABLE_GPU_SUPPORT=2` (auto-detect mode), JupyterHub spawns a temporary CUDA container running `nvidia-smi` with `runtime=nvidia`. If the command succeeds, GPU support is enabled and `device_requests` are added to spawned user containers. If it fails, GPU support is disabled. The test container is always removed after detection. Manual override is possible by setting `ENABLE_GPU_SUPPORT=1` (force enable) or `ENABLE_GPU_SUPPORT=0` (force disable).
+When `JUPYTERHUB_GPU_ENABLED=2` (auto-detect mode), JupyterHub spawns a temporary CUDA container running `nvidia-smi` with `runtime=nvidia`. If the command succeeds, GPU support is enabled and `device_requests` are added to spawned user containers. If it fails, GPU support is disabled. The test container is always removed after detection. Manual override is possible by setting `JUPYTERHUB_GPU_ENABLED=1` (force enable) or `JUPYTERHUB_GPU_ENABLED=0` (force disable).
 
 ## User Self-Service Workflow
 
@@ -340,14 +340,14 @@ services:
 #### Enable GPU
 
 No changes required in the configuration if you allow NVidia autodetection to be performed.
-Otherwise change the `ENABLE_GPU_SUPPORT = 1`
+Otherwise change the `JUPYTERHUB_GPU_ENABLED=1`
 
 Changes in your `compose_override.yml`:
 ```yaml
 services:
   jupyterhub:
     environment:
-      - ENABLE_GPU_SUPPORT=1 # enable NVIDIA GPU, values: 0 - disabled, 1 - enabled, 2 - auto-detect
+      - JUPYTERHUB_GPU_ENABLED=1 # enable NVIDIA GPU, values: 0 - disabled, 1 - enabled, 2 - auto-detect
 ```
 
 #### Disable self-registration
@@ -358,7 +358,7 @@ By default, users can self-register and require admin approval. To disable self-
 services:
   jupyterhub:
     environment:
-      - ENABLE_SIGNUP=0 # disable self-registration, admin creates users
+      - JUPYTERHUB_SIGNUP_ENABLED=0 # disable self-registration, admin creates users
 ```
 
 #### Idle Server Culler
@@ -369,15 +369,15 @@ Automatically stop user servers after a period of inactivity to free up resource
 services:
   jupyterhub:
     environment:
-      - IDLE_CULLER_ENABLED=1        # enable idle culler
-      - IDLE_CULLER_TIMEOUT=86400    # 24 hours (default) - stop after this many seconds of inactivity
-      - IDLE_CULLER_CULL_EVERY=600   # 10 minutes (default) - how often to check for idle servers
-      - IDLE_CULLER_MAX_AGE=0        # 0 (default) - max server age regardless of activity (0=unlimited)
+      - JUPYTERHUB_IDLE_CULLER_ENABLED=1        # enable idle culler
+      - JUPYTERHUB_IDLE_CULLER_TIMEOUT=86400    # 24 hours (default) - stop after this many seconds of inactivity
+      - JUPYTERHUB_IDLE_CULLER_INTERVAL=600     # 10 minutes (default) - how often to check for idle servers
+      - JUPYTERHUB_IDLE_CULLER_MAX_AGE=0        # 0 (default) - max server age regardless of activity (0=unlimited)
 ```
 
 **Behavior**:
-- `IDLE_CULLER_TIMEOUT`: Server is stopped after this many seconds without activity. Active servers are never culled
-- `IDLE_CULLER_MAX_AGE`: Force stop servers older than this (useful to force image updates). Set to 0 to disable
+- `JUPYTERHUB_IDLE_CULLER_TIMEOUT`: Server is stopped after this many seconds without activity. Active servers are never culled
+- `JUPYTERHUB_IDLE_CULLER_MAX_AGE`: Force stop servers older than this (useful to force image updates). Set to 0 to disable
 
 #### Custom Branding
 

@@ -182,40 +182,42 @@ def detect_nvidia(nvidia_autodetect_image='nvidia/cuda:12.9.1-base-ubuntu24.04')
     return result
 
 
-# standard variables imported from env
-ENABLE_JUPYTERHUB_SSL =  int(os.environ.get("ENABLE_JUPYTERHUB_SSL", 1))
-ENABLE_GPU_SUPPORT = int(os.environ.get("ENABLE_GPU_SUPPORT", 2))
-ENABLE_SERVICE_MLFLOW = int(os.environ.get("ENABLE_SERVICE_MLFLOW", 1))
-ENABLE_SERVICE_GLANCES = int(os.environ.get("ENABLE_SERVICE_GLANCES", 1))
-ENABLE_SERVICE_TENSORBOARD = int(os.environ.get("ENABLE_SERVICE_TENSORBOARD", 1))
-ENABLE_SIGNUP = int(os.environ.get("ENABLE_SIGNUP", 1))  # 0 - disabled (admin creates users), 1 - enabled (self-registration)
-IDLE_CULLER_ENABLED = int(os.environ.get("IDLE_CULLER_ENABLED", 0))  # 0 - disabled, 1 - enabled
-IDLE_CULLER_TIMEOUT = int(os.environ.get("IDLE_CULLER_TIMEOUT", 86400))  # idle timeout in seconds (default: 24 hours)
-IDLE_CULLER_CULL_EVERY = int(os.environ.get("IDLE_CULLER_CULL_EVERY", 600))  # check interval in seconds (default: 10 min)
-IDLE_CULLER_MAX_AGE = int(os.environ.get("IDLE_CULLER_MAX_AGE", 0))  # max server age in seconds (0 = unlimited)
-TF_CPP_MIN_LOG_LEVEL = int(os.environ.get("TF_CPP_MIN_LOG_LEVEL", 3)) 
+# Standard variables imported from env (all use JUPYTERHUB_ prefix)
+JUPYTERHUB_SSL_ENABLED = int(os.environ.get("JUPYTERHUB_SSL_ENABLED", 1))
+JUPYTERHUB_GPU_ENABLED = int(os.environ.get("JUPYTERHUB_GPU_ENABLED", 2))
+JUPYTERHUB_SERVICE_MLFLOW = int(os.environ.get("JUPYTERHUB_SERVICE_MLFLOW", 1))
+JUPYTERHUB_SERVICE_GLANCES = int(os.environ.get("JUPYTERHUB_SERVICE_GLANCES", 1))
+JUPYTERHUB_SERVICE_TENSORBOARD = int(os.environ.get("JUPYTERHUB_SERVICE_TENSORBOARD", 1))
+JUPYTERHUB_SIGNUP_ENABLED = int(os.environ.get("JUPYTERHUB_SIGNUP_ENABLED", 1))  # 0=disabled, 1=enabled
+JUPYTERHUB_IDLE_CULLER_ENABLED = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_ENABLED", 0))
+JUPYTERHUB_IDLE_CULLER_TIMEOUT = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_TIMEOUT", 86400))
+JUPYTERHUB_IDLE_CULLER_INTERVAL = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_INTERVAL", 600))
+JUPYTERHUB_IDLE_CULLER_MAX_AGE = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_AGE", 0))
+TF_CPP_MIN_LOG_LEVEL = int(os.environ.get("TF_CPP_MIN_LOG_LEVEL", 3))
 DOCKER_NOTEBOOK_DIR = "/home/lab/workspace"
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")
+JUPYTERHUB_NETWORK_NAME = os.environ.get("JUPYTERHUB_NETWORK_NAME", "jupyterhub_network")
+JUPYTERHUB_NOTEBOOK_IMAGE = os.environ.get("JUPYTERHUB_NOTEBOOK_IMAGE", "stellars/stellars-jupyterlab-ds:latest")
+JUPYTERHUB_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_NVIDIA_IMAGE", "nvidia/cuda:12.9.1-base-ubuntu24.04")
 # Normalize base URL - use empty string for root path to avoid double slashes
 if JUPYTERHUB_BASE_URL in ['/', '', None]:
     JUPYTERHUB_BASE_URL_PREFIX = ''
 else:
     JUPYTERHUB_BASE_URL_PREFIX = JUPYTERHUB_BASE_URL
-JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")
-NETWORK_NAME = os.environ["DOCKER_NETWORK_NAME"]
-NVIDIA_AUTODETECT_IMAGE = os.environ.get("NVIDIA_AUTODETECT_IMAGE", 'nvidia/cuda:12.9.1-base-ubuntu24.04') 
+JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN") 
 
-# perform autodetection when ENABLE_GPU_SUPPORT is set to autodetect
+# perform autodetection when JUPYTERHUB_GPU_ENABLED is set to autodetect
 # gpu support: 0 - disabled, 1 - enabled, 2 - autodetect
-if ENABLE_GPU_SUPPORT == 2:
-    NVIDIA_DETECTED = detect_nvidia(NVIDIA_AUTODETECT_IMAGE)
-    if NVIDIA_DETECTED: ENABLE_GPU_SUPPORT = 1 # means - gpu enabled
-    else: ENABLE_GPU_SUPPORT = 0 # means - disable 
+NVIDIA_DETECTED = 0  # Initialize before potential auto-detection
+if JUPYTERHUB_GPU_ENABLED == 2:
+    NVIDIA_DETECTED = detect_nvidia(JUPYTERHUB_NVIDIA_IMAGE)
+    if NVIDIA_DETECTED: JUPYTERHUB_GPU_ENABLED = 1 # means - gpu enabled
+    else: JUPYTERHUB_GPU_ENABLED = 0 # means - disable 
 
 # Apply JupyterHub configuration (only when loaded by JupyterHub, not when imported)
 if c is not None:
     # ensure that we are using SSL, it should be enabled by default
-    if ENABLE_JUPYTERHUB_SSL == 1:
+    if JUPYTERHUB_SSL_ENABLED == 1:
         c.JupyterHub.ssl_cert = '/mnt/certs/server.crt'
         c.JupyterHub.ssl_key = '/mnt/certs/server.key'
 
@@ -230,16 +232,16 @@ if c is not None:
          'MLFLOW_PORT':5000,
          'MLFLOW_HOST':'0.0.0.0',  # new 3.5 mlflow launched with guinicorn requires this
          'MLFLOW_WORKERS':1,
-         'ENABLE_SERVICE_MLFLOW': ENABLE_SERVICE_MLFLOW,
-         'ENABLE_SERVICE_GLANCES': ENABLE_SERVICE_GLANCES,
-         'ENABLE_SERVICE_TENSORBOARD': ENABLE_SERVICE_TENSORBOARD,
-         'ENABLE_GPU_SUPPORT': ENABLE_GPU_SUPPORT,
-         'ENABLE_GPUSTAT': ENABLE_GPU_SUPPORT,
+         'JUPYTERHUB_SERVICE_MLFLOW': JUPYTERHUB_SERVICE_MLFLOW,
+         'JUPYTERHUB_SERVICE_GLANCES': JUPYTERHUB_SERVICE_GLANCES,
+         'JUPYTERHUB_SERVICE_TENSORBOARD': JUPYTERHUB_SERVICE_TENSORBOARD,
+         'JUPYTERHUB_GPU_ENABLED': JUPYTERHUB_GPU_ENABLED,
+         'ENABLE_GPUSTAT': JUPYTERHUB_GPU_ENABLED,
          'NVIDIA_DETECTED': NVIDIA_DETECTED,
     }
 
     # configure access to GPU if possible
-    if ENABLE_GPU_SUPPORT == 1:
+    if JUPYTERHUB_GPU_ENABLED == 1:
         c.DockerSpawner.extra_host_config = {
             'device_requests': [
                 {
@@ -251,11 +253,11 @@ if c is not None:
         }
 
     # spawn containers from this image
-    c.DockerSpawner.image = os.environ["DOCKER_NOTEBOOK_IMAGE"]
+    c.DockerSpawner.image = JUPYTERHUB_NOTEBOOK_IMAGE
 
-    # networking congfiguration
+    # networking configuration
     c.DockerSpawner.use_internal_ip = True
-    c.DockerSpawner.network_name = NETWORK_NAME
+    c.DockerSpawner.network_name = JUPYTERHUB_NETWORK_NAME
 
     # prevent auto-spawn for admin users
     # Redirect admin to admin panel instead
@@ -394,7 +396,7 @@ if c is not None:
     # allow anyone to sign-up without approval
     # allow all signed-up users to login
     c.NativeAuthenticator.open_signup = False
-    c.NativeAuthenticator.enable_signup = bool(ENABLE_SIGNUP)  # controlled by ENABLE_SIGNUP env var
+    c.NativeAuthenticator.enable_signup = bool(JUPYTERHUB_SIGNUP_ENABLED)  # controlled by JUPYTERHUB_SIGNUP_ENABLED env var
     c.Authenticator.allow_all = True
 
     # allowed admins
@@ -413,7 +415,8 @@ if c is not None:
         NotificationsPageHandler,
         ActiveServersHandler,
         BroadcastNotificationHandler,
-        GetUserCredentialsHandler
+        GetUserCredentialsHandler,
+        SettingsPageHandler
     )
 
     c.JupyterHub.extra_handlers = [
@@ -423,10 +426,11 @@ if c is not None:
         (r'/api/notifications/broadcast', BroadcastNotificationHandler),
         (r'/api/admin/credentials', GetUserCredentialsHandler),
         (r'/notifications', NotificationsPageHandler),
+        (r'/settings', SettingsPageHandler),
     ]
 
     # Idle culler service - automatically stops servers after inactivity
-    if IDLE_CULLER_ENABLED == 1:
+    if JUPYTERHUB_IDLE_CULLER_ENABLED == 1:
         import sys
 
         # Define role with required scopes for idle culler
@@ -447,11 +451,11 @@ if c is not None:
         culler_cmd = [
             sys.executable,
             "-m", "jupyterhub_idle_culler",
-            f"--timeout={IDLE_CULLER_TIMEOUT}",
-            f"--cull-every={IDLE_CULLER_CULL_EVERY}",
+            f"--timeout={JUPYTERHUB_IDLE_CULLER_TIMEOUT}",
+            f"--cull-every={JUPYTERHUB_IDLE_CULLER_INTERVAL}",
         ]
-        if IDLE_CULLER_MAX_AGE > 0:
-            culler_cmd.append(f"--max-age={IDLE_CULLER_MAX_AGE}")
+        if JUPYTERHUB_IDLE_CULLER_MAX_AGE > 0:
+            culler_cmd.append(f"--max-age={JUPYTERHUB_IDLE_CULLER_MAX_AGE}")
 
         c.JupyterHub.services = [
             {
@@ -460,6 +464,6 @@ if c is not None:
             }
         ]
 
-        print(f"[Idle Culler] Enabled - timeout={IDLE_CULLER_TIMEOUT}s, check every={IDLE_CULLER_CULL_EVERY}s, max_age={IDLE_CULLER_MAX_AGE}s")
+        print(f"[Idle Culler] Enabled - timeout={JUPYTERHUB_IDLE_CULLER_TIMEOUT}s, check every={JUPYTERHUB_IDLE_CULLER_INTERVAL}s, max_age={JUPYTERHUB_IDLE_CULLER_MAX_AGE}s")
 
 # EOF

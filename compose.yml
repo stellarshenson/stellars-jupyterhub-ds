@@ -59,20 +59,25 @@ services:
       - jupyterhub_shared:/mnt/shared # shared volume across environments
       - /var/run/docker.sock:/var/run/docker.sock:ro # for nvidia autodetection
     environment:
+      # Core settings
       - JUPYTERHUB_ADMIN=admin # this username will be a JupyterHub admin
-      - DOCKER_NOTEBOOK_IMAGE=stellars/stellars-jupyterlab-ds:latest # jupyterlab image to spawn
-      - DOCKER_NETWORK_NAME=jupyterhub_network # spawned containers will join this network
-      - JUPYTERHUB_BASE_URL=/jupyterhub # default prefix
-      - CERTIFICATE_DOMAIN_NAME=localhost # domain name for self-signed certificate generation
-      - ENABLE_GPU_SUPPORT=2 # gpu status: 0 - disabled, 1 - enabled, 2 - auto-detect
-      - ENABLE_JUPYTERHUB_SSL=0 # if using traefik - you do need direct SSL config
-      - ENABLE_SERVICE_MLFLOW=1 # enable mlflow for experiment tracking
-      - ENABLE_SERVICE_GLANCES=1 # enable resources monitor
-      - ENABLE_SERVICE_TENSORBOARD=1 # enable tensorflow training tracker
-      - ENABLE_SIGNUP=1 # user self-registration: 0 - disabled (admin creates users), 1 - enabled
-      - TF_CPP_MIN_LOG_LEVEL=3 # make tensorflow less verbose
-      - NVIDIA_AUTODETECT_IMAGE=nvidia/cuda:12.9.1-base-ubuntu24.04 # image with `nvidia-smi` for gpu autodetection
-      - JUPYTERHUB_CUSTOM_LOGO_URI= # custom logo URL, file:/// path, or data URI (empty = stock logo)
+      - JUPYTERHUB_BASE_URL=/jupyterhub # default URL prefix
+      - JUPYTERHUB_SIGNUP_ENABLED=1 # user self-registration: 0=disabled, 1=enabled
+      - JUPYTERHUB_SSL_ENABLED=0 # direct SSL: 0=disabled (use Traefik), 1=enabled
+      # Docker spawner
+      - JUPYTERHUB_NOTEBOOK_IMAGE=stellars/stellars-jupyterlab-ds:latest # user container image
+      - JUPYTERHUB_NETWORK_NAME=jupyterhub_network # container network
+      # GPU support
+      - JUPYTERHUB_GPU_ENABLED=2 # 0=disabled, 1=enabled, 2=auto-detect
+      - JUPYTERHUB_NVIDIA_IMAGE=nvidia/cuda:13.0.2-base-ubuntu24.04 # GPU detection image
+      # User environment services
+      - JUPYTERHUB_SERVICE_MLFLOW=1 # MLflow experiment tracking
+      - JUPYTERHUB_SERVICE_GLANCES=1 # system resources monitor
+      - JUPYTERHUB_SERVICE_TENSORBOARD=1 # TensorFlow training tracker
+      # Misc
+      - TF_CPP_MIN_LOG_LEVEL=3 # TensorFlow verbosity
+      - CERTIFICATE_DOMAIN_NAME=localhost # self-signed certificate domain
+      - JUPYTERHUB_CUSTOM_LOGO_URI= # custom logo (empty = stock logo)
     labels:
       # Enable proxy support from Traefik
       - "traefik.enable=true"
