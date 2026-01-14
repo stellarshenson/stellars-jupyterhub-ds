@@ -270,18 +270,47 @@ class NotificationsPageHandler(BaseHandler):
         self.finish(html)
 
 
+class ActiveServersHandler(BaseHandler):
+    """Handler for listing active servers for notification targeting"""
+
+    @web.authenticated
+    async def get(self):
+        """
+        List all active JupyterLab servers (admin only)
+
+        GET /hub/api/notifications/active-servers
+        Returns: {"servers": [{"username": "user1"}, {"username": "user2"}, ...]}
+        """
+        current_user = self.current_user
+        if not current_user.admin:
+            raise web.HTTPError(403, "Only administrators can list active servers")
+
+        self.log.info(f"[Active Servers] Request from admin: {current_user.name}")
+
+        active_servers = []
+        from jupyterhub import orm
+        for orm_user in self.db.query(orm.User).all():
+            user = self.find_user(orm_user.name)
+            if user and user.spawner and user.spawner.active:
+                active_servers.append({"username": user.name})
+
+        self.log.info(f"[Active Servers] Found {len(active_servers)} active server(s)")
+        self.finish({"servers": active_servers})
+
+
 class BroadcastNotificationHandler(BaseHandler):
-    """Handler for broadcasting notifications to all active JupyterLab servers"""
+    """Handler for broadcasting notifications to active JupyterLab servers"""
 
     async def post(self):
         """
-        Broadcast a notification to all active JupyterLab servers
+        Broadcast a notification to active JupyterLab servers
 
         POST /hub/api/notifications/broadcast
         Body: {
             "message": "string",
             "variant": "info|success|warning|error",
-            "autoClose": false
+            "autoClose": false,
+            "recipients": ["user1", "user2"]  # optional - if omitted, sends to all
         }
         """
         self.log.info(f"[Broadcast Notification] API endpoint called")
@@ -305,8 +334,9 @@ class BroadcastNotificationHandler(BaseHandler):
             message = data.get('message', '').strip()
             variant = data.get('variant', 'info')
             auto_close = data.get('autoClose', False)
+            recipients = data.get('recipients', None)  # Optional: list of usernames
 
-            self.log.info(f"[Broadcast Notification] Message: {message[:50]}..., Variant: {variant}, AutoClose: {auto_close}")
+            self.log.info(f"[Broadcast Notification] Message: {message[:50]}..., Variant: {variant}, AutoClose: {auto_close}, Recipients: {recipients or 'all'}")
         except Exception as e:
             self.log.error(f"[Broadcast Notification] Failed to parse request body: {e}")
             return self.send_error(400, "Invalid request body")
@@ -337,6 +367,12 @@ class BroadcastNotificationHandler(BaseHandler):
                 active_spawners.append((user, user.spawner))
 
         self.log.info(f"[Broadcast Notification] Found {len(active_spawners)} active server(s)")
+
+        # 4. Filter by recipients if specified
+        if recipients and isinstance(recipients, list) and len(recipients) > 0:
+            recipients_set = set(recipients)
+            active_spawners = [(u, s) for u, s in active_spawners if u.name in recipients_set]
+            self.log.info(f"[Broadcast Notification] Filtered to {len(active_spawners)} selected recipient(s)")
 
         if not active_spawners:
             self.log.info(f"[Broadcast Notification] No active servers found")
