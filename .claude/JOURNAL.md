@@ -153,3 +153,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 50. **Task - Cleanup templates directory structure**: Removed redundant HTML files and renamed directory for clarity<br>
     **Result**: Removed unused *.html files from services/jupyterhub/templates/ (only certs/ subdirectory needed). Renamed templates_enhanced to html_templates_enhanced for clearer naming. Updated Dockerfile COPY paths accordingly
+
+51. **Task - Version footer on home page**: Added version status bar to home page matching admin page style<br>
+    **Result**: Added `{% block footer %}` to home.html displaying "Stellars JupyterHub DS X.Y.Z | JupyterHub X.Y.Z". Uses `stellars_version.split('_')[0]` to show only major.minor.patch (strips _jh-x.x suffix). Added `<div class="mt-5 pt-5"></div>` spacer before footer for visual separation from content. Uses `server_version` template variable for JupyterHub version
