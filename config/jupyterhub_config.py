@@ -10,6 +10,7 @@ from nativeauthenticator import NativeAuthenticator
 from nativeauthenticator.handlers import AuthorizationAreaHandler as BaseAuthorizationHandler
 from jupyterhub.scopes import needs_scope
 import docker # for gpu autodetection
+import jupyterhub
 
 
 # Custom AuthorizationAreaHandler that passes hub_usernames to template
@@ -316,6 +317,7 @@ if c is not None:
         'user_volume_suffixes': USER_VOLUME_SUFFIXES,
         'volume_descriptions': VOLUME_DESCRIPTIONS,
         'stellars_version': os.environ.get('STELLARS_JUPYTERHUB_VERSION', 'dev'),
+        'server_version': jupyterhub.__version__,
     }
 
 # Built-in groups that cannot be deleted (auto-recreated if missing)
