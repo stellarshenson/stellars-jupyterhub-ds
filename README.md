@@ -18,6 +18,7 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 - **Native Authentication**: Built-in user management with NativeAuthenticator supporting optional self-registration (`ENABLE_SIGNUP`) and admin approval. Authorization page protects existing users from accidental discard - only pending signup requests can be discarded
 - **Admin User Creation**: Batch user creation from admin panel with auto-generated mnemonic passwords (e.g., `storm-apple-ocean`). Credentials modal with copy/download options
 - **Shared Storage**: Optional CIFS/NAS mount support for shared datasets across all users
+- **Idle Server Culler**: Automatic shutdown of inactive servers after configurable timeout (default: 24 hours). Frees resources when users leave servers running
 - **Production Ready**: Traefik reverse proxy with TLS termination, automatic container updates via Watchtower
 
 ## User Interface
@@ -359,6 +360,24 @@ services:
     environment:
       - ENABLE_SIGNUP=0 # disable self-registration, admin creates users
 ```
+
+#### Idle Server Culler
+
+Automatically stop user servers after a period of inactivity to free up resources. Disabled by default.
+
+```yaml
+services:
+  jupyterhub:
+    environment:
+      - IDLE_CULLER_ENABLED=1        # enable idle culler
+      - IDLE_CULLER_TIMEOUT=86400    # 24 hours (default) - stop after this many seconds of inactivity
+      - IDLE_CULLER_CULL_EVERY=600   # 10 minutes (default) - how often to check for idle servers
+      - IDLE_CULLER_MAX_AGE=0        # 0 (default) - max server age regardless of activity (0=unlimited)
+```
+
+**Behavior**:
+- `IDLE_CULLER_TIMEOUT`: Server is stopped after this many seconds without activity. Active servers are never culled
+- `IDLE_CULLER_MAX_AGE`: Force stop servers older than this (useful to force image updates). Set to 0 to disable
 
 #### Custom Branding
 

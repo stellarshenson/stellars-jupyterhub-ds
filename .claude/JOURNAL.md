@@ -138,3 +138,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 45. **Task - Selective notification recipients**: Enhanced notification broadcast to allow targeting specific servers<br>
     **Result**: Added ActiveServersHandler (`GET /api/notifications/active-servers`) to list active servers. Modified BroadcastNotificationHandler to accept optional `recipients` array - filters to selected users if provided, sends to all if omitted (backward compatible). Updated notifications.html with "Send to all active servers" checkbox, server selection list with Select All/Deselect All buttons, dynamic button text showing recipient count. Validation prevents sending with no recipients selected
+
+46. **Task - Idle server culler**: Implemented automatic shutdown of inactive servers<br>
+    **Result**: Added jupyterhub-idle-culler package to Dockerfile. Added configuration with environment variables: IDLE_CULLER_ENABLED (default 0), IDLE_CULLER_TIMEOUT (default 86400s/24h), IDLE_CULLER_CULL_EVERY (default 600s/10min), IDLE_CULLER_MAX_AGE (default 0/unlimited). Service runs as managed JupyterHub service with role-based scopes. Disabled by default, opt-in via IDLE_CULLER_ENABLED=1. Bumped version to 3.6.0
