@@ -45,16 +45,6 @@
       </div>
     </div>
 
-    {# Admin-only: Notifications link #}
-    {% if user.admin %}
-    <div class="row mt-3">
-      <div class="text-center">
-        <a href="{{ base_url }}notifications" class="text-decoration-none">
-          Broadcast Notifications to Active Servers
-        </a>
-      </div>
-    </div>
-    {% endif %}
 
     {% if allow_named_servers %}
       <h2>Named Servers</h2>
@@ -208,9 +198,7 @@
   <script type="text/javascript">
     require(["jquery", "home"], function($) {
       // Version banner in browser console
-      console.log('%c Stellars JupyterHub DS %c {{ stellars_version }} ',
-        'background: #0d6efd; color: white; font-weight: bold; padding: 4px 8px;',
-        'background: #198754; color: white; font-weight: bold; padding: 4px 8px;');
+      console.log('[Stellars JupyterHub DS] Version:', '{{ stellars_version }}');
 
       $(document).ready(function() {
           const username = "{{ user.name }}";
