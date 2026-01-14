@@ -188,7 +188,11 @@ ENABLE_GPU_SUPPORT = int(os.environ.get("ENABLE_GPU_SUPPORT", 2))
 ENABLE_SERVICE_MLFLOW = int(os.environ.get("ENABLE_SERVICE_MLFLOW", 1))
 ENABLE_SERVICE_GLANCES = int(os.environ.get("ENABLE_SERVICE_GLANCES", 1))
 ENABLE_SERVICE_TENSORBOARD = int(os.environ.get("ENABLE_SERVICE_TENSORBOARD", 1))
-ENABLE_SIGNUP = int(os.environ.get("ENABLE_SIGNUP", 1))  # 0 - disabled (admin creates users), 1 - enabled (self-registration) 
+ENABLE_SIGNUP = int(os.environ.get("ENABLE_SIGNUP", 1))  # 0 - disabled (admin creates users), 1 - enabled (self-registration)
+IDLE_CULLER_ENABLED = int(os.environ.get("IDLE_CULLER_ENABLED", 0))  # 0 - disabled, 1 - enabled
+IDLE_CULLER_TIMEOUT = int(os.environ.get("IDLE_CULLER_TIMEOUT", 86400))  # idle timeout in seconds (default: 24 hours)
+IDLE_CULLER_CULL_EVERY = int(os.environ.get("IDLE_CULLER_CULL_EVERY", 600))  # check interval in seconds (default: 10 min)
+IDLE_CULLER_MAX_AGE = int(os.environ.get("IDLE_CULLER_MAX_AGE", 0))  # max server age in seconds (0 = unlimited)
 TF_CPP_MIN_LOG_LEVEL = int(os.environ.get("TF_CPP_MIN_LOG_LEVEL", 3)) 
 DOCKER_NOTEBOOK_DIR = "/home/lab/workspace"
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")
@@ -420,5 +424,42 @@ if c is not None:
         (r'/api/admin/credentials', GetUserCredentialsHandler),
         (r'/notifications', NotificationsPageHandler),
     ]
+
+    # Idle culler service - automatically stops servers after inactivity
+    if IDLE_CULLER_ENABLED == 1:
+        import sys
+
+        # Define role with required scopes for idle culler
+        c.JupyterHub.load_roles = [
+            {
+                "name": "jupyterhub-idle-culler-role",
+                "scopes": [
+                    "list:users",
+                    "read:users:activity",
+                    "read:servers",
+                    "delete:servers",
+                ],
+                "services": ["jupyterhub-idle-culler"],
+            }
+        ]
+
+        # Configure idle culler service
+        culler_cmd = [
+            sys.executable,
+            "-m", "jupyterhub_idle_culler",
+            f"--timeout={IDLE_CULLER_TIMEOUT}",
+            f"--cull-every={IDLE_CULLER_CULL_EVERY}",
+        ]
+        if IDLE_CULLER_MAX_AGE > 0:
+            culler_cmd.append(f"--max-age={IDLE_CULLER_MAX_AGE}")
+
+        c.JupyterHub.services = [
+            {
+                "name": "jupyterhub-idle-culler",
+                "command": culler_cmd,
+            }
+        ]
+
+        print(f"[Idle Culler] Enabled - timeout={IDLE_CULLER_TIMEOUT}s, check every={IDLE_CULLER_CULL_EVERY}s, max_age={IDLE_CULLER_MAX_AGE}s")
 
 # EOF
