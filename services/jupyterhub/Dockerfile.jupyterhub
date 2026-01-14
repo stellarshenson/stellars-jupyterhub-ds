@@ -42,13 +42,18 @@ COPY --chmod=600  services/jupyterhub/templates/certs /mnt/certs
 COPY --chmod=644  services/jupyterhub/templates_enhanced/*.html /srv/jupyterhub/templates/
 COPY --chmod=644  services/jupyterhub/templates_enhanced/static/custom.css /tmp/custom.css
 COPY --chmod=644  config/jupyterhub_config.py /srv/jupyterhub/jupyterhub_config.py
+COPY --chmod=644  config/settings_dictionary.yml /srv/jupyterhub/settings_dictionary.yml
 
-## install dockerspawner, nativeauthenticator, idle-culler
-RUN pip install -U --no-cache-dir \
-    docker \
-    dockerspawner \
-    jupyterhub-nativeauthenticator \
-    jupyterhub-idle-culler
+## install dockerspawner, nativeauthenticator, idle-culler, pyyaml
+RUN <<-EOF
+    echo "installing core jupyterhub python packages"
+    pip install -U --no-cache-dir \
+        docker \
+        dockerspawner \
+        jupyterhub-nativeauthenticator \
+        jupyterhub-idle-culler \
+        pyyaml
+EOF
 
 ## copy custom.css to JupyterHub's static directory
 RUN <<-EOF

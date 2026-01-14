@@ -1,0 +1,79 @@
+# Settings Dictionary
+# Defines environment variables displayed on the admin Settings page
+# Categories are top-level keys, each containing a list of settings
+# Each setting has: name (env var), description (UI label), default (fallback value)
+
+JupyterHub Core:
+  - name: JUPYTERHUB_ADMIN
+    description: Admin username
+    default: admin
+
+  - name: JUPYTERHUB_BASE_URL
+    description: Base URL path
+    default: /jupyterhub
+
+  - name: JUPYTERHUB_SIGNUP_ENABLED
+    description: User self-registration (0=disabled, 1=enabled)
+    default: "1"
+
+  - name: JUPYTERHUB_SSL_ENABLED
+    description: SSL/TLS (0=disabled, 1=enabled)
+    default: "1"
+
+Docker Spawner:
+  - name: JUPYTERHUB_NOTEBOOK_IMAGE
+    description: User container image
+    default: stellars/stellars-jupyterlab-ds:latest
+
+  - name: JUPYTERHUB_NETWORK_NAME
+    description: Docker network for containers
+    default: jupyterhub_network
+
+GPU:
+  - name: JUPYTERHUB_GPU_ENABLED
+    description: GPU support (0=disabled, 1=enabled, 2=auto-detect)
+    default: "2"
+
+  - name: JUPYTERHUB_NVIDIA_IMAGE
+    description: CUDA image for GPU detection
+    default: nvidia/cuda:12.9.1-base-ubuntu24.04
+
+Services:
+  - name: JUPYTERHUB_SERVICE_MLFLOW
+    description: MLflow service (0=disabled, 1=enabled)
+    default: "1"
+
+  - name: JUPYTERHUB_SERVICE_GLANCES
+    description: Glances service (0=disabled, 1=enabled)
+    default: "1"
+
+  - name: JUPYTERHUB_SERVICE_TENSORBOARD
+    description: TensorBoard service (0=disabled, 1=enabled)
+    default: "1"
+
+Idle Culler:
+  - name: JUPYTERHUB_IDLE_CULLER_ENABLED
+    description: Idle culler (0=disabled, 1=enabled)
+    default: "0"
+
+  - name: JUPYTERHUB_IDLE_CULLER_TIMEOUT
+    description: Idle timeout in seconds
+    default: "86400"
+
+  - name: JUPYTERHUB_IDLE_CULLER_INTERVAL
+    description: Check interval in seconds
+    default: "600"
+
+  - name: JUPYTERHUB_IDLE_CULLER_MAX_AGE
+    description: Max server age (0=unlimited)
+    default: "0"
+
+Branding:
+  - name: JUPYTERHUB_CUSTOM_LOGO_URI
+    description: Custom logo URI
+    default: ""
+    empty_display: "(default)"
+
+  - name: STELLARS_JUPYTERHUB_VERSION
+    description: Platform version
+    default: unknown

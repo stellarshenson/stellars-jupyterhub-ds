@@ -566,6 +566,9 @@ class GetUserCredentialsHandler(BaseHandler):
 class SettingsPageHandler(BaseHandler):
     """Handler for rendering the settings page (admin only, read-only)"""
 
+    # Settings dictionary file path
+    SETTINGS_DICT_PATH = "/srv/jupyterhub/settings_dictionary.yml"
+
     @web.authenticated
     async def get(self):
         """
@@ -581,38 +584,48 @@ class SettingsPageHandler(BaseHandler):
 
         self.log.info(f"[Settings Page] Admin {current_user.name} accessed settings panel")
 
-        # Collect environment variables and settings
-        settings = []
-
-        # JupyterHub Core Settings
-        settings.append({"category": "JupyterHub Core", "name": "JUPYTERHUB_ADMIN", "value": os.environ.get("JUPYTERHUB_ADMIN", "admin"), "description": "Admin username"})
-        settings.append({"category": "JupyterHub Core", "name": "JUPYTERHUB_BASE_URL", "value": os.environ.get("JUPYTERHUB_BASE_URL", "/jupyterhub"), "description": "Base URL path"})
-        settings.append({"category": "JupyterHub Core", "name": "JUPYTERHUB_SIGNUP_ENABLED", "value": os.environ.get("JUPYTERHUB_SIGNUP_ENABLED", "1"), "description": "User self-registration (0=disabled, 1=enabled)"})
-        settings.append({"category": "JupyterHub Core", "name": "JUPYTERHUB_SSL_ENABLED", "value": os.environ.get("JUPYTERHUB_SSL_ENABLED", "1"), "description": "SSL/TLS (0=disabled, 1=enabled)"})
-
-        # Docker/Spawner Settings
-        settings.append({"category": "Docker Spawner", "name": "JUPYTERHUB_NOTEBOOK_IMAGE", "value": os.environ.get("JUPYTERHUB_NOTEBOOK_IMAGE", "stellars/stellars-jupyterlab-ds:latest"), "description": "User container image"})
-        settings.append({"category": "Docker Spawner", "name": "JUPYTERHUB_NETWORK_NAME", "value": os.environ.get("JUPYTERHUB_NETWORK_NAME", "jupyterhub_network"), "description": "Docker network for containers"})
-
-        # GPU Settings
-        settings.append({"category": "GPU", "name": "JUPYTERHUB_GPU_ENABLED", "value": os.environ.get("JUPYTERHUB_GPU_ENABLED", "2"), "description": "GPU support (0=disabled, 1=enabled, 2=auto-detect)"})
-        settings.append({"category": "GPU", "name": "JUPYTERHUB_NVIDIA_IMAGE", "value": os.environ.get("JUPYTERHUB_NVIDIA_IMAGE", "nvidia/cuda:12.9.1-base-ubuntu24.04"), "description": "CUDA image for GPU detection"})
-
-        # Services
-        settings.append({"category": "Services", "name": "JUPYTERHUB_SERVICE_MLFLOW", "value": os.environ.get("JUPYTERHUB_SERVICE_MLFLOW", "1"), "description": "MLflow service (0=disabled, 1=enabled)"})
-        settings.append({"category": "Services", "name": "JUPYTERHUB_SERVICE_GLANCES", "value": os.environ.get("JUPYTERHUB_SERVICE_GLANCES", "1"), "description": "Glances service (0=disabled, 1=enabled)"})
-        settings.append({"category": "Services", "name": "JUPYTERHUB_SERVICE_TENSORBOARD", "value": os.environ.get("JUPYTERHUB_SERVICE_TENSORBOARD", "1"), "description": "TensorBoard service (0=disabled, 1=enabled)"})
-
-        # Idle Culler
-        settings.append({"category": "Idle Culler", "name": "JUPYTERHUB_IDLE_CULLER_ENABLED", "value": os.environ.get("JUPYTERHUB_IDLE_CULLER_ENABLED", "0"), "description": "Idle culler (0=disabled, 1=enabled)"})
-        settings.append({"category": "Idle Culler", "name": "JUPYTERHUB_IDLE_CULLER_TIMEOUT", "value": os.environ.get("JUPYTERHUB_IDLE_CULLER_TIMEOUT", "86400"), "description": "Idle timeout in seconds"})
-        settings.append({"category": "Idle Culler", "name": "JUPYTERHUB_IDLE_CULLER_INTERVAL", "value": os.environ.get("JUPYTERHUB_IDLE_CULLER_INTERVAL", "600"), "description": "Check interval in seconds"})
-        settings.append({"category": "Idle Culler", "name": "JUPYTERHUB_IDLE_CULLER_MAX_AGE", "value": os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_AGE", "0"), "description": "Max server age (0=unlimited)"})
-
-        # Branding
-        settings.append({"category": "Branding", "name": "JUPYTERHUB_CUSTOM_LOGO_URI", "value": os.environ.get("JUPYTERHUB_CUSTOM_LOGO_URI", "") or "(default)", "description": "Custom logo URI"})
-        settings.append({"category": "Branding", "name": "STELLARS_JUPYTERHUB_VERSION", "value": os.environ.get("STELLARS_JUPYTERHUB_VERSION", "unknown"), "description": "Platform version"})
+        # Load settings from YAML dictionary
+        settings = self._load_settings()
 
         # Render the template
         html = self.render_template("settings.html", sync=True, user=current_user, settings=settings)
         self.finish(html)
+
+    def _load_settings(self):
+        """Load settings from YAML dictionary file and populate with env values"""
+        import yaml
+
+        settings = []
+
+        try:
+            with open(self.SETTINGS_DICT_PATH, 'r') as f:
+                config = yaml.safe_load(f)
+
+            # Categories are top-level keys in the YAML
+            for category, items in config.items():
+                # Skip comment lines (strings starting with #)
+                if not isinstance(items, list):
+                    continue
+
+                for item in items:
+                    name = item.get('name', '')
+                    default = str(item.get('default', ''))
+                    value = os.environ.get(name, default)
+
+                    # Handle empty_display for empty values
+                    if not value and 'empty_display' in item:
+                        value = item['empty_display']
+
+                    settings.append({
+                        "category": category,
+                        "name": name,
+                        "value": value,
+                        "description": item.get('description', '')
+                    })
+
+        except FileNotFoundError:
+            self.log.error(f"[Settings Page] Settings dictionary not found: {self.SETTINGS_DICT_PATH}")
+        except Exception as e:
+            self.log.error(f"[Settings Page] Error loading settings dictionary: {e}")
+
+        return settings
