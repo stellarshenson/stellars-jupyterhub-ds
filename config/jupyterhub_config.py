@@ -407,6 +407,7 @@ if c is not None:
         ManageVolumesHandler,
         RestartServerHandler,
         NotificationsPageHandler,
+        ActiveServersHandler,
         BroadcastNotificationHandler,
         GetUserCredentialsHandler
     )
@@ -414,6 +415,7 @@ if c is not None:
     c.JupyterHub.extra_handlers = [
         (r'/api/users/([^/]+)/manage-volumes', ManageVolumesHandler),
         (r'/api/users/([^/]+)/restart-server', RestartServerHandler),
+        (r'/api/notifications/active-servers', ActiveServersHandler),
         (r'/api/notifications/broadcast', BroadcastNotificationHandler),
         (r'/api/admin/credentials', GetUserCredentialsHandler),
         (r'/notifications', NotificationsPageHandler),

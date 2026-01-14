@@ -42,9 +42,29 @@
           </label>
         </div>
 
+        <div class="mb-3">
+          <label class="form-label">Recipients</label>
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="send-to-all" checked>
+            <label class="form-check-label" for="send-to-all">
+              <strong>Send to all active servers</strong>
+            </label>
+          </div>
+
+          <div id="server-selection" class="mt-2" style="display: none;">
+            <div class="d-flex gap-2 mb-2">
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="select-all">Select All</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="deselect-all">Deselect All</button>
+            </div>
+            <div id="server-list" class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+              <span class="text-muted">Loading active servers...</span>
+            </div>
+          </div>
+        </div>
+
         <button type="submit" class="btn btn-primary btn-lg" id="send-btn">
           <i class="fa fa-paper-plane" aria-hidden="true"></i>
-          Send to All Active Servers
+          <span id="send-btn-text">Send to All Active Servers</span>
         </button>
       </form>
     </div>
@@ -89,6 +109,79 @@
 require(["jquery"], function($) {
   "use strict";
 
+  var activeServers = [];
+
+  // Fetch active servers on page load
+  $.ajax({
+    url: '{{ base_url }}api/notifications/active-servers',
+    method: 'GET',
+    headers: {
+      'X-XSRFToken': getCookie('_xsrf')
+    },
+    success: function(data) {
+      activeServers = data.servers || [];
+      renderServerList();
+    },
+    error: function() {
+      $('#server-list').html('<span class="text-danger">Failed to load servers</span>');
+    }
+  });
+
+  function renderServerList() {
+    var $list = $('#server-list');
+    if (activeServers.length === 0) {
+      $list.html('<span class="text-muted">No active servers</span>');
+      return;
+    }
+
+    var html = '';
+    activeServers.forEach(function(server) {
+      html += '<div class="form-check">' +
+        '<input type="checkbox" class="form-check-input server-checkbox" ' +
+        'id="server-' + escapeHtml(server.username) + '" ' +
+        'value="' + escapeHtml(server.username) + '" checked>' +
+        '<label class="form-check-label" for="server-' + escapeHtml(server.username) + '">' +
+        escapeHtml(server.username) + '</label></div>';
+    });
+    $list.html(html);
+
+    // Bind change event for button text update
+    $('.server-checkbox').on('change', updateButtonText);
+  }
+
+  // Toggle server selection visibility
+  $('#send-to-all').on('change', function() {
+    $('#server-selection').toggle(!this.checked);
+    updateButtonText();
+  });
+
+  // Select All / Deselect All
+  $('#select-all').on('click', function() {
+    $('.server-checkbox').prop('checked', true);
+    updateButtonText();
+  });
+
+  $('#deselect-all').on('click', function() {
+    $('.server-checkbox').prop('checked', false);
+    updateButtonText();
+  });
+
+  function updateButtonText() {
+    var sendToAll = $('#send-to-all').is(':checked');
+    var selectedCount = $('.server-checkbox:checked').length;
+    var totalCount = activeServers.length;
+
+    if (sendToAll) {
+      $('#send-btn-text').text('Send to All Active Servers');
+    } else if (selectedCount === 0) {
+      $('#send-btn-text').text('Select Recipients');
+    } else if (selectedCount === totalCount) {
+      $('#send-btn-text').text('Send to All ' + totalCount + ' Server(s)');
+    } else {
+      $('#send-btn-text').text('Send to ' + selectedCount + ' Server(s)');
+    }
+  }
+
   // Character counter
   $('#message').on('input', function() {
     var length = $(this).val().length;
@@ -103,6 +196,21 @@ require(["jquery"], function($) {
     var message = $('#message').val().trim();
     var variant = $('#variant').val();
     var autoClose = $('#autoClose').is(':checked');
+    var sendToAll = $('#send-to-all').is(':checked');
+
+    // Build recipients list
+    var recipients = null;
+    if (!sendToAll) {
+      recipients = [];
+      $('.server-checkbox:checked').each(function() {
+        recipients.push($(this).val());
+      });
+
+      if (recipients.length === 0) {
+        alert('Please select at least one recipient');
+        return;
+      }
+    }
 
     // Validate
     if (!message) {
@@ -124,6 +232,16 @@ require(["jquery"], function($) {
     // Hide previous results
     $('#results-section').hide();
 
+    // Build request payload
+    var payload = {
+      message: message,
+      variant: variant,
+      autoClose: autoClose
+    };
+    if (recipients !== null) {
+      payload.recipients = recipients;
+    }
+
     // Send request
     $.ajax({
       url: '{{ base_url }}api/notifications/broadcast',
@@ -132,11 +250,7 @@ require(["jquery"], function($) {
       headers: {
         'X-XSRFToken': getCookie('_xsrf')
       },
-      data: JSON.stringify({
-        message: message,
-        variant: variant,
-        autoClose: autoClose
-      }),
+      data: JSON.stringify(payload),
       success: function(data) {
         displayResults(data);
         // Clear form
