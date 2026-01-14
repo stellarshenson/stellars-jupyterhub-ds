@@ -156,3 +156,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 51. **Task - Version footer on home page**: Added version status bar to home page matching admin page style<br>
     **Result**: Added `{% block footer %}` to home.html displaying "Stellars JupyterHub DS X.Y.Z | JupyterHub X.Y.Z". Uses `stellars_version.split('_')[0]` to show only major.minor.patch (strips _jh-x.x suffix). Added `<div class="mt-5 pt-5"></div>` spacer before footer for visual separation from content. Uses `server_version` template variable for JupyterHub version
+
+52. **Task - Fix server_version not populated**: Investigated and fixed missing JupyterHub version in home page footer<br>
+    **Result**: Discovered `AdminHandler` explicitly passes `server_version` to admin.html but `HomeHandler` does not pass it to home.html - it's handler-specific, not global. Added `jupyterhub.__version__` to `c.JupyterHub.template_vars` in jupyterhub_config.py making `server_version` available globally to all templates
