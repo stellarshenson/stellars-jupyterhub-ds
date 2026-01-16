@@ -27,9 +27,13 @@ Template for deploying stellars-jupyterhub-ds with local Traefik reverse proxy a
 ```
 <name>_stellars_jupyterhub_ds/
   compose_override.yml          # Local Traefik + JupyterHub config
-  start.sh                      # Pull latest + start services
+  compose_cifs.yml              # Optional CIFS mount configuration
+  start.sh                      # Clone/update + start services
   stop.sh                       # Stop services
   generate-certs.sh             # Certificate generation script
+  install_cert.sh               # Linux certificate installer
+  install_cert.bat              # Windows certificate installer
+  .env.example                  # Example environment config
   certs/
     tls.yml                     # Traefik TLS configuration
     _.yourdomain.example.com/   # Generated wildcard cert
@@ -43,8 +47,19 @@ Template for deploying stellars-jupyterhub-ds with local Traefik reverse proxy a
 Edit `compose_override.yml` to customize:
 - Domain name (replace `YOURDOMAIN` placeholder)
 - Ports (default: 80/443)
+- Environment variables (idle culler, signup)
 - Network name
-- Additional services
+
+### Optional CIFS Mount
+
+To enable shared NAS storage for user containers:
+
+1. Edit `compose_cifs.yml` with your NAS credentials
+2. Create `.env` from `.env.example`:
+   ```bash
+   cp .env.example .env
+   ```
+3. Set `ENABLE_CIFS=1` in `.env`
 
 ## Access
 
@@ -52,13 +67,26 @@ After deployment:
 - JupyterHub: https://jupyterhub.yourdomain.example.com/
 - Traefik: https://traefik.yourdomain.example.com
 
-Import `certs/_.<domain>/cert.pem` to browser for trusted HTTPS.
+### Certificate Installation
+
+Import the self-signed certificate to your browser for trusted HTTPS:
+
+**Linux:**
+```bash
+./install_cert.sh certs/_.yourdomain.example.com/
+```
+
+**Windows:**
+```cmd
+install_cert.bat certs\_.yourdomain.example.com\
+```
 
 ## Commands
 
 ```bash
-./start.sh    # Pull latest + start services
-./stop.sh     # Stop all services
+./start.sh             # Clone repo (if missing) + start services
+./start.sh --refresh   # Pull latest upstream + start services
+./stop.sh              # Stop all services
 ```
 
 To view logs:
