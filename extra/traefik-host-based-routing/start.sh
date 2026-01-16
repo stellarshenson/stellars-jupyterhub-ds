@@ -1,5 +1,6 @@
 #!/bin/bash
-# Start JupyterHub platform with latest upstream
+# Start JupyterHub platform
+# Usage: ./start.sh [--refresh]
 
 set -e
 
@@ -8,6 +9,14 @@ cd "$(dirname "$0")"
 REPO_URL="https://github.com/stellarshenson/stellars-jupyterhub-ds.git"
 REPO_DIR="stellars-jupyterhub-ds"
 REFRESH=false
+
+# Default configuration (override via .env)
+ENABLE_CIFS="${ENABLE_CIFS:-0}"
+
+# Load environment variables if .env exists
+if [[ -f .env ]]; then
+    source .env
+fi
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -37,9 +46,16 @@ else
     git clone "$REPO_URL"
 fi
 
+# Build compose command with optional CIFS mount
+COMPOSE_FILES="-f stellars-jupyterhub-ds/compose.yml -f compose_override.yml"
+if [[ "${ENABLE_CIFS}" == "1" ]]; then
+    echo "CIFS mount enabled"
+    COMPOSE_FILES="${COMPOSE_FILES} -f compose_cifs.yml"
+fi
+
 echo "Starting JupyterHub platform..."
-docker compose -f stellars-jupyterhub-ds/compose.yml -f compose_override.yml pull
+docker compose ${COMPOSE_FILES} pull
 docker pull stellars/stellars-jupyterlab-ds:latest
-docker compose -f stellars-jupyterhub-ds/compose.yml -f compose_override.yml up -d --no-build
+docker compose ${COMPOSE_FILES} up -d --no-build
 
 echo "Done. Access: https://jupyterhub.YOURDOMAIN/"

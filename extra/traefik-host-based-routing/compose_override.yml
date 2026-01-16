@@ -7,7 +7,7 @@
 # ACCESS: https://jupyterhub.YOURDOMAIN/ or https://jupyterhub.localhost/
 # TRUST:  Import certs/_.YOURDOMAIN/cert.pem to browser
 #
-# Replace YOURDOMAIN with your actual domain (e.g., lab.stellars-tech.eu)
+# Replace YOURDOMAIN with your actual domain (e.g., lab.example.com)
 #
 # =============================================================================
 
@@ -68,6 +68,8 @@ services:
     ports: []
     environment:
       - JUPYTERHUB_BASE_URL=/
+      - JUPYTERHUB_IDLE_CULLER_ENABLED=1
+      - JUPYTERHUB_SIGNUP_ENABLED=0
     networks:
       - jupyterhub_network
     labels:
@@ -75,7 +77,6 @@ services:
 
       # JupyterHub router (root path)
       - "traefik.http.routers.jupyterhub-rtr.rule=Host(`jupyterhub.YOURDOMAIN`) || Host(`jupyterhub.localhost`)"
-"
       - "traefik.http.routers.jupyterhub-rtr.entrypoints=websecure"
       - "traefik.http.routers.jupyterhub-rtr.tls=true"
       - "traefik.http.routers.jupyterhub-rtr.service=jupyterhub-svc"

@@ -15,6 +15,9 @@ Thumbs.db
 # Docker
 .docker/
 
+# Environment (may contain credentials)
+.env
+
 # TLS certificates (private keys)
 certs/*.pem
 certs/**/*.pem

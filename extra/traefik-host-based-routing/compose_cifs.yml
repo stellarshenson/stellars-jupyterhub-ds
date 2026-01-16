@@ -1,0 +1,20 @@
+# =============================================================================
+# CIFS Volume Mount - Optional
+# =============================================================================
+#
+# Enable by setting ENABLE_CIFS=1 in .env
+#
+# Update credentials and mount path below before enabling.
+#
+# =============================================================================
+
+volumes:
+  jupyterhub_shared:
+    driver: local
+    name: jupyterhub_shared
+    driver_opts:
+      type: cifs
+      device: //nas.example.com/shared
+      o: username=YOUR_USERNAME,password=YOUR_PASSWORD,uid=1000,gid=1000,vers=3.0
+
+# EOF
