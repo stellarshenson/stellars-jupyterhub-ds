@@ -159,3 +159,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 52. **Task - Fix server_version not populated**: Investigated and fixed missing JupyterHub version in home page footer<br>
     **Result**: Discovered `AdminHandler` explicitly passes `server_version` to admin.html but `HomeHandler` does not pass it to home.html - it's handler-specific, not global. Added `jupyterhub.__version__` to `c.JupyterHub.template_vars` in jupyterhub_config.py making `server_version` available globally to all templates
+
+53. **Task - Create stop.sh script**: Added stop.sh to complement start.sh for platform shutdown<br>
+    **Result**: Created stop.sh mirroring start.sh pattern - resolves script location via readlink/dirname, respects compose_override.yml if present, runs docker compose down --remove-orphans
