@@ -541,7 +541,8 @@
                   // Show warning when max reached, but keep button enabled
                   // Backend will return error if user tries to extend with no hours available
                   if (available <= 0) {
-                      $('#extension-allowance').html('<small class="text-warning">Maximum extension limit reached</small>');
+                      const maxHours = info.max_extension_hours || {{ idle_culler_max_extension }};
+                      $('#extension-allowance').html(`<small class="text-warning">Maximum extension limit reached (${maxHours} hours). No more extensions available.</small>`);
                   }
 
                   console.log('[Session Extension] UI updated - remaining:', timeRemainingSeconds, 'available ext:', available);
