@@ -622,6 +622,8 @@ class SessionInfoHandler(BaseHandler):
             # Calculate effective timeout (base timeout + extension)
             effective_timeout = timeout_seconds + extension_seconds
 
+            self.log.info(f"[Session Info] {username}: base_timeout={timeout_seconds}s ({timeout_seconds/3600:.1f}h), extensions={extensions_used_hours}h, effective_timeout={effective_timeout}s ({effective_timeout/3600:.1f}h)")
+
             # Get last activity timestamp
             last_activity = user.last_activity
             if last_activity:
@@ -631,11 +633,14 @@ class SessionInfoHandler(BaseHandler):
                 elapsed_seconds = (now - last_activity_utc).total_seconds()
                 time_remaining_seconds = max(0, effective_timeout - elapsed_seconds)
 
+                self.log.info(f"[Session Info] {username}: elapsed={elapsed_seconds:.0f}s ({elapsed_seconds/3600:.1f}h), remaining={time_remaining_seconds:.0f}s ({time_remaining_seconds/3600:.1f}h)")
+
                 response["last_activity"] = last_activity_utc.isoformat()
                 response["time_remaining_seconds"] = int(time_remaining_seconds)
             else:
                 response["last_activity"] = None
                 response["time_remaining_seconds"] = effective_timeout
+                self.log.info(f"[Session Info] {username}: no last_activity, remaining={effective_timeout}s ({effective_timeout/3600:.1f}h)")
 
             response["extensions_used_hours"] = extensions_used_hours
             response["extensions_available_hours"] = max(0, max_extension_hours - extensions_used_hours)
@@ -645,7 +650,7 @@ class SessionInfoHandler(BaseHandler):
             response["extensions_used_hours"] = 0
             response["extensions_available_hours"] = max_extension_hours
 
-        self.log.info(f"[Session Info] Response for {username}: culler_enabled={culler_enabled}, active={server_active}")
+        self.log.info(f"[Session Info] {username}: culler_enabled={culler_enabled}, active={server_active}, extensions_used={response.get('extensions_used_hours', 0)}h, available={response.get('extensions_available_hours', 0)}h")
         self.finish(response)
 
 
@@ -712,40 +717,53 @@ class ExtendSessionHandler(BaseHandler):
             self.set_status(400)
             return self.finish({"success": False, "error": "Server is not running"})
 
-        # Check if requested hours exceeds maximum
-        if hours > max_extension_hours:
+        # Get current extension usage from spawner state
+        current_state = spawner.orm_spawner.state or {}
+        current_extensions = current_state.get('extension_hours_used', 0)
+        new_total_extensions = current_extensions + hours
+
+        self.log.info(f"[Extend Session] {username}: requesting +{hours}h, current extensions={current_extensions}h, new total={new_total_extensions}h, max={max_extension_hours}h")
+
+        # Check if total extensions would exceed maximum
+        if new_total_extensions > max_extension_hours:
+            available = max_extension_hours - current_extensions
+            self.log.warning(f"[Extend Session] {username}: DENIED - would exceed max ({new_total_extensions}h > {max_extension_hours}h), available={available}h")
             self.set_status(400)
             return self.finish({
                 "success": False,
-                "error": f"Extension cannot exceed maximum allowed ({max_extension_hours} hours)."
+                "error": f"Extension would exceed maximum allowed ({max_extension_hours} hours). You have {available} hour(s) remaining."
             })
 
-        # Reset last_activity to now and SET extension hours (not add)
-        from datetime import datetime
-        now = datetime.utcnow()
-        user.last_activity = now
-        self.db.commit()
-
-        # Update spawner state with new extension hours
-        current_state = spawner.orm_spawner.state or {}
+        # ADD hours to extension total (don't reset last_activity - preserve elapsed time)
+        from datetime import datetime, timezone
         new_state = dict(current_state)
-        new_state['extension_hours_used'] = hours
+        new_state['extension_hours_used'] = new_total_extensions
         spawner.orm_spawner.state = new_state
         self.db.commit()
 
-        self.log.info(f"[Extend Session] User {username} set session extension to {hours} hour(s)")
+        # Calculate new time remaining: base timeout + ALL extensions - elapsed
+        extension_seconds = new_total_extensions * 3600
+        effective_timeout = timeout_seconds + extension_seconds
+        last_activity = user.last_activity
+        if last_activity:
+            now_utc = datetime.now(timezone.utc)
+            last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
+            elapsed_seconds = (now_utc - last_activity_utc).total_seconds()
+            time_remaining = max(0, int(effective_timeout - elapsed_seconds))
+            self.log.info(f"[Extend Session] {username}: effective_timeout={effective_timeout}s ({effective_timeout/3600:.1f}h), elapsed={elapsed_seconds:.0f}s ({elapsed_seconds/3600:.1f}h), remaining={time_remaining}s ({time_remaining/3600:.1f}h)")
+        else:
+            time_remaining = effective_timeout
+            self.log.info(f"[Extend Session] {username}: no last_activity, remaining={time_remaining}s ({time_remaining/3600:.1f}h)")
 
-        # Calculate time remaining: base timeout + extension hours (starting fresh from now)
-        extension_seconds = hours * 3600
-        time_remaining = timeout_seconds + extension_seconds
+        self.log.info(f"[Extend Session] {username}: SUCCESS - added {hours}h, total extensions={new_total_extensions}h, remaining={time_remaining/3600:.1f}h")
 
         response = {
             "success": True,
-            "message": f"Session extended to {hours} additional hour(s)",
+            "message": f"Added {hours} hour(s) to session",
             "session_info": {
                 "time_remaining_seconds": time_remaining,
-                "extensions_used_hours": hours,
-                "extensions_available_hours": max_extension_hours - hours
+                "extensions_used_hours": new_total_extensions,
+                "extensions_available_hours": max_extension_hours - new_total_extensions
             }
         }
 
