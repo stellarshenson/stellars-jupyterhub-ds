@@ -51,8 +51,8 @@ Services:
     description: MLflow service (0=disabled, 1=enabled)
     default: "1"
 
-  - name: JUPYTERHUB_SERVICE_GLANCES
-    description: Glances service (0=disabled, 1=enabled)
+  - name: JUPYTERHUB_SERVICE_RESOURCES_MONITOR
+    description: Resources monitor service (0=disabled, 1=enabled)
     default: "1"
 
   - name: JUPYTERHUB_SERVICE_TENSORBOARD

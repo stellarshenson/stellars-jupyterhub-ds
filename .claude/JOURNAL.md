@@ -165,3 +165,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 54. **Task - Enhance traefik-host-based-routing template**: Major improvements to deployment template with CIFS support and certificate installers<br>
     **Result**: Added optional CIFS mount support via compose_cifs.yml and .env.example (ENABLE_CIFS=1), created install_cert.sh for Linux (multi-distro: Debian/Ubuntu, RHEL/CentOS, Arch, Alpine, macOS) and enhanced install_cert.bat for Windows with folder argument and help flags, fixed compose_override.yml stray quote and added JUPYTERHUB_IDLE_CULLER_ENABLED/JUPYTERHUB_SIGNUP_ENABLED defaults, enhanced generate-certs.sh with generic CN for browser compatibility and verification output, updated start.sh/stop.sh to load .env and conditionally include compose_cifs.yml, updated README with CIFS instructions and certificate installation commands, added .env to .gitignore
+
+55. **Task - Rename GLANCES to RESOURCES_MONITOR**: Renamed environment variable for clarity<br>
+    **Result**: Renamed JUPYTERHUB_SERVICE_GLANCES to JUPYTERHUB_SERVICE_RESOURCES_MONITOR across compose.yml, jupyterhub_config.py, settings_dictionary.yml, README.md, and CLAUDE.md
