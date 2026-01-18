@@ -538,12 +538,7 @@
                   const available = info.extensions_available_hours || 0;
                   $extensionsAvailable.text(available);
 
-                  // Show warning when max reached, but keep button enabled
-                  // Backend will return error if user tries to extend with no hours available
-                  if (available <= 0) {
-                      const maxHours = info.max_extension_hours || {{ idle_culler_max_extension }};
-                      $('#extension-allowance').html(`<small class="text-warning">Maximum extension limit reached (${maxHours} hours). No more extensions available.</small>`);
-                  }
+                  // No static warning when max reached - backend shows disappearing error on click
 
                   console.log('[Session Extension] UI updated - remaining:', timeRemainingSeconds, 'available ext:', available);
               }
@@ -628,8 +623,12 @@
                           $extendBtn.prop('disabled', false).html('<i class="fa fa-plus" aria-hidden="true"></i> Extend');
 
                           const errorMsg = xhr.responseJSON?.error || 'Failed to extend session';
-                          $sessionError.removeClass('d-none');
+                          // Show as warning alert that disappears after 4 seconds
+                          $sessionError.removeClass('d-none alert-success').addClass('alert-warning');
                           $sessionErrorMsg.text(errorMsg);
+                          setTimeout(function() {
+                              $sessionError.addClass('d-none');
+                          }, 4000);
                       }
                   });
               });
