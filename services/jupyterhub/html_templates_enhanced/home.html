@@ -609,7 +609,7 @@
                       contentType: 'application/json',
                       success: function(response) {
                           console.log('[Session Extension] Extension successful:', response);
-                          $extendBtn.html('<i class="fa fa-plus" aria-hidden="true"></i> Extend');
+                          $extendBtn.prop('disabled', false).html('<i class="fa fa-plus" aria-hidden="true"></i> Extend');
 
                           if (response.success) {
                               // Update UI with new session info
@@ -622,13 +622,14 @@
                                       extensions_available_hours: response.session_info.extensions_available_hours
                                   });
                               }
-                              // Show success feedback briefly
-                              $sessionError.removeClass('d-none alert-warning').addClass('alert-success');
+                              // Show feedback - warning if truncated, success otherwise
+                              const alertClass = response.truncated ? 'alert-warning' : 'alert-success';
+                              $sessionError.removeClass('d-none alert-warning alert-success').addClass(alertClass);
                               $sessionErrorMsg.text(response.message);
                               setTimeout(function() {
-                                  $sessionError.addClass('d-none').removeClass('alert-success').addClass('alert-warning');
+                                  $sessionError.addClass('d-none').removeClass('alert-success alert-warning');
                                   fetchSessionInfo(); // Refresh to get accurate time
-                              }, 2000);
+                              }, response.truncated ? 4000 : 2000); // Show warning longer
                           }
                       },
                       error: function(xhr) {

@@ -720,19 +720,27 @@ class ExtendSessionHandler(BaseHandler):
         # Get current extension usage from spawner state
         current_state = spawner.orm_spawner.state or {}
         current_extensions = current_state.get('extension_hours_used', 0)
-        new_total_extensions = current_extensions + hours
+        available = max_extension_hours - current_extensions
 
-        self.log.info(f"[Extend Session] {username}: requesting +{hours}h, current extensions={current_extensions}h, new total={new_total_extensions}h, max={max_extension_hours}h")
-
-        # Check if total extensions would exceed maximum
-        if new_total_extensions > max_extension_hours:
-            available = max_extension_hours - current_extensions
-            self.log.warning(f"[Extend Session] {username}: DENIED - would exceed max ({new_total_extensions}h > {max_extension_hours}h), available={available}h")
+        # Check if no hours available
+        if available <= 0:
+            self.log.warning(f"[Extend Session] {username}: DENIED - no extension hours available (used={current_extensions}h, max={max_extension_hours}h)")
             self.set_status(400)
             return self.finish({
                 "success": False,
-                "error": f"Extension would exceed maximum allowed ({max_extension_hours} hours). You have {available} hour(s) remaining."
+                "error": f"Maximum extension limit reached ({max_extension_hours} hours). No more extensions available."
             })
+
+        # Truncate requested hours to available if needed
+        truncated = False
+        original_hours = hours
+        if hours > available:
+            hours = available
+            truncated = True
+            self.log.warning(f"[Extend Session] {username}: requested +{original_hours}h exceeds available ({available}h), truncating to +{hours}h")
+
+        new_total_extensions = current_extensions + hours
+        self.log.info(f"[Extend Session] {username}: requesting +{hours}h, current extensions={current_extensions}h, new total={new_total_extensions}h, max={max_extension_hours}h")
 
         # ADD hours to extension total (don't reset last_activity - preserve elapsed time)
         from datetime import datetime, timezone
@@ -757,9 +765,15 @@ class ExtendSessionHandler(BaseHandler):
 
         self.log.info(f"[Extend Session] {username}: SUCCESS - added {hours}h, total extensions={new_total_extensions}h, remaining={time_remaining/3600:.1f}h")
 
+        # Build response message with warning if truncated
+        message = f"Added {hours} hour(s) to session"
+        if truncated:
+            message += f" (requested {original_hours}h, limited to available {hours}h)"
+
         response = {
             "success": True,
-            "message": f"Added {hours} hour(s) to session",
+            "message": message,
+            "truncated": truncated,
             "session_info": {
                 "time_remaining_seconds": time_remaining,
                 "extensions_used_hours": new_total_extensions,
