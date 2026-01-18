@@ -614,6 +614,14 @@ class SessionInfoHandler(BaseHandler):
         }
 
         if server_active and culler_enabled:
+            # Get extension tracking from spawner state
+            spawner_state = spawner.orm_spawner.state or {}
+            extensions_used_hours = spawner_state.get('extension_hours_used', 0)
+            extension_seconds = extensions_used_hours * 3600  # Convert to seconds
+
+            # Calculate effective timeout (base timeout + extension)
+            effective_timeout = timeout_seconds + extension_seconds
+
             # Get last activity timestamp
             last_activity = user.last_activity
             if last_activity:
@@ -621,16 +629,14 @@ class SessionInfoHandler(BaseHandler):
                 now = datetime.now(timezone.utc)
                 last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
                 elapsed_seconds = (now - last_activity_utc).total_seconds()
-                time_remaining_seconds = max(0, timeout_seconds - elapsed_seconds)
+                time_remaining_seconds = max(0, effective_timeout - elapsed_seconds)
 
                 response["last_activity"] = last_activity_utc.isoformat()
                 response["time_remaining_seconds"] = int(time_remaining_seconds)
             else:
                 response["last_activity"] = None
-                response["time_remaining_seconds"] = timeout_seconds
+                response["time_remaining_seconds"] = effective_timeout
 
-            # Get extension tracking from spawner state
-            extensions_used_hours = spawner.orm_spawner.state.get('extension_hours_used', 0) if spawner.orm_spawner.state else 0
             response["extensions_used_hours"] = extensions_used_hours
             response["extensions_available_hours"] = max(0, max_extension_hours - extensions_used_hours)
         else:
@@ -719,14 +725,9 @@ class ExtendSessionHandler(BaseHandler):
                 "error": f"Extension would exceed maximum allowed ({max_extension_hours} hours). You have {available} hour(s) remaining."
             })
 
-        # Update last_activity to reset the idle timer
-        # Use utcnow() without timezone info to match JupyterHub's internal format
-        from datetime import datetime
+        # Update extension tracking in spawner state (no need to touch last_activity)
+        from datetime import datetime, timezone
         now = datetime.utcnow()
-        user.last_activity = now
-        self.db.commit()
-
-        # Update extension tracking in spawner state
         new_extensions_used = extensions_used_hours + hours
         new_state = dict(current_state)
         new_state['extension_hours_used'] = new_extensions_used
@@ -745,11 +746,23 @@ class ExtendSessionHandler(BaseHandler):
 
         self.log.info(f"[Extend Session] User {username} extended session by {hours} hour(s). Total used: {new_extensions_used}/{max_extension_hours}")
 
+        # Calculate new time remaining (base timeout + all extensions - elapsed)
+        extension_seconds = new_extensions_used * 3600
+        effective_timeout = timeout_seconds + extension_seconds
+        last_activity = user.last_activity
+        if last_activity:
+            now_utc = datetime.now(timezone.utc)
+            last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
+            elapsed_seconds = (now_utc - last_activity_utc).total_seconds()
+            time_remaining = max(0, int(effective_timeout - elapsed_seconds))
+        else:
+            time_remaining = effective_timeout
+
         response = {
             "success": True,
             "message": f"Session extended by {hours} hour(s)",
             "session_info": {
-                "time_remaining_seconds": timeout_seconds,
+                "time_remaining_seconds": time_remaining,
                 "extensions_used_hours": new_extensions_used,
                 "extensions_available_hours": max_extension_hours - new_extensions_used
             }
