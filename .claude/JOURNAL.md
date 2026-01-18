@@ -177,3 +177,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 58. **Task - Improve session extension UI**: Changed extension input from dropdown to numeric and added explanatory note<br>
     **Result**: Replaced dropdown with numeric input (min=1, max set dynamically to available hours), renamed card title to "Idle Session Timeout", added explanatory note "Your server will be stopped after a period of inactivity to free up resources", added input validation for minimum 1 hour, button text shortened to "Extend"
+
+59. **Task - Session extension truncation and cumulative logic**: Fixed extension behavior to be cumulative and truncate excess requests<br>
+    **Result**: Changed extension logic from resetting timer to cumulative additions (extensions ADD to remaining time), fixed datetime timezone mismatch (use offset-naive datetime.utcnow() to match JupyterHub internal format), implemented truncation when requested hours exceed available (truncates to max available instead of rejecting), added `truncated` flag in API response with detailed message, UI shows warning alert (yellow) when truncated with 4-second display vs 2-second for normal success, fixed extend button re-enable after successful extension, added detailed logging showing base timeout, extension calculations, and remaining time
