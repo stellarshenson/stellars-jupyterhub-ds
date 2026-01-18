@@ -720,8 +720,9 @@ class ExtendSessionHandler(BaseHandler):
             })
 
         # Update last_activity to reset the idle timer
-        from datetime import datetime, timezone
-        now = datetime.now(timezone.utc)
+        # Use utcnow() without timezone info to match JupyterHub's internal format
+        from datetime import datetime
+        now = datetime.utcnow()
         user.last_activity = now
         self.db.commit()
 
