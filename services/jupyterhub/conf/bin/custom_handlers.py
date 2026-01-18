@@ -563,6 +563,200 @@ class GetUserCredentialsHandler(BaseHandler):
         self.finish({"credentials": credentials})
 
 
+class SessionInfoHandler(BaseHandler):
+    """Handler for getting session info including idle culler status and extension tracking"""
+
+    @web.authenticated
+    async def get(self, username):
+        """
+        Get session info for a user's server
+
+        GET /hub/api/users/{username}/session-info
+        Returns: {
+            "culler_enabled": true,
+            "server_active": true,
+            "last_activity": "2024-01-18T10:30:00Z",
+            "timeout_seconds": 86400,
+            "time_remaining_seconds": 7200,
+            "extensions_used_hours": 4,
+            "extensions_available_hours": 20
+        }
+        """
+        self.log.info(f"[Session Info] API endpoint called for user: {username}")
+
+        # Check permissions: user must be admin or requesting their own info
+        current_user = self.current_user
+        if current_user is None:
+            raise web.HTTPError(403, "Not authenticated")
+
+        if not (current_user.admin or current_user.name == username):
+            raise web.HTTPError(403, "Permission denied")
+
+        # Get idle culler config from environment
+        import os
+        culler_enabled = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_ENABLED", 0)) == 1
+        timeout_seconds = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_TIMEOUT", 86400))
+        max_extension_hours = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION", 24))
+
+        # Get user and spawner
+        user = self.find_user(username)
+        if not user:
+            raise web.HTTPError(404, "User not found")
+
+        spawner = user.spawner
+        server_active = spawner.active if spawner else False
+
+        response = {
+            "culler_enabled": culler_enabled,
+            "server_active": server_active,
+            "timeout_seconds": timeout_seconds,
+            "max_extension_hours": max_extension_hours,
+        }
+
+        if server_active and culler_enabled:
+            # Get last activity timestamp
+            last_activity = user.last_activity
+            if last_activity:
+                from datetime import datetime, timezone
+                now = datetime.now(timezone.utc)
+                last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
+                elapsed_seconds = (now - last_activity_utc).total_seconds()
+                time_remaining_seconds = max(0, timeout_seconds - elapsed_seconds)
+
+                response["last_activity"] = last_activity_utc.isoformat()
+                response["time_remaining_seconds"] = int(time_remaining_seconds)
+            else:
+                response["last_activity"] = None
+                response["time_remaining_seconds"] = timeout_seconds
+
+            # Get extension tracking from spawner state
+            extensions_used_hours = spawner.orm_spawner.state.get('extension_hours_used', 0) if spawner.orm_spawner.state else 0
+            response["extensions_used_hours"] = extensions_used_hours
+            response["extensions_available_hours"] = max(0, max_extension_hours - extensions_used_hours)
+        else:
+            response["last_activity"] = None
+            response["time_remaining_seconds"] = None
+            response["extensions_used_hours"] = 0
+            response["extensions_available_hours"] = max_extension_hours
+
+        self.log.info(f"[Session Info] Response for {username}: culler_enabled={culler_enabled}, active={server_active}")
+        self.finish(response)
+
+
+class ExtendSessionHandler(BaseHandler):
+    """Handler for extending user session by resetting last_activity"""
+
+    @web.authenticated
+    async def post(self, username):
+        """
+        Extend a user's session by updating last_activity timestamp
+
+        POST /hub/api/users/{username}/extend-session
+        Body: {"hours": 2}
+        Returns: {
+            "success": true,
+            "message": "Session extended by 2 hours",
+            "session_info": {
+                "time_remaining_seconds": 7200,
+                "extensions_used_hours": 6,
+                "extensions_available_hours": 18
+            }
+        }
+        """
+        self.log.info(f"[Extend Session] API endpoint called for user: {username}")
+
+        # Check permissions: user must be admin or requesting their own extension
+        current_user = self.current_user
+        if current_user is None:
+            raise web.HTTPError(403, "Not authenticated")
+
+        if not (current_user.admin or current_user.name == username):
+            raise web.HTTPError(403, "Permission denied")
+
+        # Parse request body
+        try:
+            body = self.request.body.decode('utf-8')
+            data = json.loads(body) if body else {}
+            hours = data.get('hours', 1)
+            if not isinstance(hours, (int, float)) or hours <= 0:
+                raise ValueError("Invalid hours value")
+            hours = int(hours)
+        except (json.JSONDecodeError, ValueError) as e:
+            self.log.error(f"[Extend Session] Invalid request: {e}")
+            self.set_status(400)
+            return self.finish({"success": False, "error": "Invalid request. Hours must be a positive number."})
+
+        # Get idle culler config
+        import os
+        culler_enabled = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_ENABLED", 0)) == 1
+        timeout_seconds = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_TIMEOUT", 86400))
+        max_extension_hours = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION", 24))
+
+        if not culler_enabled:
+            self.set_status(400)
+            return self.finish({"success": False, "error": "Idle culler is not enabled"})
+
+        # Get user and spawner
+        user = self.find_user(username)
+        if not user:
+            raise web.HTTPError(404, "User not found")
+
+        spawner = user.spawner
+        if not spawner or not spawner.active:
+            self.set_status(400)
+            return self.finish({"success": False, "error": "Server is not running"})
+
+        # Get current extension usage from spawner state
+        current_state = spawner.orm_spawner.state or {}
+        extensions_used_hours = current_state.get('extension_hours_used', 0)
+
+        # Check if extension would exceed maximum
+        if extensions_used_hours + hours > max_extension_hours:
+            available = max_extension_hours - extensions_used_hours
+            self.set_status(400)
+            return self.finish({
+                "success": False,
+                "error": f"Extension would exceed maximum allowed ({max_extension_hours} hours). You have {available} hour(s) remaining."
+            })
+
+        # Update last_activity to reset the idle timer
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        user.last_activity = now
+        self.db.commit()
+
+        # Update extension tracking in spawner state
+        new_extensions_used = extensions_used_hours + hours
+        new_state = dict(current_state)
+        new_state['extension_hours_used'] = new_extensions_used
+
+        # Track extension history (optional)
+        extension_history = new_state.get('extension_history', [])
+        extension_history.append({
+            'timestamp': now.isoformat(),
+            'hours': hours
+        })
+        new_state['extension_history'] = extension_history
+
+        # Save updated state
+        spawner.orm_spawner.state = new_state
+        self.db.commit()
+
+        self.log.info(f"[Extend Session] User {username} extended session by {hours} hour(s). Total used: {new_extensions_used}/{max_extension_hours}")
+
+        response = {
+            "success": True,
+            "message": f"Session extended by {hours} hour(s)",
+            "session_info": {
+                "time_remaining_seconds": timeout_seconds,
+                "extensions_used_hours": new_extensions_used,
+                "extensions_available_hours": max_extension_hours - new_extensions_used
+            }
+        }
+
+        self.finish(response)
+
+
 class SettingsPageHandler(BaseHandler):
     """Handler for rendering the settings page (admin only, read-only)"""
 

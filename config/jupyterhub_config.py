@@ -157,7 +157,7 @@ def remove_nativeauth_on_user_delete(mapper, connection, target):
 
 
 # NVIDIA GPU auto-detection 
-def detect_nvidia(nvidia_autodetect_image='nvidia/cuda:12.9.1-base-ubuntu24.04'):
+def detect_nvidia(nvidia_autodetect_image='nvidia/cuda:13.0.2-base-ubuntu24.04'):
     """ function to run docker image with nvidia driver, and execute `nvidia-smi` utility
     to verify if nvidia GPU is present and in functional state """
     client = docker.DockerClient('unix://var/run/docker.sock')
@@ -195,12 +195,13 @@ JUPYTERHUB_IDLE_CULLER_ENABLED = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_ENAB
 JUPYTERHUB_IDLE_CULLER_TIMEOUT = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_TIMEOUT", 86400))
 JUPYTERHUB_IDLE_CULLER_INTERVAL = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_INTERVAL", 600))
 JUPYTERHUB_IDLE_CULLER_MAX_AGE = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_AGE", 0))
+JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION", 24))  # hours
 TF_CPP_MIN_LOG_LEVEL = int(os.environ.get("TF_CPP_MIN_LOG_LEVEL", 3))
 DOCKER_NOTEBOOK_DIR = "/home/lab/workspace"
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")
 JUPYTERHUB_NETWORK_NAME = os.environ.get("JUPYTERHUB_NETWORK_NAME", "jupyterhub_network")
 JUPYTERHUB_NOTEBOOK_IMAGE = os.environ.get("JUPYTERHUB_NOTEBOOK_IMAGE", "stellars/stellars-jupyterlab-ds:latest")
-JUPYTERHUB_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_NVIDIA_IMAGE", "nvidia/cuda:12.9.1-base-ubuntu24.04")
+JUPYTERHUB_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_NVIDIA_IMAGE", "nvidia/cuda:13.0.2-base-ubuntu24.04")
 # Normalize base URL - use empty string for root path to avoid double slashes
 if JUPYTERHUB_BASE_URL in ['/', '', None]:
     JUPYTERHUB_BASE_URL_PREFIX = ''
@@ -307,18 +308,24 @@ if c is not None:
     # Set volumes from constant
     c.DockerSpawner.volumes = DOCKER_SPAWNER_VOLUMES
 
-    # Custom logo - mount/copy logo file to /srv/jupyterhub/logo.svg (or set path via env)
-    # JupyterHub serves this at {{ base_url }}logo automatically
-    logo_file = os.environ.get('JUPYTERHUB_LOGO_FILE', '/srv/jupyterhub/logo.svg')
-    if os.path.exists(logo_file):
-        c.JupyterHub.logo_file = logo_file
+    # Custom logo URI - supports file:// for local files, or http(s):// for external resources
+    # JupyterHub serves local logos at {{ base_url }}logo automatically
+    # External URIs (http/https) are passed to templates for custom rendering
+    logo_uri = os.environ.get('JUPYTERHUB_LOGO_URI', 'file:///srv/jupyterhub/logo.svg')
+    if logo_uri.startswith('file://'):
+        logo_file = logo_uri[7:]  # Strip file:// prefix to get local path
+        if os.path.exists(logo_file):
+            c.JupyterHub.logo_file = logo_file
 
-    # Make volume suffixes, descriptions, and version available to templates
+    # Make volume suffixes, descriptions, version, and idle culler config available to templates
     c.JupyterHub.template_vars = {
         'user_volume_suffixes': USER_VOLUME_SUFFIXES,
         'volume_descriptions': VOLUME_DESCRIPTIONS,
         'stellars_version': os.environ.get('STELLARS_JUPYTERHUB_VERSION', 'dev'),
         'server_version': jupyterhub.__version__,
+        'idle_culler_enabled': JUPYTERHUB_IDLE_CULLER_ENABLED,
+        'idle_culler_timeout': JUPYTERHUB_IDLE_CULLER_TIMEOUT,
+        'idle_culler_max_extension': JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION,
     }
 
 # Built-in groups that cannot be deleted (auto-recreated if missing)
@@ -420,12 +427,16 @@ if c is not None:
         ActiveServersHandler,
         BroadcastNotificationHandler,
         GetUserCredentialsHandler,
-        SettingsPageHandler
+        SettingsPageHandler,
+        SessionInfoHandler,
+        ExtendSessionHandler
     )
 
     c.JupyterHub.extra_handlers = [
         (r'/api/users/([^/]+)/manage-volumes', ManageVolumesHandler),
         (r'/api/users/([^/]+)/restart-server', RestartServerHandler),
+        (r'/api/users/([^/]+)/session-info', SessionInfoHandler),
+        (r'/api/users/([^/]+)/extend-session', ExtendSessionHandler),
         (r'/api/notifications/active-servers', ActiveServersHandler),
         (r'/api/notifications/broadcast', BroadcastNotificationHandler),
         (r'/api/admin/credentials', GetUserCredentialsHandler),
