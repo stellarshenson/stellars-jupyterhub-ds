@@ -175,7 +175,7 @@ graph LR
     CHECK -->|1| ENABLED[GPU Enabled]
     CHECK -->|2| DETECT[Auto-detect]
 
-    DETECT --> SPAWN[Spawn test container<br/>nvidia/cuda:12.9.1-base]
+    DETECT --> SPAWN[Spawn test container<br/>nvidia/cuda:13.0.2-base]
     SPAWN --> RUN[Execute nvidia-smi<br/>with runtime=nvidia]
 
     RUN --> SUCCESS{Success?}
@@ -373,31 +373,28 @@ services:
       - JUPYTERHUB_IDLE_CULLER_TIMEOUT=86400    # 24 hours (default) - stop after this many seconds of inactivity
       - JUPYTERHUB_IDLE_CULLER_INTERVAL=600     # 10 minutes (default) - how often to check for idle servers
       - JUPYTERHUB_IDLE_CULLER_MAX_AGE=0        # 0 (default) - max server age regardless of activity (0=unlimited)
+      - JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION=24 # 24 hours (default) - max hours users can extend their session
 ```
 
 **Behavior**:
 - `JUPYTERHUB_IDLE_CULLER_TIMEOUT`: Server is stopped after this many seconds without activity. Active servers are never culled
 - `JUPYTERHUB_IDLE_CULLER_MAX_AGE`: Force stop servers older than this (useful to force image updates). Set to 0 to disable
+- `JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION`: Maximum total hours a user can extend their session. Users see a "Session Status" card on the home page showing time remaining and can request extensions up to this limit. Extension allowance resets when server restarts
 
 #### Custom Branding
 
-Replace the default JupyterHub logo with a custom logo. Mount your logo file and reference it via environment variable:
+Replace the default JupyterHub logo with a custom logo. Mount your logo file and set the path:
 
 ```yaml
 services:
   jupyterhub:
     environment:
-      - JUPYTERHUB_CUSTOM_LOGO_URI=file:///srv/jupyterhub/logo.svg
+      - JUPYTERHUB_LOGO_URI=file:///srv/jupyterhub/logo.svg
     volumes:
       - ./logo.svg:/srv/jupyterhub/logo.svg:ro
 ```
 
-Supported formats: SVG, PNG, JPG. Alternative options:
-- **URL**: `https://example.com/logo.png`
-- **Data URI**: `data:image/png;base64,iVBORw0KGgo...`
-- **Shared storage**: `file:///mnt/shared/logo.png`
-
-Leave empty (default) to use the stock JupyterHub logo.
+Supported formats: SVG, PNG, JPG. The default path `/srv/jupyterhub/logo.svg` is used if file exists.
 
 #### Enable shared CIFS mount
 

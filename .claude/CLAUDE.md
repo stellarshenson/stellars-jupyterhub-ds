@@ -72,7 +72,7 @@ This Python configuration file controls all JupyterHub behavior:
 - `JUPYTERHUB_SERVICE_MLFLOW`: Enable MLflow tracking (`0`/`1`)
 - `JUPYTERHUB_SERVICE_RESOURCES_MONITOR`: Enable resource monitor (`0`/`1`)
 - `JUPYTERHUB_SERVICE_TENSORBOARD`: Enable TensorBoard (`0`/`1`)
-- `JUPYTERHUB_NVIDIA_IMAGE`: Image for GPU detection (default: `nvidia/cuda:12.9.1-base-ubuntu24.04`)
+- `JUPYTERHUB_NVIDIA_IMAGE`: Image for GPU detection (default: `nvidia/cuda:13.0.2-base-ubuntu24.04`)
 
 **GPU Auto-Detection**: When `JUPYTERHUB_GPU_ENABLED=2`, the platform attempts to run `nvidia-smi` in a CUDA container. If successful, GPU support is enabled for all spawned user containers via `device_requests`.
 
@@ -299,7 +299,7 @@ User renames via JupyterHub admin panel automatically sync to NativeAuthenticato
 ## Troubleshooting
 
 **GPU not detected**:
-- Verify NVIDIA Docker runtime: `docker run --rm --gpus all nvidia/cuda:12.9.1-base-ubuntu24.04 nvidia-smi`
+- Verify NVIDIA Docker runtime: `docker run --rm --gpus all nvidia/cuda:13.0.2-base-ubuntu24.04 nvidia-smi`
 - Check `JUPYTERHUB_NVIDIA_IMAGE` matches your CUDA version
 - Manually enable with `JUPYTERHUB_GPU_ENABLED=1`
 

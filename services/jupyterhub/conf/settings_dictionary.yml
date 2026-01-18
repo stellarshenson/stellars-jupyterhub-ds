@@ -44,7 +44,7 @@ GPU:
 
   - name: JUPYTERHUB_NVIDIA_IMAGE
     description: CUDA image for GPU detection
-    default: nvidia/cuda:12.9.1-base-ubuntu24.04
+    default: nvidia/cuda:13.0.2-base-ubuntu24.04
 
 Services:
   - name: JUPYTERHUB_SERVICE_MLFLOW
@@ -76,11 +76,14 @@ Idle Culler:
     description: Max server age (0=unlimited)
     default: "0"
 
+  - name: JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION
+    description: Max session extension hours per session
+    default: "24"
+
 Branding:
-  - name: JUPYTERHUB_CUSTOM_LOGO_URI
+  - name: JUPYTERHUB_LOGO_URI
     description: Custom logo URI
-    default: ""
-    empty_display: "(default)"
+    default: file:///srv/jupyterhub/logo.svg
 
   - name: STELLARS_JUPYTERHUB_VERSION
     description: Platform version
