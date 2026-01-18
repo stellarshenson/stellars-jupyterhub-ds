@@ -538,20 +538,10 @@
                   const available = info.extensions_available_hours || 0;
                   $extensionsAvailable.text(available);
 
-                  // Disable extend button and input if no extensions available
+                  // Show warning when max reached, but keep button enabled
+                  // Backend will return error if user tries to extend with no hours available
                   if (available <= 0) {
-                      $extendBtn.prop('disabled', true).addClass('btn-secondary').removeClass('btn-outline-primary');
-                      $extendHours.prop('disabled', true);
                       $('#extension-allowance').html('<small class="text-warning">Maximum extension limit reached</small>');
-                  } else {
-                      $extendBtn.prop('disabled', false).removeClass('btn-secondary').addClass('btn-outline-primary');
-                      $extendHours.prop('disabled', false);
-                      // Set max value on numeric input
-                      $extendHours.attr('max', available);
-                      // Adjust current value if it exceeds available
-                      if (parseInt($extendHours.val()) > available) {
-                          $extendHours.val(Math.min(available, 1));
-                      }
                   }
 
                   console.log('[Session Extension] UI updated - remaining:', timeRemainingSeconds, 'available ext:', available);
