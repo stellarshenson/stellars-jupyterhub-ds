@@ -633,7 +633,7 @@
                       },
                       error: function(xhr) {
                           console.error('[Session Extension] Extension failed:', xhr.status, xhr.responseText);
-                          $extendBtn.prop('disabled', false).html('<i class="fa fa-plus" aria-hidden="true"></i> Extend Session');
+                          $extendBtn.prop('disabled', false).html('<i class="fa fa-plus" aria-hidden="true"></i> Extend');
 
                           const errorMsg = xhr.responseJSON?.error || 'Failed to extend session';
                           $sessionError.removeClass('d-none');

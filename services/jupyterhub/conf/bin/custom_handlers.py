@@ -712,59 +712,40 @@ class ExtendSessionHandler(BaseHandler):
             self.set_status(400)
             return self.finish({"success": False, "error": "Server is not running"})
 
-        # Get current extension usage from spawner state
-        current_state = spawner.orm_spawner.state or {}
-        extensions_used_hours = current_state.get('extension_hours_used', 0)
-
-        # Check if extension would exceed maximum
-        if extensions_used_hours + hours > max_extension_hours:
-            available = max_extension_hours - extensions_used_hours
+        # Check if requested hours exceeds maximum
+        if hours > max_extension_hours:
             self.set_status(400)
             return self.finish({
                 "success": False,
-                "error": f"Extension would exceed maximum allowed ({max_extension_hours} hours). You have {available} hour(s) remaining."
+                "error": f"Extension cannot exceed maximum allowed ({max_extension_hours} hours)."
             })
 
-        # Update extension tracking in spawner state (no need to touch last_activity)
-        from datetime import datetime, timezone
+        # Reset last_activity to now and SET extension hours (not add)
+        from datetime import datetime
         now = datetime.utcnow()
-        new_extensions_used = extensions_used_hours + hours
+        user.last_activity = now
+        self.db.commit()
+
+        # Update spawner state with new extension hours
+        current_state = spawner.orm_spawner.state or {}
         new_state = dict(current_state)
-        new_state['extension_hours_used'] = new_extensions_used
-
-        # Track extension history (optional)
-        extension_history = new_state.get('extension_history', [])
-        extension_history.append({
-            'timestamp': now.isoformat(),
-            'hours': hours
-        })
-        new_state['extension_history'] = extension_history
-
-        # Save updated state
+        new_state['extension_hours_used'] = hours
         spawner.orm_spawner.state = new_state
         self.db.commit()
 
-        self.log.info(f"[Extend Session] User {username} extended session by {hours} hour(s). Total used: {new_extensions_used}/{max_extension_hours}")
+        self.log.info(f"[Extend Session] User {username} set session extension to {hours} hour(s)")
 
-        # Calculate new time remaining (base timeout + all extensions - elapsed)
-        extension_seconds = new_extensions_used * 3600
-        effective_timeout = timeout_seconds + extension_seconds
-        last_activity = user.last_activity
-        if last_activity:
-            now_utc = datetime.now(timezone.utc)
-            last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
-            elapsed_seconds = (now_utc - last_activity_utc).total_seconds()
-            time_remaining = max(0, int(effective_timeout - elapsed_seconds))
-        else:
-            time_remaining = effective_timeout
+        # Calculate time remaining: base timeout + extension hours (starting fresh from now)
+        extension_seconds = hours * 3600
+        time_remaining = timeout_seconds + extension_seconds
 
         response = {
             "success": True,
-            "message": f"Session extended by {hours} hour(s)",
+            "message": f"Session extended to {hours} additional hour(s)",
             "session_info": {
                 "time_remaining_seconds": time_remaining,
-                "extensions_used_hours": new_extensions_used,
-                "extensions_available_hours": max_extension_hours - new_extensions_used
+                "extensions_used_hours": hours,
+                "extensions_available_hours": max_extension_hours - hours
             }
         }
 
