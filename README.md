@@ -106,7 +106,7 @@ graph TB
         subgraph SVCEN["JUPYTERHUB_SERVICE_*<br/>Passed to Lab as env"]
             direction LR
             MLF[JUPYTERHUB_SERVICE_MLFLOW]
-            GLN[JUPYTERHUB_SERVICE_GLANCES]
+            RES[JUPYTERHUB_SERVICE_RESOURCES_MONITOR]
             TNS[JUPYTERHUB_SERVICE_TENSORBOARD]
             SVC_MORE[...]
         end

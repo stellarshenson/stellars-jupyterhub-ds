@@ -70,7 +70,7 @@ This Python configuration file controls all JupyterHub behavior:
 - `JUPYTERHUB_GPU_ENABLED`: GPU mode - `0` (disabled), `1` (enabled), `2` (auto-detect)
 - `JUPYTERHUB_SSL_ENABLED`: Direct SSL config - `0` (disabled), `1` (enabled)
 - `JUPYTERHUB_SERVICE_MLFLOW`: Enable MLflow tracking (`0`/`1`)
-- `JUPYTERHUB_SERVICE_GLANCES`: Enable resource monitor (`0`/`1`)
+- `JUPYTERHUB_SERVICE_RESOURCES_MONITOR`: Enable resource monitor (`0`/`1`)
 - `JUPYTERHUB_SERVICE_TENSORBOARD`: Enable TensorBoard (`0`/`1`)
 - `JUPYTERHUB_NVIDIA_IMAGE`: Image for GPU detection (default: `nvidia/cuda:12.9.1-base-ubuntu24.04`)
 

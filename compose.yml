@@ -72,7 +72,7 @@ services:
       - JUPYTERHUB_NVIDIA_IMAGE=nvidia/cuda:13.0.2-base-ubuntu24.04 # GPU detection image
       # User environment services
       - JUPYTERHUB_SERVICE_MLFLOW=1 # MLflow experiment tracking
-      - JUPYTERHUB_SERVICE_GLANCES=1 # system resources monitor
+      - JUPYTERHUB_SERVICE_RESOURCES_MONITOR=1 # system resources monitor
       - JUPYTERHUB_SERVICE_TENSORBOARD=1 # TensorFlow training tracker
       # Misc
       - TF_CPP_MIN_LOG_LEVEL=3 # TensorFlow verbosity
