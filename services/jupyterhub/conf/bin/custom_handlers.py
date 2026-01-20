@@ -151,7 +151,11 @@ class ActivityMonitor:
             return None
 
     def record_sample(self, username, last_activity):
-        """Record an activity sample for a user"""
+        """Record an activity sample for a user
+
+        - If last sample is within sample_interval: UPDATE it (refresh behavior)
+        - If last sample is older than sample_interval: INSERT new sample
+        """
         db = self._get_db()
         if db is None:
             return False
@@ -160,14 +164,30 @@ class ActivityMonitor:
             now = datetime.now(timezone.utc)
 
             # User is "active" if last_activity is within INACTIVE_AFTER minutes
-            # This allows frequent sampling while using a separate threshold for activity
             active = False
             if last_activity:
                 last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
                 age_seconds = (now - last_activity_utc).total_seconds()
                 active = age_seconds <= (self.inactive_after_minutes * 60)
 
-            # Insert new sample
+            # Get the most recent sample for this user
+            last_sample = db.query(ActivitySample).filter(
+                ActivitySample.username == username
+            ).order_by(ActivitySample.timestamp.desc()).first()
+
+            if last_sample:
+                last_sample_ts = last_sample.timestamp.replace(tzinfo=timezone.utc) if last_sample.timestamp.tzinfo is None else last_sample.timestamp
+                sample_age = (now - last_sample_ts).total_seconds()
+
+                if sample_age < self.sample_interval:
+                    # Within sample interval - UPDATE last sample
+                    last_sample.timestamp = now
+                    last_sample.last_activity = last_activity
+                    last_sample.active = active
+                    db.commit()
+                    return True
+
+            # No recent sample or sample_interval passed - INSERT new sample
             db.add(ActivitySample(username=username, timestamp=now, last_activity=last_activity, active=active))
             db.commit()
 
