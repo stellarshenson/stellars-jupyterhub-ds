@@ -26,7 +26,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
       <div>
         <span class="badge bg-secondary" id="active-count">0 active servers</span>
-        <span class="text-muted ms-2" id="last-updated">Last updated: --</span>
+        <span class="text-muted ms-2" id="last-updated"></span>
       </div>
       <div>
         <button class="btn btn-outline-danger btn-sm me-2" id="reset-btn">
@@ -238,7 +238,7 @@ require(["jquery"], function($) {
     var litSegments = Math.ceil(score / 20);  // 0-20=1, 21-40=2, 41-60=3, 61-80=4, 81-100=5
     if (score === 0) litSegments = 0;
 
-    // Color based on number of lit segments
+    // Color based on score
     var segmentColor;
     if (litSegments >= 4) {
       segmentColor = '#28a745';  // Green - high activity
@@ -248,13 +248,15 @@ require(["jquery"], function($) {
       segmentColor = '#dc3545';  // Red - low activity
     }
 
-    var html = '<div class="d-flex gap-1" title="Activity: ' + score + '%">';
+    // Thin continuous bar with dividers
+    var html = '<div style="display: flex; width: 80px; height: 8px; border: 1px solid #6c757d; border-radius: 3px; overflow: hidden;" title="Activity: ' + score + '%">';
     for (var i = 0; i < 5; i++) {
       var isLit = i < litSegments;
+      var borderRight = i < 4 ? 'border-right: 1px solid #6c757d;' : '';
       if (isLit) {
-        html += '<div style="width: 16px; height: 16px; background-color: ' + segmentColor + '; border-radius: 2px;"></div>';
+        html += '<div style="flex: 1; background-color: ' + segmentColor + '; ' + borderRight + '"></div>';
       } else {
-        html += '<div style="width: 16px; height: 16px; background-color: transparent; border: 1px solid #6c757d; border-radius: 2px;"></div>';
+        html += '<div style="flex: 1; background-color: transparent; ' + borderRight + '"></div>';
       }
     }
     html += '</div>';
