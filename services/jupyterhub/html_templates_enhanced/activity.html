@@ -46,6 +46,7 @@
           <th class="text-center">CPU</th>
           <th class="text-center">Memory</th>
           <th class="text-center">Time Left</th>
+          <th class="text-center">Last Active</th>
           <th>Activity (7 days)</th>
         </tr>
       </thead>
@@ -166,6 +167,7 @@ require(["jquery"], function($) {
         '<td class="text-center">' + formatCpu(user.cpu_percent) + '</td>' +
         '<td class="text-center">' + formatMemory(user.memory_mb, user.memory_percent) + '</td>' +
         '<td class="text-center">' + formatTimeRemaining(user.time_remaining_seconds) + '</td>' +
+        '<td class="text-center">' + formatLastActive(user.last_activity) + '</td>' +
         '<td>' + renderActivityBar(user.activity_score) + '</td>' +
         '</tr>';
       tbody.append(row);
@@ -226,6 +228,30 @@ require(["jquery"], function($) {
       return hours + 'h ' + minutes + 'm';
     } else {
       return minutes + 'm';
+    }
+  }
+
+  function formatLastActive(isoString) {
+    if (!isoString) {
+      return '<span class="text-muted">--</span>';
+    }
+    var date = new Date(isoString);
+    var now = new Date();
+    var diffMs = now - date;
+    var diffSec = Math.floor(diffMs / 1000);
+    var diffMin = Math.floor(diffSec / 60);
+    var diffHour = Math.floor(diffMin / 60);
+    var remainingMin = diffMin % 60;
+
+    if (diffMin < 1) {
+      return '<span class="text-success">now</span>';
+    } else if (diffMin < 60) {
+      return diffMin + 'min';
+    } else if (diffHour < 24) {
+      return diffHour + 'h ' + remainingMin + 'min';
+    } else {
+      var diffDay = Math.floor(diffHour / 24);
+      return diffDay + 'd ' + (diffHour % 24) + 'h';
     }
   }
 

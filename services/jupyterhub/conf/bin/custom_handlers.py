@@ -132,11 +132,16 @@ class ActivityMonitor:
             return default
 
     def _get_db(self):
-        """Get or create database session"""
+        """Get or create database session.
+
+        Uses a SEPARATE database file to avoid SQLite locking conflicts
+        with JupyterHub's main database.
+        """
         if self._db_session is not None:
             return self._db_session
 
-        db_url = os.environ.get('JUPYTERHUB_DB_URL', 'sqlite:////data/jupyterhub.sqlite')
+        # Use separate database file to avoid locking conflicts with JupyterHub
+        db_url = 'sqlite:////data/activity_samples.sqlite'
 
         try:
             self._engine = create_engine(db_url)
