@@ -93,6 +93,10 @@ Activity Monitor:
     description: Minutes until user considered inactive (1-1440)
     default: "60"
 
+  - name: JUPYTERHUB_ACTIVITYMON_RESOURCES_UPDATE_INTERVAL
+    description: Resource refresh interval in seconds (status, CPU, memory)
+    default: "10"
+
 Branding:
   - name: JUPYTERHUB_LOGO_URI
     description: Custom logo URI
