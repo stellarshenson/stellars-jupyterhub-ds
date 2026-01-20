@@ -624,9 +624,9 @@ class SessionInfoHandler(BaseHandler):
 
             self.log.info(f"[Session Info] {username}: base_timeout={timeout_seconds}s ({timeout_seconds/3600:.1f}h), extensions={extensions_used_hours}h, effective_timeout={effective_timeout}s ({effective_timeout/3600:.1f}h)")
 
-            # Get last activity timestamp from SERVER (not user - user.last_activity updates on Hub access)
-            # The idle culler uses server.last_activity, so we must use the same
-            last_activity = spawner.server.last_activity if spawner.server else None
+            # Get last activity timestamp from SPAWNER (not user - user.last_activity updates on Hub access)
+            # The idle culler uses spawner.last_activity, so we must use the same
+            last_activity = spawner.orm_spawner.last_activity if spawner.orm_spawner else None
             if last_activity:
                 from datetime import datetime, timezone
                 now = datetime.now(timezone.utc)
@@ -753,8 +753,8 @@ class ExtendSessionHandler(BaseHandler):
         # Calculate new time remaining: base timeout + ALL extensions - elapsed
         extension_seconds = new_total_extensions * 3600
         effective_timeout = timeout_seconds + extension_seconds
-        # Use server.last_activity (not user - matches what idle culler uses)
-        last_activity = spawner.server.last_activity if spawner.server else None
+        # Use spawner.last_activity (not user - matches what idle culler uses)
+        last_activity = spawner.orm_spawner.last_activity if spawner.orm_spawner else None
         if last_activity:
             now_utc = datetime.now(timezone.utc)
             last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
