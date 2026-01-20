@@ -1514,3 +1514,108 @@ textarea.form-control {
 .icon-muted:hover {
   opacity: 0.8;
 }
+
+/* ==========================================================================
+   17. Activity Monitor Table
+   ========================================================================== */
+
+.activity-table {
+  table-layout: auto;
+}
+
+.activity-table th,
+.activity-table td {
+  white-space: nowrap;
+}
+
+.activity-table .col-user {
+  width: auto;
+}
+
+.activity-table .col-status {
+  width: 5em;
+  min-width: 5em;
+}
+
+.activity-table .col-cpu {
+  width: 5em;
+  min-width: 5em;
+}
+
+.activity-table .col-memory {
+  width: 6em;
+  min-width: 6em;
+}
+
+.activity-table .col-timeleft {
+  width: 6em;
+  min-width: 6em;
+}
+
+.activity-table .col-lastactive {
+  width: 9em;
+  min-width: 9em;
+}
+
+.activity-table .col-activity {
+  width: 8em;
+  min-width: 8em;
+}
+
+.activity-table .sortable {
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   18. Settings Table
+   ========================================================================== */
+
+.settings-table {
+  table-layout: auto;
+}
+
+.settings-table th,
+.settings-table td {
+  white-space: nowrap;
+}
+
+.settings-table .col-category {
+  width: 12em;
+  min-width: 12em;
+}
+
+.settings-table .col-setting {
+  width: 20em;
+  min-width: 20em;
+}
+
+.settings-table .col-value {
+  width: auto;
+}
+
+.settings-table .col-description {
+  width: auto;
+  white-space: normal;
+}
+
+/* ==========================================================================
+   19. Notifications Results Table
+   ========================================================================== */
+
+.notifications-table {
+  table-layout: auto;
+}
+
+.notifications-table .col-username {
+  width: 12em;
+  min-width: 12em;
+}
+
+.notifications-table .col-status {
+  width: 7em;
+  min-width: 7em;
+}
+
+.notifications-table .col-details {
+  width: auto;
+}

@@ -92,7 +92,7 @@ class ActivityMonitor:
     DEFAULT_RETENTION_DAYS = 7       # 7 days
     DEFAULT_HALF_LIFE = 24           # 24 hours
     DEFAULT_INACTIVE_AFTER = 60      # 60 minutes
-    DEFAULT_SAMPLING_INTERVAL = 600  # 10 minutes
+    DEFAULT_ACTIVITY_UPDATE_INTERVAL = 600  # 10 minutes
 
     def __init__(self):
         self._db_session = None
@@ -103,12 +103,12 @@ class ActivityMonitor:
         self.retention_days = self._get_env_int("JUPYTERHUB_ACTIVITYMON_RETENTION_DAYS", self.DEFAULT_RETENTION_DAYS, 1, 365)
         self.half_life_hours = self._get_env_int("JUPYTERHUB_ACTIVITYMON_HALF_LIFE", self.DEFAULT_HALF_LIFE, 1, 168)
         self.inactive_after_minutes = self._get_env_int("JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER", self.DEFAULT_INACTIVE_AFTER, 1, 1440)
-        self.sampling_interval = self._get_env_int("JUPYTERHUB_ACTIVITYMON_SAMPLING_INTERVAL", self.DEFAULT_SAMPLING_INTERVAL, 60, 86400)
+        self.activity_update_interval = self._get_env_int("JUPYTERHUB_ACTIVITYMON_ACTIVITY_UPDATE_INTERVAL", self.DEFAULT_ACTIVITY_UPDATE_INTERVAL, 60, 86400)
 
         # Calculate decay constant
         self.decay_lambda = math.log(2) / self.half_life_hours
 
-        print(f"[ActivityMonitor] Config: retention={self.retention_days}d, half_life={self.half_life_hours}h, inactive_after={self.inactive_after_minutes}m, sampling={self.sampling_interval}s")
+        print(f"[ActivityMonitor] Config: retention={self.retention_days}d, half_life={self.half_life_hours}h, inactive_after={self.inactive_after_minutes}m, activity_update={self.activity_update_interval}s")
 
     @classmethod
     def get_instance(cls):
@@ -312,6 +312,51 @@ class ActivityMonitor:
             print(f"[ActivityMonitor] Error resetting samples: {e}")
             db.rollback()
             return 0
+
+    def log_activity_tick(self, samples_collected, users_active, users_inactive, users_offline):
+        """Log activity tick statistics with activity level breakdown.
+
+        Activity levels based on score:
+        - very-high: 80-100%
+        - high: 60-79%
+        - normal: 40-59%
+        - low: 20-39%
+        - very-low: 1-19%
+        - none: 0%
+        """
+        db = self._get_db()
+        if db is None:
+            return
+
+        try:
+            # Get all unique usernames with samples
+            usernames = [r[0] for r in db.query(func.distinct(ActivitySample.username)).all()]
+
+            # Calculate activity levels
+            levels = {'very-high': 0, 'high': 0, 'normal': 0, 'low': 0, 'very-low': 0, 'none': 0}
+            for username in usernames:
+                score, _ = self.get_score(username)
+                if score is None or score == 0:
+                    levels['none'] += 1
+                elif score >= 80:
+                    levels['very-high'] += 1
+                elif score >= 60:
+                    levels['high'] += 1
+                elif score >= 40:
+                    levels['normal'] += 1
+                elif score >= 20:
+                    levels['low'] += 1
+                else:
+                    levels['very-low'] += 1
+
+            total_users = users_active + users_inactive + users_offline
+            level_str = ', '.join([f"{k}({v})" for k, v in levels.items() if v > 0]) or 'none'
+
+            print(f"[ActivityMonitor] Tick: {samples_collected} samples collected | "
+                  f"Users: {total_users} total (active={users_active}, inactive={users_inactive}, offline={users_offline}) | "
+                  f"Activity levels: {level_str}")
+        except Exception as e:
+            print(f"[ActivityMonitor] Error logging tick: {e}")
 
 
 # Convenience functions that use the singleton instance
@@ -1293,34 +1338,35 @@ class ActivityDataHandler(BaseHandler):
             user_data["activity_score"] = score
             user_data["sample_count"] = sample_count
 
+            # Get last_activity for ALL users (not just active servers)
+            inactive_threshold = get_inactive_after_seconds()
+            now = datetime.now(timezone.utc)
+
+            if spawner and spawner.orm_spawner:
+                last_activity = spawner.orm_spawner.last_activity
+                if last_activity:
+                    last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
+                    elapsed_seconds = (now - last_activity_utc).total_seconds()
+
+                    user_data["last_activity"] = last_activity_utc.isoformat()
+                    # Only mark as recently_active if server is actually running
+                    user_data["recently_active"] = server_active and elapsed_seconds <= inactive_threshold
+
+                    # Get time remaining (from idle culler) - only for active servers
+                    if server_active and culler_enabled:
+                        spawner_state = spawner.orm_spawner.state or {}
+                        extensions_used_hours = spawner_state.get('extension_hours_used', 0)
+                        extension_seconds = extensions_used_hours * 3600
+                        effective_timeout = timeout_seconds + extension_seconds
+                        time_remaining_seconds = max(0, effective_timeout - elapsed_seconds)
+                        user_data["time_remaining_seconds"] = int(time_remaining_seconds)
+
             if server_active:
                 # Mark for async Docker stats fetch
                 active_users.append((user, spawner, user_data))
 
-                # Get last_activity and check if recently active
-                inactive_threshold = get_inactive_after_seconds()
-                now = datetime.now(timezone.utc)
-
-                if spawner and spawner.orm_spawner:
-                    last_activity = spawner.orm_spawner.last_activity
-                    if last_activity:
-                        last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
-                        elapsed_seconds = (now - last_activity_utc).total_seconds()
-
-                        user_data["last_activity"] = last_activity_utc.isoformat()
-                        user_data["recently_active"] = elapsed_seconds <= inactive_threshold
-
-                        # Get time remaining (from idle culler)
-                        if culler_enabled:
-                            spawner_state = spawner.orm_spawner.state or {}
-                            extensions_used_hours = spawner_state.get('extension_hours_used', 0)
-                            extension_seconds = extensions_used_hours * 3600
-                            effective_timeout = timeout_seconds + extension_seconds
-                            time_remaining_seconds = max(0, effective_timeout - elapsed_seconds)
-                            user_data["time_remaining_seconds"] = int(time_remaining_seconds)
-
-            # Only include users with active servers or recent activity samples
-            if server_active or sample_count > 0:
+            # Include users with active servers, activity samples, or any last_activity
+            if server_active or sample_count > 0 or user_data["last_activity"]:
                 users_data.append(user_data)
 
         # Fetch Docker stats in parallel (non-blocking)
