@@ -1,0 +1,281 @@
+{% extends "page.html" %}
+
+{% block main %}
+<div class="container">
+  <h1>User Activity Monitor</h1>
+  <p class="text-muted">Real-time resource usage and engagement metrics for active JupyterLab containers</p>
+
+  <hr>
+
+  <!-- Loading indicator -->
+  <div id="loading-indicator" class="text-center py-4">
+    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+    <span class="ms-2">Loading activity data...</span>
+  </div>
+
+  <!-- No data message -->
+  <div id="no-data-message" style="display: none;">
+    <div class="alert alert-info">
+      <i class="fa fa-info-circle" aria-hidden="true"></i>
+      No active user servers found. Start a server to see activity data.
+    </div>
+  </div>
+
+  <!-- Activity table -->
+  <div id="activity-table-container" style="display: none;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <span class="badge bg-secondary" id="active-count">0 active servers</span>
+        <span class="text-muted ms-2" id="last-updated">Last updated: --</span>
+      </div>
+      <div>
+        <button class="btn btn-outline-danger btn-sm me-2" id="reset-btn">
+          <i class="fa fa-trash" aria-hidden="true"></i> Reset
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" id="refresh-btn">
+          <i class="fa fa-refresh" aria-hidden="true"></i> Refresh
+        </button>
+      </div>
+    </div>
+
+    <table class="table table-sm table-striped table-hover">
+      <thead class="table-dark">
+        <tr>
+          <th>User</th>
+          <th class="text-center">Status</th>
+          <th class="text-center">CPU</th>
+          <th class="text-center">Memory</th>
+          <th class="text-center">Time Left</th>
+          <th>Activity (7 days)</th>
+        </tr>
+      </thead>
+      <tbody id="activity-table-body">
+        <!-- Populated by JavaScript -->
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+require(["jquery"], function($) {
+  "use strict";
+
+  var autoRefreshInterval = null;
+
+  // Initial fetch
+  fetchActivityData();
+
+  // Auto-refresh every 30 seconds
+  autoRefreshInterval = setInterval(fetchActivityData, 30000);
+
+  // Manual refresh button
+  $('#refresh-btn').on('click', function() {
+    fetchActivityData();
+  });
+
+  // Reset button
+  $('#reset-btn').on('click', function() {
+    if (!confirm('Reset all activity data? This will clear all historical samples.')) {
+      return;
+    }
+    var btn = $(this);
+    btn.prop('disabled', true);
+    $.ajax({
+      url: '{{ base_url }}api/activity/reset',
+      method: 'POST',
+      headers: {
+        'X-XSRFToken': getCookie('_xsrf')
+      },
+      success: function(data) {
+        btn.prop('disabled', false);
+        fetchActivityData();
+      },
+      error: function(xhr) {
+        btn.prop('disabled', false);
+        alert('Failed to reset activity data');
+      }
+    });
+  });
+
+  function fetchActivityData() {
+    $.ajax({
+      url: '{{ base_url }}api/activity',
+      method: 'GET',
+      headers: {
+        'X-XSRFToken': getCookie('_xsrf')
+      },
+      success: function(data) {
+        renderActivityTable(data);
+      },
+      error: function(xhr) {
+        $('#loading-indicator').hide();
+        $('#activity-table-container').hide();
+        $('#no-data-message').show().find('.alert')
+          .removeClass('alert-info')
+          .addClass('alert-danger')
+          .html('<i class="fa fa-exclamation-circle"></i> Failed to load activity data');
+      }
+    });
+  }
+
+  function renderActivityTable(data) {
+    var users = data.users || [];
+    var timestamp = data.timestamp || new Date().toISOString();
+    var samplingStatus = data.sampling_status || '';
+
+    $('#loading-indicator').hide();
+
+    if (users.length === 0) {
+      $('#activity-table-container').hide();
+      $('#no-data-message').show();
+      return;
+    }
+
+    $('#no-data-message').hide();
+    $('#activity-table-container').show();
+
+    // Update header info
+    $('#active-count').text(users.length + ' active server' + (users.length !== 1 ? 's' : ''));
+    $('#last-updated').text('Measured: ' + formatTimestamp(timestamp));
+
+    // Show sampling status if available
+    if (samplingStatus) {
+      $('#sampling-status').html('<span class="badge bg-info">' + escapeHtml(samplingStatus) + '</span>');
+    }
+
+    // Sort by activity score descending (most active first)
+    users.sort(function(a, b) {
+      return (b.activity_score || 0) - (a.activity_score || 0);
+    });
+
+    // Build table rows
+    var tbody = $('#activity-table-body');
+    tbody.empty();
+
+    users.forEach(function(user) {
+      var row = '<tr>' +
+        '<td><strong>' + escapeHtml(user.username) + '</strong></td>' +
+        '<td class="text-center">' + formatStatus(user.server_active, user.recently_active) + '</td>' +
+        '<td class="text-center">' + formatCpu(user.cpu_percent) + '</td>' +
+        '<td class="text-center">' + formatMemory(user.memory_mb, user.memory_percent) + '</td>' +
+        '<td class="text-center">' + formatTimeRemaining(user.time_remaining_seconds) + '</td>' +
+        '<td>' + renderActivityBar(user.activity_score) + '</td>' +
+        '</tr>';
+      tbody.append(row);
+    });
+  }
+
+  function formatStatus(serverActive, recentlyActive) {
+    // Green: server running AND recently active
+    // Yellow: server running BUT inactive
+    // Red: server offline
+    if (serverActive && recentlyActive) {
+      return '<span title="Online (active)"><i class="fa fa-circle" style="color: #28a745;" aria-hidden="true"></i></span>';
+    } else if (serverActive) {
+      return '<span title="Online (inactive)"><i class="fa fa-circle text-warning" aria-hidden="true"></i></span>';
+    } else {
+      return '<span title="Offline"><i class="fa fa-circle text-danger" aria-hidden="true"></i></span>';
+    }
+  }
+
+  function formatCpu(cpuPercent) {
+    if (cpuPercent === null || cpuPercent === undefined) {
+      return '<span class="text-muted">--</span>';
+    }
+    var color = cpuPercent > 80 ? 'text-danger' : (cpuPercent > 50 ? 'text-warning' : 'text-success');
+    return '<span class="' + color + '">' + cpuPercent.toFixed(1) + '%</span>';
+  }
+
+  function formatMemory(memoryMb, memoryPercent) {
+    if (memoryMb === null || memoryMb === undefined) {
+      return '<span class="text-muted">--</span>';
+    }
+    var formatted;
+    if (memoryMb >= 1024) {
+      formatted = (memoryMb / 1024).toFixed(1) + ' GB';
+    } else {
+      formatted = memoryMb.toFixed(0) + ' MB';
+    }
+    var color = memoryPercent > 80 ? 'text-danger' : (memoryPercent > 50 ? 'text-warning' : 'text-success');
+    return '<span class="' + color + '">' + formatted + '</span>';
+  }
+
+  function formatTimeRemaining(seconds) {
+    if (seconds === null || seconds === undefined) {
+      return '<span class="text-muted">--</span>';
+    }
+    if (seconds <= 0) {
+      return '<span class="text-danger">Expiring...</span>';
+    }
+
+    var hours = Math.floor(seconds / 3600);
+    var minutes = Math.floor((seconds % 3600) / 60);
+
+    if (hours >= 24) {
+      var days = Math.floor(hours / 24);
+      hours = hours % 24;
+      return days + 'd ' + hours + 'h';
+    } else if (hours > 0) {
+      return hours + 'h ' + minutes + 'm';
+    } else {
+      return minutes + 'm';
+    }
+  }
+
+  function renderActivityBar(score) {
+    if (score === null || score === undefined) {
+      return '<span class="text-muted small">--</span>';
+    }
+
+    // Calculate number of lit segments (0-5) based on score (0-100)
+    var litSegments = Math.ceil(score / 20);  // 0-20=1, 21-40=2, 41-60=3, 61-80=4, 81-100=5
+    if (score === 0) litSegments = 0;
+
+    // Color based on number of lit segments
+    var segmentColor;
+    if (litSegments >= 4) {
+      segmentColor = '#28a745';  // Green - high activity
+    } else if (litSegments >= 2) {
+      segmentColor = '#ffc107';  // Yellow - medium activity
+    } else {
+      segmentColor = '#dc3545';  // Red - low activity
+    }
+
+    var html = '<div class="d-flex gap-1" title="Activity: ' + score + '%">';
+    for (var i = 0; i < 5; i++) {
+      var isLit = i < litSegments;
+      if (isLit) {
+        html += '<div style="width: 16px; height: 16px; background-color: ' + segmentColor + '; border-radius: 2px;"></div>';
+      } else {
+        html += '<div style="width: 16px; height: 16px; background-color: transparent; border: 1px solid #6c757d; border-radius: 2px;"></div>';
+      }
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function formatTimestamp(isoString) {
+    var date = new Date(isoString);
+    return date.toLocaleTimeString();
+  }
+
+  function getCookie(name) {
+    var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    if (match) return match[2];
+  }
+
+  function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    var map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
+  }
+});
+</script>
+{% endblock %}

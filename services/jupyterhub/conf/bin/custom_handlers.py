@@ -11,6 +11,8 @@ import json
 import asyncio
 import time
 import os
+import threading
+from datetime import datetime, timedelta, timezone
 
 
 # =============================================================================
@@ -41,6 +43,338 @@ def get_cached_password(username):
 def clear_cached_password(username):
     """Remove a password from cache"""
     _password_cache.pop(username, None)
+
+
+# =============================================================================
+# Activity Sampling for User Engagement Tracking (Database-backed)
+# =============================================================================
+
+import math
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Index, create_engine, func
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+# SQLAlchemy model for activity samples
+ActivityBase = declarative_base()
+
+
+class ActivitySample(ActivityBase):
+    """Database model for storing user activity samples"""
+    __tablename__ = 'activity_samples'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(255), nullable=False, index=True)
+    timestamp = Column(DateTime, nullable=False, index=True)
+    last_activity = Column(DateTime, nullable=True)
+    active = Column(Boolean, default=False)
+
+    __table_args__ = (
+        Index('ix_activity_user_time', 'username', 'timestamp'),
+    )
+
+
+class ActivityMonitor:
+    """
+    Central activity monitoring service with database persistence.
+
+    Usage:
+        monitor = ActivityMonitor.get_instance()
+        monitor.record_sample(username, last_activity)
+        score, count = monitor.get_score(username)
+        monitor.rename_user(old_name, new_name)
+        monitor.delete_user(username)
+    """
+
+    _instance = None
+    _lock = threading.Lock()
+
+    # Default configuration
+    DEFAULT_SAMPLE_INTERVAL = 600    # 10 minutes
+    DEFAULT_RETENTION_DAYS = 7       # 7 days
+    DEFAULT_HALF_LIFE = 24           # 24 hours
+    DEFAULT_INACTIVE_AFTER = 60      # 60 minutes
+
+    def __init__(self):
+        self._db_session = None
+        self._engine = None
+        self._initialized = False
+
+        # Load configuration from environment
+        self.sample_interval = self._get_env_int("JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL", self.DEFAULT_SAMPLE_INTERVAL, 60, 86400)
+        self.retention_days = self._get_env_int("JUPYTERHUB_ACTIVITYMON_RETENTION_DAYS", self.DEFAULT_RETENTION_DAYS, 1, 365)
+        self.half_life_hours = self._get_env_int("JUPYTERHUB_ACTIVITYMON_HALF_LIFE", self.DEFAULT_HALF_LIFE, 1, 168)
+        self.inactive_after_minutes = self._get_env_int("JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER", self.DEFAULT_INACTIVE_AFTER, 1, 1440)
+
+        # Calculate decay constant
+        self.decay_lambda = math.log(2) / self.half_life_hours
+
+        print(f"[ActivityMonitor] Config: sample_interval={self.sample_interval}s, retention={self.retention_days}d, half_life={self.half_life_hours}h, inactive_after={self.inactive_after_minutes}m")
+
+    @classmethod
+    def get_instance(cls):
+        """Get singleton instance of ActivityMonitor"""
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls()
+        return cls._instance
+
+    def _get_env_int(self, name, default, min_val, max_val):
+        """Get integer from environment with validation"""
+        try:
+            value = int(os.environ.get(name, default))
+            if value < min_val or value > max_val:
+                print(f"[ActivityMonitor] {name}={value} out of range ({min_val}-{max_val}), using default {default}")
+                return default
+            return value
+        except (ValueError, TypeError):
+            print(f"[ActivityMonitor] {name} invalid, using default {default}")
+            return default
+
+    def _get_db(self):
+        """Get or create database session"""
+        if self._db_session is not None:
+            return self._db_session
+
+        db_url = os.environ.get('JUPYTERHUB_DB_URL', 'sqlite:////data/jupyterhub.sqlite')
+
+        try:
+            self._engine = create_engine(db_url)
+            ActivityBase.metadata.create_all(self._engine)
+            Session = sessionmaker(bind=self._engine)
+            self._db_session = Session()
+            self._initialized = True
+            print(f"[ActivityMonitor] Database initialized: {db_url}")
+            return self._db_session
+        except Exception as e:
+            print(f"[ActivityMonitor] Database init failed: {e}")
+            return None
+
+    def record_sample(self, username, last_activity):
+        """Record an activity sample for a user"""
+        db = self._get_db()
+        if db is None:
+            return False
+
+        try:
+            now = datetime.now(timezone.utc)
+
+            # User is "active" if last_activity is within INACTIVE_AFTER minutes
+            # This allows frequent sampling while using a separate threshold for activity
+            active = False
+            if last_activity:
+                last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
+                age_seconds = (now - last_activity_utc).total_seconds()
+                active = age_seconds <= (self.inactive_after_minutes * 60)
+
+            # Insert new sample
+            db.add(ActivitySample(username=username, timestamp=now, last_activity=last_activity, active=active))
+            db.commit()
+
+            # Prune old samples for this user
+            cutoff = now - timedelta(days=self.retention_days)
+            db.query(ActivitySample).filter(ActivitySample.username == username, ActivitySample.timestamp < cutoff).delete()
+            db.commit()
+
+            return True
+        except Exception as e:
+            print(f"[ActivityMonitor] Error recording sample for {username}: {e}")
+            db.rollback()
+            return False
+
+    def get_score(self, username):
+        """Calculate activity score (0-100) for a user. Returns (score, sample_count)."""
+        db = self._get_db()
+        if db is None:
+            return None, 0
+
+        try:
+            now = datetime.now(timezone.utc)
+            cutoff = now - timedelta(days=self.retention_days)
+
+            samples = db.query(ActivitySample).filter(
+                ActivitySample.username == username,
+                ActivitySample.timestamp >= cutoff
+            ).all()
+
+            if not samples:
+                return None, 0
+
+            # Calculate weighted sums with exponential decay
+            # Score is based on measured samples only (not theoretical max)
+            weighted_active = 0.0
+            weighted_total = 0.0
+            for s in samples:
+                ts = s.timestamp.replace(tzinfo=timezone.utc) if s.timestamp.tzinfo is None else s.timestamp
+                age_hours = (now - ts).total_seconds() / 3600.0
+                weight = math.exp(-self.decay_lambda * age_hours)
+                weighted_total += weight
+                if s.active:
+                    weighted_active += weight
+
+            # Score = ratio of weighted active to weighted total samples
+            score = int((weighted_active / weighted_total) * 100) if weighted_total > 0 else 0
+
+            return score, len(samples)
+        except Exception as e:
+            print(f"[ActivityMonitor] Error calculating score for {username}: {e}")
+            return None, 0
+
+    def get_status(self):
+        """Get overall sampling status"""
+        db = self._get_db()
+        if db is None:
+            return "Database not available"
+
+        try:
+            result = db.query(func.count(ActivitySample.id), func.count(func.distinct(ActivitySample.username))).first()
+            total_samples, total_users = result[0] or 0, result[1] or 0
+            return f"{total_samples} samples for {total_users} users" if total_samples > 0 else "No samples yet"
+        except Exception as e:
+            print(f"[ActivityMonitor] Error getting status: {e}")
+            return "Status unavailable"
+
+    def rename_user(self, old_username, new_username):
+        """Rename user in activity records"""
+        db = self._get_db()
+        if db is None:
+            return False
+
+        try:
+            count = db.query(ActivitySample).filter(ActivitySample.username == old_username).update({'username': new_username})
+            db.commit()
+            if count > 0:
+                print(f"[ActivityMonitor] Renamed {count} samples: {old_username} -> {new_username}")
+            return True
+        except Exception as e:
+            print(f"[ActivityMonitor] Error renaming user: {e}")
+            db.rollback()
+            return False
+
+    def delete_user(self, username):
+        """Delete all activity records for a user"""
+        db = self._get_db()
+        if db is None:
+            return False
+
+        try:
+            count = db.query(ActivitySample).filter(ActivitySample.username == username).delete()
+            db.commit()
+            if count > 0:
+                print(f"[ActivityMonitor] Deleted {count} samples for {username}")
+            return True
+        except Exception as e:
+            print(f"[ActivityMonitor] Error deleting user: {e}")
+            db.rollback()
+            return False
+
+    def prune_old_samples(self):
+        """Remove all samples older than retention period"""
+        db = self._get_db()
+        if db is None:
+            return 0
+
+        try:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=self.retention_days)
+            count = db.query(ActivitySample).filter(ActivitySample.timestamp < cutoff).delete()
+            db.commit()
+            if count > 0:
+                print(f"[ActivityMonitor] Pruned {count} old samples")
+            return count
+        except Exception as e:
+            print(f"[ActivityMonitor] Error pruning samples: {e}")
+            db.rollback()
+            return 0
+
+    def reset_all(self):
+        """Delete all activity samples (reset counters)"""
+        db = self._get_db()
+        if db is None:
+            return 0
+
+        try:
+            count = db.query(ActivitySample).delete()
+            db.commit()
+            print(f"[ActivityMonitor] Reset: deleted {count} samples")
+            return count
+        except Exception as e:
+            print(f"[ActivityMonitor] Error resetting samples: {e}")
+            db.rollback()
+            return 0
+
+
+# Convenience functions that use the singleton instance
+def record_activity_sample(username, last_activity):
+    return ActivityMonitor.get_instance().record_sample(username, last_activity)
+
+def calculate_activity_score(username):
+    return ActivityMonitor.get_instance().get_score(username)
+
+def get_activity_sampling_status():
+    return ActivityMonitor.get_instance().get_status()
+
+def get_inactive_after_seconds():
+    """Get the inactive threshold in seconds"""
+    return ActivityMonitor.get_instance().inactive_after_minutes * 60
+
+def rename_activity_user(old_username, new_username):
+    return ActivityMonitor.get_instance().rename_user(old_username, new_username)
+
+def delete_activity_user(username):
+    return ActivityMonitor.get_instance().delete_user(username)
+
+def reset_all_activity_data():
+    """Reset all activity data (delete all samples)"""
+    return ActivityMonitor.get_instance().reset_all()
+
+
+# Thread pool for blocking Docker operations (prevents event loop blocking)
+from concurrent.futures import ThreadPoolExecutor
+_docker_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="docker-stats")
+
+
+def get_container_stats(username):
+    """Get CPU and memory stats for a user's container (blocking - use async wrapper)"""
+    try:
+        docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        container_name = f'jupyterlab-{encode_username_for_docker(username)}'
+
+        try:
+            container = docker_client.containers.get(container_name)
+            stats = container.stats(stream=False)
+
+            # Calculate CPU percentage
+            cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - \
+                        stats['precpu_stats']['cpu_usage']['total_usage']
+            system_delta = stats['cpu_stats']['system_cpu_usage'] - \
+                           stats['precpu_stats']['system_cpu_usage']
+
+            cpu_percent = 0.0
+            if system_delta > 0 and cpu_delta > 0:
+                online_cpus = stats['cpu_stats'].get('online_cpus', 1)
+                cpu_percent = (cpu_delta / system_delta) * online_cpus * 100
+
+            # Memory stats
+            memory_usage = stats['memory_stats'].get('usage', 0)
+            memory_limit = stats['memory_stats'].get('limit', 1)
+            memory_percent = (memory_usage / memory_limit) * 100 if memory_limit > 0 else 0
+
+            return {
+                'cpu_percent': round(cpu_percent, 1),
+                'memory_mb': round(memory_usage / (1024 * 1024), 1),
+                'memory_percent': round(memory_percent, 1)
+            }
+        finally:
+            docker_client.close()
+
+    except Exception as e:
+        return None
+
+
+async def get_container_stats_async(username):
+    """Async wrapper for get_container_stats - runs in thread pool to avoid blocking"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_docker_executor, get_container_stats, username)
 
 
 # =============================================================================
@@ -852,3 +1186,180 @@ class SettingsPageHandler(BaseHandler):
             self.log.error(f"[Settings Page] Error loading settings dictionary: {e}")
 
         return settings
+
+
+class ActivityPageHandler(BaseHandler):
+    """Handler for rendering the activity monitoring page (admin only)"""
+
+    @web.authenticated
+    async def get(self):
+        """
+        Render the activity monitoring page
+
+        GET /activity
+        """
+        current_user = self.current_user
+
+        # Only admins can access activity monitoring
+        if not current_user.admin:
+            raise web.HTTPError(403, "Only administrators can access this page")
+
+        self.log.info(f"[Activity Page] Admin {current_user.name} accessed activity monitor")
+
+        # Render the template
+        html = self.render_template("activity.html", sync=True, user=current_user)
+        self.finish(html)
+
+
+class ActivityDataHandler(BaseHandler):
+    """Handler for providing activity data via API"""
+
+    @web.authenticated
+    async def get(self):
+        """
+        Get activity data for all users (admin only)
+
+        GET /hub/api/activity
+        Returns: {
+            "users": [
+                {
+                    "username": "konrad",
+                    "server_active": true,
+                    "cpu_percent": 12.5,
+                    "memory_mb": 1234,
+                    "memory_percent": 15.2,
+                    "time_remaining_seconds": 85500,
+                    "activity_score": 80,
+                    "sample_count": 24,
+                    "last_activity": "2026-01-20T10:30:00Z"
+                }
+            ],
+            "timestamp": "2026-01-20T11:00:00Z",
+            "sampling_status": "48 samples for 2 users"
+        }
+        """
+        current_user = self.current_user
+
+        # Only admins can access activity data
+        if not current_user.admin:
+            raise web.HTTPError(403, "Only administrators can access this endpoint")
+
+        self.log.info(f"[Activity Data] Admin {current_user.name} requested activity data")
+
+        # Get idle culler config
+        culler_enabled = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_ENABLED", 0)) == 1
+        timeout_seconds = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_TIMEOUT", 86400))
+        max_extension_hours = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION", 24))
+
+        # Collect data for all users
+        users_data = []
+        active_users = []  # Track users needing Docker stats
+        from jupyterhub import orm
+
+        for orm_user in self.db.query(orm.User).all():
+            user = self.find_user(orm_user.name)
+            if not user:
+                continue
+
+            spawner = user.spawner
+            server_active = spawner.active if spawner else False
+
+            user_data = {
+                "username": user.name,
+                "server_active": server_active,
+                "recently_active": False,  # True if activity within INACTIVE_AFTER threshold
+                "cpu_percent": None,
+                "memory_mb": None,
+                "memory_percent": None,
+                "time_remaining_seconds": None,
+                "activity_score": None,
+                "sample_count": 0,
+                "last_activity": None
+            }
+
+            # Get activity score
+            score, sample_count = calculate_activity_score(user.name)
+            user_data["activity_score"] = score
+            user_data["sample_count"] = sample_count
+
+            if server_active:
+                # Mark for async Docker stats fetch
+                active_users.append((user, spawner, user_data))
+
+                # Get last_activity and check if recently active
+                inactive_threshold = get_inactive_after_seconds()
+                now = datetime.now(timezone.utc)
+
+                if spawner and spawner.orm_spawner:
+                    last_activity = spawner.orm_spawner.last_activity
+                    if last_activity:
+                        last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
+                        elapsed_seconds = (now - last_activity_utc).total_seconds()
+
+                        user_data["last_activity"] = last_activity_utc.isoformat()
+                        user_data["recently_active"] = elapsed_seconds <= inactive_threshold
+
+                        # Get time remaining (from idle culler)
+                        if culler_enabled:
+                            spawner_state = spawner.orm_spawner.state or {}
+                            extensions_used_hours = spawner_state.get('extension_hours_used', 0)
+                            extension_seconds = extensions_used_hours * 3600
+                            effective_timeout = timeout_seconds + extension_seconds
+                            time_remaining_seconds = max(0, effective_timeout - elapsed_seconds)
+                            user_data["time_remaining_seconds"] = int(time_remaining_seconds)
+
+                    # Record a sample for this user (on-demand sampling when page is viewed)
+                    record_activity_sample(user.name, last_activity)
+
+            # Only include users with active servers or recent activity samples
+            if server_active or sample_count > 0:
+                users_data.append(user_data)
+
+        # Fetch Docker stats in parallel (non-blocking)
+        if active_users:
+            stats_tasks = [get_container_stats_async(u.name) for u, s, d in active_users]
+            stats_results = await asyncio.gather(*stats_tasks, return_exceptions=True)
+
+            for (user, spawner, user_data), stats in zip(active_users, stats_results):
+                if stats and not isinstance(stats, Exception):
+                    user_data["cpu_percent"] = stats["cpu_percent"]
+                    user_data["memory_mb"] = stats["memory_mb"]
+                    user_data["memory_percent"] = stats["memory_percent"]
+
+        # Sort: active servers first, then by activity score descending
+        users_data.sort(key=lambda u: (not u["server_active"], -(u["activity_score"] or 0)))
+
+        response = {
+            "users": users_data,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "sampling_status": get_activity_sampling_status(),
+            "inactive_after_seconds": get_inactive_after_seconds()
+        }
+
+        self.log.info(f"[Activity Data] Returning data for {len(users_data)} user(s)")
+        self.finish(response)
+
+
+class ActivityResetHandler(BaseHandler):
+    """Handler for resetting activity data (admin only)"""
+
+    @web.authenticated
+    async def post(self):
+        """
+        Reset all activity data
+
+        POST /hub/api/activity/reset
+        Returns: {"success": true, "deleted": 123}
+        """
+        current_user = self.current_user
+
+        # Only admins can reset activity data
+        if not current_user.admin:
+            raise web.HTTPError(403, "Only administrators can reset activity data")
+
+        self.log.info(f"[Activity Reset] Admin {current_user.name} requested activity reset")
+
+        deleted = reset_all_activity_data()
+
+        self.log.info(f"[Activity Reset] Deleted {deleted} samples")
+        self.finish({"success": True, "deleted": deleted})

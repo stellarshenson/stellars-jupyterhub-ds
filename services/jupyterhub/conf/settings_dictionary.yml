@@ -80,6 +80,23 @@ Idle Culler:
     description: Max session extension hours per session
     default: "24"
 
+Activity Monitor:
+  - name: JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL
+    description: Sampling interval in seconds (60-86400)
+    default: "600"
+
+  - name: JUPYTERHUB_ACTIVITYMON_RETENTION_DAYS
+    description: Sample retention period in days (1-365)
+    default: "7"
+
+  - name: JUPYTERHUB_ACTIVITYMON_HALF_LIFE
+    description: Decay half-life in hours (1-168)
+    default: "24"
+
+  - name: JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER
+    description: Minutes until user considered inactive (1-1440)
+    default: "60"
+
 Branding:
   - name: JUPYTERHUB_LOGO_URI
     description: Custom logo URI

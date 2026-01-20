@@ -19,6 +19,7 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 - **Admin User Creation**: Batch user creation from admin panel with auto-generated mnemonic passwords (e.g., `storm-apple-ocean`). Credentials modal with copy/download options
 - **Shared Storage**: Optional CIFS/NAS mount support for shared datasets across all users
 - **Idle Server Culler**: Automatic shutdown of inactive servers after configurable timeout (default: 24 hours). Frees resources when users leave servers running
+- **Activity Monitor**: Admin-only dashboard showing real-time CPU/memory usage, 3-state status indicator (active/inactive/offline), and historical activity scoring with exponential decay
 - **Production Ready**: Traefik reverse proxy with TLS termination, automatic container updates via Watchtower
 
 ## User Interface
@@ -380,6 +381,31 @@ services:
 - `JUPYTERHUB_IDLE_CULLER_TIMEOUT`: Server is stopped after this many seconds without activity. Active servers are never culled
 - `JUPYTERHUB_IDLE_CULLER_MAX_AGE`: Force stop servers older than this (useful to force image updates). Set to 0 to disable
 - `JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION`: Maximum total hours a user can extend their session. Users see a "Session Status" card on the home page showing time remaining and can request extensions up to this limit. Extension allowance resets when server restarts
+
+#### Activity Monitor
+
+Admin-only dashboard at `/hub/activity` showing real-time resource usage and user engagement metrics.
+
+```yaml
+services:
+  jupyterhub:
+    environment:
+      - JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL=600   # 10 minutes (default) - how often to record samples
+      - JUPYTERHUB_ACTIVITYMON_RETENTION_DAYS=7      # 7 days (default) - how long to keep samples
+      - JUPYTERHUB_ACTIVITYMON_HALF_LIFE=24          # 24 hours (default) - decay half-life for scoring
+      - JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER=60     # 60 minutes (default) - threshold for inactive status
+```
+
+**Features**:
+- **3-state status**: Green (online + active within 60 min), Yellow (online + inactive), Red (offline)
+- **Resource metrics**: Real-time CPU and memory usage per container (fetched in parallel to avoid blocking)
+- **Activity score**: Weighted average of historical activity using exponential decay (recent activity counts more)
+- **Reset button**: Clear all historical samples to start fresh
+
+**Scoring**:
+- Score is calculated only from measured samples (unmeasured periods don't count against users)
+- Uses exponential decay: `weight = exp(-lambda * age_hours)` where `lambda = ln(2) / half_life`
+- Score = ratio of weighted active samples to weighted total samples (0-100%)
 
 #### Custom Branding
 

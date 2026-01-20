@@ -65,10 +65,11 @@ from jupyterhub import orm
 
 @event.listens_for(orm.User.name, 'set')
 def sync_nativeauth_on_rename(target, value, oldvalue, initiator):
-    """Sync NativeAuthenticator UserInfo when User.name changes"""
+    """Sync NativeAuthenticator UserInfo and ActivityMonitor when User.name changes"""
     if oldvalue == value or oldvalue is None:
         return  # No change or initial set
 
+    # Sync NativeAuthenticator
     try:
         from nativeauthenticator.orm import UserInfo
         from sqlalchemy.orm import object_session
@@ -84,6 +85,13 @@ def sync_nativeauth_on_rename(target, value, oldvalue, initiator):
         pass  # NativeAuthenticator not available
     except Exception as e:
         print(f"[NativeAuth Sync] Error: {e}")
+
+    # Sync ActivityMonitor
+    try:
+        from custom_handlers import rename_activity_user
+        rename_activity_user(oldvalue, value)
+    except Exception as e:
+        print(f"[ActivityMonitor Sync] Error renaming: {e}")
 
 
 @event.listens_for(orm.User, 'after_insert')
@@ -133,8 +141,10 @@ def create_nativeauth_on_user_insert(mapper, connection, target):
 
 @event.listens_for(orm.User, 'after_delete')
 def remove_nativeauth_on_user_delete(mapper, connection, target):
-    """Remove NativeAuthenticator UserInfo when a User is deleted."""
+    """Remove NativeAuthenticator UserInfo and ActivityMonitor data when a User is deleted."""
     username = target.name
+
+    # Remove NativeAuthenticator UserInfo
     try:
         from sqlalchemy import text
 
@@ -154,6 +164,13 @@ def remove_nativeauth_on_user_delete(mapper, connection, target):
 
     except Exception as e:
         print(f"[NativeAuth Cleanup] Error removing UserInfo for {username}: {e}")
+
+    # Remove ActivityMonitor data
+    try:
+        from custom_handlers import delete_activity_user
+        delete_activity_user(username)
+    except Exception as e:
+        print(f"[ActivityMonitor Cleanup] Error removing data for {username}: {e}")
 
 
 # NVIDIA GPU auto-detection 
@@ -429,7 +446,10 @@ if c is not None:
         GetUserCredentialsHandler,
         SettingsPageHandler,
         SessionInfoHandler,
-        ExtendSessionHandler
+        ExtendSessionHandler,
+        ActivityPageHandler,
+        ActivityDataHandler,
+        ActivityResetHandler
     )
 
     c.JupyterHub.extra_handlers = [
@@ -440,8 +460,11 @@ if c is not None:
         (r'/api/notifications/active-servers', ActiveServersHandler),
         (r'/api/notifications/broadcast', BroadcastNotificationHandler),
         (r'/api/admin/credentials', GetUserCredentialsHandler),
+        (r'/api/activity', ActivityDataHandler),
+        (r'/api/activity/reset', ActivityResetHandler),
         (r'/notifications', NotificationsPageHandler),
         (r'/settings', SettingsPageHandler),
+        (r'/activity', ActivityPageHandler),
     ]
 
     # Idle culler service - automatically stops servers after inactivity
