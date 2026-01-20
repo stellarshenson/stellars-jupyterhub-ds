@@ -92,6 +92,7 @@ class ActivityMonitor:
     DEFAULT_RETENTION_DAYS = 7       # 7 days
     DEFAULT_HALF_LIFE = 24           # 24 hours
     DEFAULT_INACTIVE_AFTER = 60      # 60 minutes
+    DEFAULT_SAMPLING_INTERVAL = 600  # 10 minutes
 
     def __init__(self):
         self._db_session = None
@@ -102,11 +103,12 @@ class ActivityMonitor:
         self.retention_days = self._get_env_int("JUPYTERHUB_ACTIVITYMON_RETENTION_DAYS", self.DEFAULT_RETENTION_DAYS, 1, 365)
         self.half_life_hours = self._get_env_int("JUPYTERHUB_ACTIVITYMON_HALF_LIFE", self.DEFAULT_HALF_LIFE, 1, 168)
         self.inactive_after_minutes = self._get_env_int("JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER", self.DEFAULT_INACTIVE_AFTER, 1, 1440)
+        self.sampling_interval = self._get_env_int("JUPYTERHUB_ACTIVITYMON_SAMPLING_INTERVAL", self.DEFAULT_SAMPLING_INTERVAL, 60, 86400)
 
         # Calculate decay constant
         self.decay_lambda = math.log(2) / self.half_life_hours
 
-        print(f"[ActivityMonitor] Config: retention={self.retention_days}d, half_life={self.half_life_hours}h, inactive_after={self.inactive_after_minutes}m")
+        print(f"[ActivityMonitor] Config: retention={self.retention_days}d, half_life={self.half_life_hours}h, inactive_after={self.inactive_after_minutes}m, sampling={self.sampling_interval}s")
 
     @classmethod
     def get_instance(cls):
