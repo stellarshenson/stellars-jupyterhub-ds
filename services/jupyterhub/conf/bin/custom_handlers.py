@@ -188,16 +188,23 @@ class ActivityMonitor:
                     last_sample.last_activity = last_activity
                     last_sample.active = active
                     db.commit()
-                    return True
+                else:
+                    # Sample interval passed - INSERT new sample
+                    db.add(ActivitySample(username=username, timestamp=now, last_activity=last_activity, active=active))
+                    db.commit()
+            else:
+                # No samples yet - INSERT first sample
+                db.add(ActivitySample(username=username, timestamp=now, last_activity=last_activity, active=active))
+                db.commit()
 
-            # No recent sample or sample_interval passed - INSERT new sample
-            db.add(ActivitySample(username=username, timestamp=now, last_activity=last_activity, active=active))
-            db.commit()
-
-            # Prune old samples for this user
+            # Always prune old samples (regardless of update vs insert)
             cutoff = now - timedelta(days=self.retention_days)
-            db.query(ActivitySample).filter(ActivitySample.username == username, ActivitySample.timestamp < cutoff).delete()
-            db.commit()
+            deleted = db.query(ActivitySample).filter(
+                ActivitySample.username == username,
+                ActivitySample.timestamp < cutoff
+            ).delete()
+            if deleted > 0:
+                db.commit()
 
             return True
         except Exception as e:
