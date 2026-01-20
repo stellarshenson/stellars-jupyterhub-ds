@@ -195,3 +195,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 64. **Task - Activity monitor sampling refactor**: Removed on-demand sampling and fixed timer display<br>
     **Result**: Removed `JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL` env var entirely - sampling will be controlled dynamically by caller. Removed on-demand sample recording from ActivityDataHandler (viewing activity page no longer triggers samples). Simplified `record_sample()` to always insert new sample without interval checking. Fixed formatTimeAgo to show nothing when time ≤0s (handles server/client clock skew). Removed interval config from Dockerfile and settings_dictionary.yml. Hide "Measured " prefix when time value is empty. Removed compose.yml/compose_override.yml mention from Settings page footer
+
+65. **Task - Activity table sorting and display improvements**: Added column sorting and improved Last Active display<br>
+    **Result**: Added clickable column sorting for User, CPU, Memory, Time Left, Last Active columns. Sorting cycles through descending → ascending → none (default). Sort icons (▲/▼) show current direction. Default sort is activity score descending. Null values sorted to end. Changed Last Active display to match admin page format with full words ("8 minutes ago", "14 days ago", "4 months ago") with proper singular/plural handling
