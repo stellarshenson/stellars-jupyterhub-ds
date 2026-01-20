@@ -4,12 +4,12 @@ description: Create checkpoint tag before major change or after important milest
 
 Create a checkpoint tag to mark a stable point before implementing major changes or after completing important work.
 
-**Tag format**: `CHECKPOINT_<NAME>_<short_version>`
+**Tag format**: `CHECKPOINT_<NAME>_<version_suffix>`
 - Name should be uppercase with underscores (e.g., `BEFORE_ACTIVITY_TRACKER`, `AFTER_SESSION_EXTENSION`)
-- Short version is major.minor.patch extracted from project.env
+- Version suffix is major.minor.patch extracted from project.env
 
 **Step 1: Get current version**
-Use the Bash tool to extract the short version:
+Use the Bash tool to extract the version suffix:
 ```bash
 grep "^VERSION=" project.env | sed 's/VERSION="//;s/_.*//'
 ```
