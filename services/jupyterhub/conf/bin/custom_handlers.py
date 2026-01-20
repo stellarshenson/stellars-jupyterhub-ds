@@ -151,10 +151,13 @@ class ActivityMonitor:
             return None
 
     def record_sample(self, username, last_activity):
-        """Record an activity sample for a user
+        """Record an activity sample for a user.
 
-        - If last sample is within sample_interval: UPDATE it (refresh behavior)
-        - If last sample is older than sample_interval: INSERT new sample
+        Sampling behavior:
+        - Always UPDATE the last sample (never insert on refresh)
+        - Only INSERT a new sample when sample_interval has passed since last sample
+        - This prevents sample flooding from frequent page refreshes
+        - New samples are collected at sample_interval rate (default 10 min)
         """
         db = self._get_db()
         if db is None:
