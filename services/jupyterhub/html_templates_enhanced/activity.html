@@ -75,7 +75,8 @@ require(["jquery"], function($) {
   // Update "Measured X ago" text every second
   measureTimeUpdateInterval = setInterval(function() {
     if (lastMeasuredTimestamp) {
-      $('#last-updated').text('Measured ' + formatTimeAgo(lastMeasuredTimestamp));
+      var timeAgo = formatTimeAgo(lastMeasuredTimestamp);
+      $('#last-updated').text(timeAgo ? 'Measured ' + timeAgo : '');
     }
   }, 1000);
 
@@ -154,7 +155,8 @@ require(["jquery"], function($) {
     // Update header info
     $('#active-count').text(users.length + ' active server' + (users.length !== 1 ? 's' : ''));
     lastMeasuredTimestamp = timestamp;
-    $('#last-updated').text('Measured ' + formatTimeAgo(timestamp));
+    var timeAgo = formatTimeAgo(timestamp);
+    $('#last-updated').text(timeAgo ? 'Measured ' + timeAgo : '');
 
     // Show sampling status if available
     if (samplingStatus) {
