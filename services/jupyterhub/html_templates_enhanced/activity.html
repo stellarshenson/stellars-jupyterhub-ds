@@ -26,7 +26,6 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
       <div>
         <span class="badge bg-secondary" id="active-count">0 active servers</span>
-        <span class="text-muted ms-2" id="last-updated"></span>
       </div>
       <div>
         <button class="btn btn-outline-danger btn-sm me-2" id="reset-btn">
@@ -63,8 +62,6 @@ require(["jquery"], function($) {
   "use strict";
 
   var autoRefreshInterval = null;
-  var lastMeasuredTimestamp = null;
-  var measureTimeUpdateInterval = null;
   var currentUsersData = [];  // Store data for re-sorting
   var sortColumn = null;      // Current sort column
   var sortDirection = null;   // 'asc', 'desc', or null
@@ -99,16 +96,8 @@ require(["jquery"], function($) {
     }
   }
 
-  // Auto-refresh data every 30 seconds
-  autoRefreshInterval = setInterval(fetchActivityData, 30000);
-
-  // Update "Measured X ago" text every second
-  measureTimeUpdateInterval = setInterval(function() {
-    if (lastMeasuredTimestamp) {
-      var timeAgo = formatTimeAgo(lastMeasuredTimestamp);
-      $('#last-updated').text(timeAgo ? 'Measured ' + timeAgo : '');
-    }
-  }, 1000);
+  // Auto-refresh resources every 10 seconds (status, CPU, memory, timers)
+  autoRefreshInterval = setInterval(fetchActivityData, 10000);
 
   // Manual refresh button
   $('#refresh-btn').on('click', function() {
@@ -168,8 +157,6 @@ require(["jquery"], function($) {
 
   function renderActivityTable(data) {
     var users = data.users || [];
-    var timestamp = data.timestamp || new Date().toISOString();
-    var samplingStatus = data.sampling_status || '';
 
     $('#loading-indicator').hide();
 
@@ -184,14 +171,6 @@ require(["jquery"], function($) {
 
     // Update header info
     $('#active-count').text(users.length + ' active server' + (users.length !== 1 ? 's' : ''));
-    lastMeasuredTimestamp = timestamp;
-    var timeAgo = formatTimeAgo(timestamp);
-    $('#last-updated').text(timeAgo ? 'Measured ' + timeAgo : '');
-
-    // Show sampling status if available
-    if (samplingStatus) {
-      $('#sampling-status').html('<span class="badge bg-info">' + escapeHtml(samplingStatus) + '</span>');
-    }
 
     // Store data for sorting
     currentUsersData = users;
@@ -370,28 +349,6 @@ require(["jquery"], function($) {
     }
     html += '</div>';
     return html;
-  }
-
-  function formatTimeAgo(isoString) {
-    var date = new Date(isoString);
-    var now = new Date();
-    var diffMs = now - date;
-    var diffSec = Math.floor(diffMs / 1000);
-    var diffMin = Math.floor(diffSec / 60);
-    var diffHour = Math.floor(diffMin / 60);
-
-    if (diffSec <= 0) {
-      return '';  // Display nothing for 0 or negative
-    } else if (diffSec < 60) {
-      return diffSec + 's ago';
-    } else if (diffMin < 60) {
-      return diffMin + 'min ago';
-    } else if (diffHour < 24) {
-      return diffHour + 'h ago';
-    } else {
-      var diffDay = Math.floor(diffHour / 24);
-      return diffDay + 'd ago';
-    }
   }
 
   function getCookie(name) {
