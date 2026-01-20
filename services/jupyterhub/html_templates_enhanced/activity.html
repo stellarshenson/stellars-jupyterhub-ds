@@ -71,7 +71,11 @@ require(["jquery"], function($) {
 
   // Manual refresh button
   $('#refresh-btn').on('click', function() {
-    fetchActivityData();
+    var btn = $(this);
+    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
+    fetchActivityData(function() {
+      btn.prop('disabled', false).html('<i class="fa fa-refresh" aria-hidden="true"></i> Refresh');
+    });
   });
 
   // Reset button
@@ -98,7 +102,7 @@ require(["jquery"], function($) {
     });
   });
 
-  function fetchActivityData() {
+  function fetchActivityData(callback) {
     $.ajax({
       url: '{{ base_url }}api/activity',
       method: 'GET',
@@ -107,6 +111,7 @@ require(["jquery"], function($) {
       },
       success: function(data) {
         renderActivityTable(data);
+        if (callback) callback();
       },
       error: function(xhr) {
         $('#loading-indicator').hide();
@@ -115,6 +120,7 @@ require(["jquery"], function($) {
           .removeClass('alert-info')
           .addClass('alert-danger')
           .html('<i class="fa fa-exclamation-circle"></i> Failed to load activity data');
+        if (callback) callback();
       }
     });
   }
@@ -137,7 +143,7 @@ require(["jquery"], function($) {
 
     // Update header info
     $('#active-count').text(users.length + ' active server' + (users.length !== 1 ? 's' : ''));
-    $('#last-updated').text('Measured: ' + formatTimestamp(timestamp));
+    $('#last-updated').text('Measured ' + formatTimeAgo(timestamp));
 
     // Show sampling status if available
     if (samplingStatus) {
@@ -255,9 +261,24 @@ require(["jquery"], function($) {
     return html;
   }
 
-  function formatTimestamp(isoString) {
+  function formatTimeAgo(isoString) {
     var date = new Date(isoString);
-    return date.toLocaleTimeString();
+    var now = new Date();
+    var diffMs = now - date;
+    var diffSec = Math.floor(diffMs / 1000);
+    var diffMin = Math.floor(diffSec / 60);
+    var diffHour = Math.floor(diffMin / 60);
+
+    if (diffMin < 1) {
+      return 'just now';
+    } else if (diffMin < 60) {
+      return diffMin + 'min ago';
+    } else if (diffHour < 24) {
+      return diffHour + 'h ago';
+    } else {
+      var diffDay = Math.floor(diffHour / 24);
+      return diffDay + 'd ago';
+    }
   }
 
   function getCookie(name) {
