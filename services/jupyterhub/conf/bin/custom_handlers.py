@@ -624,8 +624,9 @@ class SessionInfoHandler(BaseHandler):
 
             self.log.info(f"[Session Info] {username}: base_timeout={timeout_seconds}s ({timeout_seconds/3600:.1f}h), extensions={extensions_used_hours}h, effective_timeout={effective_timeout}s ({effective_timeout/3600:.1f}h)")
 
-            # Get last activity timestamp
-            last_activity = user.last_activity
+            # Get last activity timestamp from SERVER (not user - user.last_activity updates on Hub access)
+            # The idle culler uses server.last_activity, so we must use the same
+            last_activity = spawner.server.last_activity if spawner.server else None
             if last_activity:
                 from datetime import datetime, timezone
                 now = datetime.now(timezone.utc)
@@ -655,12 +656,12 @@ class SessionInfoHandler(BaseHandler):
 
 
 class ExtendSessionHandler(BaseHandler):
-    """Handler for extending user session by resetting last_activity"""
+    """Handler for extending user session by adding extension hours"""
 
     @web.authenticated
     async def post(self, username):
         """
-        Extend a user's session by updating last_activity timestamp
+        Extend a user's session by adding hours to the extension allowance
 
         POST /hub/api/users/{username}/extend-session
         Body: {"hours": 2}
@@ -752,7 +753,8 @@ class ExtendSessionHandler(BaseHandler):
         # Calculate new time remaining: base timeout + ALL extensions - elapsed
         extension_seconds = new_total_extensions * 3600
         effective_timeout = timeout_seconds + extension_seconds
-        last_activity = user.last_activity
+        # Use server.last_activity (not user - matches what idle culler uses)
+        last_activity = spawner.server.last_activity if spawner.server else None
         if last_activity:
             now_utc = datetime.now(timezone.utc)
             last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
