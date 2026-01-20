@@ -89,7 +89,6 @@ class ActivityMonitor:
     _lock = threading.Lock()
 
     # Default configuration
-    DEFAULT_SAMPLE_INTERVAL = 600    # 10 minutes
     DEFAULT_RETENTION_DAYS = 7       # 7 days
     DEFAULT_HALF_LIFE = 24           # 24 hours
     DEFAULT_INACTIVE_AFTER = 60      # 60 minutes
@@ -100,7 +99,6 @@ class ActivityMonitor:
         self._initialized = False
 
         # Load configuration from environment
-        self.sample_interval = self._get_env_int("JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL", self.DEFAULT_SAMPLE_INTERVAL, 60, 86400)
         self.retention_days = self._get_env_int("JUPYTERHUB_ACTIVITYMON_RETENTION_DAYS", self.DEFAULT_RETENTION_DAYS, 1, 365)
         self.half_life_hours = self._get_env_int("JUPYTERHUB_ACTIVITYMON_HALF_LIFE", self.DEFAULT_HALF_LIFE, 1, 168)
         self.inactive_after_minutes = self._get_env_int("JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER", self.DEFAULT_INACTIVE_AFTER, 1, 1440)
@@ -108,7 +106,7 @@ class ActivityMonitor:
         # Calculate decay constant
         self.decay_lambda = math.log(2) / self.half_life_hours
 
-        print(f"[ActivityMonitor] Config: sample_interval={self.sample_interval}s, retention={self.retention_days}d, half_life={self.half_life_hours}h, inactive_after={self.inactive_after_minutes}m")
+        print(f"[ActivityMonitor] Config: retention={self.retention_days}d, half_life={self.half_life_hours}h, inactive_after={self.inactive_after_minutes}m")
 
     @classmethod
     def get_instance(cls):
@@ -158,11 +156,7 @@ class ActivityMonitor:
     def record_sample(self, username, last_activity):
         """Record an activity sample for a user.
 
-        Sampling behavior:
-        - Always UPDATE the last sample (never insert on refresh)
-        - Only INSERT a new sample when sample_interval has passed since last sample
-        - This prevents sample flooding from frequent page refreshes
-        - New samples are collected at sample_interval rate (default 10 min)
+        Always inserts a new sample - caller controls sampling frequency.
         """
         db = self._get_db()
         if db is None:
@@ -178,31 +172,11 @@ class ActivityMonitor:
                 age_seconds = (now - last_activity_utc).total_seconds()
                 active = age_seconds <= (self.inactive_after_minutes * 60)
 
-            # Get the most recent sample for this user
-            last_sample = db.query(ActivitySample).filter(
-                ActivitySample.username == username
-            ).order_by(ActivitySample.timestamp.desc()).first()
+            # Insert new sample
+            db.add(ActivitySample(username=username, timestamp=now, last_activity=last_activity, active=active))
+            db.commit()
 
-            if last_sample:
-                last_sample_ts = last_sample.timestamp.replace(tzinfo=timezone.utc) if last_sample.timestamp.tzinfo is None else last_sample.timestamp
-                sample_age = (now - last_sample_ts).total_seconds()
-
-                if sample_age < self.sample_interval:
-                    # Within sample interval - UPDATE last sample
-                    last_sample.timestamp = now
-                    last_sample.last_activity = last_activity
-                    last_sample.active = active
-                    db.commit()
-                else:
-                    # Sample interval passed - INSERT new sample
-                    db.add(ActivitySample(username=username, timestamp=now, last_activity=last_activity, active=active))
-                    db.commit()
-            else:
-                # No samples yet - INSERT first sample
-                db.add(ActivitySample(username=username, timestamp=now, last_activity=last_activity, active=active))
-                db.commit()
-
-            # Always prune old samples (regardless of update vs insert)
+            # Prune old samples
             cutoff = now - timedelta(days=self.retention_days)
             deleted = db.query(ActivitySample).filter(
                 ActivitySample.username == username,
@@ -1342,9 +1316,6 @@ class ActivityDataHandler(BaseHandler):
                             effective_timeout = timeout_seconds + extension_seconds
                             time_remaining_seconds = max(0, effective_timeout - elapsed_seconds)
                             user_data["time_remaining_seconds"] = int(time_remaining_seconds)
-
-                    # Record a sample for this user (on-demand sampling when page is viewed)
-                    record_activity_sample(user.name, last_activity)
 
             # Only include users with active servers or recent activity samples
             if server_active or sample_count > 0:

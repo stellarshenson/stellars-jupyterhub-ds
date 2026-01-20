@@ -81,10 +81,6 @@ Idle Culler:
     default: "24"
 
 Activity Monitor:
-  - name: JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL
-    description: Sampling interval in seconds (60-86400)
-    default: "600"
-
   - name: JUPYTERHUB_ACTIVITYMON_RETENTION_DAYS
     description: Sample retention period in days (1-365)
     default: "7"

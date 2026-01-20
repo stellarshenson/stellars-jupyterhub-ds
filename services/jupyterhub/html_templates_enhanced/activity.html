@@ -306,7 +306,9 @@ require(["jquery"], function($) {
     var diffMin = Math.floor(diffSec / 60);
     var diffHour = Math.floor(diffMin / 60);
 
-    if (diffSec < 60) {
+    if (diffSec <= 0) {
+      return '';  // Display nothing for 0 or negative
+    } else if (diffSec < 60) {
       return diffSec + 's ago';
     } else if (diffMin < 60) {
       return diffMin + 'min ago';
