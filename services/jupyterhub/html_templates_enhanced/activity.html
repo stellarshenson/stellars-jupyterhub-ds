@@ -41,12 +41,12 @@
     <table class="table table-sm table-striped table-hover">
       <thead class="table-dark">
         <tr>
-          <th>User</th>
+          <th class="sortable" data-sort="username" style="cursor: pointer;">User <span class="sort-icon"></span></th>
           <th class="text-center">Status</th>
-          <th class="text-center">CPU</th>
-          <th class="text-center">Memory</th>
-          <th class="text-center">Time Left</th>
-          <th>Last Active</th>
+          <th class="text-center sortable" data-sort="cpu_percent" style="cursor: pointer;">CPU <span class="sort-icon"></span></th>
+          <th class="text-center sortable" data-sort="memory_mb" style="cursor: pointer;">Memory <span class="sort-icon"></span></th>
+          <th class="text-center sortable" data-sort="time_remaining_seconds" style="cursor: pointer;">Time Left <span class="sort-icon"></span></th>
+          <th class="sortable" data-sort="last_activity" style="cursor: pointer;">Last Active <span class="sort-icon"></span></th>
           <th>Activity (7 days)</th>
         </tr>
       </thead>
@@ -65,9 +65,39 @@ require(["jquery"], function($) {
   var autoRefreshInterval = null;
   var lastMeasuredTimestamp = null;
   var measureTimeUpdateInterval = null;
+  var currentUsersData = [];  // Store data for re-sorting
+  var sortColumn = null;      // Current sort column
+  var sortDirection = null;   // 'asc', 'desc', or null
 
   // Initial fetch
   fetchActivityData();
+
+  // Sorting click handlers
+  $('th.sortable').on('click', function() {
+    var column = $(this).data('sort');
+
+    // Cycle through: none -> desc -> asc -> none
+    if (sortColumn !== column) {
+      sortColumn = column;
+      sortDirection = 'desc';
+    } else if (sortDirection === 'desc') {
+      sortDirection = 'asc';
+    } else if (sortDirection === 'asc') {
+      sortColumn = null;
+      sortDirection = null;
+    }
+
+    updateSortIcons();
+    renderTableRows();
+  });
+
+  function updateSortIcons() {
+    $('th.sortable .sort-icon').html('');
+    if (sortColumn && sortDirection) {
+      var icon = sortDirection === 'asc' ? '<i class="fa fa-sort-up"></i>' : '<i class="fa fa-sort-down"></i>';
+      $('th.sortable[data-sort="' + sortColumn + '"] .sort-icon').html(icon);
+    }
+  }
 
   // Auto-refresh data every 30 seconds
   autoRefreshInterval = setInterval(fetchActivityData, 30000);
@@ -163,10 +193,49 @@ require(["jquery"], function($) {
       $('#sampling-status').html('<span class="badge bg-info">' + escapeHtml(samplingStatus) + '</span>');
     }
 
-    // Sort by activity score descending (most active first)
-    users.sort(function(a, b) {
-      return (b.activity_score || 0) - (a.activity_score || 0);
-    });
+    // Store data for sorting
+    currentUsersData = users;
+    renderTableRows();
+  }
+
+  function renderTableRows() {
+    if (currentUsersData.length === 0) return;
+
+    // Copy array for sorting
+    var users = currentUsersData.slice();
+
+    // Apply sorting
+    if (sortColumn && sortDirection) {
+      users.sort(function(a, b) {
+        var aVal = a[sortColumn];
+        var bVal = b[sortColumn];
+
+        // Handle null/undefined
+        if (aVal === null || aVal === undefined) aVal = sortDirection === 'asc' ? Infinity : -Infinity;
+        if (bVal === null || bVal === undefined) bVal = sortDirection === 'asc' ? Infinity : -Infinity;
+
+        // String comparison for username
+        if (sortColumn === 'username') {
+          aVal = (aVal || '').toLowerCase();
+          bVal = (bVal || '').toLowerCase();
+        }
+
+        // Date comparison for last_activity
+        if (sortColumn === 'last_activity') {
+          aVal = aVal ? new Date(aVal).getTime() : (sortDirection === 'asc' ? Infinity : -Infinity);
+          bVal = bVal ? new Date(bVal).getTime() : (sortDirection === 'asc' ? Infinity : -Infinity);
+        }
+
+        if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    } else {
+      // Default: sort by activity score descending
+      users.sort(function(a, b) {
+        return (b.activity_score || 0) - (a.activity_score || 0);
+      });
+    }
 
     // Build table rows
     var tbody = $('#activity-table-body');
@@ -253,16 +322,19 @@ require(["jquery"], function($) {
     var diffSec = Math.floor(diffMs / 1000);
     var diffMin = Math.floor(diffSec / 60);
     var diffHour = Math.floor(diffMin / 60);
+    var diffDay = Math.floor(diffHour / 24);
+    var diffMonth = Math.floor(diffDay / 30);
 
     if (diffMin < 1) {
       return '<span class="text-success">now</span>';
     } else if (diffMin < 60) {
-      return diffMin + 'min';
+      return diffMin + (diffMin === 1 ? ' minute ago' : ' minutes ago');
     } else if (diffHour < 24) {
-      return diffHour + 'h';
+      return diffHour + (diffHour === 1 ? ' hour ago' : ' hours ago');
+    } else if (diffDay < 30) {
+      return diffDay + (diffDay === 1 ? ' day ago' : ' days ago');
     } else {
-      var diffDay = Math.floor(diffHour / 24);
-      return diffDay + 'd';
+      return diffMonth + (diffMonth === 1 ? ' month ago' : ' months ago');
     }
   }
 
