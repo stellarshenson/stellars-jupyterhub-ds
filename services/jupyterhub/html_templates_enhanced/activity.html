@@ -46,7 +46,7 @@
           <th class="text-center">CPU</th>
           <th class="text-center">Memory</th>
           <th class="text-center">Time Left</th>
-          <th class="text-center">Last Active</th>
+          <th>Last Active</th>
           <th>Activity (7 days)</th>
         </tr>
       </thead>
@@ -63,12 +63,21 @@ require(["jquery"], function($) {
   "use strict";
 
   var autoRefreshInterval = null;
+  var lastMeasuredTimestamp = null;
+  var measureTimeUpdateInterval = null;
 
   // Initial fetch
   fetchActivityData();
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh data every 30 seconds
   autoRefreshInterval = setInterval(fetchActivityData, 30000);
+
+  // Update "Measured X ago" text every second
+  measureTimeUpdateInterval = setInterval(function() {
+    if (lastMeasuredTimestamp) {
+      $('#last-updated').text('Measured ' + formatTimeAgo(lastMeasuredTimestamp));
+    }
+  }, 1000);
 
   // Manual refresh button
   $('#refresh-btn').on('click', function() {
@@ -144,6 +153,7 @@ require(["jquery"], function($) {
 
     // Update header info
     $('#active-count').text(users.length + ' active server' + (users.length !== 1 ? 's' : ''));
+    lastMeasuredTimestamp = timestamp;
     $('#last-updated').text('Measured ' + formatTimeAgo(timestamp));
 
     // Show sampling status if available
@@ -167,7 +177,7 @@ require(["jquery"], function($) {
         '<td class="text-center">' + formatCpu(user.cpu_percent) + '</td>' +
         '<td class="text-center">' + formatMemory(user.memory_mb, user.memory_percent) + '</td>' +
         '<td class="text-center">' + formatTimeRemaining(user.time_remaining_seconds) + '</td>' +
-        '<td class="text-center">' + formatLastActive(user.last_activity) + '</td>' +
+        '<td>' + formatLastActive(user.last_activity) + '</td>' +
         '<td>' + renderActivityBar(user.activity_score) + '</td>' +
         '</tr>';
       tbody.append(row);
@@ -241,17 +251,16 @@ require(["jquery"], function($) {
     var diffSec = Math.floor(diffMs / 1000);
     var diffMin = Math.floor(diffSec / 60);
     var diffHour = Math.floor(diffMin / 60);
-    var remainingMin = diffMin % 60;
 
     if (diffMin < 1) {
       return '<span class="text-success">now</span>';
     } else if (diffMin < 60) {
       return diffMin + 'min';
     } else if (diffHour < 24) {
-      return diffHour + 'h ' + remainingMin + 'min';
+      return diffHour + 'h';
     } else {
       var diffDay = Math.floor(diffHour / 24);
-      return diffDay + 'd ' + (diffHour % 24) + 'h';
+      return diffDay + 'd';
     }
   }
 
@@ -297,8 +306,8 @@ require(["jquery"], function($) {
     var diffMin = Math.floor(diffSec / 60);
     var diffHour = Math.floor(diffMin / 60);
 
-    if (diffMin < 1) {
-      return 'just now';
+    if (diffSec < 60) {
+      return diffSec + 's ago';
     } else if (diffMin < 60) {
       return diffMin + 'min ago';
     } else if (diffHour < 24) {
