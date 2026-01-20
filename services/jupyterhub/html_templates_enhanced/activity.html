@@ -3,7 +3,7 @@
 {% block main %}
 <div class="container">
   <h1>User Activity Monitor</h1>
-  <p class="text-muted">Real-time resource usage and engagement metrics for active JupyterLab containers</p>
+  <p class="text-muted">Real-time resource usage and engagement metrics</p>
 
   <hr>
 
@@ -25,7 +25,7 @@
   <div id="activity-table-container" style="display: none;">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <div>
-        <span class="badge bg-secondary" id="active-count">0 active servers</span>
+        <span class="badge bg-dark" id="active-count"></span>
       </div>
       <div>
         <button class="btn btn-outline-danger btn-sm me-2" id="reset-btn">
@@ -37,16 +37,16 @@
       </div>
     </div>
 
-    <table class="table table-sm table-striped table-hover">
+    <table class="table table-sm table-striped table-hover activity-table">
       <thead class="table-dark">
         <tr>
-          <th class="sortable" data-sort="username" style="cursor: pointer;">User <span class="sort-icon"></span></th>
-          <th class="text-center">Status</th>
-          <th class="text-center sortable" data-sort="cpu_percent" style="cursor: pointer;">CPU <span class="sort-icon"></span></th>
-          <th class="text-center sortable" data-sort="memory_mb" style="cursor: pointer;">Memory <span class="sort-icon"></span></th>
-          <th class="text-center sortable" data-sort="time_remaining_seconds" style="cursor: pointer;">Time Left <span class="sort-icon"></span></th>
-          <th class="sortable" data-sort="last_activity" style="cursor: pointer;">Last Active <span class="sort-icon"></span></th>
-          <th>Activity (7 days)</th>
+          <th class="col-user sortable" data-sort="username">User <span class="sort-icon"></span></th>
+          <th class="col-status text-center sortable" data-sort="status">Status <span class="sort-icon"></span></th>
+          <th class="col-cpu text-center sortable" data-sort="cpu_percent">CPU <span class="sort-icon"></span></th>
+          <th class="col-memory text-center sortable" data-sort="memory_mb">Memory <span class="sort-icon"></span></th>
+          <th class="col-timeleft text-center sortable" data-sort="time_remaining_seconds">Time Left <span class="sort-icon"></span></th>
+          <th class="col-lastactive sortable" data-sort="last_activity">Last Active <span class="sort-icon"></span></th>
+          <th class="col-activity sortable" data-sort="activity_score">Activity (7 days) <span class="sort-icon"></span></th>
         </tr>
       </thead>
       <tbody id="activity-table-body">
@@ -169,8 +169,11 @@ require(["jquery"], function($) {
     $('#no-data-message').hide();
     $('#activity-table-container').show();
 
-    // Update header info
-    $('#active-count').text(users.length + ' active server' + (users.length !== 1 ? 's' : ''));
+    // Update header info - count total users and active servers separately
+    var activeCount = users.filter(function(u) { return u.server_active; }).length;
+    var badgeText = users.length + ' user' + (users.length !== 1 ? 's' : '') +
+                    ' (' + activeCount + ' active)';
+    $('#active-count').text(badgeText);
 
     // Store data for sorting
     currentUsersData = users;
@@ -183,38 +186,58 @@ require(["jquery"], function($) {
     // Copy array for sorting
     var users = currentUsersData.slice();
 
-    // Apply sorting
-    if (sortColumn && sortDirection) {
-      users.sort(function(a, b) {
-        var aVal = a[sortColumn];
-        var bVal = b[sortColumn];
+    // Helper to get sortable value for a column
+    function getSortValue(user, column, direction) {
+      // Status sorting: active > inactive > offline (higher = better)
+      // Must be checked first since 'status' is not a real field
+      if (column === 'status') {
+        if (user.server_active && user.recently_active) return 2;  // green - active
+        if (user.server_active) return 1;  // amber - inactive
+        return 0;  // red - offline
+      }
 
-        // Handle null/undefined
-        if (aVal === null || aVal === undefined) aVal = sortDirection === 'asc' ? Infinity : -Infinity;
-        if (bVal === null || bVal === undefined) bVal = sortDirection === 'asc' ? Infinity : -Infinity;
+      var val = user[column];
 
-        // String comparison for username
-        if (sortColumn === 'username') {
-          aVal = (aVal || '').toLowerCase();
-          bVal = (bVal || '').toLowerCase();
-        }
+      // Handle null/undefined - push to end regardless of direction
+      if (val === null || val === undefined) {
+        return direction === 'asc' ? Infinity : -Infinity;
+      }
 
-        // Date comparison for last_activity
-        if (sortColumn === 'last_activity') {
-          aVal = aVal ? new Date(aVal).getTime() : (sortDirection === 'asc' ? Infinity : -Infinity);
-          bVal = bVal ? new Date(bVal).getTime() : (sortDirection === 'asc' ? Infinity : -Infinity);
-        }
+      // String comparison for username
+      if (column === 'username') {
+        return (val || '').toLowerCase();
+      }
 
-        if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
-        if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
-        return 0;
-      });
-    } else {
-      // Default: sort by activity score descending
-      users.sort(function(a, b) {
-        return (b.activity_score || 0) - (a.activity_score || 0);
-      });
+      // Date comparison for last_activity
+      if (column === 'last_activity') {
+        return val ? new Date(val).getTime() : (direction === 'asc' ? Infinity : -Infinity);
+      }
+
+      return val;
     }
+
+    // Apply sorting with secondary sort by username
+    users.sort(function(a, b) {
+      var column = sortColumn || 'status';
+      var direction = sortDirection || 'desc';
+
+      var aVal = getSortValue(a, column, direction);
+      var bVal = getSortValue(b, column, direction);
+
+      var result = 0;
+      if (aVal < bVal) result = direction === 'asc' ? -1 : 1;
+      else if (aVal > bVal) result = direction === 'asc' ? 1 : -1;
+
+      // Secondary sort by username (always ascending) when primary values are equal
+      if (result === 0 && column !== 'username') {
+        var aName = (a.username || '').toLowerCase();
+        var bName = (b.username || '').toLowerCase();
+        if (aName < bName) result = -1;
+        else if (aName > bName) result = 1;
+      }
+
+      return result;
+    });
 
     // Build table rows
     var tbody = $('#activity-table-body');
