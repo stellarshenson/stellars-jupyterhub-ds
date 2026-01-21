@@ -1593,6 +1593,14 @@ class ActivityDataHandler(BaseHandler):
         if not current_user.admin:
             raise web.HTTPError(403, "Only administrators can access this endpoint")
 
+        # Lazy start the background activity sampler on first access
+        sampler = ActivitySampler.get_instance()
+        if sampler.periodic_callback is None:
+            # Get hub app from handler settings
+            hub_app = self.settings.get('hub')
+            if hub_app:
+                sampler.start(hub_app)
+
         self.log.info(f"[Activity Data] Admin {current_user.name} requested activity data")
 
         # Get idle culler config
