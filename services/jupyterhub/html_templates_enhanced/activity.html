@@ -358,14 +358,14 @@ require(["jquery"], function($) {
     var litSegments = Math.ceil(score / 20);  // 0-20=1, 21-40=2, 41-60=3, 61-80=4, 81-100=5
     if (score === 0) litSegments = 0;
 
-    // Color based on score
+    // Color based on lit segments: 1=red, 2-3=yellow, 4-5=green
     var segmentColor;
     if (litSegments >= 4) {
-      segmentColor = '#28a745';  // Green - high activity
+      segmentColor = '#28a745';  // Green - high activity (4-5)
     } else if (litSegments >= 2) {
-      segmentColor = '#ffc107';  // Yellow - medium activity
+      segmentColor = '#ffc107';  // Yellow - medium activity (2-3)
     } else {
-      segmentColor = '#dc3545';  // Red - low activity
+      segmentColor = '#dc3545';  // Red - low activity (1)
     }
 
     // Thin continuous bar with dividers
