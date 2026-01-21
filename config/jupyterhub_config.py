@@ -450,8 +450,7 @@ if c is not None:
         ActivityPageHandler,
         ActivityDataHandler,
         ActivityResetHandler,
-        ActivitySampleHandler,
-        start_activity_sampler
+        ActivitySampleHandler
     )
 
     c.JupyterHub.extra_handlers = [
@@ -470,12 +469,8 @@ if c is not None:
         (r'/activity', ActivityPageHandler),
     ]
 
-    # Activity sampler - periodically samples activity for all users
-    async def start_activity_sampler_hook(app):
-        """Start the background activity sampler after JupyterHub initializes."""
-        start_activity_sampler(app)
-
-    c.JupyterHub.post_init_hook = start_activity_sampler_hook
+    # Activity sampler starts lazily on first Activity page access
+    # (see ActivityDataHandler in custom_handlers.py)
 
     # Idle culler service - automatically stops servers after inactivity
     if JUPYTERHUB_IDLE_CULLER_ENABLED == 1:
