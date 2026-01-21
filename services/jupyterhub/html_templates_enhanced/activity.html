@@ -274,22 +274,17 @@ require(["jquery"], function($) {
     if (cpuPercent === null || cpuPercent === undefined) {
       return '<span class="text-muted">--</span>';
     }
-    var color = cpuPercent > 80 ? 'text-danger' : (cpuPercent > 50 ? 'text-warning' : 'text-success');
-    return '<span class="' + color + '">' + cpuPercent.toFixed(1) + '%</span>';
+    return cpuPercent.toFixed(1) + '%';
   }
 
   function formatMemory(memoryMb, memoryPercent) {
     if (memoryMb === null || memoryMb === undefined) {
       return '<span class="text-muted">--</span>';
     }
-    var formatted;
     if (memoryMb >= 1024) {
-      formatted = (memoryMb / 1024).toFixed(1) + ' GB';
-    } else {
-      formatted = memoryMb.toFixed(0) + ' MB';
+      return (memoryMb / 1024).toFixed(1) + ' GB';
     }
-    var color = memoryPercent > 80 ? 'text-danger' : (memoryPercent > 50 ? 'text-warning' : 'text-success');
-    return '<span class="' + color + '">' + formatted + '</span>';
+    return memoryMb.toFixed(0) + ' MB';
   }
 
   function formatTimeRemaining(seconds) {
