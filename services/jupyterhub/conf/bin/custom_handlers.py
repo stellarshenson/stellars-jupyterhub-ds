@@ -449,7 +449,131 @@ def record_samples_for_all_users(db, find_user_func):
         counts['offline']
     )
 
-    return counts
+
+# =============================================================================
+# Background Activity Sampler (automatic periodic sampling)
+# =============================================================================
+
+_activity_sampler = None
+
+class ActivitySampler:
+    """
+    Background scheduler that periodically samples activity for ALL users.
+    Uses Tornado's PeriodicCallback for non-blocking execution.
+    """
+
+    _instance = None
+
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    def __init__(self):
+        from tornado.ioloop import PeriodicCallback
+        self.periodic_callback = None
+        self.app = None
+        self.interval_seconds = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_ACTIVITY_UPDATE_INTERVAL', 600))
+        print(f"[ActivitySampler] Initialized with interval={self.interval_seconds}s")
+
+    def start(self, app):
+        """Start the periodic sampler. Call this from JupyterHub after startup."""
+        from tornado.ioloop import PeriodicCallback
+        self.app = app
+
+        if self.periodic_callback is not None:
+            print("[ActivitySampler] Already running")
+            return
+
+        # Convert seconds to milliseconds for PeriodicCallback
+        interval_ms = self.interval_seconds * 1000
+
+        self.periodic_callback = PeriodicCallback(self._sample_tick, interval_ms)
+        self.periodic_callback.start()
+        print(f"[ActivitySampler] Started - sampling every {self.interval_seconds}s")
+
+        # Run first sample immediately
+        asyncio.get_event_loop().call_soon(lambda: asyncio.ensure_future(self._sample_tick_async()))
+
+    def stop(self):
+        """Stop the periodic sampler."""
+        if self.periodic_callback is not None:
+            self.periodic_callback.stop()
+            self.periodic_callback = None
+            print("[ActivitySampler] Stopped")
+
+    def _sample_tick(self):
+        """Called by PeriodicCallback - wraps async call."""
+        asyncio.ensure_future(self._sample_tick_async())
+
+    async def _sample_tick_async(self):
+        """Async tick - records samples for all users."""
+        if self.app is None:
+            print("[ActivitySampler] No app reference, skipping")
+            return
+
+        try:
+            from jupyterhub import orm
+
+            # Get database session and user lookup from app
+            db = self.app.db
+            users = self.app.users
+
+            monitor = ActivityMonitor.get_instance()
+            inactive_threshold = monitor.inactive_after_minutes * 60
+            now = datetime.now(timezone.utc)
+
+            counts = {'total': 0, 'active': 0, 'inactive': 0, 'offline': 0}
+
+            for orm_user in db.query(orm.User).all():
+                user = users.get(orm_user.name)
+                if not user:
+                    continue
+
+                spawner = user.spawner
+                server_active = spawner.active if spawner else False
+
+                # Get last_activity from spawner
+                last_activity = None
+                if spawner and spawner.orm_spawner:
+                    last_activity = spawner.orm_spawner.last_activity
+                    if last_activity and last_activity.tzinfo is None:
+                        last_activity = last_activity.replace(tzinfo=timezone.utc)
+
+                # Record sample for this user
+                monitor.record_sample(user.name, last_activity)
+                counts['total'] += 1
+
+                # Count by status
+                if server_active:
+                    if last_activity:
+                        elapsed = (now - last_activity).total_seconds()
+                        if elapsed <= inactive_threshold:
+                            counts['active'] += 1
+                        else:
+                            counts['inactive'] += 1
+                    else:
+                        counts['inactive'] += 1
+                else:
+                    counts['offline'] += 1
+
+            # Log the tick with statistics
+            monitor.log_activity_tick(
+                counts['total'],
+                counts['active'],
+                counts['inactive'],
+                counts['offline']
+            )
+
+        except Exception as e:
+            print(f"[ActivitySampler] Error during sampling: {e}")
+
+
+def start_activity_sampler(app):
+    """Start the background activity sampler. Call from jupyterhub_config.py after hub init."""
+    sampler = ActivitySampler.get_instance()
+    sampler.start(app)
 
 
 # Thread pool for blocking Docker operations (prevents event loop blocking)
