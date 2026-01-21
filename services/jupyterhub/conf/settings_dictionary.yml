@@ -101,6 +101,10 @@ Activity Monitor:
     description: Resource refresh interval in seconds (status, CPU, memory)
     default: "10"
 
+  - name: JUPYTERHUB_ACTIVITYMON_VOLUMES_UPDATE_INTERVAL
+    description: Volume sizes refresh interval in seconds (background)
+    default: "3600"
+
 Branding:
   - name: JUPYTERHUB_LOGO_URI
     description: Custom logo URI
