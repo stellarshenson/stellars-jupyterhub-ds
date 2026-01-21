@@ -433,6 +433,52 @@ async def get_container_stats_async(username):
     return await loop.run_in_executor(_docker_executor, get_container_stats, username)
 
 
+def get_all_user_volumes_sizes():
+    """
+    Get sizes of all user volumes in one call (blocking - use async wrapper).
+    Returns dict: {username: total_size_mb}
+    """
+    try:
+        docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        try:
+            # Get all volumes
+            volumes = docker_client.volumes.list()
+
+            # Build dict of volume sizes by username
+            user_sizes = {}
+            for vol in volumes:
+                name = vol.name
+                # Match pattern: jupyterlab-{encoded_username}_{suffix}
+                if name.startswith('jupyterlab-') and '_' in name:
+                    # Extract encoded username (between 'jupyterlab-' and last '_')
+                    parts = name[len('jupyterlab-'):].rsplit('_', 1)
+                    if len(parts) == 2:
+                        encoded_username = parts[0]
+                        # Get volume size using docker system df approach
+                        # Volume attrs may contain UsageData with Size (API 1.42+)
+                        attrs = vol.attrs
+                        usage_data = attrs.get('UsageData', {})
+                        size_bytes = usage_data.get('Size', 0) or 0
+
+                        if encoded_username not in user_sizes:
+                            user_sizes[encoded_username] = 0
+                        user_sizes[encoded_username] += size_bytes
+
+            # Convert to MB
+            return {user: round(size / (1024 * 1024), 1) for user, size in user_sizes.items()}
+        finally:
+            docker_client.close()
+    except Exception as e:
+        print(f"[Activity] Error getting volume sizes: {e}")
+        return {}
+
+
+async def get_all_user_volumes_sizes_async():
+    """Async wrapper for get_all_user_volumes_sizes - runs in thread pool to avoid blocking"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_docker_executor, get_all_user_volumes_sizes)
+
+
 # =============================================================================
 # Docker Volume Name Encoding
 # =============================================================================
@@ -1307,6 +1353,9 @@ class ActivityDataHandler(BaseHandler):
         timeout_seconds = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_TIMEOUT", 86400))
         max_extension_hours = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION", 24))
 
+        # Fetch all volume sizes async (non-blocking)
+        volume_sizes = await get_all_user_volumes_sizes_async()
+
         # Collect data for all users
         users_data = []
         active_users = []  # Track users needing Docker stats
@@ -1320,6 +1369,10 @@ class ActivityDataHandler(BaseHandler):
             spawner = user.spawner
             server_active = spawner.active if spawner else False
 
+            # Get volume size for this user (using encoded username)
+            encoded_name = encode_username_for_docker(user.name)
+            user_volume_size = volume_sizes.get(encoded_name, 0)
+
             user_data = {
                 "username": user.name,
                 "server_active": server_active,
@@ -1330,7 +1383,8 @@ class ActivityDataHandler(BaseHandler):
                 "time_remaining_seconds": None,
                 "activity_score": None,
                 "sample_count": 0,
-                "last_activity": None
+                "last_activity": None,
+                "volume_size_mb": user_volume_size
             }
 
             # Get activity score
