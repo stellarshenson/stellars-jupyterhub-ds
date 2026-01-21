@@ -1550,6 +1550,11 @@ textarea.form-control {
   min-width: 9em;
 }
 
+.activity-table .col-volumes {
+  width: 8em;
+  min-width: 8em;
+}
+
 .activity-table .col-timeleft {
   width: 12em;
   min-width: 12em;
