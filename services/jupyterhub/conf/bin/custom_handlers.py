@@ -473,17 +473,19 @@ class ActivitySampler:
     def __init__(self):
         from tornado.ioloop import PeriodicCallback
         self.periodic_callback = None
-        self.app = None
-        self.interval_seconds = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_ACTIVITY_UPDATE_INTERVAL', 600))
-        print(f"[ActivitySampler] Initialized with interval={self.interval_seconds}s")
+        self.db = None
+        self.find_user = None
+        self.interval_seconds = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL', 600))
+        print(f"[ActivitySampler] Initialized with interval={self.interval_seconds}s", flush=True)
 
-    def start(self, app):
-        """Start the periodic sampler. Call this from JupyterHub after startup."""
+    def start(self, db, find_user):
+        """Start the periodic sampler. Call with handler's db and find_user."""
         from tornado.ioloop import PeriodicCallback
-        self.app = app
+        self.db = db
+        self.find_user = find_user
 
         if self.periodic_callback is not None:
-            print("[ActivitySampler] Already running")
+            print("[ActivitySampler] Already running", flush=True)
             return
 
         # Convert seconds to milliseconds for PeriodicCallback
@@ -491,7 +493,7 @@ class ActivitySampler:
 
         self.periodic_callback = PeriodicCallback(self._sample_tick, interval_ms)
         self.periodic_callback.start()
-        print(f"[ActivitySampler] Started - sampling every {self.interval_seconds}s")
+        print(f"[ActivitySampler] Started - sampling every {self.interval_seconds}s", flush=True)
 
         # Run first sample immediately
         asyncio.get_event_loop().call_soon(lambda: asyncio.ensure_future(self._sample_tick_async()))
@@ -509,16 +511,12 @@ class ActivitySampler:
 
     async def _sample_tick_async(self):
         """Async tick - records samples for all users."""
-        if self.app is None:
-            print("[ActivitySampler] No app reference, skipping")
+        if self.db is None or self.find_user is None:
+            print("[ActivitySampler] No db/find_user reference, skipping", flush=True)
             return
 
         try:
             from jupyterhub import orm
-
-            # Get database session and user lookup from app
-            db = self.app.db
-            users = self.app.users
 
             monitor = ActivityMonitor.get_instance()
             inactive_threshold = monitor.inactive_after_minutes * 60
@@ -526,8 +524,8 @@ class ActivitySampler:
 
             counts = {'total': 0, 'active': 0, 'inactive': 0, 'offline': 0}
 
-            for orm_user in db.query(orm.User).all():
-                user = users.get(orm_user.name)
+            for orm_user in self.db.query(orm.User).all():
+                user = self.find_user(orm_user.name)
                 if not user:
                     continue
 
@@ -567,13 +565,13 @@ class ActivitySampler:
             )
 
         except Exception as e:
-            print(f"[ActivitySampler] Error during sampling: {e}")
+            print(f"[ActivitySampler] Error during sampling: {e}", flush=True)
 
 
-def start_activity_sampler(app):
-    """Start the background activity sampler. Call from jupyterhub_config.py after hub init."""
+def start_activity_sampler(db, find_user):
+    """Start the background activity sampler. Pass db session and find_user function."""
     sampler = ActivitySampler.get_instance()
-    sampler.start(app)
+    sampler.start(db, find_user)
 
 
 # Thread pool for blocking Docker operations (prevents event loop blocking)
@@ -1596,10 +1594,7 @@ class ActivityDataHandler(BaseHandler):
         # Lazy start the background activity sampler on first access
         sampler = ActivitySampler.get_instance()
         if sampler.periodic_callback is None:
-            # Get hub app from handler settings
-            hub_app = self.settings.get('hub')
-            if hub_app:
-                sampler.start(hub_app)
+            sampler.start(self.db, self.find_user)
 
         self.log.info(f"[Activity Data] Admin {current_user.name} requested activity data")
 
