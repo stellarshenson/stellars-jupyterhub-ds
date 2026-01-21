@@ -449,7 +449,8 @@ if c is not None:
         ExtendSessionHandler,
         ActivityPageHandler,
         ActivityDataHandler,
-        ActivityResetHandler
+        ActivityResetHandler,
+        ActivitySampleHandler
     )
 
     c.JupyterHub.extra_handlers = [
@@ -462,6 +463,7 @@ if c is not None:
         (r'/api/admin/credentials', GetUserCredentialsHandler),
         (r'/api/activity', ActivityDataHandler),
         (r'/api/activity/reset', ActivityResetHandler),
+        (r'/api/activity/sample', ActivitySampleHandler),
         (r'/notifications', NotificationsPageHandler),
         (r'/settings', SettingsPageHandler),
         (r'/activity', ActivityPageHandler),

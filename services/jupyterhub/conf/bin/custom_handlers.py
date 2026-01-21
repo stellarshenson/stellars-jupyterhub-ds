@@ -384,6 +384,74 @@ def reset_all_activity_data():
     return ActivityMonitor.get_instance().reset_all()
 
 
+def record_samples_for_all_users(db, find_user_func):
+    """
+    Record activity samples for ALL users (active and offline).
+
+    Call this from a scheduled task or background process.
+    - Active users with recent activity → sample marked as active
+    - Active users without recent activity (idle) → sample marked as inactive
+    - Offline users → sample marked as inactive (last_activity from last session)
+
+    Args:
+        db: JupyterHub database session (handler.db)
+        find_user_func: Function to find user by name (handler.find_user)
+
+    Returns:
+        dict with counts: {'total': N, 'active': N, 'inactive': N, 'offline': N}
+    """
+    from jupyterhub import orm
+    from datetime import datetime, timezone
+
+    monitor = ActivityMonitor.get_instance()
+    inactive_threshold = monitor.inactive_after_minutes * 60
+    now = datetime.now(timezone.utc)
+
+    counts = {'total': 0, 'active': 0, 'inactive': 0, 'offline': 0}
+
+    for orm_user in db.query(orm.User).all():
+        user = find_user_func(orm_user.name)
+        if not user:
+            continue
+
+        spawner = user.spawner
+        server_active = spawner.active if spawner else False
+
+        # Get last_activity from spawner
+        last_activity = None
+        if spawner and spawner.orm_spawner:
+            last_activity = spawner.orm_spawner.last_activity
+            if last_activity and last_activity.tzinfo is None:
+                last_activity = last_activity.replace(tzinfo=timezone.utc)
+
+        # Record sample for this user
+        monitor.record_sample(user.name, last_activity)
+        counts['total'] += 1
+
+        # Count by status
+        if server_active:
+            if last_activity:
+                elapsed = (now - last_activity).total_seconds()
+                if elapsed <= inactive_threshold:
+                    counts['active'] += 1
+                else:
+                    counts['inactive'] += 1
+            else:
+                counts['inactive'] += 1
+        else:
+            counts['offline'] += 1
+
+    # Log the tick with statistics
+    monitor.log_activity_tick(
+        counts['total'],
+        counts['active'],
+        counts['inactive'],
+        counts['offline']
+    )
+
+    return counts
+
+
 # Thread pool for blocking Docker operations (prevents event loop blocking)
 from concurrent.futures import ThreadPoolExecutor
 _docker_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="docker-stats")
@@ -1526,3 +1594,31 @@ class ActivityResetHandler(BaseHandler):
 
         self.log.info(f"[Activity Reset] Deleted {deleted} samples")
         self.finish({"success": True, "deleted": deleted})
+
+
+class ActivitySampleHandler(BaseHandler):
+    """Handler for triggering activity sampling (admin only)"""
+
+    @web.authenticated
+    async def post(self):
+        """
+        Record activity samples for ALL users (active and offline).
+
+        POST /hub/api/activity/sample
+        Returns: {"success": true, "total": 7, "active": 3, "inactive": 1, "offline": 3}
+
+        Can be called by cron job or scheduler to periodically record samples.
+        """
+        current_user = self.current_user
+
+        # Only admins can trigger activity sampling
+        if not current_user.admin:
+            raise web.HTTPError(403, "Only administrators can trigger activity sampling")
+
+        self.log.info(f"[Activity Sample] Admin {current_user.name} triggered activity sampling")
+
+        counts = record_samples_for_all_users(self.db, self.find_user)
+
+        self.log.info(f"[Activity Sample] Recorded {counts['total']} samples: "
+                      f"{counts['active']} active, {counts['inactive']} inactive, {counts['offline']} offline")
+        self.finish({"success": True, **counts})
