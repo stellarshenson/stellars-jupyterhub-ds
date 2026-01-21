@@ -433,31 +433,43 @@ async def get_container_stats_async(username):
     return await loop.run_in_executor(_docker_executor, get_container_stats, username)
 
 
-def get_all_user_volumes_sizes():
+# =============================================================================
+# Volume Sizes Cache (background refresh to avoid blocking page load)
+# =============================================================================
+
+# Cache for volume sizes: {'data': {encoded_username: size_mb}, 'timestamp': datetime}
+_volume_sizes_cache = {'data': {}, 'timestamp': None, 'refreshing': False}
+
+def _get_volumes_update_interval():
+    """Get volume sizes update interval in seconds (default 3600 = 1 hour)"""
+    return int(os.environ.get('JUPYTERHUB_ACTIVITYMON_VOLUMES_UPDATE_INTERVAL', 3600))
+
+def _fetch_volume_sizes():
     """
-    Get sizes of all user volumes in one call (blocking - use async wrapper).
-    Returns dict: {username: total_size_mb}
+    Fetch sizes of all user volumes (blocking).
+    Returns dict: {encoded_username: total_size_mb}
+    Uses 'docker system df -v' equivalent via Docker SDK.
     """
     try:
         docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
         try:
-            # Get all volumes
-            volumes = docker_client.volumes.list()
+            # Use df() to get disk usage including volume sizes
+            # This is equivalent to 'docker system df -v'
+            df_data = docker_client.df()
+            volumes_data = df_data.get('Volumes', []) or []
 
-            # Build dict of volume sizes by username
+            # Build dict of volume sizes by encoded username
             user_sizes = {}
-            for vol in volumes:
-                name = vol.name
+            for vol in volumes_data:
+                name = vol.get('Name', '')
                 # Match pattern: jupyterlab-{encoded_username}_{suffix}
                 if name.startswith('jupyterlab-') and '_' in name:
                     # Extract encoded username (between 'jupyterlab-' and last '_')
                     parts = name[len('jupyterlab-'):].rsplit('_', 1)
                     if len(parts) == 2:
                         encoded_username = parts[0]
-                        # Get volume size using docker system df approach
-                        # Volume attrs may contain UsageData with Size (API 1.42+)
-                        attrs = vol.attrs
-                        usage_data = attrs.get('UsageData', {})
+                        # UsageData.Size contains actual bytes used
+                        usage_data = vol.get('UsageData', {}) or {}
                         size_bytes = usage_data.get('Size', 0) or 0
 
                         if encoded_username not in user_sizes:
@@ -465,18 +477,61 @@ def get_all_user_volumes_sizes():
                         user_sizes[encoded_username] += size_bytes
 
             # Convert to MB
-            return {user: round(size / (1024 * 1024), 1) for user, size in user_sizes.items()}
+            result = {user: round(size / (1024 * 1024), 1) for user, size in user_sizes.items()}
+            print(f"[Activity] Volume sizes refreshed: {len(result)} users")
+            return result
         finally:
             docker_client.close()
     except Exception as e:
         print(f"[Activity] Error getting volume sizes: {e}")
         return {}
 
+def _refresh_volume_sizes_sync():
+    """Synchronous refresh of volume sizes cache"""
+    global _volume_sizes_cache
+    if _volume_sizes_cache['refreshing']:
+        return  # Already refreshing
 
-async def get_all_user_volumes_sizes_async():
-    """Async wrapper for get_all_user_volumes_sizes - runs in thread pool to avoid blocking"""
+    _volume_sizes_cache['refreshing'] = True
+    try:
+        data = _fetch_volume_sizes()
+        _volume_sizes_cache['data'] = data
+        _volume_sizes_cache['timestamp'] = datetime.now(timezone.utc)
+    finally:
+        _volume_sizes_cache['refreshing'] = False
+
+async def _refresh_volume_sizes_background():
+    """Trigger background refresh of volume sizes (non-blocking)"""
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(_docker_executor, get_all_user_volumes_sizes)
+    loop.run_in_executor(_docker_executor, _refresh_volume_sizes_sync)
+
+def get_cached_volume_sizes():
+    """
+    Get cached volume sizes (non-blocking).
+    Returns immediately with cached data. Triggers background refresh if stale.
+    Returns dict: {encoded_username: size_mb}
+    """
+    global _volume_sizes_cache
+    now = datetime.now(timezone.utc)
+    interval = _get_volumes_update_interval()
+
+    # Check if cache needs refresh
+    needs_refresh = (
+        _volume_sizes_cache['timestamp'] is None or
+        (now - _volume_sizes_cache['timestamp']).total_seconds() > interval
+    )
+
+    return _volume_sizes_cache['data'], needs_refresh
+
+async def get_volume_sizes_with_refresh():
+    """
+    Get volume sizes, triggering background refresh if needed.
+    Returns immediately with cached data (may be empty on first call).
+    """
+    data, needs_refresh = get_cached_volume_sizes()
+    if needs_refresh:
+        await _refresh_volume_sizes_background()
+    return data
 
 
 # =============================================================================
@@ -1353,8 +1408,8 @@ class ActivityDataHandler(BaseHandler):
         timeout_seconds = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_TIMEOUT", 86400))
         max_extension_hours = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION", 24))
 
-        # Fetch all volume sizes async (non-blocking)
-        volume_sizes = await get_all_user_volumes_sizes_async()
+        # Get cached volume sizes (non-blocking, triggers background refresh if stale)
+        volume_sizes = await get_volume_sizes_with_refresh()
 
         # Collect data for all users
         users_data = []
