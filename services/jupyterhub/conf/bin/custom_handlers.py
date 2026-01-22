@@ -11,8 +11,12 @@ import json
 import asyncio
 import time
 import os
+import logging
 import threading
 from datetime import datetime, timedelta, timezone
+
+# Module-level logger
+log = logging.getLogger('jupyterhub.custom_handlers')
 
 
 # =============================================================================
@@ -108,7 +112,7 @@ class ActivityMonitor:
         # Calculate decay constant
         self.decay_lambda = math.log(2) / self.half_life_hours
 
-        print(f"[ActivityMonitor] Config: retention={self.retention_days}d, half_life={self.half_life_hours}h, inactive_after={self.inactive_after_minutes}m, activity_update={self.activity_update_interval}s")
+        log.info(f"[ActivityMonitor] Config: retention={self.retention_days}d, half_life={self.half_life_hours}h, inactive_after={self.inactive_after_minutes}m, activity_update={self.activity_update_interval}s")
 
     @classmethod
     def get_instance(cls):
@@ -124,11 +128,11 @@ class ActivityMonitor:
         try:
             value = int(os.environ.get(name, default))
             if value < min_val or value > max_val:
-                print(f"[ActivityMonitor] {name}={value} out of range ({min_val}-{max_val}), using default {default}")
+                log.info(f"[ActivityMonitor] {name}={value} out of range ({min_val}-{max_val}), using default {default}")
                 return default
             return value
         except (ValueError, TypeError):
-            print(f"[ActivityMonitor] {name} invalid, using default {default}")
+            log.info(f"[ActivityMonitor] {name} invalid, using default {default}")
             return default
 
     def _get_db(self):
@@ -149,10 +153,10 @@ class ActivityMonitor:
             Session = sessionmaker(bind=self._engine)
             self._db_session = Session()
             self._initialized = True
-            print(f"[ActivityMonitor] Database initialized: {db_url}")
+            log.info(f"[ActivityMonitor] Database initialized: {db_url}")
             return self._db_session
         except Exception as e:
-            print(f"[ActivityMonitor] Database init failed: {e}")
+            log.info(f"[ActivityMonitor] Database init failed: {e}")
             return None
 
     def record_sample(self, username, last_activity):
@@ -189,7 +193,7 @@ class ActivityMonitor:
 
             return True
         except Exception as e:
-            print(f"[ActivityMonitor] Error recording sample for {username}: {e}")
+            log.info(f"[ActivityMonitor] Error recording sample for {username}: {e}")
             db.rollback()
             return False
 
@@ -228,7 +232,7 @@ class ActivityMonitor:
 
             return score, len(samples)
         except Exception as e:
-            print(f"[ActivityMonitor] Error calculating score for {username}: {e}")
+            log.info(f"[ActivityMonitor] Error calculating score for {username}: {e}")
             return None, 0
 
     def get_status(self):
@@ -242,7 +246,7 @@ class ActivityMonitor:
             total_samples, total_users = result[0] or 0, result[1] or 0
             return f"{total_samples} samples for {total_users} users" if total_samples > 0 else "No samples yet"
         except Exception as e:
-            print(f"[ActivityMonitor] Error getting status: {e}")
+            log.info(f"[ActivityMonitor] Error getting status: {e}")
             return "Status unavailable"
 
     def rename_user(self, old_username, new_username):
@@ -255,10 +259,10 @@ class ActivityMonitor:
             count = db.query(ActivitySample).filter(ActivitySample.username == old_username).update({'username': new_username})
             db.commit()
             if count > 0:
-                print(f"[ActivityMonitor] Renamed {count} samples: {old_username} -> {new_username}")
+                log.info(f"[ActivityMonitor] Renamed {count} samples: {old_username} -> {new_username}")
             return True
         except Exception as e:
-            print(f"[ActivityMonitor] Error renaming user: {e}")
+            log.info(f"[ActivityMonitor] Error renaming user: {e}")
             db.rollback()
             return False
 
@@ -272,10 +276,10 @@ class ActivityMonitor:
             count = db.query(ActivitySample).filter(ActivitySample.username == username).delete()
             db.commit()
             if count > 0:
-                print(f"[ActivityMonitor] Deleted {count} samples for {username}")
+                log.info(f"[ActivityMonitor] Deleted {count} samples for {username}")
             return True
         except Exception as e:
-            print(f"[ActivityMonitor] Error deleting user: {e}")
+            log.info(f"[ActivityMonitor] Error deleting user: {e}")
             db.rollback()
             return False
 
@@ -290,10 +294,10 @@ class ActivityMonitor:
             count = db.query(ActivitySample).filter(ActivitySample.timestamp < cutoff).delete()
             db.commit()
             if count > 0:
-                print(f"[ActivityMonitor] Pruned {count} old samples")
+                log.info(f"[ActivityMonitor] Pruned {count} old samples")
             return count
         except Exception as e:
-            print(f"[ActivityMonitor] Error pruning samples: {e}")
+            log.info(f"[ActivityMonitor] Error pruning samples: {e}")
             db.rollback()
             return 0
 
@@ -306,10 +310,10 @@ class ActivityMonitor:
         try:
             count = db.query(ActivitySample).delete()
             db.commit()
-            print(f"[ActivityMonitor] Reset: deleted {count} samples")
+            log.info(f"[ActivityMonitor] Reset: deleted {count} samples")
             return count
         except Exception as e:
-            print(f"[ActivityMonitor] Error resetting samples: {e}")
+            log.info(f"[ActivityMonitor] Error resetting samples: {e}")
             db.rollback()
             return 0
 
@@ -352,11 +356,11 @@ class ActivityMonitor:
             total_users = users_active + users_inactive + users_offline
             level_str = ', '.join([f"{k}({v})" for k, v in levels.items() if v > 0]) or 'none'
 
-            print(f"[ActivityMonitor] Tick: {samples_collected} samples collected | "
+            log.info(f"[ActivityMonitor] Tick: {samples_collected} samples collected | "
                   f"Users: {total_users} total (active={users_active}, inactive={users_inactive}, offline={users_offline}) | "
                   f"Activity levels: {level_str}")
         except Exception as e:
-            print(f"[ActivityMonitor] Error logging tick: {e}")
+            log.info(f"[ActivityMonitor] Error logging tick: {e}")
 
 
 # Convenience functions that use the singleton instance
@@ -476,7 +480,7 @@ class ActivitySampler:
         self.db = None
         self.find_user = None
         self.interval_seconds = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL', 600))
-        print(f"[ActivitySampler] Initialized with interval={self.interval_seconds}s", flush=True)
+        log.info(f"[ActivitySampler] Initialized with interval={self.interval_seconds}s")
 
     def start(self, db, find_user):
         """Start the periodic sampler. Call with handler's db and find_user."""
@@ -485,7 +489,7 @@ class ActivitySampler:
         self.find_user = find_user
 
         if self.periodic_callback is not None:
-            print("[ActivitySampler] Already running", flush=True)
+            log.info("[ActivitySampler] Already running")
             return
 
         # Convert seconds to milliseconds for PeriodicCallback
@@ -493,7 +497,7 @@ class ActivitySampler:
 
         self.periodic_callback = PeriodicCallback(self._sample_tick, interval_ms)
         self.periodic_callback.start()
-        print(f"[ActivitySampler] Started - sampling every {self.interval_seconds}s", flush=True)
+        log.info(f"[ActivitySampler] Started - sampling every {self.interval_seconds}s")
 
         # Run first sample immediately
         asyncio.get_event_loop().call_soon(lambda: asyncio.ensure_future(self._sample_tick_async()))
@@ -503,7 +507,7 @@ class ActivitySampler:
         if self.periodic_callback is not None:
             self.periodic_callback.stop()
             self.periodic_callback = None
-            print("[ActivitySampler] Stopped")
+            log.info("[ActivitySampler] Stopped")
 
     def _sample_tick(self):
         """Called by PeriodicCallback - wraps async call."""
@@ -512,7 +516,7 @@ class ActivitySampler:
     async def _sample_tick_async(self):
         """Async tick - records samples for all users."""
         if self.db is None or self.find_user is None:
-            print("[ActivitySampler] No db/find_user reference, skipping", flush=True)
+            log.info("[ActivitySampler] No db/find_user reference, skipping")
             return
 
         try:
@@ -565,7 +569,7 @@ class ActivitySampler:
             )
 
         except Exception as e:
-            print(f"[ActivitySampler] Error during sampling: {e}", flush=True)
+            log.info(f"[ActivitySampler] Error during sampling: {e}")
 
 
 def start_activity_sampler(db, find_user):
@@ -668,12 +672,12 @@ def _fetch_volume_sizes():
 
             # Convert to MB
             result = {user: round(size / (1024 * 1024), 1) for user, size in user_sizes.items()}
-            print(f"[Volume Sizes] Refreshed: {len(result)} users, total {sum(result.values()):.1f} MB", flush=True)
+            log.info(f"[Volume Sizes] Refreshed: {len(result)} users, total {sum(result.values()):.1f} MB")
             return result
         finally:
             docker_client.close()
     except Exception as e:
-        print(f"[Volume Sizes] Error: {e}", flush=True)
+        log.info(f"[Volume Sizes] Error: {e}")
         return {}
 
 def _refresh_volume_sizes_sync():
@@ -720,7 +724,7 @@ async def get_volume_sizes_with_refresh():
     """
     data, needs_refresh = get_cached_volume_sizes()
     if needs_refresh:
-        print(f"[Volume Sizes] Cache stale, triggering background refresh", flush=True)
+        log.info(f"[Volume Sizes] Cache stale, triggering background refresh")
         await _refresh_volume_sizes_background()
     return data
 
