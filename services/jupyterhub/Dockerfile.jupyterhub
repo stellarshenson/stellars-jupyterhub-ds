@@ -44,7 +44,7 @@ COPY --chmod=644  services/jupyterhub/html_templates_enhanced/static/custom.css 
 COPY --chmod=644  config/jupyterhub_config.py /srv/jupyterhub/jupyterhub_config.py
 COPY --chmod=644  services/jupyterhub/conf/settings_dictionary.yml /srv/jupyterhub/settings_dictionary.yml
 
-## install dockerspawner, nativeauthenticator, idle-culler, pyyaml, xkcdpass
+## install dockerspawner, nativeauthenticator, idle-culler, pyyaml, xkcdpass, aiohttp
 RUN <<-EOF
     echo "installing core jupyterhub python packages"
     pip install -U --no-cache-dir \
@@ -53,7 +53,8 @@ RUN <<-EOF
         jupyterhub-nativeauthenticator \
         jupyterhub-idle-culler \
         pyyaml \
-        xkcdpass
+        xkcdpass \
+        aiohttp
 EOF
 
 ## copy custom.css to JupyterHub's static directory
@@ -87,10 +88,10 @@ ENV JUPYTERHUB_IDLE_CULLER_INTERVAL=600
 ENV JUPYTERHUB_IDLE_CULLER_MAX_AGE=0
 ENV JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION=24
 # Activity monitor
+ENV JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL=600
 ENV JUPYTERHUB_ACTIVITYMON_RETENTION_DAYS=7
 ENV JUPYTERHUB_ACTIVITYMON_HALF_LIFE=24
 ENV JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER=60
-ENV JUPYTERHUB_ACTIVITYMON_ACTIVITY_UPDATE_INTERVAL=600
 ENV JUPYTERHUB_ACTIVITYMON_RESOURCES_UPDATE_INTERVAL=10
 ENV JUPYTERHUB_ACTIVITYMON_VOLUMES_UPDATE_INTERVAL=3600
 # Misc
