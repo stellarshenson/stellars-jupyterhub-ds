@@ -730,6 +730,73 @@ async def get_volume_sizes_with_refresh():
 
 
 # =============================================================================
+# Volume Size Refresher (independent background refresh)
+# =============================================================================
+
+class VolumeSizeRefresher:
+    """
+    Background scheduler that periodically refreshes volume sizes.
+    Uses Tornado's PeriodicCallback for non-blocking execution.
+    """
+
+    _instance = None
+
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    def __init__(self):
+        self.periodic_callback = None
+        self.interval_seconds = _get_volumes_update_interval()
+        log.info(f"[VolumeSizeRefresher] Initialized with interval={self.interval_seconds}s")
+
+    def start(self):
+        """Start the periodic refresher."""
+        from tornado.ioloop import PeriodicCallback
+
+        if self.periodic_callback is not None:
+            log.info("[VolumeSizeRefresher] Already running")
+            return
+
+        # Convert seconds to milliseconds for PeriodicCallback
+        interval_ms = self.interval_seconds * 1000
+
+        self.periodic_callback = PeriodicCallback(self._refresh_tick, interval_ms)
+        self.periodic_callback.start()
+        log.info(f"[VolumeSizeRefresher] Started - refreshing every {self.interval_seconds}s")
+
+        # Run first refresh immediately
+        asyncio.get_event_loop().call_soon(lambda: asyncio.ensure_future(self._refresh_tick_async()))
+
+    def stop(self):
+        """Stop the periodic refresher."""
+        if self.periodic_callback is not None:
+            self.periodic_callback.stop()
+            self.periodic_callback = None
+            log.info("[VolumeSizeRefresher] Stopped")
+
+    def _refresh_tick(self):
+        """Called by PeriodicCallback - wraps async call."""
+        asyncio.ensure_future(self._refresh_tick_async())
+
+    async def _refresh_tick_async(self):
+        """Async tick - refreshes volume sizes in background."""
+        try:
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(_docker_executor, _refresh_volume_sizes_sync)
+        except Exception as e:
+            log.error(f"[VolumeSizeRefresher] Error during refresh: {e}")
+
+
+def start_volume_size_refresher():
+    """Start the background volume size refresher."""
+    refresher = VolumeSizeRefresher.get_instance()
+    refresher.start()
+
+
+# =============================================================================
 # Docker Volume Name Encoding
 # =============================================================================
 
@@ -1596,10 +1663,14 @@ class ActivityDataHandler(BaseHandler):
         if not current_user.admin:
             raise web.HTTPError(403, "Only administrators can access this endpoint")
 
-        # Lazy start the background activity sampler on first access
+        # Lazy start background processes on first access
         sampler = ActivitySampler.get_instance()
         if sampler.periodic_callback is None:
             sampler.start(self.db, self.find_user)
+
+        refresher = VolumeSizeRefresher.get_instance()
+        if refresher.periodic_callback is None:
+            refresher.start()
 
         self.log.info(f"[Activity Data] Admin {current_user.name} requested activity data")
 
