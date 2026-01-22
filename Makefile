@@ -4,13 +4,30 @@
 # GLOBALS                                                                       #
 #################################################################################
 .DEFAULT_GOAL := help
-.PHONY: help build push start stop clean increment_version tag logs
+.PHONY: help build push start stop clean increment_version maybe_increment_version tag logs
 
 # Include project configuration
 include project.env
 
 # Use VERSION from project.env as TAG (strip quotes)
 TAG := $(subst ",,$(VERSION))
+
+# Build options (e.g., BUILD_OPTS='--no-cache' or BUILD_OPTS='--no-version-increment')
+BUILD_OPTS ?=
+
+# Check if --no-version-increment is in BUILD_OPTS
+NO_VERSION_INCREMENT := $(findstring --no-version-increment,$(BUILD_OPTS))
+
+# Filter out --no-version-increment from opts passed to docker
+DOCKER_BUILD_OPTS := $(filter-out --no-version-increment,$(BUILD_OPTS))
+
+# Conditional version increment target
+maybe_increment_version:
+ifeq ($(NO_VERSION_INCREMENT),)
+	@$(MAKE) increment_version
+else
+	@echo "Skipping version increment (--no-version-increment)"
+endif
 
 #################################################################################
 # COMMANDS                                                                      #
@@ -31,12 +48,12 @@ increment_version:
 	{ print }' project.env > project.env.tmp && mv project.env.tmp project.env
 
 ## build docker containers
-build: increment_version
-	@cd ./scripts && ./build.sh
+build: clean maybe_increment_version
+	@cd ./scripts && ./build.sh $(DOCKER_BUILD_OPTS)
 
 ## build docker containers and output logs
-build_verbose:
-	@cd ./scripts && ./build_verbose.sh
+build_verbose: clean maybe_increment_version
+	@cd ./scripts && ./build_verbose.sh $(DOCKER_BUILD_OPTS)
 
 ## pull docker image from dockerhub
 pull:
