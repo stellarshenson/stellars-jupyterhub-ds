@@ -469,28 +469,48 @@ if c is not None:
         (r'/activity', ActivityPageHandler),
     ]
 
-    # Activity sampler starts lazily on first Activity page access
-    # (see ActivityDataHandler in custom_handlers.py)
+    # ==========================================================================
+    # Background Services
+    # ==========================================================================
+    import sys
 
-    # Idle culler service - automatically stops servers after inactivity
+    # Initialize services and roles lists
+    services = []
+    roles = []
+
+    # Activity Sampler Service - records user activity for scoring (always enabled)
+    ACTIVITY_SAMPLE_INTERVAL = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL', 600))
+
+    roles.append({
+        "name": "activity-sampler-role",
+        "scopes": [
+            "list:users",
+            "read:users:activity",
+            "read:servers",
+        ],
+        "services": ["activity-sampler"],
+    })
+
+    services.append({
+        "name": "activity-sampler",
+        "command": [sys.executable, "/srv/jupyterhub/activity_sampler.py"],
+    })
+
+    print(f"[Activity Sampler] Enabled - interval={ACTIVITY_SAMPLE_INTERVAL}s")
+
+    # Idle Culler Service - automatically stops servers after inactivity (optional)
     if JUPYTERHUB_IDLE_CULLER_ENABLED == 1:
-        import sys
+        roles.append({
+            "name": "jupyterhub-idle-culler-role",
+            "scopes": [
+                "list:users",
+                "read:users:activity",
+                "read:servers",
+                "delete:servers",
+            ],
+            "services": ["jupyterhub-idle-culler"],
+        })
 
-        # Define role with required scopes for idle culler
-        c.JupyterHub.load_roles = [
-            {
-                "name": "jupyterhub-idle-culler-role",
-                "scopes": [
-                    "list:users",
-                    "read:users:activity",
-                    "read:servers",
-                    "delete:servers",
-                ],
-                "services": ["jupyterhub-idle-culler"],
-            }
-        ]
-
-        # Configure idle culler service
         culler_cmd = [
             sys.executable,
             "-m", "jupyterhub_idle_culler",
@@ -500,13 +520,15 @@ if c is not None:
         if JUPYTERHUB_IDLE_CULLER_MAX_AGE > 0:
             culler_cmd.append(f"--max-age={JUPYTERHUB_IDLE_CULLER_MAX_AGE}")
 
-        c.JupyterHub.services = [
-            {
-                "name": "jupyterhub-idle-culler",
-                "command": culler_cmd,
-            }
-        ]
+        services.append({
+            "name": "jupyterhub-idle-culler",
+            "command": culler_cmd,
+        })
 
-        print(f"[Idle Culler] Enabled - timeout={JUPYTERHUB_IDLE_CULLER_TIMEOUT}s, check every={JUPYTERHUB_IDLE_CULLER_INTERVAL}s, max_age={JUPYTERHUB_IDLE_CULLER_MAX_AGE}s")
+        print(f"[Idle Culler] Enabled - timeout={JUPYTERHUB_IDLE_CULLER_TIMEOUT}s, interval={JUPYTERHUB_IDLE_CULLER_INTERVAL}s, max_age={JUPYTERHUB_IDLE_CULLER_MAX_AGE}s")
+
+    # Apply services and roles
+    c.JupyterHub.services = services
+    c.JupyterHub.load_roles = roles
 
 # EOF

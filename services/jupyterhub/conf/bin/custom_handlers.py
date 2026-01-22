@@ -107,12 +107,12 @@ class ActivityMonitor:
         self.retention_days = self._get_env_int("JUPYTERHUB_ACTIVITYMON_RETENTION_DAYS", self.DEFAULT_RETENTION_DAYS, 1, 365)
         self.half_life_hours = self._get_env_int("JUPYTERHUB_ACTIVITYMON_HALF_LIFE", self.DEFAULT_HALF_LIFE, 1, 168)
         self.inactive_after_minutes = self._get_env_int("JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER", self.DEFAULT_INACTIVE_AFTER, 1, 1440)
-        self.activity_update_interval = self._get_env_int("JUPYTERHUB_ACTIVITYMON_ACTIVITY_UPDATE_INTERVAL", self.DEFAULT_ACTIVITY_UPDATE_INTERVAL, 60, 86400)
+        self.sample_interval = self._get_env_int("JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL", self.DEFAULT_ACTIVITY_UPDATE_INTERVAL, 60, 86400)
 
         # Calculate decay constant
         self.decay_lambda = math.log(2) / self.half_life_hours
 
-        log.info(f"[ActivityMonitor] Config: retention={self.retention_days}d, half_life={self.half_life_hours}h, inactive_after={self.inactive_after_minutes}m, activity_update={self.activity_update_interval}s")
+        log.info(f"[ActivityMonitor] Config: retention={self.retention_days}d, half_life={self.half_life_hours}h, inactive_after={self.inactive_after_minutes}m, sample_interval={self.sample_interval}s")
 
     @classmethod
     def get_instance(cls):
@@ -1663,11 +1663,8 @@ class ActivityDataHandler(BaseHandler):
         if not current_user.admin:
             raise web.HTTPError(403, "Only administrators can access this endpoint")
 
-        # Lazy start background processes on first access
-        sampler = ActivitySampler.get_instance()
-        if sampler.periodic_callback is None:
-            sampler.start(self.db, self.find_user)
-
+        # Lazy start volume size refresher on first access
+        # (Activity sampler runs as independent JupyterHub service)
         refresher = VolumeSizeRefresher.get_instance()
         if refresher.periodic_callback is None:
             refresher.start()

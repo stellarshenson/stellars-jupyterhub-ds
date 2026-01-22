@@ -93,8 +93,8 @@ Activity Monitor:
     description: Minutes until user considered inactive (1-1440)
     default: "60"
 
-  - name: JUPYTERHUB_ACTIVITYMON_ACTIVITY_UPDATE_INTERVAL
-    description: Activity sample collection interval in seconds (60-86400)
+  - name: JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL
+    description: Activity sampling interval in seconds (60-86400)
     default: "600"
 
   - name: JUPYTERHUB_ACTIVITYMON_RESOURCES_UPDATE_INTERVAL
