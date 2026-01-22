@@ -641,7 +641,7 @@ def _get_volumes_update_interval():
 def _fetch_volume_sizes():
     """
     Fetch sizes of all user volumes (blocking).
-    Returns dict: {encoded_username: total_size_mb}
+    Returns dict: {encoded_username: {"total": float, "volumes": {suffix: float}}}
     Uses 'docker system df -v' equivalent via Docker SDK.
     """
     try:
@@ -652,28 +652,33 @@ def _fetch_volume_sizes():
             df_data = docker_client.df()
             volumes_data = df_data.get('Volumes', []) or []
 
-            # Build dict of volume sizes by encoded username
-            user_sizes = {}
+            # Build dict of volume sizes by encoded username with per-volume breakdown
+            user_data = {}
             for vol in volumes_data:
                 name = vol.get('Name', '')
                 # Match pattern: jupyterlab-{encoded_username}_{suffix}
                 if name.startswith('jupyterlab-') and '_' in name:
-                    # Extract encoded username (between 'jupyterlab-' and last '_')
+                    # Extract encoded username and suffix (between 'jupyterlab-' and last '_')
                     parts = name[len('jupyterlab-'):].rsplit('_', 1)
                     if len(parts) == 2:
-                        encoded_username = parts[0]
+                        encoded_username, suffix = parts
                         # UsageData.Size contains actual bytes used
                         usage_data = vol.get('UsageData', {}) or {}
                         size_bytes = usage_data.get('Size', 0) or 0
+                        size_mb = round(size_bytes / (1024 * 1024), 1)
 
-                        if encoded_username not in user_sizes:
-                            user_sizes[encoded_username] = 0
-                        user_sizes[encoded_username] += size_bytes
+                        if encoded_username not in user_data:
+                            user_data[encoded_username] = {"total": 0, "volumes": {}}
+                        user_data[encoded_username]["total"] += size_mb
+                        user_data[encoded_username]["volumes"][suffix] = size_mb
 
-            # Convert to MB
-            result = {user: round(size / (1024 * 1024), 1) for user, size in user_sizes.items()}
-            log.info(f"[Volume Sizes] Refreshed: {len(result)} users, total {sum(result.values()):.1f} MB")
-            return result
+            # Round totals
+            for user in user_data:
+                user_data[user]["total"] = round(user_data[user]["total"], 1)
+
+            total_size = sum(u["total"] for u in user_data.values())
+            log.info(f"[Volume Sizes] Refreshed: {len(user_data)} users, total {total_size:.1f} MB")
+            return user_data
         finally:
             docker_client.close()
     except Exception as e:
@@ -1694,7 +1699,9 @@ class ActivityDataHandler(BaseHandler):
 
             # Get volume size for this user (using encoded username)
             encoded_name = encode_username_for_docker(user.name)
-            user_volume_size = volume_sizes.get(encoded_name, 0)
+            user_volume_data = volume_sizes.get(encoded_name, {"total": 0, "volumes": {}})
+            user_volume_size = user_volume_data.get("total", 0)
+            user_volume_breakdown = user_volume_data.get("volumes", {})
 
             user_data = {
                 "username": user.name,
@@ -1707,7 +1714,8 @@ class ActivityDataHandler(BaseHandler):
                 "activity_score": None,
                 "sample_count": 0,
                 "last_activity": None,
-                "volume_size_mb": user_volume_size
+                "volume_size_mb": user_volume_size,
+                "volume_breakdown": user_volume_breakdown
             }
 
             # Get activity score
