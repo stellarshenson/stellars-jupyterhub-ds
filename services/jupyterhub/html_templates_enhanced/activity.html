@@ -252,7 +252,7 @@ require(["jquery"], function($) {
         '<td class="text-center">' + formatStatus(user.server_active, user.recently_active) + '</td>' +
         '<td class="text-center">' + formatCpu(user.cpu_percent) + '</td>' +
         '<td class="text-center">' + formatMemory(user.memory_mb, user.memory_percent) + '</td>' +
-        '<td class="text-center">' + formatVolumeSize(user.volume_size_mb) + '</td>' +
+        '<td class="text-center">' + formatVolumeSize(user.volume_size_mb, user.volume_breakdown) + '</td>' +
         '<td class="text-center">' + formatTimeRemaining(user.time_remaining_seconds) + '</td>' +
         '<td>' + formatLastActive(user.last_activity) + '</td>' +
         '<td>' + renderActivityBar(user.activity_score) + '</td>' +
@@ -291,14 +291,36 @@ require(["jquery"], function($) {
     return memoryMb.toFixed(0) + ' MB';
   }
 
-  function formatVolumeSize(sizeMb) {
+  function formatVolumeSize(sizeMb, breakdown) {
     if (sizeMb === null || sizeMb === undefined || sizeMb === 0) {
       return '<span class="text-muted">--</span>';
     }
+    // Format total size
+    var displaySize;
     if (sizeMb >= 1024) {
-      return (sizeMb / 1024).toFixed(1) + ' GB';
+      displaySize = (sizeMb / 1024).toFixed(1) + ' GB';
+    } else {
+      displaySize = Math.round(sizeMb) + ' MB';
     }
-    return Math.round(sizeMb) + ' MB';
+    // Build tooltip with breakdown
+    if (breakdown && Object.keys(breakdown).length > 0) {
+      var tooltipLines = [];
+      // Sort volumes by name for consistent display
+      var sortedKeys = Object.keys(breakdown).sort();
+      sortedKeys.forEach(function(suffix) {
+        var volSize = breakdown[suffix];
+        var volDisplay;
+        if (volSize >= 1024) {
+          volDisplay = (volSize / 1024).toFixed(1) + ' GB';
+        } else {
+          volDisplay = Math.round(volSize) + ' MB';
+        }
+        tooltipLines.push(suffix + ': ' + volDisplay);
+      });
+      var tooltip = tooltipLines.join('&#10;');
+      return '<span title="' + tooltip + '" style="cursor: help; border-bottom: 1px dotted currentColor;">' + displaySize + '</span>';
+    }
+    return displaySize;
   }
 
   function formatTimeRemaining(seconds) {

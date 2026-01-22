@@ -243,3 +243,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 80. **Task - Activity monitor half-life to 48h**: Changed decay half-life default from 24h to 48h<br>
     **Result**: Updated JUPYTERHUB_ACTIVITYMON_HALF_LIFE default across Dockerfile, custom_handlers.py (DEFAULT_HALF_LIFE constant), activity_sampler.py (code and docstring), settings_dictionary.yml, and README.md. With 48h half-life, a sample from 48 hours ago has 50% weight, providing smoother decay for activity scoring
+
+81. **Task - Volume size tooltip with breakdown**: Added hover tooltip showing per-volume sizes<br>
+    **Result**: Modified `_fetch_volume_sizes()` to return `{encoded_username: {"total": float, "volumes": {suffix: float}}}` structure with per-volume breakdown (home, workspace, cache). Updated `ActivityDataHandler` to pass `volume_breakdown` dict to frontend. Enhanced `formatVolumeSize()` in activity.html to display tooltip on hover showing individual volume sizes (e.g., "cache: 500 MB\nhome: 1.2 GB\nworkspace: 3.5 GB"). Volume size displays dotted underline to indicate tooltip availability
