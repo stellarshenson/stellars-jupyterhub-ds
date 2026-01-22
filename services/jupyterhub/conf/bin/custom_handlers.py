@@ -668,12 +668,12 @@ def _fetch_volume_sizes():
 
             # Convert to MB
             result = {user: round(size / (1024 * 1024), 1) for user, size in user_sizes.items()}
-            print(f"[Activity] Volume sizes refreshed: {len(result)} users")
+            print(f"[Volume Sizes] Refreshed: {len(result)} users, total {sum(result.values()):.1f} MB", flush=True)
             return result
         finally:
             docker_client.close()
     except Exception as e:
-        print(f"[Activity] Error getting volume sizes: {e}")
+        print(f"[Volume Sizes] Error: {e}", flush=True)
         return {}
 
 def _refresh_volume_sizes_sync():
@@ -720,6 +720,7 @@ async def get_volume_sizes_with_refresh():
     """
     data, needs_refresh = get_cached_volume_sizes()
     if needs_refresh:
+        print(f"[Volume Sizes] Cache stale, triggering background refresh", flush=True)
         await _refresh_volume_sizes_background()
     return data
 
