@@ -240,3 +240,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 79. **Task - Activity tracking methodology research**: Documented industry approaches for activity scoring<br>
     **Result**: Created `docs/activity-tracking-methodology.md` covering: (1) Exponential Moving Average with decay - our current approach using half-life parameterization, (2) Time-Window Percentage (Hubstaff) - active seconds per 10-min window with 60-80% typical for development, (3) Daily Target (8h=100%) - maps to work expectations, (4) GitHub Contribution Graph - threshold-based intensity levels. Research confirms our EMA approach is industry-standard. Key insight from Hubstaff: 100% activity is unrealistic, typical ranges 30-80% depending on role
+
+80. **Task - Activity monitor half-life to 48h**: Changed decay half-life default from 24h to 48h<br>
+    **Result**: Updated JUPYTERHUB_ACTIVITYMON_HALF_LIFE default across Dockerfile, custom_handlers.py (DEFAULT_HALF_LIFE constant), activity_sampler.py (code and docstring), settings_dictionary.yml, and README.md. With 48h half-life, a sample from 48 hours ago has 50% weight, providing smoother decay for activity scoring

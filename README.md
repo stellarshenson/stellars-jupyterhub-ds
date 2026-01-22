@@ -392,7 +392,7 @@ services:
     environment:
       - JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL=600   # 10 minutes (default) - how often to record samples
       - JUPYTERHUB_ACTIVITYMON_RETENTION_DAYS=7      # 7 days (default) - how long to keep samples
-      - JUPYTERHUB_ACTIVITYMON_HALF_LIFE=24          # 24 hours (default) - decay half-life for scoring
+      - JUPYTERHUB_ACTIVITYMON_HALF_LIFE=48          # 48 hours (default) - decay half-life for scoring
       - JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER=60     # 60 minutes (default) - threshold for inactive status
 ```
 
