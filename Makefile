@@ -47,11 +47,11 @@ increment_version:
 	} \
 	{ print }' project.env > project.env.tmp && mv project.env.tmp project.env
 
-## build docker containers
+## build docker containers (BUILD_OPTS='--no-version-increment --no-cache')
 build: clean maybe_increment_version
 	@cd ./scripts && ./build.sh $(DOCKER_BUILD_OPTS)
 
-## build docker containers and output logs
+## build with verbose output (BUILD_OPTS='--no-version-increment --no-cache')
 build_verbose: clean maybe_increment_version
 	@cd ./scripts && ./build_verbose.sh $(DOCKER_BUILD_OPTS)
 
