@@ -228,3 +228,12 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 75. **Task - Makefile BUILD_OPTS for skipping version increment**: Added build options configuration matching stellars-jupyterlab-ds pattern<br>
     **Result**: Added `BUILD_OPTS` variable, `NO_VERSION_INCREMENT` check using findstring, `DOCKER_BUILD_OPTS` filtering out --no-version-increment, `maybe_increment_version` conditional target. Updated `build` and `build_verbose` targets to use `maybe_increment_version` and pass `DOCKER_BUILD_OPTS` to scripts. Usage: `make build BUILD_OPTS='--no-version-increment'` or combine with `--no-cache`
+
+76. **Task - Refactor print to logging module**: Replaced print statements with proper Python logging<br>
+    **Result**: Added `import logging` and module-level `log = logging.getLogger('jupyterhub.custom_handlers')` to custom_handlers.py. Replaced all `print()` calls with `log.info()` or `log.error()` for ActivityMonitor, ActivitySampler, and Volume Sizes functions. Removed `flush=True` parameters (not needed with logging). Logs now appear properly in JupyterHub's log output
+
+77. **Task - VolumeSizeRefresher for independent background refresh**: Added periodic background refresh for volume sizes<br>
+    **Result**: Created `VolumeSizeRefresher` class using Tornado's PeriodicCallback, similar to ActivitySampler. Refreshes volume sizes every hour (JUPYTERHUB_ACTIVITYMON_VOLUMES_UPDATE_INTERVAL). Lazy starts on first Activity page access. Runs first refresh immediately, then at configured interval. Volume sizes now refresh independently of page views once started
+
+78. **Task - Activity sampler as independent JupyterHub service**: Converted from lazy-start to boot-time service<br>
+    **Result**: **Problem**: Activity sampler only started when someone viewed Activity page - not truly independent. **Solution**: Created standalone `activity_sampler.py` service that runs as JupyterHub managed service (like idle-culler). Uses JupyterHub REST API with aiohttp to fetch user activity data. Configured with `activity-sampler-role` having `list:users`, `read:users:activity`, `read:servers` scopes. Service starts automatically on JupyterHub boot, runs continuously with 5-second initial delay. Records samples to same SQLite database (`/data/activity_samples.sqlite`). Removed lazy-start code from ActivityDataHandler. Added aiohttp to Dockerfile dependencies. Renamed env var to `JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL` for consistency
