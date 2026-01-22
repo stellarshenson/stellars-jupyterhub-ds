@@ -94,7 +94,7 @@ class ActivityMonitor:
 
     # Default configuration
     DEFAULT_RETENTION_DAYS = 7       # 7 days
-    DEFAULT_HALF_LIFE = 24           # 24 hours
+    DEFAULT_HALF_LIFE = 48           # 48 hours
     DEFAULT_INACTIVE_AFTER = 60      # 60 minutes
     DEFAULT_ACTIVITY_UPDATE_INTERVAL = 600  # 10 minutes
 
