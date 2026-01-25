@@ -9,6 +9,22 @@ Our current approach uses **exponential decay scoring**:
 - Weight formula: `weight = exp(-λ × age_hours)` where `λ = ln(2) / half_life`
 - Default half-life: 72 hours / 3 days (activity from 3 days ago worth 50%)
 
+### Why 72-hour Half-life?
+
+The decay applies to **wall-clock time**, not working time. A typical user works 8-9 hours per day - roughly 1/3 of a 24-hour period. This creates a mismatch between calendar decay and effective working activity decay:
+
+| Calendar Half-life | Working Hours in Period | Effective Work Half-life |
+|--------------------|-------------------------|--------------------------|
+| 24 hours | ~8 hours | ~8 hours of work |
+| 72 hours (3 days) | ~24 hours | ~24 hours of work |
+
+With a 72-hour calendar half-life:
+- A user working 8h/day accumulates ~24 hours of working time over 3 calendar days
+- Activity from those 24 working hours has 50% weight
+- The decay is effectively calibrated to **one full workday** of actual engagement
+
+This makes scores more stable for users with typical work patterns. A 24-hour half-life would be too aggressive - yesterday's full workday would already be at 50% weight before today even starts, penalizing normal overnight breaks
+
 ## Industry Approaches
 
 ### 1. Exponential Moving Average (EMA) / Time-Decay Systems
