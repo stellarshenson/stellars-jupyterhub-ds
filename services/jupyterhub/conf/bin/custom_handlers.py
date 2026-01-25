@@ -1703,8 +1703,22 @@ class ActivityDataHandler(BaseHandler):
             user_volume_size = user_volume_data.get("total", 0)
             user_volume_breakdown = user_volume_data.get("volumes", {})
 
+            # Get authorization status from NativeAuthenticator
+            is_authorized = False
+            try:
+                from sqlalchemy import text
+                result = self.db.execute(
+                    text("SELECT is_authorized FROM users_info WHERE username = :username"),
+                    {"username": user.name}
+                ).fetchone()
+                if result:
+                    is_authorized = bool(result[0])
+            except Exception:
+                pass  # Table may not exist if not using NativeAuthenticator
+
             user_data = {
                 "username": user.name,
+                "is_authorized": is_authorized,
                 "server_active": server_active,
                 "recently_active": False,  # True if activity within INACTIVE_AFTER threshold
                 "cpu_percent": None,

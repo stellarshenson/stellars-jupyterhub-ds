@@ -140,14 +140,17 @@ Bar is capped at 100% (5 segments). Tooltip shows actual percentage, including v
 
 | Column | Description | Sortable |
 |--------|-------------|----------|
-| User | Username | Yes |
-| Status | 3-state indicator | Yes |
+| User | JupyterHub username | Yes |
+| Auth | Authorization status (checkmark=authorized, X=not authorized) | Yes |
+| Status | 3-state indicator (green=active, yellow=idle, red=offline) | Yes |
 | CPU | Current CPU usage % | Yes |
 | Memory | Current memory in MB/GB | Yes |
 | Volumes | Total volume size (tooltip: per-volume breakdown) | Yes |
 | Time Left | Remaining session time (if idle culler enabled) | Yes |
 | Last Active | Relative time since last activity | Yes |
 | Activity | Normalized activity score bar | Yes |
+
+All column headers have tooltips explaining their meaning.
 
 Default sort: Status descending (active users first), then username ascending.
 
@@ -162,6 +165,7 @@ Returns JSON array of all users with activity data:
   "users": [
     {
       "username": "konrad",
+      "is_authorized": true,
       "server_active": true,
       "recently_active": true,
       "cpu_percent": 12.5,

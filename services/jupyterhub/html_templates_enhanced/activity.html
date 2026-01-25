@@ -40,14 +40,15 @@
     <table class="table table-sm table-striped table-hover activity-table">
       <thead class="table-dark">
         <tr>
-          <th class="col-user sortable" data-sort="username">User <span class="sort-icon"></span></th>
-          <th class="col-status text-center sortable" data-sort="status">Status <span class="sort-icon"></span></th>
-          <th class="col-cpu text-center sortable" data-sort="cpu_percent">CPU <span class="sort-icon"></span></th>
-          <th class="col-memory text-center sortable" data-sort="memory_mb">Memory <span class="sort-icon"></span></th>
-          <th class="col-volumes text-center sortable" data-sort="volume_size_mb">Volumes <span class="sort-icon"></span></th>
-          <th class="col-timeleft text-center sortable" data-sort="time_remaining_seconds">Time Left <span class="sort-icon"></span></th>
-          <th class="col-lastactive sortable" data-sort="last_activity">Last Active <span class="sort-icon"></span></th>
-          <th class="col-activity sortable" data-sort="activity_score">Activity <span class="sort-icon"></span></th>
+          <th class="col-user sortable" data-sort="username" title="JupyterHub username">User <span class="sort-icon"></span></th>
+          <th class="col-auth text-center sortable" data-sort="is_authorized" title="Authorization status in NativeAuthenticator">Auth <span class="sort-icon"></span></th>
+          <th class="col-status text-center sortable" data-sort="status" title="Server status: green=active, yellow=idle, red=offline">Status <span class="sort-icon"></span></th>
+          <th class="col-cpu text-center sortable" data-sort="cpu_percent" title="Current CPU usage of user container">CPU <span class="sort-icon"></span></th>
+          <th class="col-memory text-center sortable" data-sort="memory_mb" title="Current memory usage of user container">Memory <span class="sort-icon"></span></th>
+          <th class="col-volumes text-center sortable" data-sort="volume_size_mb" title="Total size of user volumes (home, workspace, cache)">Volumes <span class="sort-icon"></span></th>
+          <th class="col-timeleft text-center sortable" data-sort="time_remaining_seconds" title="Time until idle culler stops the server">Time Left <span class="sort-icon"></span></th>
+          <th class="col-lastactive sortable" data-sort="last_activity" title="Time since last JupyterLab activity">Last Active <span class="sort-icon"></span></th>
+          <th class="col-activity sortable" data-sort="activity_score" title="Activity score based on exponential decay (hover bar for %)">Activity <span class="sort-icon"></span></th>
         </tr>
       </thead>
       <tbody id="activity-table-body">
@@ -207,6 +208,11 @@ require(["jquery"], function($) {
         return 0;  // red - offline
       }
 
+      // Authorization sorting: authorized (1) > not authorized (0)
+      if (column === 'is_authorized') {
+        return user.is_authorized ? 1 : 0;
+      }
+
       var val = user[column];
 
       // Handle null/undefined - push to end regardless of direction
@@ -257,6 +263,7 @@ require(["jquery"], function($) {
     users.forEach(function(user) {
       var row = '<tr>' +
         '<td><strong>' + escapeHtml(user.username) + '</strong></td>' +
+        '<td class="text-center">' + formatAuth(user.is_authorized) + '</td>' +
         '<td class="text-center">' + formatStatus(user.server_active, user.recently_active) + '</td>' +
         '<td class="text-center">' + formatCpu(user.cpu_percent) + '</td>' +
         '<td class="text-center">' + formatMemory(user.memory_mb, user.memory_percent) + '</td>' +
@@ -279,6 +286,14 @@ require(["jquery"], function($) {
       return '<span title="Online (inactive)"><i class="fa fa-circle text-warning" aria-hidden="true"></i></span>';
     } else {
       return '<span title="Offline"><i class="fa fa-circle text-danger" aria-hidden="true"></i></span>';
+    }
+  }
+
+  function formatAuth(isAuthorized) {
+    if (isAuthorized) {
+      return '<span title="Authorized"><i class="fa fa-check" style="color: #28a745;" aria-hidden="true"></i></span>';
+    } else {
+      return '<span title="Not authorized"><i class="fa fa-times text-danger" aria-hidden="true"></i></span>';
     }
   }
 
