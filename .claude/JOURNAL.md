@@ -270,3 +270,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 89. **Task - Activity table column fixes**: Fixed Auth column width and Volumes tooltip<br>
     **Result**: Increased `.col-auth` width from 4em to 5em to prevent "Au..." truncation (now matches Status column width). Changed Volumes column tooltip from "Total size of user volumes (home, workspace, cache)" to "Total size of user volumes (hover for breakdown)" since volume names are autodiscovered and shown in cell tooltip
+
+90. **Task - Admin UX improvements**: Added deletion spinner and activity initialization for new users<br>
+    **Result**: **Deletion Spinner**: Modified admin.html fetch interceptor to detect DELETE requests to `/api/users/{username}`, show loading modal with "Deleting user {username}..." message, and hide on completion. Refactored `showLoadingSpinner(message)` to accept dynamic text, added `id="loading-modal-text"` to modal for text updates. **Activity Initialization**: Added `initialize_activity_for_user(username)` function in custom_handlers.py that records initial inactive sample (active=False, last_activity=None). Called from `after_insert` listener in jupyterhub_config.py when new user created. New users now show 0% activity bar with "Not enough data" tooltip instead of '--'

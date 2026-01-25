@@ -383,6 +383,14 @@ def rename_activity_user(old_username, new_username):
 def delete_activity_user(username):
     return ActivityMonitor.get_instance().delete_user(username)
 
+def initialize_activity_for_user(username):
+    """Initialize activity tracking for a new user.
+
+    Records an initial inactive sample so the user appears in the Activity Monitor
+    with 0% activity rather than '--'.
+    """
+    return ActivityMonitor.get_instance().record_sample(username, last_activity=None)
+
 def reset_all_activity_data():
     """Reset all activity data (delete all samples)"""
     return ActivityMonitor.get_instance().reset_all()
