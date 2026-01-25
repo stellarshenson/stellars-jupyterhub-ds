@@ -252,3 +252,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 83. **Task - Activity monitor half-life to 72h (3 days)**: Extended decay half-life for smoother scoring<br>
     **Result**: Updated JUPYTERHUB_ACTIVITYMON_HALF_LIFE default from 48h to 72h across Dockerfile, custom_handlers.py, activity_sampler.py, settings_dictionary.yml, README.md, and docs/activity-tracking-methodology.md. Added rationale section explaining why 72h: decay applies to wall-clock time, not working time. A user working 8h/day is active only 1/3 of each 24h period - with 72h calendar half-life, ~24 working hours (3 days × 8h) have 50% weight, effectively calibrating decay to one full workday of engagement. This prevents overnight breaks from aggressively penalizing scores
+
+84. **Task - Half-life simulation tables**: Added detailed simulation results to documentation<br>
+    **Result**: Ran Python simulation for different work patterns (10h, 8h, 4h per day) across calendar half-lives (24h-168h). Added three tables to docs/activity-tracking-methodology.md showing "Work Hours at 50%" and "Work Days at 50%" for each combination. Key finding: 72h calendar half-life consistently yields ~2.9 work days at 50% point regardless of daily work hours. Activity scores correctly reflect work fraction (10h=41.6%, 8h=33.3%, 4h=16.6%)

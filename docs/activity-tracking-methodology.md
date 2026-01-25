@@ -11,19 +11,57 @@ Our current approach uses **exponential decay scoring**:
 
 ### Why 72-hour Half-life?
 
-The decay applies to **wall-clock time**, not working time. A typical user works 8-9 hours per day - roughly 1/3 of a 24-hour period. This creates a mismatch between calendar decay and effective working activity decay:
+The decay applies to **wall-clock time**, not working time. Users work only a fraction of each 24-hour period, creating a mismatch between calendar decay and effective working activity decay.
 
-| Calendar Half-life | Working Hours in Period | Effective Work Half-life |
-|--------------------|-------------------------|--------------------------|
-| 24 hours | ~8 hours | ~8 hours of work |
-| 72 hours (3 days) | ~24 hours | ~24 hours of work |
+#### Simulation Results
+
+The following tables show how different calendar half-lives translate to effective working-time decay for various work patterns. "Work Hours at 50%" indicates how many actual working hours contribute 50% of the weighted activity score.
+
+**10h/day work pattern** (intensive)
+
+| Calendar Half-life | Work Hours at 50% | Work Days at 50% | Activity Score |
+|:------------------:|:-----------------:|:----------------:|:--------------:|
+| 24h (1d) | 10.0h | 1.0 days | 41.0% |
+| 48h (2d) | 19.8h | 2.0 days | 41.5% |
+| 72h (3d) | 28.5h | 2.9 days | 41.6% |
+| 96h (4d) | 35.3h | 3.5 days | 41.6% |
+| 168h (7d) | 47.7h | 4.8 days | 41.7% |
+
+**8h/day work pattern** (typical)
+
+| Calendar Half-life | Work Hours at 50% | Work Days at 50% | Activity Score |
+|:------------------:|:-----------------:|:----------------:|:--------------:|
+| 24h (1d) | 8.0h | 1.0 days | 32.7% |
+| 48h (2d) | 16.0h | 2.0 days | 33.2% |
+| 72h (3d) | 22.8h | 2.9 days | 33.3% |
+| 96h (4d) | 28.3h | 3.5 days | 33.3% |
+| 168h (7d) | 38.2h | 4.8 days | 33.3% |
+
+**4h/day work pattern** (part-time)
+
+| Calendar Half-life | Work Hours at 50% | Work Days at 50% | Activity Score |
+|:------------------:|:-----------------:|:----------------:|:--------------:|
+| 24h (1d) | 4.0h | 1.0 days | 16.3% |
+| 48h (2d) | 8.0h | 2.0 days | 16.6% |
+| 72h (3d) | 11.5h | 2.9 days | 16.6% |
+| 96h (4d) | 14.2h | 3.5 days | 16.6% |
+| 168h (7d) | 19.2h | 4.8 days | 16.7% |
+
+#### Summary: 72-hour Half-life Across Work Patterns
+
+| Work Pattern | Work Hours at 50% | Effective Work Days | Activity Score |
+|:------------:|:-----------------:|:-------------------:|:--------------:|
+| 10h/day | 28.5h | 2.9 days | 41.6% |
+| 8h/day | 22.8h | 2.9 days | 33.3% |
+| 4h/day | 11.5h | 2.9 days | 16.6% |
+
+#### Key Insights
 
 With a 72-hour calendar half-life:
-- A user working 8h/day accumulates ~24 hours of working time over 3 calendar days
-- Activity from those 24 working hours has 50% weight
-- The decay is effectively calibrated to **one full workday** of actual engagement
-
-This makes scores more stable for users with typical work patterns. A 24-hour half-life would be too aggressive - yesterday's full workday would already be at 50% weight before today even starts, penalizing normal overnight breaks
+- **Consistent ~3 work days** at the 50% point regardless of daily work hours
+- Activity score reflects actual work fraction (8h/24h ≈ 33%, 4h/24h ≈ 17%)
+- Overnight breaks don't aggressively penalize scores
+- A 24-hour half-life would be too aggressive - yesterday's work already at 50% weight before today starts
 
 ## Industry Approaches
 
