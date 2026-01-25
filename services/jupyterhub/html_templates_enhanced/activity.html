@@ -66,6 +66,10 @@ require(["jquery"], function($) {
   var targetHours = {{ activitymon_target_hours | default(8) }};
   var normalizationFactor = targetHours / 24;  // e.g., 8/24 = 0.333
 
+  // Minimum samples required for 24h of data
+  var sampleInterval = {{ activitymon_sample_interval | default(600) }};  // seconds
+  var minSamplesFor24h = Math.ceil(86400 / sampleInterval);  // e.g., 86400/600 = 144 samples
+
   var autoRefreshInterval = null;
   var currentUsersData = [];  // Store data for re-sorting
   var sortColumn = null;      // Current sort column
@@ -259,7 +263,7 @@ require(["jquery"], function($) {
         '<td class="text-center">' + formatVolumeSize(user.volume_size_mb, user.volume_breakdown) + '</td>' +
         '<td class="text-center">' + formatTimeRemaining(user.time_remaining_seconds) + '</td>' +
         '<td>' + formatLastActive(user.last_activity) + '</td>' +
-        '<td>' + renderActivityBar(user.activity_score) + '</td>' +
+        '<td>' + renderActivityBar(user.activity_score, user.sample_count) + '</td>' +
         '</tr>';
       tbody.append(row);
     });
@@ -375,10 +379,13 @@ require(["jquery"], function($) {
     }
   }
 
-  function renderActivityBar(rawScore) {
+  function renderActivityBar(rawScore, sampleCount) {
     if (rawScore === null || rawScore === undefined) {
       return '<span class="text-muted small">--</span>';
     }
+
+    // Check if we have enough data (at least 24h of samples)
+    var hasEnoughData = sampleCount >= minSamplesFor24h;
 
     // Normalize score based on target hours (e.g., 8h/day = 100%)
     // Raw score is % of sampled time active (8h/24h ≈ 33% for 8h worker)
@@ -402,10 +409,16 @@ require(["jquery"], function($) {
       segmentColor = '#dc3545';  // Red - low activity (1)
     }
 
-    // Tooltip shows real normalized % (not capped)
-    var tooltipText = 'Activity: ' + normalizedScore + '%';
-    if (normalizedScore > 100) {
-      tooltipText += ' (>' + targetHours + 'h/day)';
+    // Tooltip: show % only if we have enough data, otherwise "not enough data"
+    var tooltipText;
+    if (hasEnoughData) {
+      tooltipText = 'Activity: ' + normalizedScore + '%';
+      if (normalizedScore > 100) {
+        tooltipText += ' (>' + targetHours + 'h/day)';
+      }
+    } else {
+      var hoursCollected = Math.round((sampleCount * sampleInterval) / 3600);
+      tooltipText = 'Not enough data (' + hoursCollected + 'h of 24h collected)';
     }
 
     // Thin continuous bar with dividers

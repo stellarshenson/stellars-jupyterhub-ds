@@ -1,44 +1,104 @@
-# Activity Tracking Methodology Research
+# JupyterHub Activity Monitoring Methodology
 
-## Current Implementation
+This document describes the activity monitoring system implemented in stellars-jupyterhub-ds.
 
-Our current approach uses **exponential decay scoring**:
-- Samples collected every 10 minutes (configurable)
-- Each sample marked active/inactive based on `last_activity` within threshold
-- Score calculated as weighted ratio: `weighted_active / weighted_total`
-- Weight formula: `weight = exp(-λ × age_hours)` where `λ = ln(2) / half_life`
-- Default half-life: 72 hours / 3 days (activity from 3 days ago worth 50%)
+## Overview
 
-### Why 72-hour Half-life?
+The Activity Monitor provides administrators with real-time visibility into user engagement and resource consumption across all JupyterLab containers. It combines instantaneous metrics (CPU, memory, status) with historical activity scoring using exponential decay.
 
-The decay applies to **wall-clock time**, not working time. Users work only a fraction of each 24-hour period, creating a mismatch between configured (calendar) half-life and effective (working hours) half-life.
+**Access**: Admin-only page at `/activity`
 
-#### Configured vs Effective Half-life
+## Data Collection
 
-**The difference is NOT about sampling** - sampling just measures activity at discrete intervals.
+### Activity Sampling
 
-The difference comes from:
-1. **Decay is CONTINUOUS** - applies to calendar time 24/7
-2. **Work is SPARSE** - only happens during work hours
-3. **Decay during BREAKS** - overnight/weekend decay continues with no new work
+The system samples user activity at regular intervals, recording whether each user was active during that period.
 
-Example with 72h configured half-life and 8h/day work:
+| Parameter | Environment Variable | Default | Description |
+|-----------|---------------------|---------|-------------|
+| Sample interval | `JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL` | 600s (10 min) | Time between activity samples |
+| Inactive threshold | `JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER` | 60 min | Minutes since last activity to mark inactive |
+| Retention period | `JUPYTERHUB_ACTIVITYMON_RETENTION_DAYS` | 7 days | How long samples are stored |
 
-| Event | Calendar Age | Weight | Work Added |
-|:------|-------------:|-------:|:----------:|
-| Day 0: Work 9am-5pm | 0h | 1.000 | +8h |
-| Day 0: Sleep overnight | 16h | 0.857 | -- |
-| Day 1: Work 9am-5pm | 24h | 0.794 | +8h |
-| Day 1: Sleep overnight | 40h | 0.680 | -- |
-| Day 2: Work 9am-5pm | 48h | 0.630 | +8h |
-| Day 2: Sleep overnight | 64h | 0.540 | -- |
-| Day 3: Work 9am-5pm | 72h | 0.500 | +8h |
+Each sample records:
+- Username
+- Timestamp
+- Active flag (true if `last_activity` within inactive threshold)
 
-At 72h calendar age, weight = 0.500 (half-life by definition). But only 24 work hours occurred in those 72 calendar hours. Each overnight break (16h) causes ~15% decay with no new work added.
+Samples are stored in SQLite database (`/data/activity_samples.db`) and persist across hub restarts.
 
-#### Effective Half-life Table
+### Resource Metrics
 
-The following table shows **effective half-life in working hours** for different work patterns and configured half-lives. Simulation: 7 days, 10-minute sampling intervals.
+Real-time metrics collected via Docker API:
+
+| Metric | Update Interval | Source |
+|--------|-----------------|--------|
+| CPU % | 10s | Docker stats API |
+| Memory MB | 10s | Docker stats API |
+| Volume sizes | 1h | Docker volume inspect |
+| Server status | 10s | JupyterHub spawner state |
+
+Volume breakdown shows per-volume sizes (home, workspace, cache) in tooltip.
+
+## Activity Score Calculation
+
+### Exponential Decay Formula
+
+Activity score uses weighted ratio of active samples, where recent samples count more than older ones:
+
+```
+score = (Σ weighted_active) / (Σ weighted_total) × 100
+
+weight = exp(-λ × age_hours)
+λ = ln(2) / half_life_hours
+```
+
+With a 72-hour half-life:
+- Samples from 3 days ago have 50% weight
+- Samples from 6 days ago have 25% weight
+- Samples from 9 days ago have 12.5% weight
+
+### Normalization
+
+Raw scores represent percentage of sampled time that the user was active. Since users don't work 24/7, this is normalized against expected work hours:
+
+```
+normalized_score = raw_score / (target_hours / 24)
+```
+
+| Parameter | Environment Variable | Default | Description |
+|-----------|---------------------|---------|-------------|
+| Target hours | `JUPYTERHUB_ACTIVITYMON_TARGET_HOURS` | 8h | Expected work hours per day for 100% score |
+| Half-life | `JUPYTERHUB_ACTIVITYMON_HALF_LIFE` | 72h | Decay half-life in hours |
+
+Example: User active 8h/day has raw score ~33% (8/24). With 8h target: `33% / 0.333 = 100%`.
+
+### Minimum Data Requirement
+
+Activity percentage is shown in tooltip only after 24 hours of data collection. Before that, tooltip displays "Not enough data (Nh of 24h collected)" to prevent misleading scores from incomplete data.
+
+Minimum samples required: `86400 / sample_interval` (144 samples at 10-minute intervals)
+
+## Wall-Clock vs Working Time
+
+The decay applies continuously to calendar time, but users only work a fraction of each day. This creates a difference between configured half-life and effective half-life.
+
+### Why It Matters
+
+| Event | Calendar Age | Weight | Impact |
+|:------|-------------:|-------:|:-------|
+| Day 0: Work 9am-5pm | 0h | 1.000 | +8h active |
+| Day 0: Sleep overnight | 16h | 0.857 | Decay, no new work |
+| Day 1: Work 9am-5pm | 24h | 0.794 | +8h active |
+| Day 1: Sleep overnight | 40h | 0.680 | Decay, no new work |
+| Day 2: Work 9am-5pm | 48h | 0.630 | +8h active |
+| Day 3: Start of day | 72h | 0.500 | Half-life point |
+
+Each overnight break causes ~15% decay with no new activity to offset it.
+
+### Effective Half-life Table
+
+Effective half-life in working hours for different work patterns:
 
 | Work Pattern | Configured 24h | Configured 48h | Configured 72h |
 |:------------:|:--------------:|:--------------:|:--------------:|
@@ -49,226 +109,151 @@ The following table shows **effective half-life in working hours** for different
 | 4h/day | 4.0h | 7.2h | 9.0h |
 | 2h/day | 2.0h | 3.7h | 4.5h |
 
-#### Key Insights
+With 72-hour configured half-life, an 8h/day worker has 18 working hours (~2.25 work days) effective half-life. This prevents overnight breaks from aggressively penalizing scores.
 
-With a 72-hour configured half-life:
-- **8h/day worker**: effective half-life is 18 working hours (~2.25 work days)
-- **4h/day worker**: effective half-life is 9 working hours (~2.25 work days)
-- **Consistent ~2.25 work days** at the 50% point regardless of daily work hours
-- Overnight breaks don't aggressively penalize scores
-- A 24-hour configured half-life gives exactly 1 work day effective half-life
+## User Interface
 
-## Industry Approaches
+### Status Indicator
 
-### 1. Exponential Moving Average (EMA) / Time-Decay Systems
+Three-state indicator based on server and activity status:
 
-**How it works:**
-- Recent events weighted more heavily than older ones
-- Decay factor (α) determines how quickly old data loses relevance
-- Example: α=0.5 per day means yesterday's activity worth 50%, two days ago worth 25%
+| Color | Status | Condition |
+|-------|--------|-----------|
+| Green | Active | Server running AND activity within inactive threshold |
+| Yellow | Inactive | Server running BUT no recent activity |
+| Red | Offline | Server not running |
 
-**Half-life parameterization:**
-- More intuitive than raw decay factor
-- "Activity has a 24-hour half-life" is clearer than "α=0.5"
-- Our implementation already uses this approach
+### Activity Bar
 
-**Pros:**
-- Memory-efficient (no need to store all historical data)
-- Naturally handles irregular sampling intervals
-- Smooths out noise/outliers
+5-segment bar visualization with color coding:
 
-**Cons:**
-- Older activity never fully disappears (asymptotic to zero)
-- May not match user intuition of "weekly activity"
+| Segments Lit | Color | Meaning |
+|--------------|-------|---------|
+| 4-5 | Green | High activity (80-100%) |
+| 2-3 | Yellow | Medium activity (40-79%) |
+| 1 | Red | Low activity (1-39%) |
+| 0 | Empty | No activity (0%) |
 
-**Reference:** [Exponential Moving Averages at Scale](https://odsc.com/blog/exponential-moving-averages-at-scale-building-smart-time-decay-systems/)
+Bar is capped at 100% (5 segments). Tooltip shows actual percentage, including values over 100% for users exceeding target hours.
 
----
+### Table Columns
 
-### 2. Time-Window Activity Percentage (Hubstaff approach)
+| Column | Description | Sortable |
+|--------|-------------|----------|
+| User | Username | Yes |
+| Status | 3-state indicator | Yes |
+| CPU | Current CPU usage % | Yes |
+| Memory | Current memory in MB/GB | Yes |
+| Volumes | Total volume size (tooltip: per-volume breakdown) | Yes |
+| Time Left | Remaining session time (if idle culler enabled) | Yes |
+| Last Active | Relative time since last activity | Yes |
+| Activity | Normalized activity score bar | Yes |
 
-**How it works:**
-- Fixed time window (e.g., 10 minutes)
-- Count active seconds / total seconds = activity %
-- Aggregate over day/week as average of windows
+Default sort: Status descending (active users first), then username ascending.
 
-**Hubstaff's formula:**
-```
-Active seconds / 600 = activity rate % (per 10-min segment)
-```
+## API Endpoints
 
-**Key insight from Hubstaff:**
-> "Depending on someone's job and daily tasks, activity rates will vary widely. People with 75% scores and those with 25% scores can often times both be working productively."
+### GET /api/activity
 
-**Typical benchmarks:**
-- Data entry/development: 60-80% keyboard/mouse activity
-- Research/meetings: 30-50% activity
-- 100% is unrealistic for any role
+Returns JSON array of all users with activity data:
 
-**Pros:**
-- Simple to understand
-- Direct mapping to "how active was I today"
-
-**Cons:**
-- Doesn't capture quality of work
-- Penalizes reading, thinking, meetings
-
-**Reference:** [Hubstaff Activity Calculation](https://support.hubstaff.com/how-are-activity-levels-calculated/)
-
----
-
-### 3. Productivity Categorization (RescueTime approach)
-
-**How it works:**
-- Applications/websites pre-categorized by productivity score (-2 to +2)
-- Time spent in each category weighted and summed
-- Daily productivity score = weighted sum / total time
-
-**Categories:**
-- Very Productive (+2): IDE, documentation
-- Productive (+1): Email, spreadsheets
-- Neutral (0): Uncategorized
-- Distracting (-1): News sites
-- Very Distracting (-2): Social media, games
-
-**Pros:**
-- Captures quality of activity, not just presence
-- Customizable per user/role
-
-**Cons:**
-- Requires app categorization (complex to implement)
-- Subjective classification
-- Not applicable to JupyterLab (all activity is "productive")
-
-**Reference:** [RescueTime Methodology](https://www.rescuetime.com/)
-
----
-
-### 4. GitHub Contribution Graph (Threshold-based intensity)
-
-**How it works:**
-- Count contributions per day (commits, PRs, issues)
-- Map counts to 4-5 intensity levels
-- Levels based on percentiles of user's own activity
-
-**Typical thresholds:**
-```javascript
-// Example from implementations
-thresholds: [0, 10, 20, 30]  // contributions per day
-colors: ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39']
+```json
+{
+  "users": [
+    {
+      "username": "konrad",
+      "server_active": true,
+      "recently_active": true,
+      "cpu_percent": 12.5,
+      "memory_mb": 1234,
+      "memory_percent": 15.2,
+      "volume_size_mb": 2048,
+      "volume_breakdown": {"home": 512, "workspace": 1400, "cache": 136},
+      "time_remaining_seconds": 85500,
+      "activity_score": 33.2,
+      "sample_count": 288,
+      "last_activity": "2026-01-25T10:30:00Z"
+    }
+  ],
+  "timestamp": "2026-01-25T11:00:00Z"
+}
 ```
 
-**Key insight:**
-- Relative to user's own history (not absolute)
-- Someone with 5 commits/day max sees different scale than 50 commits/day
+### POST /api/activity/reset
 
-**Pros:**
-- Visual, intuitive
-- Adapts to user's activity patterns
+Clears all activity samples. Admin only. Returns confirmation message.
 
-**Cons:**
-- Binary daily view (no intra-day granularity)
-- Doesn't show decay/trend
+## Configuration Reference
 
----
+All environment variables with defaults:
 
-### 5. Daily Target Approach (8h = 100%)
+```bash
+# Sampling
+JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL=600      # seconds between samples
+JUPYTERHUB_ACTIVITYMON_RETENTION_DAYS=7         # days to keep samples
+JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER=60        # minutes until inactive
 
-**How it works:**
-- Define expected activity hours per day (e.g., 8h)
-- Actual active hours / expected hours = daily score
-- Cap at 100% or allow overtime bonus
+# Scoring
+JUPYTERHUB_ACTIVITYMON_HALF_LIFE=72             # decay half-life in hours
+JUPYTERHUB_ACTIVITYMON_TARGET_HOURS=8           # target hours for 100%
 
-**Formula:**
-```
-Daily score = min(1.0, active_hours / 8.0) × 100
-Weekly score = avg(daily_scores)
+# UI refresh
+JUPYTERHUB_ACTIVITYMON_RESOURCES_UPDATE_INTERVAL=10    # seconds
+JUPYTERHUB_ACTIVITYMON_VOLUMES_UPDATE_INTERVAL=3600    # seconds
 ```
 
-**Pros:**
-- Maps directly to work expectations
-- Easy to explain to users
+## Implementation Files
 
-**Cons:**
-- Assumes consistent work schedule
-- Doesn't account for part-time, weekends
-- JupyterHub users may have variable schedules
+| File | Purpose |
+|------|---------|
+| `services/jupyterhub/conf/bin/custom_handlers.py` | API handlers, sampling logic, score calculation |
+| `services/jupyterhub/html_templates_enhanced/activity.html` | Admin UI template |
+| `config/jupyterhub_config.py` | Handler registration, template vars |
+| `services/jupyterhub/conf/settings_dictionary.yml` | Settings page definitions |
 
----
+## Database Schema
 
-## Recommendations for JupyterHub Activity Monitor
+SQLite database at `/data/activity_samples.db`:
 
-### Option A: Keep Current (EMA with decay)
+```sql
+CREATE TABLE activity_samples (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    is_active INTEGER NOT NULL,
+    UNIQUE(username, timestamp)
+);
 
-Our current implementation is actually well-designed for the use case:
-
-| Aspect | Current Implementation |
-|--------|------------------------|
-| Sampling | Every 10 min (configurable) |
-| Active threshold | 60 min since last_activity |
-| Decay | 72-hour (3-day) half-life |
-| Score range | 0-100% |
-| Visualization | 5-segment bar with color coding |
-
-**Suggested improvements:**
-1. Add tooltip showing actual score percentage
-2. Document what the score represents
-
-### Option B: Hybrid Daily + Decay
-
-Combine daily activity percentage with decay:
-
-```python
-# Daily activity: hours active today / 8 hours (capped at 100%)
-daily_score = min(1.0, active_hours_today / 8.0)
-
-# Apply decay to historical daily scores
-weekly_score = sum(daily_score[i] * exp(-λ * i) for i in range(7)) / 7
+CREATE INDEX idx_activity_username ON activity_samples(username);
+CREATE INDEX idx_activity_timestamp ON activity_samples(timestamp);
 ```
 
-**Benefits:**
-- More intuitive "8h = full day" concept
-- Still decays older activity
+## Design Rationale
 
-### Option C: Simplified Presence-Based
+### Why Exponential Decay?
 
-For JupyterLab, activity mostly means "server running + recent kernel activity":
+- Memory-efficient (no need to store weighted aggregates)
+- Naturally handles irregular work schedules
+- Smooths noise from sporadic activity
+- Configurable half-life adapts to different use cases
 
-| Status | Points/day |
-|--------|------------|
-| Offline | 0 |
-| Online, idle > 1h | 0.25 |
-| Online, idle 15m-1h | 0.5 |
-| Online, active < 15m | 1.0 |
+### Why 72-hour Half-life?
 
-Weekly score = sum of daily points / 7
+- Provides ~2.25 work days effective half-life for 8h/day workers
+- Doesn't aggressively penalize weekends or breaks
+- Balances recency with stability
+- Shorter half-life (24h) would over-penalize normal day boundaries
 
----
+### Why Normalization?
 
-## Decision Points
+- Raw 33% score for 8h/day worker is confusing
+- Normalized 100% matches user expectation of "full work day"
+- Allows scores > 100% for overtime visibility
+- Configurable target hours adapts to different work patterns
 
-1. **What does "100% activity" mean for JupyterHub users?**
-   - Option: Active during all sampled periods in retention window
-   - Option: 8 hours of activity per day
-   - Option: Relative to user's own historical average
+### Why 24h Minimum Data?
 
-2. **How fast should old activity decay?**
-   - Current: 72-hour / 3-day half-life (balanced decay)
-   - Alternative: 24-hour half-life (aggressive decay)
-   - Alternative: 7-day half-life (weekly trend)
-
-3. **Should weekends count differently?**
-   - Current: All days weighted equally
-   - Alternative: Exclude weekends from expected activity
-
----
-
-## Sources
-
-- [Exponential Moving Averages at Scale (ODSC)](https://odsc.com/blog/exponential-moving-averages-at-scale-building-smart-time-decay-systems/)
-- [Exponential Smoothing (Wikipedia)](https://en.wikipedia.org/wiki/Exponential_smoothing)
-- [Hubstaff Activity Calculation](https://support.hubstaff.com/how-are-activity-levels-calculated/)
-- [How Time is Calculated in Hubstaff](https://support.hubstaff.com/how-is-time-tracked-and-calculated-in-hubstaff/)
-- [RescueTime](https://www.rescuetime.com/)
-- [EWMA Formula (Corporate Finance Institute)](https://corporatefinanceinstitute.com/resources/career-map/sell-side/capital-markets/exponentially-weighted-moving-average-ewma/)
-- [Developer Productivity Metrics (Axify)](https://axify.io/blog/developer-productivity-metrics)
+- Prevents misleading scores from partial data
+- Single work session would show artificially high/low score
+- Full day of data gives representative sample
+- Clear feedback to users about data collection progress
