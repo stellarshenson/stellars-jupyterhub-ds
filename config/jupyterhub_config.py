@@ -133,6 +133,13 @@ def create_nativeauth_on_user_insert(mapper, connection, target):
         from custom_handlers import cache_password
         cache_password(username, password)
 
+        # Initialize activity tracking for new user
+        try:
+            from custom_handlers import initialize_activity_for_user
+            initialize_activity_for_user(username)
+        except Exception as ae:
+            print(f"[Activity Init] Error initializing activity for {username}: {ae}")
+
         print(f"[NativeAuth Auto-Create] User '{username}' created and authorized")
 
     except Exception as e:

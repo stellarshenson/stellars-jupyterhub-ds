@@ -61,7 +61,7 @@
           <div class="spinner-border text-primary mb-3" role="status">
             <span class="visually-hidden">Loading...</span>
           </div>
-          <div>Generating credentials...</div>
+          <div id="loading-modal-text">Processing...</div>
         </div>
       </div>
     </div>
@@ -90,8 +90,12 @@
 
     // Loading spinner functions
     let loadingModal = null;
-    function showLoadingSpinner() {
+    function showLoadingSpinner(message) {
         const modalEl = document.getElementById('loading-modal');
+        const textEl = document.getElementById('loading-modal-text');
+        if (textEl) {
+            textEl.textContent = message || 'Processing...';
+        }
         if (!loadingModal) {
             loadingModal = new bootstrap.Modal(modalEl);
         }
@@ -117,6 +121,16 @@
         // Exclude URLs with other query params like include_stopped_servers
         const urlPath = url.split('?')[0];
         const isUserCreation = method === 'POST' && urlPath.endsWith('api/users');
+
+        // Check for user deletion - DELETE to api/users/{username}
+        const userDeleteMatch = urlPath.match(/api\/users\/([^\/]+)$/);
+        const isUserDeletion = method === 'DELETE' && userDeleteMatch;
+
+        // Show spinner for deletion
+        if (isUserDeletion) {
+            const username = decodeURIComponent(userDeleteMatch[1]);
+            showLoadingSpinner('Deleting user ' + username + '...');
+        }
 
         // Capture request body before fetch (for batch user creation)
         let requestUsernames = [];
@@ -162,7 +176,7 @@
                         pendingUsernames.push(...createdUsers);
 
                         // Show loading spinner
-                        showLoadingSpinner();
+                        showLoadingSpinner('Generating credentials...');
 
                         // Debounce - wait for batch completion then fetch credentials
                         clearTimeout(window._credentialsFetchTimeout);
@@ -177,6 +191,11 @@
             } catch (e) {
                 // console.error('[Admin] Error processing user creation:', e);
             }
+        }
+
+        // Hide spinner after user deletion completes
+        if (isUserDeletion) {
+            hideLoadingSpinner();
         }
 
         return response;
