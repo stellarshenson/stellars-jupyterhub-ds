@@ -249,3 +249,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 82. **Task - Simplify Activity column header**: Removed retention period from column title<br>
     **Result**: Changed Activity column header from "Activity (7 days)" to just "Activity" in activity.html
+
+83. **Task - Activity monitor half-life to 72h (3 days)**: Extended decay half-life for smoother scoring<br>
+    **Result**: Updated JUPYTERHUB_ACTIVITYMON_HALF_LIFE default from 48h to 72h across Dockerfile, custom_handlers.py, activity_sampler.py, settings_dictionary.yml, README.md, and docs/activity-tracking-methodology.md. With 72h half-life, activity from 3 days ago has 50% weight, providing more stable activity scores for users with irregular schedules
