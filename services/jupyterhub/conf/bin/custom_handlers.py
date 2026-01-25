@@ -700,8 +700,9 @@ def _refresh_volume_sizes_sync():
         _volume_sizes_cache['refreshing'] = False
 
 async def _refresh_volume_sizes_background():
-    """Trigger background refresh of volume sizes (non-blocking)"""
+    """Trigger background refresh of volume sizes (non-blocking, fire-and-forget)"""
     loop = asyncio.get_event_loop()
+    # Note: intentionally not awaited - fire and forget
     loop.run_in_executor(_docker_executor, _refresh_volume_sizes_sync)
 
 def get_cached_volume_sizes():
@@ -791,6 +792,10 @@ class VolumeSizeRefresher:
         try:
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(_docker_executor, _refresh_volume_sizes_sync)
+            # Log cache state after refresh
+            data = _volume_sizes_cache.get('data', {})
+            total_size = sum(u.get("total", 0) for u in data.values())
+            log.info(f"[VolumeSizeRefresher] Tick complete: {len(data)} users, {total_size:.1f} MB total")
         except Exception as e:
             log.error(f"[VolumeSizeRefresher] Error during refresh: {e}")
 
