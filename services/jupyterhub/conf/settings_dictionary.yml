@@ -93,6 +93,10 @@ Activity Monitor:
     description: Minutes until user considered inactive (1-1440)
     default: "60"
 
+  - name: JUPYTERHUB_ACTIVITYMON_TARGET_HOURS
+    description: Target daily work hours for 100% activity score (1-24)
+    default: "8"
+
   - name: JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL
     description: Activity sampling interval in seconds (60-86400)
     default: "600"

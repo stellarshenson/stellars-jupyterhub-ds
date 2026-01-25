@@ -62,6 +62,10 @@
 require(["jquery"], function($) {
   "use strict";
 
+  // Target hours for 100% activity score (from config)
+  var targetHours = {{ activitymon_target_hours | default(8) }};
+  var normalizationFactor = targetHours / 24;  // e.g., 8/24 = 0.333
+
   var autoRefreshInterval = null;
   var currentUsersData = [];  // Store data for re-sorting
   var sortColumn = null;      // Current sort column
@@ -371,14 +375,22 @@ require(["jquery"], function($) {
     }
   }
 
-  function renderActivityBar(score) {
-    if (score === null || score === undefined) {
+  function renderActivityBar(rawScore) {
+    if (rawScore === null || rawScore === undefined) {
       return '<span class="text-muted small">--</span>';
     }
 
-    // Calculate number of lit segments (0-5) based on score (0-100)
-    var litSegments = Math.ceil(score / 20);  // 0-20=1, 21-40=2, 41-60=3, 61-80=4, 81-100=5
-    if (score === 0) litSegments = 0;
+    // Normalize score based on target hours (e.g., 8h/day = 100%)
+    // Raw score is % of sampled time active (8h/24h ≈ 33% for 8h worker)
+    // Normalized score = raw / (target/24) -> 33% / 0.333 = 100%
+    var normalizedScore = Math.round(rawScore / normalizationFactor);
+
+    // Cap bar display at 100% (5 segments) but show real % in tooltip
+    var displayScore = Math.min(normalizedScore, 100);
+
+    // Calculate number of lit segments (0-5) based on capped score
+    var litSegments = Math.ceil(displayScore / 20);  // 0-20=1, 21-40=2, 41-60=3, 61-80=4, 81-100=5
+    if (displayScore === 0) litSegments = 0;
 
     // Color based on lit segments: 1=red, 2-3=yellow, 4-5=green
     var segmentColor;
@@ -390,8 +402,14 @@ require(["jquery"], function($) {
       segmentColor = '#dc3545';  // Red - low activity (1)
     }
 
+    // Tooltip shows real normalized % (not capped)
+    var tooltipText = 'Activity: ' + normalizedScore + '%';
+    if (normalizedScore > 100) {
+      tooltipText += ' (>' + targetHours + 'h/day)';
+    }
+
     // Thin continuous bar with dividers
-    var html = '<div style="display: flex; width: 80px; height: 8px; border: 1px solid #6c757d; border-radius: 3px; overflow: hidden;" title="Activity: ' + score + '%">';
+    var html = '<div style="display: flex; width: 80px; height: 8px; border: 1px solid #6c757d; border-radius: 3px; overflow: hidden;" title="' + tooltipText + '">';
     for (var i = 0; i < 5; i++) {
       var isLit = i < litSegments;
       var borderRight = i < 4 ? 'border-right: 1px solid #6c757d;' : '';
