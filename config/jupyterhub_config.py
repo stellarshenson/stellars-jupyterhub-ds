@@ -336,6 +336,7 @@ if c is not None:
 
     # Make volume suffixes, descriptions, version, and idle culler config available to templates
     ACTIVITYMON_TARGET_HOURS = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_TARGET_HOURS', 8))
+    ACTIVITYMON_SAMPLE_INTERVAL = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL', 600))
     c.JupyterHub.template_vars = {
         'user_volume_suffixes': USER_VOLUME_SUFFIXES,
         'volume_descriptions': VOLUME_DESCRIPTIONS,
@@ -345,6 +346,7 @@ if c is not None:
         'idle_culler_timeout': JUPYTERHUB_IDLE_CULLER_TIMEOUT,
         'idle_culler_max_extension': JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION,
         'activitymon_target_hours': ACTIVITYMON_TARGET_HOURS,
+        'activitymon_sample_interval': ACTIVITYMON_SAMPLE_INTERVAL,
     }
 
 # Built-in groups that cannot be deleted (auto-recreated if missing)
