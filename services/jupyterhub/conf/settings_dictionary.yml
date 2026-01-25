@@ -87,7 +87,7 @@ Activity Monitor:
 
   - name: JUPYTERHUB_ACTIVITYMON_HALF_LIFE
     description: Decay half-life in hours (1-168)
-    default: "48"
+    default: "72"
 
   - name: JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER
     description: Minutes until user considered inactive (1-1440)

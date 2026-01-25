@@ -7,7 +7,7 @@ Our current approach uses **exponential decay scoring**:
 - Each sample marked active/inactive based on `last_activity` within threshold
 - Score calculated as weighted ratio: `weighted_active / weighted_total`
 - Weight formula: `weight = exp(-λ × age_hours)` where `λ = ln(2) / half_life`
-- Default half-life: 24 hours (activity from yesterday worth 50%)
+- Default half-life: 72 hours / 3 days (activity from 3 days ago worth 50%)
 
 ## Industry Approaches
 
@@ -157,14 +157,13 @@ Our current implementation is actually well-designed for the use case:
 |--------|------------------------|
 | Sampling | Every 10 min (configurable) |
 | Active threshold | 60 min since last_activity |
-| Decay | 24-hour half-life |
+| Decay | 72-hour (3-day) half-life |
 | Score range | 0-100% |
 | Visualization | 5-segment bar with color coding |
 
 **Suggested improvements:**
 1. Add tooltip showing actual score percentage
-2. Consider longer half-life (48-72h) for less frequent users
-3. Document what the score represents
+2. Document what the score represents
 
 ### Option B: Hybrid Daily + Decay
 
@@ -205,8 +204,8 @@ Weekly score = sum of daily points / 7
    - Option: Relative to user's own historical average
 
 2. **How fast should old activity decay?**
-   - Current: 24-hour half-life (aggressive decay)
-   - Alternative: 72-hour half-life (more stable)
+   - Current: 72-hour / 3-day half-life (balanced decay)
+   - Alternative: 24-hour half-life (aggressive decay)
    - Alternative: 7-day half-life (weekly trend)
 
 3. **Should weekends count differently?**

@@ -14,7 +14,7 @@ Environment Variables:
     JUPYTERHUB_API_URL: Hub API URL (provided by JupyterHub)
     JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL: Sampling interval in seconds (default: 600)
     JUPYTERHUB_ACTIVITYMON_RETENTION_DAYS: Days to retain samples (default: 7)
-    JUPYTERHUB_ACTIVITYMON_HALF_LIFE: Score decay half-life in hours (default: 48)
+    JUPYTERHUB_ACTIVITYMON_HALF_LIFE: Score decay half-life in hours (default: 72)
     JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER: Minutes before marking inactive (default: 60)
 """
 
@@ -71,7 +71,7 @@ class ActivitySamplerService:
         # Sampling configuration
         self.sample_interval = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL', 600))
         self.retention_days = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_RETENTION_DAYS', 7))
-        self.half_life_hours = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_HALF_LIFE', 48))
+        self.half_life_hours = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_HALF_LIFE', 72))
         self.inactive_after_minutes = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER', 60))
 
         # Database
