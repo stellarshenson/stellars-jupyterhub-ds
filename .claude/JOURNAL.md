@@ -255,3 +255,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 84. **Task - Half-life simulation tables**: Added detailed simulation results to documentation<br>
     **Result**: Ran Python simulation for different work patterns (10h, 8h, 4h per day) across calendar half-lives (24h-168h). Added three tables to docs/activity-tracking-methodology.md showing "Work Hours at 50%" and "Work Days at 50%" for each combination. Key finding: 72h calendar half-life consistently yields ~2.9 work days at 50% point regardless of daily work hours. Activity scores correctly reflect work fraction (10h=41.6%, 8h=33.3%, 4h=16.6%)
+
+85. **Task - Configured vs Effective half-life documentation**: Rewrote simulation section with clearer explanation<br>
+    **Result**: Replaced multiple tables with single effective half-life table showing work patterns (12h, 10h, 8h, 6h, 4h, 2h) vs configured half-lives (24h, 48h, 72h). Added explanation that difference is NOT about sampling but about: (1) decay is continuous 24/7, (2) work is sparse, (3) decay continues during overnight breaks. Added example showing overnight decay: 16h sleep causes ~15% weight loss. Key insight: 72h configured = 18h effective for 8h/day worker (~2.25 work days)

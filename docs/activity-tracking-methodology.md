@@ -11,57 +11,52 @@ Our current approach uses **exponential decay scoring**:
 
 ### Why 72-hour Half-life?
 
-The decay applies to **wall-clock time**, not working time. Users work only a fraction of each 24-hour period, creating a mismatch between calendar decay and effective working activity decay.
+The decay applies to **wall-clock time**, not working time. Users work only a fraction of each 24-hour period, creating a mismatch between configured (calendar) half-life and effective (working hours) half-life.
 
-#### Simulation Results
+#### Configured vs Effective Half-life
 
-The following tables show how different calendar half-lives translate to effective working-time decay for various work patterns. "Work Hours at 50%" indicates how many actual working hours contribute 50% of the weighted activity score.
+**The difference is NOT about sampling** - sampling just measures activity at discrete intervals.
 
-**10h/day work pattern** (intensive)
+The difference comes from:
+1. **Decay is CONTINUOUS** - applies to calendar time 24/7
+2. **Work is SPARSE** - only happens during work hours
+3. **Decay during BREAKS** - overnight/weekend decay continues with no new work
 
-| Calendar Half-life | Work Hours at 50% | Work Days at 50% | Activity Score |
-|:------------------:|:-----------------:|:----------------:|:--------------:|
-| 24h (1d) | 10.0h | 1.0 days | 41.0% |
-| 48h (2d) | 19.8h | 2.0 days | 41.5% |
-| 72h (3d) | 28.5h | 2.9 days | 41.6% |
-| 96h (4d) | 35.3h | 3.5 days | 41.6% |
-| 168h (7d) | 47.7h | 4.8 days | 41.7% |
+Example with 72h configured half-life and 8h/day work:
 
-**8h/day work pattern** (typical)
+| Event | Calendar Age | Weight | Work Added |
+|:------|-------------:|-------:|:----------:|
+| Day 0: Work 9am-5pm | 0h | 1.000 | +8h |
+| Day 0: Sleep overnight | 16h | 0.857 | -- |
+| Day 1: Work 9am-5pm | 24h | 0.794 | +8h |
+| Day 1: Sleep overnight | 40h | 0.680 | -- |
+| Day 2: Work 9am-5pm | 48h | 0.630 | +8h |
+| Day 2: Sleep overnight | 64h | 0.540 | -- |
+| Day 3: Work 9am-5pm | 72h | 0.500 | +8h |
 
-| Calendar Half-life | Work Hours at 50% | Work Days at 50% | Activity Score |
-|:------------------:|:-----------------:|:----------------:|:--------------:|
-| 24h (1d) | 8.0h | 1.0 days | 32.7% |
-| 48h (2d) | 16.0h | 2.0 days | 33.2% |
-| 72h (3d) | 22.8h | 2.9 days | 33.3% |
-| 96h (4d) | 28.3h | 3.5 days | 33.3% |
-| 168h (7d) | 38.2h | 4.8 days | 33.3% |
+At 72h calendar age, weight = 0.500 (half-life by definition). But only 24 work hours occurred in those 72 calendar hours. Each overnight break (16h) causes ~15% decay with no new work added.
 
-**4h/day work pattern** (part-time)
+#### Effective Half-life Table
 
-| Calendar Half-life | Work Hours at 50% | Work Days at 50% | Activity Score |
-|:------------------:|:-----------------:|:----------------:|:--------------:|
-| 24h (1d) | 4.0h | 1.0 days | 16.3% |
-| 48h (2d) | 8.0h | 2.0 days | 16.6% |
-| 72h (3d) | 11.5h | 2.9 days | 16.6% |
-| 96h (4d) | 14.2h | 3.5 days | 16.6% |
-| 168h (7d) | 19.2h | 4.8 days | 16.7% |
+The following table shows **effective half-life in working hours** for different work patterns and configured half-lives. Simulation: 7 days, 10-minute sampling intervals.
 
-#### Summary: 72-hour Half-life Across Work Patterns
-
-| Work Pattern | Work Hours at 50% | Effective Work Days | Activity Score |
-|:------------:|:-----------------:|:-------------------:|:--------------:|
-| 10h/day | 28.5h | 2.9 days | 41.6% |
-| 8h/day | 22.8h | 2.9 days | 33.3% |
-| 4h/day | 11.5h | 2.9 days | 16.6% |
+| Work Pattern | Configured 24h | Configured 48h | Configured 72h |
+|:------------:|:--------------:|:--------------:|:--------------:|
+| 12h/day | 12.0h | 21.3h | 26.8h |
+| 10h/day | 10.0h | 17.8h | 22.3h |
+| 8h/day | 8.0h | 14.3h | 18.0h |
+| 6h/day | 6.0h | 10.8h | 13.5h |
+| 4h/day | 4.0h | 7.2h | 9.0h |
+| 2h/day | 2.0h | 3.7h | 4.5h |
 
 #### Key Insights
 
-With a 72-hour calendar half-life:
-- **Consistent ~3 work days** at the 50% point regardless of daily work hours
-- Activity score reflects actual work fraction (8h/24h ≈ 33%, 4h/24h ≈ 17%)
+With a 72-hour configured half-life:
+- **8h/day worker**: effective half-life is 18 working hours (~2.25 work days)
+- **4h/day worker**: effective half-life is 9 working hours (~2.25 work days)
+- **Consistent ~2.25 work days** at the 50% point regardless of daily work hours
 - Overnight breaks don't aggressively penalize scores
-- A 24-hour half-life would be too aggressive - yesterday's work already at 50% weight before today starts
+- A 24-hour configured half-life gives exactly 1 work day effective half-life
 
 ## Industry Approaches
 
