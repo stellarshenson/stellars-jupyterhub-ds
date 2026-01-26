@@ -403,9 +403,6 @@
                     return;
                 }
 
-                // Skip if already has our button
-                if (existingBtn) return;
-
                 // Get username from the user-name-div span
                 const usernameSpan = row.querySelector('span[data-testid^="user-name-div-"]');
                 if (!usernameSpan) return;
@@ -421,6 +418,14 @@
                 });
 
                 if (!editBtn) return;
+
+                // If button already exists, ensure it's at the end (React may have added more buttons after it)
+                if (existingBtn) {
+                    if (actionsCell.lastElementChild !== existingBtn) {
+                        actionsCell.appendChild(existingBtn);
+                    }
+                    return;
+                }
 
                 // Create button with same classes as Edit button
                 const btn = document.createElement('button');
