@@ -66,6 +66,48 @@
       </div>
     </div>
   </div>
+
+  <!-- Manage Volumes Modal (Admin) -->
+  <div class="modal fade" id="admin-manage-volumes-modal" tabindex="-1" role="dialog" aria-labelledby="adminManageVolumesModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="adminManageVolumesModalLabel">Manage Volumes</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-danger">
+            <strong>Warning:</strong> This action cannot be undone!
+          </div>
+          <p>Manage volumes for user: <strong id="admin-volume-username"></strong></p>
+          <p>Select which volumes to reset. All files in selected volumes will be permanently deleted:</p>
+
+          {% for volume_suffix in user_volume_suffixes %}
+          <div class="form-check mb-2">
+            <input class="form-check-input admin-volume-checkbox" type="checkbox" id="admin-volume-{{ volume_suffix }}" value="{{ volume_suffix }}">
+            <label class="form-check-label" for="admin-volume-{{ volume_suffix }}">
+              <strong>{{ volume_suffix }}</strong>
+              {% if volume_descriptions and volume_suffix in volume_descriptions %}
+              <br><small class="text-muted">{{ volume_descriptions[volume_suffix] }}</small>
+              {% endif %}
+            </label>
+          </div>
+          {% endfor %}
+
+          <div id="admin-volume-warning" class="alert alert-warning mt-3" style="display: none;">
+            <i class="fa fa-exclamation-triangle me-1"></i>
+            <span id="admin-volume-count">0</span> volume(s) selected for deletion
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="admin-confirm-reset-btn" disabled>
+            <i class="fa fa-trash me-1"></i>Reset Selected Volumes
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock main %}
 
 {% block footer %}
@@ -328,6 +370,145 @@
                 URL.revokeObjectURL(url);
             }
         });
+
+        // ============================================================
+        // Admin Volume Management
+        // ============================================================
+
+        let volumeModal = null;
+        let currentVolumeUsername = null;
+
+        // Inject "Manage Volumes" button into user action cells
+        function injectVolumeButtons() {
+            // Find all user action cells (td.actions contains buttons like Start/Stop/Delete)
+            const actionCells = document.querySelectorAll('td.actions');
+
+            actionCells.forEach(cell => {
+                // Skip if already has our button
+                if (cell.querySelector('.admin-manage-volumes-btn')) return;
+
+                // Find the username from the row - look for link in first cell
+                const row = cell.closest('tr');
+                if (!row) return;
+
+                const userLink = row.querySelector('td a[href*="/user/"]');
+                if (!userLink) return;
+
+                // Extract username from href like "/jupyterhub/user/konrad/"
+                const href = userLink.getAttribute('href');
+                const match = href.match(/\/user\/([^\/]+)/);
+                if (!match) return;
+
+                const username = decodeURIComponent(match[1]);
+
+                // Create button (styling inherited from .actions .btn in custom.css)
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-outline-secondary admin-manage-volumes-btn';
+                btn.innerHTML = '<i class="fa fa-database"></i>';
+                btn.title = 'Manage Volumes';
+                btn.setAttribute('data-username', username);
+
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openVolumeModal(username);
+                });
+
+                cell.appendChild(btn);
+            });
+        }
+
+        // Open volume modal for a specific user
+        function openVolumeModal(username) {
+            currentVolumeUsername = username;
+            document.getElementById('admin-volume-username').textContent = username;
+
+            // Reset checkboxes
+            document.querySelectorAll('.admin-volume-checkbox').forEach(cb => {
+                cb.checked = false;
+            });
+            updateVolumeSelection();
+
+            // Show modal
+            const modalEl = document.getElementById('admin-manage-volumes-modal');
+            if (!volumeModal) {
+                volumeModal = new bootstrap.Modal(modalEl);
+            }
+            volumeModal.show();
+        }
+
+        // Update selection UI
+        function updateVolumeSelection() {
+            const checkboxes = document.querySelectorAll('.admin-volume-checkbox:checked');
+            const count = checkboxes.length;
+            const confirmBtn = document.getElementById('admin-confirm-reset-btn');
+            const warning = document.getElementById('admin-volume-warning');
+            const countSpan = document.getElementById('admin-volume-count');
+
+            confirmBtn.disabled = count === 0;
+            warning.style.display = count > 0 ? 'block' : 'none';
+            countSpan.textContent = count;
+        }
+
+        // Handle checkbox changes
+        document.querySelectorAll('.admin-volume-checkbox').forEach(cb => {
+            cb.addEventListener('change', updateVolumeSelection);
+        });
+
+        // Handle confirm button
+        document.getElementById('admin-confirm-reset-btn')?.addEventListener('click', async function() {
+            if (!currentVolumeUsername) return;
+
+            const selectedVolumes = [];
+            document.querySelectorAll('.admin-volume-checkbox:checked').forEach(cb => {
+                selectedVolumes.push(cb.value);
+            });
+
+            if (selectedVolumes.length === 0) return;
+
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Resetting...';
+
+            try {
+                const response = await originalFetch(`${baseUrl}api/users/${encodeURIComponent(currentVolumeUsername)}/manage-volumes`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-XSRFToken': getCookie('_xsrf')
+                    },
+                    body: JSON.stringify({ volumes: selectedVolumes })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    volumeModal.hide();
+                    const resetCount = data.reset_volumes ? data.reset_volumes.length : selectedVolumes.length;
+                    alert(`Successfully reset ${resetCount} volume(s) for ${currentVolumeUsername}.`);
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    alert(`Error: ${errorData.message || response.statusText || 'Failed to reset volumes'}`);
+                }
+            } catch (e) {
+                alert(`Error: ${e.message || 'Failed to reset volumes'}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa fa-trash me-1"></i>Reset Selected Volumes';
+            }
+        });
+
+        // Use MutationObserver to inject buttons as React renders users
+        const observer = new MutationObserver(function(mutations) {
+            injectVolumeButtons();
+        });
+
+        // Start observing once DOM is ready
+        const reactRoot = document.getElementById('react-admin-hook');
+        if (reactRoot) {
+            observer.observe(reactRoot, { childList: true, subtree: true });
+            // Initial injection
+            setTimeout(injectVolumeButtons, 500);
+        }
     });
 })();
 </script>
