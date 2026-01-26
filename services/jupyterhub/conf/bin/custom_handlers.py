@@ -15,8 +15,22 @@ import logging
 import threading
 from datetime import datetime, timedelta, timezone
 
-# Module-level logger
+# Module-level logger (fallback, prefer _get_logger() for JupyterHub integration)
 log = logging.getLogger('jupyterhub.custom_handlers')
+
+
+def _get_logger():
+    """Get JupyterHub's application logger for consistent logging.
+
+    The module-level 'log' doesn't inherit JupyterHub's logging handlers,
+    so log.info() calls produce no output in container logs.
+    This function returns the application logger which outputs correctly.
+    """
+    from traitlets.config import Application
+    try:
+        return Application.instance().log
+    except Exception:
+        return logging.getLogger('jupyterhub')
 
 
 # =============================================================================
@@ -685,25 +699,33 @@ def _fetch_volume_sizes():
                 user_data[user]["total"] = round(user_data[user]["total"], 1)
 
             total_size = sum(u["total"] for u in user_data.values())
-            log.info(f"[Volume Sizes] Refreshed: {len(user_data)} users, total {total_size:.1f} MB")
+            _get_logger().info(f"[Volume Sizes] Fetched: {len(user_data)} users, total {total_size:.1f} MB")
             return user_data
         finally:
             docker_client.close()
     except Exception as e:
-        log.info(f"[Volume Sizes] Error: {e}")
+        _get_logger().error(f"[Volume Sizes] Error fetching: {e}")
         return {}
 
 def _refresh_volume_sizes_sync():
     """Synchronous refresh of volume sizes cache"""
     global _volume_sizes_cache
+    logger = _get_logger()
+
     if _volume_sizes_cache['refreshing']:
+        logger.info("[Volume Sizes] Refresh already in progress, skipping")
         return  # Already refreshing
 
     _volume_sizes_cache['refreshing'] = True
     try:
         data = _fetch_volume_sizes()
-        _volume_sizes_cache['data'] = data
-        _volume_sizes_cache['timestamp'] = datetime.now(timezone.utc)
+        # Only update cache if we got actual data
+        if data:
+            _volume_sizes_cache['data'] = data
+            _volume_sizes_cache['timestamp'] = datetime.now(timezone.utc)
+            logger.info(f"[Volume Sizes] Cache updated: {len(data)} users")
+        else:
+            logger.warning("[Volume Sizes] Refresh returned empty - keeping previous cache")
     finally:
         _volume_sizes_cache['refreshing'] = False
 
@@ -738,7 +760,7 @@ async def get_volume_sizes_with_refresh():
     """
     data, needs_refresh = get_cached_volume_sizes()
     if needs_refresh:
-        log.info(f"[Volume Sizes] Cache stale, triggering background refresh")
+        _get_logger().info("[Volume Sizes] Cache stale, triggering background refresh")
         await _refresh_volume_sizes_background()
     return data
 
@@ -764,14 +786,15 @@ class VolumeSizeRefresher:
     def __init__(self):
         self.periodic_callback = None
         self.interval_seconds = _get_volumes_update_interval()
-        log.info(f"[VolumeSizeRefresher] Initialized with interval={self.interval_seconds}s")
+        _get_logger().info(f"[VolumeSizeRefresher] Initialized with interval={self.interval_seconds}s")
 
     def start(self):
         """Start the periodic refresher."""
         from tornado.ioloop import PeriodicCallback
+        logger = _get_logger()
 
         if self.periodic_callback is not None:
-            log.info("[VolumeSizeRefresher] Already running")
+            logger.info("[VolumeSizeRefresher] Already running")
             return
 
         # Convert seconds to milliseconds for PeriodicCallback
@@ -779,7 +802,7 @@ class VolumeSizeRefresher:
 
         self.periodic_callback = PeriodicCallback(self._refresh_tick, interval_ms)
         self.periodic_callback.start()
-        log.info(f"[VolumeSizeRefresher] Started - refreshing every {self.interval_seconds}s")
+        logger.info(f"[VolumeSizeRefresher] Started - refreshing every {self.interval_seconds}s")
 
         # Run first refresh immediately
         asyncio.get_event_loop().call_soon(lambda: asyncio.ensure_future(self._refresh_tick_async()))
@@ -789,7 +812,7 @@ class VolumeSizeRefresher:
         if self.periodic_callback is not None:
             self.periodic_callback.stop()
             self.periodic_callback = None
-            log.info("[VolumeSizeRefresher] Stopped")
+            _get_logger().info("[VolumeSizeRefresher] Stopped")
 
     def _refresh_tick(self):
         """Called by PeriodicCallback - wraps async call."""
@@ -797,15 +820,16 @@ class VolumeSizeRefresher:
 
     async def _refresh_tick_async(self):
         """Async tick - refreshes volume sizes in background."""
+        logger = _get_logger()
         try:
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(_docker_executor, _refresh_volume_sizes_sync)
             # Log cache state after refresh
             data = _volume_sizes_cache.get('data', {})
             total_size = sum(u.get("total", 0) for u in data.values())
-            log.info(f"[VolumeSizeRefresher] Tick complete: {len(data)} users, {total_size:.1f} MB total")
+            logger.info(f"[VolumeSizeRefresher] Tick complete: {len(data)} users, {total_size:.1f} MB total")
         except Exception as e:
-            log.error(f"[VolumeSizeRefresher] Error during refresh: {e}")
+            logger.error(f"[VolumeSizeRefresher] Error during refresh: {e}")
 
 
 def start_volume_size_refresher():
