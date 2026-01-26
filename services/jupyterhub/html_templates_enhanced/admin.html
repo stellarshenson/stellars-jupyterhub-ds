@@ -387,23 +387,56 @@
                 // Skip if already has our button
                 if (cell.querySelector('.admin-manage-volumes-btn')) return;
 
-                // Find the username from the row - look for link in first cell
+                // Find the username from the row
                 const row = cell.closest('tr');
                 if (!row) return;
 
-                const userLink = row.querySelector('td a[href*="/user/"]');
-                if (!userLink) return;
+                // Try multiple methods to find username:
+                // 1. Link to user page: /hub/admin#/users/{username}
+                // 2. Link to user server: /user/{username}
+                // 3. First cell text content
+                let username = null;
 
-                // Extract username from href like "/jupyterhub/user/konrad/"
-                const href = userLink.getAttribute('href');
-                const match = href.match(/\/user\/([^\/]+)/);
-                if (!match) return;
+                // Method 1: Look for admin user link (e.g., href="#/users/konrad")
+                const adminLink = row.querySelector('td a[href*="#/users/"]');
+                if (adminLink) {
+                    const href = adminLink.getAttribute('href');
+                    const match = href.match(/#\/users\/([^\/]+)/);
+                    if (match) username = decodeURIComponent(match[1]);
+                }
 
-                const username = decodeURIComponent(match[1]);
+                // Method 2: Look for server link (e.g., href="/jupyterhub/user/konrad/")
+                if (!username) {
+                    const serverLink = row.querySelector('td a[href*="/user/"]');
+                    if (serverLink) {
+                        const href = serverLink.getAttribute('href');
+                        const match = href.match(/\/user\/([^\/]+)/);
+                        if (match) username = decodeURIComponent(match[1]);
+                    }
+                }
 
-                // Create button (styling inherited from .actions .btn in custom.css)
+                // Method 3: First td with a link - get text content
+                if (!username) {
+                    const firstLink = row.querySelector('td:first-child a');
+                    if (firstLink) {
+                        username = firstLink.textContent.trim();
+                    }
+                }
+
+                if (!username) return;
+
+                // Find the Edit button (has fa-edit or fa-pencil icon) to match its styling
+                const editBtn = cell.querySelector('button[title*="dit"], button .fa-edit, button .fa-pencil')?.closest('button')
+                             || cell.querySelector('a[title*="dit"], a .fa-edit, a .fa-pencil')?.closest('a');
+
+                // Create button with same classes as Edit button, or fallback
                 const btn = document.createElement('button');
-                btn.className = 'btn btn-outline-secondary admin-manage-volumes-btn';
+                if (editBtn) {
+                    btn.className = editBtn.className.replace(/\s+/g, ' ').trim();
+                } else {
+                    btn.className = 'btn btn-light';
+                }
+                btn.classList.add('admin-manage-volumes-btn');
                 btn.innerHTML = '<i class="fa fa-database"></i>';
                 btn.title = 'Manage Volumes';
                 btn.setAttribute('data-username', username);
@@ -414,7 +447,18 @@
                     openVolumeModal(username);
                 });
 
-                cell.appendChild(btn);
+                // Insert before Edit button if found, otherwise before last button (Delete)
+                if (editBtn) {
+                    editBtn.parentNode.insertBefore(btn, editBtn);
+                } else {
+                    // Find delete button (usually last, has fa-trash icon)
+                    const deleteBtn = cell.querySelector('button .fa-trash, button .fa-times')?.closest('button');
+                    if (deleteBtn) {
+                        deleteBtn.parentNode.insertBefore(btn, deleteBtn);
+                    } else {
+                        cell.appendChild(btn);
+                    }
+                }
             });
         }
 
