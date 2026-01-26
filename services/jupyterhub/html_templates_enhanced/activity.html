@@ -428,9 +428,6 @@ require(["jquery"], function($) {
     var tooltipText;
     if (hasEnoughData) {
       tooltipText = 'Activity: ' + normalizedScore + '%';
-      if (normalizedScore > 100) {
-        tooltipText += ' (>' + targetHours + 'h/day)';
-      }
     } else {
       var hoursCollected = Math.round((sampleCount * sampleInterval) / 3600);
       tooltipText = 'Not enough data (' + hoursCollected + 'h of 24h collected)';
