@@ -378,64 +378,56 @@
         let volumeModal = null;
         let currentVolumeUsername = null;
 
-        // Inject "Manage Volumes" button into user action cells
+        // Inject "Manage Volumes" button into user action areas
         function injectVolumeButtons() {
-            // Find all user action cells (td.actions contains buttons like Start/Stop/Delete)
-            const actionCells = document.querySelectorAll('td.actions');
+            // JupyterHub React admin renders Edit buttons for each user
+            // Find all Edit buttons and inject our button before them
+            const editButtons = document.querySelectorAll('button[title="Edit User"], a[title="Edit User"]');
 
-            actionCells.forEach(cell => {
-                // Skip if already has our button
-                if (cell.querySelector('.admin-manage-volumes-btn')) return;
+            editButtons.forEach(editBtn => {
+                // Skip if already has our button nearby
+                const parent = editBtn.parentNode;
+                if (parent.querySelector('.admin-manage-volumes-btn')) return;
 
-                // Find the username from the row
-                const row = cell.closest('tr');
-                if (!row) return;
-
-                // Try multiple methods to find username:
-                // 1. Link to user page: /hub/admin#/users/{username}
-                // 2. Link to user server: /user/{username}
-                // 3. First cell text content
+                // Find username - look for links in parent containers
                 let username = null;
 
-                // Method 1: Look for admin user link (e.g., href="#/users/konrad")
-                const adminLink = row.querySelector('td a[href*="#/users/"]');
-                if (adminLink) {
-                    const href = adminLink.getAttribute('href');
-                    const match = href.match(/#\/users\/([^\/]+)/);
-                    if (match) username = decodeURIComponent(match[1]);
-                }
+                // Walk up to find the user row/card container
+                let container = editBtn.closest('tr') || editBtn.closest('.card') || editBtn.closest('[class*="user"]') || editBtn.parentNode.parentNode.parentNode;
 
-                // Method 2: Look for server link (e.g., href="/jupyterhub/user/konrad/")
-                if (!username) {
-                    const serverLink = row.querySelector('td a[href*="/user/"]');
-                    if (serverLink) {
-                        const href = serverLink.getAttribute('href');
-                        const match = href.match(/\/user\/([^\/]+)/);
+                if (container) {
+                    // Method 1: Admin user link (href contains #/users/)
+                    const adminLink = container.querySelector('a[href*="#/users/"]');
+                    if (adminLink) {
+                        const href = adminLink.getAttribute('href');
+                        const match = href.match(/#\/users\/([^\/\?]+)/);
                         if (match) username = decodeURIComponent(match[1]);
                     }
-                }
 
-                // Method 3: First td with a link - get text content
-                if (!username) {
-                    const firstLink = row.querySelector('td:first-child a');
-                    if (firstLink) {
-                        username = firstLink.textContent.trim();
+                    // Method 2: Server link (href contains /user/)
+                    if (!username) {
+                        const serverLink = container.querySelector('a[href*="/user/"]');
+                        if (serverLink) {
+                            const href = serverLink.getAttribute('href');
+                            const match = href.match(/\/user\/([^\/\?]+)/);
+                            if (match) username = decodeURIComponent(match[1]);
+                        }
+                    }
+
+                    // Method 3: Any link that looks like a username (first link text)
+                    if (!username) {
+                        const anyLink = container.querySelector('a');
+                        if (anyLink && anyLink.textContent && !anyLink.textContent.includes('/')) {
+                            username = anyLink.textContent.trim();
+                        }
                     }
                 }
 
                 if (!username) return;
 
-                // Find the Edit button (has fa-edit or fa-pencil icon) to match its styling
-                const editBtn = cell.querySelector('button[title*="dit"], button .fa-edit, button .fa-pencil')?.closest('button')
-                             || cell.querySelector('a[title*="dit"], a .fa-edit, a .fa-pencil')?.closest('a');
-
-                // Create button with same classes as Edit button, or fallback
+                // Create button with same classes as Edit button
                 const btn = document.createElement('button');
-                if (editBtn) {
-                    btn.className = editBtn.className.replace(/\s+/g, ' ').trim();
-                } else {
-                    btn.className = 'btn btn-light';
-                }
+                btn.className = editBtn.className;
                 btn.classList.add('admin-manage-volumes-btn');
                 btn.innerHTML = '<i class="fa fa-database"></i>';
                 btn.title = 'Manage Volumes';
@@ -447,18 +439,8 @@
                     openVolumeModal(username);
                 });
 
-                // Insert before Edit button if found, otherwise before last button (Delete)
-                if (editBtn) {
-                    editBtn.parentNode.insertBefore(btn, editBtn);
-                } else {
-                    // Find delete button (usually last, has fa-trash icon)
-                    const deleteBtn = cell.querySelector('button .fa-trash, button .fa-times')?.closest('button');
-                    if (deleteBtn) {
-                        deleteBtn.parentNode.insertBefore(btn, deleteBtn);
-                    } else {
-                        cell.appendChild(btn);
-                    }
-                }
+                // Insert before Edit button
+                parent.insertBefore(btn, editBtn);
             });
         }
 
