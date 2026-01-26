@@ -20,7 +20,7 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 - **Admin User Creation**: Batch user creation from admin panel with auto-generated mnemonic passwords (e.g., `storm-apple-ocean`). Credentials modal with copy/download options
 - **Shared Storage**: Optional CIFS/NAS mount support for shared datasets across all users
 - **Idle Server Culler**: Automatic shutdown of inactive servers after configurable timeout (default: 24 hours). Frees resources when users leave servers running
-- **Activity Monitor**: Admin-only dashboard showing real-time CPU/memory usage, 3-state status indicator (active/inactive/offline), and historical activity scoring with exponential decay
+- **Activity Monitor**: Admin-only dashboard showing real-time CPU/memory usage, volume sizes with per-volume breakdown, 3-state status indicator (active/inactive/offline), and historical activity scoring with exponential decay
 - **Production Ready**: Traefik reverse proxy with TLS termination, automatic container updates via Watchtower
 
 ## User Interface
@@ -393,15 +393,17 @@ Admin-only dashboard at `/hub/activity` showing real-time resource usage and use
 services:
   jupyterhub:
     environment:
-      - JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL=600   # 10 minutes (default) - how often to record samples
-      - JUPYTERHUB_ACTIVITYMON_RETENTION_DAYS=7      # 7 days (default) - how long to keep samples
-      - JUPYTERHUB_ACTIVITYMON_HALF_LIFE=72          # 72 hours / 3 days (default) - decay half-life for scoring
-      - JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER=60     # 60 minutes (default) - threshold for inactive status
+      - JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL=600          # 10 minutes (default) - how often to record samples
+      - JUPYTERHUB_ACTIVITYMON_RETENTION_DAYS=7             # 7 days (default) - how long to keep samples
+      - JUPYTERHUB_ACTIVITYMON_HALF_LIFE=72                 # 72 hours / 3 days (default) - decay half-life for scoring
+      - JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER=60            # 60 minutes (default) - threshold for inactive status
+      - JUPYTERHUB_ACTIVITYMON_VOLUMES_UPDATE_INTERVAL=3600 # 1 hour (default) - how often to refresh volume sizes
 ```
 
 **Features**:
 - **3-state status**: Green (online + active within 60 min), Yellow (online + inactive), Red (offline)
 - **Resource metrics**: Real-time CPU and memory usage per container (fetched in parallel to avoid blocking)
+- **Volume sizes**: Total storage per user with hover tooltip showing per-volume breakdown (home/workspace/cache). Refreshed hourly in background
 - **Activity score**: Weighted average of historical activity using exponential decay (recent activity counts more)
 - **Reset button**: Clear all historical samples to start fresh
 
