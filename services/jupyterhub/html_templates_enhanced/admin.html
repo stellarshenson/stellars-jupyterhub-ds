@@ -388,8 +388,23 @@
                 const actionsCell = row.querySelector('td.actions');
                 if (!actionsCell) return;
 
+                // Check if server is running (has "Stop Server" button) or stopped (has "Start Server" button)
+                let serverRunning = false;
+                actionsCell.querySelectorAll('button').forEach(btn => {
+                    if (btn.textContent.trim() === 'Stop Server') {
+                        serverRunning = true;
+                    }
+                });
+
+                // Remove existing button if server is now running
+                const existingBtn = actionsCell.querySelector('.admin-manage-volumes-btn');
+                if (serverRunning) {
+                    if (existingBtn) existingBtn.remove();
+                    return;
+                }
+
                 // Skip if already has our button
-                if (actionsCell.querySelector('.admin-manage-volumes-btn')) return;
+                if (existingBtn) return;
 
                 // Get username from the user-name-div span
                 const usernameSpan = row.querySelector('span[data-testid^="user-name-div-"]');
@@ -397,7 +412,7 @@
                 const username = usernameSpan.textContent.trim();
                 if (!username) return;
 
-                // Find the Edit User button (by text content)
+                // Find the Edit User button (by text content) to copy its styling
                 let editBtn = null;
                 actionsCell.querySelectorAll('button').forEach(btn => {
                     if (btn.textContent.trim() === 'Edit User') {
@@ -421,8 +436,8 @@
                     openVolumeModal(username);
                 });
 
-                // Insert before Edit button
-                editBtn.parentNode.insertBefore(btn, editBtn);
+                // Append as last button in actions cell
+                actionsCell.appendChild(btn);
             });
         }
 
