@@ -282,3 +282,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 93. **Task - README documentation update**: Updated README with admin volume management and volume sizes tracking<br>
     **Result**: Added Admin Volume Management feature to Features list (database icon button in admin panel). Updated Activity Monitor feature description to include volume sizes with per-volume breakdown. Added Volume sizes feature to Activity Monitor Features section with hover tooltip details. Added `JUPYTERHUB_ACTIVITYMON_VOLUMES_UPDATE_INTERVAL` config option (default 1 hour). Added note in User Self-Service Workflow section explaining admin can manage volumes for any user from `/hub/admin`
+
+94. **Task - Fix volume button positioning during React render**: Fixed button appearing on left side until page refresh<br>
+    **Result**: MutationObserver fires while React is still rendering, causing volume button to be inserted before React finishes adding other buttons (server control buttons). Button ended up in middle of action cell instead of last. Fixed by repositioning existing button to end on each MutationObserver tick if `actionsCell.lastElementChild !== existingBtn` - ensures button stays at rightmost position regardless of when React renders additional buttons
