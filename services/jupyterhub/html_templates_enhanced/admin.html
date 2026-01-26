@@ -380,50 +380,32 @@
 
         // Inject "Manage Volumes" button into user action areas
         function injectVolumeButtons() {
-            // JupyterHub React admin renders Edit buttons for each user
-            // Find all Edit buttons and inject our button before them
-            const editButtons = document.querySelectorAll('button[title="Edit User"], a[title="Edit User"]');
+            // Find all user rows (tr.user-row)
+            const userRows = document.querySelectorAll('tr.user-row');
 
-            editButtons.forEach(editBtn => {
-                // Skip if already has our button nearby
-                const parent = editBtn.parentNode;
-                if (parent.querySelector('.admin-manage-volumes-btn')) return;
+            userRows.forEach(row => {
+                // Find the actions cell
+                const actionsCell = row.querySelector('td.actions');
+                if (!actionsCell) return;
 
-                // Find username - look for links in parent containers
-                let username = null;
+                // Skip if already has our button
+                if (actionsCell.querySelector('.admin-manage-volumes-btn')) return;
 
-                // Walk up to find the user row/card container
-                let container = editBtn.closest('tr') || editBtn.closest('.card') || editBtn.closest('[class*="user"]') || editBtn.parentNode.parentNode.parentNode;
-
-                if (container) {
-                    // Method 1: Admin user link (href contains #/users/)
-                    const adminLink = container.querySelector('a[href*="#/users/"]');
-                    if (adminLink) {
-                        const href = adminLink.getAttribute('href');
-                        const match = href.match(/#\/users\/([^\/\?]+)/);
-                        if (match) username = decodeURIComponent(match[1]);
-                    }
-
-                    // Method 2: Server link (href contains /user/)
-                    if (!username) {
-                        const serverLink = container.querySelector('a[href*="/user/"]');
-                        if (serverLink) {
-                            const href = serverLink.getAttribute('href');
-                            const match = href.match(/\/user\/([^\/\?]+)/);
-                            if (match) username = decodeURIComponent(match[1]);
-                        }
-                    }
-
-                    // Method 3: Any link that looks like a username (first link text)
-                    if (!username) {
-                        const anyLink = container.querySelector('a');
-                        if (anyLink && anyLink.textContent && !anyLink.textContent.includes('/')) {
-                            username = anyLink.textContent.trim();
-                        }
-                    }
-                }
-
+                // Get username from the user-name-div span
+                const usernameSpan = row.querySelector('span[data-testid^="user-name-div-"]');
+                if (!usernameSpan) return;
+                const username = usernameSpan.textContent.trim();
                 if (!username) return;
+
+                // Find the Edit User button (by text content)
+                let editBtn = null;
+                actionsCell.querySelectorAll('button').forEach(btn => {
+                    if (btn.textContent.trim() === 'Edit User') {
+                        editBtn = btn;
+                    }
+                });
+
+                if (!editBtn) return;
 
                 // Create button with same classes as Edit button
                 const btn = document.createElement('button');
@@ -440,7 +422,7 @@
                 });
 
                 // Insert before Edit button
-                parent.insertBefore(btn, editBtn);
+                editBtn.parentNode.insertBefore(btn, editBtn);
             });
         }
 
