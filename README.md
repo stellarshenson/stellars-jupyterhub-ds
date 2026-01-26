@@ -13,6 +13,7 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 - **GPU Auto-Detection**: Automatic NVIDIA CUDA GPU detection and configuration for spawned user containers
 - **Notification Broadcast**: Admin broadcast to all active servers via `/hub/notifications`. Supports six notification types, 140-character limit. Requires [jupyterlab_notifications_extension](https://github.com/stellarshenson/jupyterlab_notifications_extension)
 - **User Self-Service**: Users can restart their JupyterLab containers and selectively reset persistent volumes (home/workspace/cache) without admin intervention
+- **Admin Volume Management**: Admins can manage any user's volumes directly from the admin panel via database icon button in each user row
 - **Docker Access Control**: Group-based access via `docker-sock` (container orchestration) and `docker-privileged` (full container privileges)
 - **Isolated Environments**: Each user gets dedicated JupyterLab container with persistent volumes via DockerSpawner
 - **Native Authentication**: Built-in user management with NativeAuthenticator supporting optional self-registration (`JUPYTERHUB_SIGNUP_ENABLED`) and admin approval. Authorization page protects existing users from accidental discard - only pending signup requests can be discarded
@@ -223,6 +224,8 @@ graph LR
 ```
 
 Users manage their servers through the home page. Running servers can be restarted via Docker API without recreation. Stopped servers can be started normally or have volumes selectively deleted through a modal interface presenting checkboxes for home, workspace, and cache volumes with optional descriptions from configuration.
+
+Administrators can manage volumes for any user directly from the admin panel (`/hub/admin`). Each user row displays a database icon button that opens the same volume selection modal, allowing admins to reset volumes without accessing individual user home pages.
 
 ## Volume Architecture
 
