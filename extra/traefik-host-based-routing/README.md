@@ -15,7 +15,11 @@ Template for deploying stellars-jupyterhub-ds with local Traefik reverse proxy a
    ./generate-certs.sh yourdomain.example.com
    ```
 
-3. Edit `compose_override.yml` - replace `YOURDOMAIN` with your domain
+3. Create `.env` and set your hostname:
+   ```bash
+   cp .env.example .env
+   # Edit .env: HOSTNAME=yourdomain.example.com
+   ```
 
 4. Start:
    ```bash
@@ -44,8 +48,7 @@ Template for deploying stellars-jupyterhub-ds with local Traefik reverse proxy a
 
 ## Configuration
 
-Edit `compose_override.yml` to customize:
-- Domain name (replace `YOURDOMAIN` placeholder)
+Set `HOSTNAME` in `.env` for your domain. Edit `compose_override.yml` to customize:
 - Ports (default: 80/443)
 - Environment variables (idle culler, signup)
 - Network name
