@@ -852,6 +852,18 @@ def encode_username_for_docker(username):
     return escape(username, escape_char='-').lower()
 
 
+class FaviconRedirectHandler(web.RequestHandler):
+    """Redirect user-server favicon requests to hub's static favicon.
+
+    Uses tornado.web.RequestHandler (not BaseHandler) because this handler
+    is injected directly into the Tornado app outside the /hub/ prefix,
+    serving CHP proxy routes that bypass JupyterHub's handler prefix."""
+
+    def get(self):
+        base_url = self.application.settings.get('base_url', '/')
+        self.redirect(f'{base_url}hub/static/favicon.ico')
+
+
 class ManageVolumesHandler(BaseHandler):
     """Handler for managing user volumes"""
 

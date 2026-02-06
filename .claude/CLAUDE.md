@@ -74,7 +74,7 @@ This Python configuration file controls all JupyterHub behavior:
 - `JUPYTERHUB_SERVICE_TENSORBOARD`: Enable TensorBoard (`0`/`1`)
 - `JUPYTERHUB_NVIDIA_IMAGE`: Image for GPU detection (default: `nvidia/cuda:13.0.2-base-ubuntu24.04`)
 - `JUPYTERHUB_LOGO_URI`: Custom logo - `file://` for local files, URL for external (default: empty)
-- `JUPYTERHUB_FAVICON_URI`: Custom favicon - `file://` copies to static dir, URL passed to template (default: empty)
+- `JUPYTERHUB_FAVICON_URI`: Custom favicon - `file://` copies to static dir and enables CHP proxy routes for JupyterLab sessions (default: empty)
 
 **GPU Auto-Detection**: When `JUPYTERHUB_GPU_ENABLED=2`, the platform attempts to run `nvidia-smi` in a CUDA container. If successful, GPU support is enabled for all spawned user containers via `device_requests`.
 
@@ -297,6 +297,24 @@ One-click Docker container restart without recreation. Preserves volumes and con
 ## NativeAuthenticator Sync
 
 User renames via JupyterHub admin panel automatically sync to NativeAuthenticator's `UserInfo` table, preserving authorization status. This is implemented via SQLAlchemy event listener on `orm.User.name` in `config/jupyterhub_config.py`.
+
+## Custom Branding
+
+Custom logo and favicon via `JUPYTERHUB_LOGO_URI` and `JUPYTERHUB_FAVICON_URI` environment variables. Both support `file://` (local path) and `http(s)://` (external URL). Empty value = stock JupyterHub assets.
+
+**Favicon CHP Proxy Route**: Hub pages serve the custom favicon directly, but JupyterLab sessions request favicons from `/user/{username}/static/favicons/favicon.ico` which Configurable HTTP Proxy (CHP) routes to the user container, bypassing the hub entirely. To override this, `pre_spawn_hook` registers a per-user CHP route (`/user/{username}/static/favicons/`) pointing back to the hub. CHP's longest-prefix-match selects this over the generic `/user/{username}/` route. A Tornado `FaviconRedirectHandler` (injected directly into the app, not via `extra_handlers` which auto-prefixes `/hub/`) then 302-redirects to the hub's static favicon.
+
+**Implementation**:
+- Handler: `services/jupyterhub/conf/bin/custom_handlers.py::FaviconRedirectHandler` (extends `tornado.web.RequestHandler`)
+- Route injection: `config/jupyterhub_config.py::pre_spawn_hook` (conditional on `JUPYTERHUB_FAVICON_URI`)
+- CHP route added per-user before each spawn (idempotent, no cleanup needed)
+- Tornado handler injected once into `app.tornado_application` (outside `/hub/` prefix)
+
+**Request Flow**:
+1. Browser: `GET /jupyterhub/user/alice/static/favicons/favicon.ico`
+2. CHP: longest-prefix matches `/jupyterhub/user/alice/static/favicons/` -> hub
+3. Hub: `FaviconRedirectHandler` -> 302 to `/jupyterhub/hub/static/favicon.ico`
+4. Browser follows redirect, hub serves custom favicon
 
 ## Troubleshooting
 
