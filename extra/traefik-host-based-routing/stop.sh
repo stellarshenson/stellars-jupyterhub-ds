@@ -8,7 +8,13 @@ cd "$(dirname "$0")"
 # Default configuration (override via .env)
 ENABLE_CIFS="${ENABLE_CIFS:-0}"
 
-# Load environment variables if .env exists
+# Create .env from example if missing
+if [[ ! -f .env ]] && [[ -f .env.example ]]; then
+    cp .env.example .env
+    echo "Created .env from .env.example"
+fi
+
+# Load environment variables
 if [[ -f .env ]]; then
     source .env
 fi
