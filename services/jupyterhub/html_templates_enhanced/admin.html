@@ -168,10 +168,20 @@
         const userDeleteMatch = urlPath.match(/api\/users\/([^\/]+)$/);
         const isUserDeletion = method === 'DELETE' && userDeleteMatch;
 
+        // Check for user rename - PATCH to api/users/{username}
+        const userPatchMatch = urlPath.match(/api\/users\/([^\/]+)$/);
+        const isUserRename = method === 'PATCH' && userPatchMatch;
+
         // Show spinner for deletion
         if (isUserDeletion) {
             const username = decodeURIComponent(userDeleteMatch[1]);
             showLoadingSpinner('Deleting user ' + username + '...');
+        }
+
+        // Show spinner for rename
+        if (isUserRename) {
+            const username = decodeURIComponent(userPatchMatch[1]);
+            showLoadingSpinner('Renaming user ' + username + '...');
         }
 
         // Capture request body before fetch (for batch user creation)
@@ -189,6 +199,11 @@
             } catch (e) {
                 // Body might not be JSON, ignore
             }
+        }
+
+        // Show spinner immediately when user creation POST is detected
+        if (isUserCreation && requestUsernames.length > 0) {
+            showLoadingSpinner('Creating users...');
         }
 
         const response = await originalFetch.apply(this, args);
@@ -217,8 +232,8 @@
                         // console.log('[Admin] Users created:', createdUsers);
                         pendingUsernames.push(...createdUsers);
 
-                        // Show loading spinner
-                        showLoadingSpinner('Generating credentials...');
+                        // Update spinner message for credential generation phase
+                        document.getElementById('loading-modal-text').textContent = 'Generating credentials...';
 
                         // Debounce - wait for batch completion then fetch credentials
                         clearTimeout(window._credentialsFetchTimeout);
@@ -228,15 +243,25 @@
                                 pendingUsernames = [];
                             }
                         }, 1000);
+                    } else {
+                        hideLoadingSpinner();
                     }
+                } else {
+                    hideLoadingSpinner();
                 }
             } catch (e) {
                 // console.error('[Admin] Error processing user creation:', e);
+                hideLoadingSpinner();
             }
         }
 
         // Hide spinner after user deletion completes
         if (isUserDeletion) {
+            hideLoadingSpinner();
+        }
+
+        // Hide spinner after user rename completes
+        if (isUserRename) {
             hideLoadingSpinner();
         }
 
