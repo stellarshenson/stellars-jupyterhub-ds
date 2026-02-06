@@ -3,6 +3,7 @@
 
 # Configuration file for JupyterHub
 import os
+import sys
 import json
 import requests
 import nativeauthenticator
