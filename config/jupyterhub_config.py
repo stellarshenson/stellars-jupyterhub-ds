@@ -341,6 +341,20 @@ if c is not None:
         if os.path.exists(logo_file):
             c.JupyterHub.logo_file = logo_file
 
+    # Custom favicon URI - mirrors logo pattern
+    # file:// copies to static dir, http(s):// passed to template directly
+    favicon_uri = os.environ.get('JUPYTERHUB_FAVICON_URI', '')
+    if favicon_uri.startswith('file://'):
+        favicon_file = favicon_uri[7:]
+        if os.path.exists(favicon_file):
+            import shutil
+            static_favicon = os.path.join(
+                os.path.dirname(jupyterhub.__file__),
+                'static', 'favicon.ico'
+            )
+            shutil.copy2(favicon_file, static_favicon)
+        favicon_uri = ''  # Reset - served via static_url after copy
+
     # Make volume suffixes, descriptions, version, and idle culler config available to templates
     ACTIVITYMON_TARGET_HOURS = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_TARGET_HOURS', 8))
     ACTIVITYMON_SAMPLE_INTERVAL = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL', 600))
@@ -354,6 +368,7 @@ if c is not None:
         'idle_culler_max_extension': JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION,
         'activitymon_target_hours': ACTIVITYMON_TARGET_HOURS,
         'activitymon_sample_interval': ACTIVITYMON_SAMPLE_INTERVAL,
+        'favicon_uri': favicon_uri,
     }
 
 # Built-in groups that cannot be deleted (auto-recreated if missing)

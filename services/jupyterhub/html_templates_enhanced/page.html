@@ -47,7 +47,11 @@
             type="text/css" />
     {% endblock stylesheet %}
     {% block favicon %}
-      <link rel="icon" href="{{ static_url('favicon.ico') }}" type="image/x-icon">
+      {% if favicon_uri %}
+        <link rel="icon" href="{{ favicon_uri }}" type="image/x-icon">
+      {% else %}
+        <link rel="icon" href="{{ static_url('favicon.ico') }}" type="image/x-icon">
+      {% endif %}
     {% endblock favicon %}
     {% block scripts %}
       <script src="{{static_url("components/bootstrap/dist/js/bootstrap.bundle.min.js") }}"
