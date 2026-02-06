@@ -10,16 +10,8 @@ REPO_URL="https://github.com/stellarshenson/stellars-jupyterhub-ds.git"
 REPO_DIR="stellars-jupyterhub-ds"
 REFRESH=false
 
-# Default configuration (override via .env)
-ENABLE_CIFS="${ENABLE_CIFS:-0}"
-
-# Create .env from example if missing
-if [[ ! -f .env ]] && [[ -f .env.example ]]; then
-    cp .env.example .env
-    echo "Created .env from .env.example"
-fi
-
-# Load environment variables
+# Load defaults, then local overrides
+source .env.default
 if [[ -f .env ]]; then
     source .env
 fi
@@ -53,7 +45,11 @@ else
 fi
 
 # Build compose command with optional CIFS mount
-COMPOSE_FILES="--env-file .env -f stellars-jupyterhub-ds/compose.yml -f compose_override.yml"
+COMPOSE_FILES="--env-file .env.default"
+if [[ -f .env ]]; then
+    COMPOSE_FILES="${COMPOSE_FILES} --env-file .env"
+fi
+COMPOSE_FILES="${COMPOSE_FILES} -f stellars-jupyterhub-ds/compose.yml -f compose_override.yml"
 if [[ "${ENABLE_CIFS}" == "1" ]]; then
     echo "CIFS mount enabled"
     COMPOSE_FILES="${COMPOSE_FILES} -f compose_cifs.yml"
@@ -64,4 +60,4 @@ docker compose ${COMPOSE_FILES} pull
 docker pull stellars/stellars-jupyterlab-ds:latest
 docker compose ${COMPOSE_FILES} up -d --no-build
 
-echo "Done. Access: https://${JUPYTERHUB_HOSTNAME:-localhost}/"
+echo "Done. Access: https://${JUPYTERHUB_PREFIX:-jupyterhub.}${BASE_HOSTNAME:-localhost}/"
