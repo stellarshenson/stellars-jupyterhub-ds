@@ -58,4 +58,4 @@ docker compose ${COMPOSE_FILES} pull
 docker pull stellars/stellars-jupyterlab-ds:latest
 docker compose ${COMPOSE_FILES} up -d --no-build
 
-echo "Done. Access: https://jupyterhub.${HOSTNAME:-localhost}/"
+echo "Done. Access: https://jupyterhub.${BASE_HOSTNAME:-localhost}/"
