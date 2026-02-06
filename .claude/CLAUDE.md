@@ -73,6 +73,8 @@ This Python configuration file controls all JupyterHub behavior:
 - `JUPYTERHUB_SERVICE_RESOURCES_MONITOR`: Enable resource monitor (`0`/`1`)
 - `JUPYTERHUB_SERVICE_TENSORBOARD`: Enable TensorBoard (`0`/`1`)
 - `JUPYTERHUB_NVIDIA_IMAGE`: Image for GPU detection (default: `nvidia/cuda:13.0.2-base-ubuntu24.04`)
+- `JUPYTERHUB_LOGO_URI`: Custom logo - `file://` for local files, URL for external (default: `file:///srv/jupyterhub/logo.svg`)
+- `JUPYTERHUB_FAVICON_URI`: Custom favicon - `file://` copies to static dir, URL passed to template (default: empty)
 
 **GPU Auto-Detection**: When `JUPYTERHUB_GPU_ENABLED=2`, the platform attempts to run `nvidia-smi` in a CUDA container. If successful, GPU support is enabled for all spawned user containers via `device_requests`.
 
