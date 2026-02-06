@@ -111,8 +111,8 @@ Activity Monitor:
 
 Branding:
   - name: JUPYTERHUB_LOGO_URI
-    description: Custom logo URI
-    default: file:///srv/jupyterhub/logo.svg
+    description: Custom logo URI (file:// or URL)
+    default: ""
 
   - name: JUPYTERHUB_FAVICON_URI
     description: Custom favicon URI (file:// or URL)

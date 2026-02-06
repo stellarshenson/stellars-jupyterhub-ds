@@ -335,7 +335,7 @@ if c is not None:
     # Custom logo URI - supports file:// for local files, or http(s):// for external resources
     # JupyterHub serves local logos at {{ base_url }}logo automatically
     # External URIs (http/https) are passed to templates for custom rendering
-    logo_uri = os.environ.get('JUPYTERHUB_LOGO_URI', 'file:///srv/jupyterhub/logo.svg')
+    logo_uri = os.environ.get('JUPYTERHUB_LOGO_URI', '')
     if logo_uri.startswith('file://'):
         logo_file = logo_uri[7:]  # Strip file:// prefix to get local path
         if os.path.exists(logo_file):
