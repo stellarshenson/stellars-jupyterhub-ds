@@ -114,6 +114,10 @@ Branding:
     description: Custom logo URI
     default: file:///srv/jupyterhub/logo.svg
 
+  - name: JUPYTERHUB_FAVICON_URI
+    description: Custom favicon URI (file:// or URL)
+    default: ""
+
   - name: STELLARS_JUPYTERHUB_VERSION
     description: Platform version
     default: unknown
