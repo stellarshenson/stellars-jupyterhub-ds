@@ -4,9 +4,9 @@
 #
 # PORTS:  80 (HTTP -> redirects to 443)  |  443 (HTTPS)
 # CERT:   Self-signed cert in ./certs/
-# ACCESS: https://jupyterhub.${BASE_HOSTNAME}/ or https://jupyterhub.localhost/
+# ACCESS: https://${JUPYTERHUB_HOSTNAME}/ or https://jupyterhub.localhost/
 #
-# Set BASE_HOSTNAME in .env (e.g., HOSTNAME=lab.example.com)
+# Set BASE_HOSTNAME and JUPYTERHUB_HOSTNAME in .env
 #
 # =============================================================================
 
@@ -75,7 +75,7 @@ services:
       - "traefik.enable=true"
 
       # JupyterHub router (root path)
-      - "traefik.http.routers.jupyterhub-rtr.rule=Host(`jupyterhub.${BASE_HOSTNAME}`) || Host(`jupyterhub.localhost`)"
+      - "traefik.http.routers.jupyterhub-rtr.rule=Host(`${JUPYTERHUB_HOSTNAME}`) || Host(`jupyterhub.localhost`)"
       - "traefik.http.routers.jupyterhub-rtr.entrypoints=websecure"
       - "traefik.http.routers.jupyterhub-rtr.tls=true"
       - "traefik.http.routers.jupyterhub-rtr.service=jupyterhub-svc"
