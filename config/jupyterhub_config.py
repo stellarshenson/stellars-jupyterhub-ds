@@ -349,7 +349,7 @@ if c is not None:
         if os.path.exists(favicon_file):
             import shutil
             static_favicon = os.path.join(
-                os.path.dirname(jupyterhub.__file__),
+                sys.prefix, 'share', 'jupyterhub',
                 'static', 'favicon.ico'
             )
             shutil.copy2(favicon_file, static_favicon)
