@@ -14,7 +14,7 @@ if [[ -f .env ]]; then
 fi
 
 # Build compose command with optional CIFS mount
-COMPOSE_FILES="-f stellars-jupyterhub-ds/compose.yml -f compose_override.yml"
+COMPOSE_FILES="--env-file .env -f stellars-jupyterhub-ds/compose.yml -f compose_override.yml"
 if [[ "${ENABLE_CIFS}" == "1" ]]; then
     COMPOSE_FILES="${COMPOSE_FILES} -f compose_cifs.yml"
 fi
