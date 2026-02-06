@@ -1,0 +1,83 @@
+# Custom Branding
+
+Custom logo and favicon for the JupyterHub platform, controlled via environment variables. Both support local files (`file://` prefix) and external URLs (`http(s)://`). Empty value uses stock JupyterHub assets.
+
+## Environment Variables
+
+| Variable | Purpose | Values |
+|----------|---------|--------|
+| `JUPYTERHUB_LOGO_URI` | Hub login and navigation logo | `file:///path/to/logo.svg` or `https://example.com/logo.svg` |
+| `JUPYTERHUB_FAVICON_URI` | Browser tab favicon for hub and JupyterLab | `file:///path/to/favicon.ico` or `https://example.com/favicon.ico` |
+
+**`file://` handling**: The file is copied to JupyterHub's static directory at startup, then served via `static_url()`. The source file must be accessible inside the container (mount via compose volumes).
+
+**URL handling**: External URLs are passed directly to templates for rendering.
+
+## Favicon in JupyterLab Sessions
+
+Hub pages serve the custom favicon directly. JupyterLab sessions present a challenge because favicon requests (`/user/{username}/static/favicons/favicon.ico`) are routed by Configurable HTTP Proxy (CHP) to the user container, bypassing the hub entirely. The user container serves JupyterLab's default favicon.
+
+### Solution - CHP Proxy Route Injection
+
+The platform uses CHP's trie-based longest-prefix-match routing to intercept favicon requests before they reach user containers.
+
+**How it works**:
+
+1. `pre_spawn_hook` registers a per-user CHP route (`/user/{username}/static/favicons/`) pointing back to the hub
+2. CHP's longest-prefix-match selects this over the generic `/user/{username}/` route
+3. A `FaviconRedirectHandler` (injected into the Tornado app's wildcard router) responds with a 302 redirect to the hub's static favicon
+
+**Request flow**:
+
+```
+Browser: GET /user/alice/static/favicons/favicon.ico
+  -> CHP: longest-prefix matches /user/alice/static/favicons/ -> hub (host:port)
+  -> Hub: FaviconRedirectHandler -> 302 /hub/static/favicon.ico
+  -> Browser follows redirect, hub serves custom favicon
+```
+
+### Technical Details - Two Pitfalls
+
+Two non-obvious issues required specific solutions during implementation:
+
+**CHP target must be host:port only (no path)**. `app.hub.url` returns `http://jupyterhub:8080/hub/` which includes a `/hub/` path. When a CHP target has a path component, CHP rewrites the forwarded request path - stripping the matched route prefix and prepending the target path. This causes the hub to receive a mangled path that no handler matches. The fix uses `urlparse` to extract just `scheme://netloc` from `app.hub.url`, matching how JupyterHub registers its own hub route (`/ -> http://jupyterhub:8080`).
+
+**Tornado handler must be inserted into the existing wildcard router**. `app.tornado_application.add_handlers(".*", ...)` creates a new host group that Tornado checks after all existing host groups. Since JupyterHub's default handlers include catch-all patterns, the new group is never reached. The fix uses `app.tornado_application.wildcard_router.rules.insert(0, rule)` to prepend the handler rule into the existing host group, ensuring it's checked before any catch-all.
+
+### Why not `extra_handlers`?
+
+JupyterHub auto-prefixes all `extra_handlers` routes with `/hub/`. CHP forwards the original path without `/hub/`, so the handler would never match. Instead, `FaviconRedirectHandler` extends `tornado.web.RequestHandler` (not `BaseHandler`) and is injected directly into the Tornado app's wildcard router.
+
+### Route Lifecycle
+
+- CHP routes are added in `pre_spawn_hook` before each spawn (idempotent - CHP overwrites existing routes)
+- Tornado handler is injected once (guarded by `app._favicon_handler_injected` flag)
+- Stale routes when servers stop are harmless (hub is always running to handle them)
+- No cleanup needed
+- Servers already running when JupyterHub restarts will not have CHP routes until their next stop/start cycle
+
+### Conditionality
+
+The entire mechanism only activates when `JUPYTERHUB_FAVICON_URI` is non-empty. When empty, JupyterLab sessions display their own default favicon.
+
+## Implementation Files
+
+| File | Role |
+|------|------|
+| `config/jupyterhub_config.py` | Favicon file copy at startup, CHP route + Tornado handler injection in `pre_spawn_hook` |
+| `services/jupyterhub/conf/bin/custom_handlers.py` | `FaviconRedirectHandler` class (extends `tornado.web.RequestHandler`) |
+| `services/jupyterhub/templates/page.html` | Conditional favicon rendering in `<head>` |
+
+## Deployment Example
+
+```yaml
+# compose_override.yml
+services:
+  jupyterhub:
+    volumes:
+      - ./favicon.ico:/srv/jupyterhub/favicon.ico:ro
+      - ./logo.svg:/srv/jupyterhub/logo.svg:ro
+    environment:
+      - JUPYTERHUB_FAVICON_URI=file:///srv/jupyterhub/favicon.ico
+      - JUPYTERHUB_LOGO_URI=file:///srv/jupyterhub/logo.svg
+```

@@ -408,6 +408,35 @@ async def pre_spawn_hook(spawner):
     else:
         spawner.extra_host_config.pop('privileged', None)
 
+    # Favicon proxy route: redirect user-server favicon requests to hub's static favicon
+    # Only active when JUPYTERHUB_FAVICON_URI is set (custom branding)
+    favicon_uri = os.environ.get('JUPYTERHUB_FAVICON_URI', '')
+    if favicon_uri:
+        from jupyterhub.app import JupyterHub
+        app = JupyterHub.instance()
+
+        # One-time: inject Tornado handler into app (outside /hub/ prefix)
+        # Uses wildcard_router to insert into existing host group (not add_handlers
+        # which creates a new group checked AFTER existing catch-all handlers)
+        if not getattr(app, '_favicon_handler_injected', False):
+            from custom_handlers import FaviconRedirectHandler
+            from tornado.web import url
+            pattern = app.base_url + r'user/[^/]+/static/favicons/favicon\.ico'
+            rule = url(pattern, FaviconRedirectHandler)
+            app.tornado_application.wildcard_router.rules.insert(0, rule)
+            app._favicon_handler_injected = True
+            spawner.log.info(f"[Favicon] Injected Tornado handler for pattern: {pattern}")
+
+        # Per-user: add CHP route for favicon path -> hub (idempotent)
+        # Target must be host:port only (no path) - same as hub's own route.
+        # app.hub.url includes /hub/ path which causes CHP path rewriting.
+        from urllib.parse import urlparse
+        parsed = urlparse(app.hub.url)
+        hub_target = f'{parsed.scheme}://{parsed.netloc}'
+        routespec = f'{app.base_url}user/{username}/static/favicons/'
+        await app.proxy.add_route(routespec, hub_target, {})
+        spawner.log.info(f"[Favicon] Added CHP route: {routespec} -> {hub_target}")
+
 # Apply remaining configuration (only when loaded by JupyterHub, not when imported)
 if c is not None:
     c.DockerSpawner.pre_spawn_hook = pre_spawn_hook
