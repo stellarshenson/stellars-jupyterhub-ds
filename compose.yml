@@ -85,7 +85,7 @@ services:
       # Misc
       - TF_CPP_MIN_LOG_LEVEL=3 # TensorFlow verbosity
       - CERTIFICATE_DOMAIN_NAME=localhost # self-signed certificate domain
-      - JUPYTERHUB_LOGO_URI=file:///srv/jupyterhub/logo.svg # custom logo URI
+      - JUPYTERHUB_LOGO_URI= # custom logo URI (file:// or http(s)://)
       - JUPYTERHUB_FAVICON_URI= # custom favicon URI (file:// or http(s)://)
     labels:
       # Enable proxy support from Traefik
