@@ -1,6 +1,15 @@
 ##############################################################################################
 ##############################################################################################
 
+# Builder stage: build and test stellars_hub
+FROM python:3.12-slim AS builder
+
+COPY services/jupyterhub/stellars_hub /src/stellars_hub
+RUN pip install build && python -m build /src/stellars_hub --outdir /dist
+RUN pip install /dist/stellars_hub-*.whl pytest && pytest /src/stellars_hub/tests/ -v
+
+##############################################################################################
+
 FROM jupyterhub/jupyterhub:5.4.2 AS target
 
 # Build arguments
@@ -19,8 +28,8 @@ COPY services/jupyterhub/conf/apt /etc/apt
 COPY services/jupyterhub/conf/apt-packages.yml /apt-packages.yml
 
 ## install yaml parser repository and yq tool, in the parent system you need
-ENV DEBIAN_FRONTEND=noninteractive 
-RUN apt update && apt install yq -y 
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update && apt install yq -y
 
 ## install required packages, list will be taken from apt-packages.yml
 RUN <<-EOF
@@ -31,31 +40,21 @@ EOF
 
 
 ########################################################
-#  INSTALL PLATFORM SCRIPTS AND RESOURCES              #
+#  INSTALL PLATFORM PACKAGE AND RESOURCES              #
 ########################################################
 
-## copy resources
+## install stellars_hub package (carries all pip dependencies)
+COPY --from=builder /dist/*.whl /tmp/
+RUN pip install -U --no-cache-dir /tmp/stellars_hub-*.whl && rm -f /tmp/stellars_hub-*.whl
+
+## copy resources (shell scripts, startup scripts, templates, config, settings)
 COPY --chmod=755  services/jupyterhub/conf/bin/*.sh /
-COPY --chmod=755  services/jupyterhub/conf/bin/*.py /srv/jupyterhub/
 COPY --chmod=755  services/jupyterhub/conf/bin/start-platform.d /start-platform.d
 COPY --chmod=600  services/jupyterhub/templates/certs /mnt/certs
 COPY --chmod=644  services/jupyterhub/html_templates_enhanced/*.html /srv/jupyterhub/templates/
 COPY --chmod=644  services/jupyterhub/html_templates_enhanced/static/custom.css /tmp/custom.css
 COPY --chmod=644  config/jupyterhub_config.py /srv/jupyterhub/jupyterhub_config.py
 COPY --chmod=644  services/jupyterhub/conf/settings_dictionary.yml /srv/jupyterhub/settings_dictionary.yml
-
-## install dockerspawner, nativeauthenticator, idle-culler, pyyaml, xkcdpass, aiohttp
-RUN <<-EOF
-    echo "installing core jupyterhub python packages"
-    pip install -U --no-cache-dir \
-        docker \
-        dockerspawner \
-        jupyterhub-nativeauthenticator \
-        jupyterhub-idle-culler \
-        pyyaml \
-        xkcdpass \
-        aiohttp
-EOF
 
 ## copy custom.css to JupyterHub's static directory
 RUN <<-EOF
@@ -113,4 +112,3 @@ EXPOSE 8000
 CMD ["/start-platform.sh"]
 
 # EOF
-

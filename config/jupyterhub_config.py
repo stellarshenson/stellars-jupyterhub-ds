@@ -1,694 +1,306 @@
-# Copyright (c) Jupyter Development Team.
-# Distributed under the terms of the Modified BSD License.
-
 # Configuration file for JupyterHub
-import os
-import sys
-import json
-import requests
-import nativeauthenticator
-from nativeauthenticator import NativeAuthenticator
-from nativeauthenticator.handlers import AuthorizationAreaHandler as BaseAuthorizationHandler
-from jupyterhub.scopes import needs_scope
-import docker # for gpu autodetection
-import jupyterhub
+#
+# All data (env vars, volumes, groups) is defined here. The stellars_hub
+# package provides pure logic functions only - zero hardcoded data, zero
+# env var reads at module level. Every parameter is passed explicitly.
+#
+# Sections:
+#   1. Environment Variables   - all os.environ.get() calls with typed defaults
+#   2. Data Literals           - volumes, groups, paths, derived values
+#   3. Logic Calls             - event registration, GPU detection, branding
+#   4. JupyterHub Config       - all c.* settings (SSL, spawner, auth, handlers)
+#   5. Services & Callbacks    - background services, startup hooks
+
+import os                       # env var reads
+
+import jupyterhub               # __version__, __file__ for template paths
+import nativeauthenticator      # __file__ for template path resolution
+
+# stellars_hub core functions - pure logic, no side effects on import
+from stellars_hub import (
+    StellarsNativeAuthenticator,            # NativeAuthenticator subclass with custom authorization UI
+    get_services_and_roles,                 # builds JupyterHub services list (activity sampler, idle culler)
+    get_user_volume_suffixes,               # extracts ['home', 'workspace', 'cache'] from volumes dict
+    make_pre_spawn_hook,                    # factory returning async hook for group perms, favicon, icons
+    register_events,                        # attaches SQLAlchemy listeners for user rename/delete sync
+    resolve_gpu_mode,                       # GPU detection: 0=off, 1=forced, 2=auto-detect via nvidia-smi
+    schedule_startup_favicon_callback,      # registers CHP favicon routes for already-running servers
+    setup_branding,                         # processes logo/favicon/icon URIs, copies file:// to static dir
+)
+
+# Tornado request handlers - registered via c.JupyterHub.extra_handlers
+from stellars_hub.handlers import (
+    ActivityDataHandler,                    # GET  /api/activity - user activity data with Docker stats
+    ActivityPageHandler,                    # GET  /activity - admin activity monitoring dashboard
+    ActivityResetHandler,                   # POST /api/activity/reset - clear all activity samples
+    ActivitySampleHandler,                  # POST /api/activity/sample - trigger manual activity sampling
+    ActiveServersHandler,                   # GET  /api/notifications/active-servers - list running servers
+    BroadcastNotificationHandler,           # POST /api/notifications/broadcast - send to all active servers
+    ExtendSessionHandler,                   # POST /api/users/{user}/extend-session - add idle culler hours
+    GetUserCredentialsHandler,              # GET  /api/admin/credentials - retrieve cached passwords
+    ManageVolumesHandler,                   # DELETE /api/users/{user}/manage-volumes - delete user volumes
+    NotificationsPageHandler,               # GET  /notifications - admin broadcast UI
+    RestartServerHandler,                   # POST /api/users/{user}/restart-server - Docker restart
+    SessionInfoHandler,                     # GET  /api/users/{user}/session-info - idle culler status
+    SettingsPageHandler,                    # GET  /settings - platform settings display
+)
+
+c = get_config()  # noqa: F821  - JupyterHub injects get_config() into config file namespace
 
 
-# Custom AuthorizationAreaHandler that passes hub_usernames to template
-class CustomAuthorizationAreaHandler(BaseAuthorizationHandler):
-    """Override to pass hub_usernames to template for server-side Discard button logic"""
+# ── Section 1: Environment Variables ─────────────────────────────────────────
+# All env var reads in one place. Typed with int() or str defaults.
+# See settings_dictionary.yml for full documentation of each variable.
 
-    @needs_scope('admin:users')
-    async def get(self):
-        from nativeauthenticator.orm import UserInfo
-        from jupyterhub import orm
+# Core platform toggles (0=disabled, 1=enabled)
+JUPYTERHUB_SSL_ENABLED = int(os.environ.get("JUPYTERHUB_SSL_ENABLED", 1))                      # direct SSL termination (disable when behind reverse proxy)
+JUPYTERHUB_GPU_ENABLED = int(os.environ.get("JUPYTERHUB_GPU_ENABLED", 2))                      # 0=off, 1=forced, 2=auto-detect
+JUPYTERHUB_SERVICE_MLFLOW = int(os.environ.get("JUPYTERHUB_SERVICE_MLFLOW", 1))                 # MLflow tracking in spawned containers
+JUPYTERHUB_SERVICE_RESOURCES_MONITOR = int(os.environ.get("JUPYTERHUB_SERVICE_RESOURCES_MONITOR", 1))  # resource monitor widget
+JUPYTERHUB_SERVICE_TENSORBOARD = int(os.environ.get("JUPYTERHUB_SERVICE_TENSORBOARD", 1))       # TensorBoard in spawned containers
+JUPYTERHUB_SIGNUP_ENABLED = int(os.environ.get("JUPYTERHUB_SIGNUP_ENABLED", 1))                 # user self-registration (0=admin-only)
 
-        # Get hub usernames (users with actual JupyterHub accounts)
-        hub_usernames = {u.name for u in self.db.query(orm.User).all()}
+# Idle culler - automatic server shutdown after inactivity
+JUPYTERHUB_IDLE_CULLER_ENABLED = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_ENABLED", 0))       # 0=off, 1=on
+JUPYTERHUB_IDLE_CULLER_TIMEOUT = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_TIMEOUT", 86400))   # seconds of inactivity before cull (24h)
+JUPYTERHUB_IDLE_CULLER_INTERVAL = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_INTERVAL", 600))   # seconds between cull checks (10min)
+JUPYTERHUB_IDLE_CULLER_MAX_AGE = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_AGE", 0))       # max server lifetime in seconds (0=unlimited)
+JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION", 24))  # max user-requested extension hours
 
-        html = await self.render_template(
-            "authorization-area.html",
-            ask_email=self.authenticator.ask_email_on_signup,
-            users=self.db.query(UserInfo).all(),
-            hub_usernames=hub_usernames,  # NEW: pass to template
-        )
-        self.finish(html)
+# Activity monitor - engagement scoring via periodic sampling
+ACTIVITYMON_TARGET_HOURS = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_TARGET_HOURS', 8))        # scoring window in hours
+ACTIVITYMON_SAMPLE_INTERVAL = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL', 600))  # sampling interval in seconds (10min)
 
+# Misc
+TF_CPP_MIN_LOG_LEVEL = int(os.environ.get("TF_CPP_MIN_LOG_LEVEL", 3))                          # suppress TensorFlow logging in spawned containers
 
-# Custom NativeAuthenticator that uses our authorization handler
-class StellarsNativeAuthenticator(NativeAuthenticator):
-    """Custom authenticator that injects CustomAuthorizationAreaHandler"""
+# Docker spawner settings
+JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")                                     # URL prefix (e.g. /jupyterhub), None or / for root
+JUPYTERHUB_NETWORK_NAME = os.environ.get("JUPYTERHUB_NETWORK_NAME", "jupyterhub_network")       # Docker network for hub + spawned containers
+JUPYTERHUB_NOTEBOOK_IMAGE = os.environ.get("JUPYTERHUB_NOTEBOOK_IMAGE", "stellars/stellars-jupyterlab-ds:latest")  # JupyterLab image to spawn
+JUPYTERHUB_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_NVIDIA_IMAGE", "nvidia/cuda:13.0.2-base-ubuntu24.04")  # CUDA image for GPU auto-detection
+JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")                                          # admin username (auto-authorized on first signup)
 
-    def get_handlers(self, app):
-        # Get default handlers from parent
-        handlers = super().get_handlers(app)
-
-        # Replace AuthorizationAreaHandler with our custom one
-        new_handlers = []
-        for pattern, handler in handlers:
-            if handler.__name__ == 'AuthorizationAreaHandler':
-                new_handlers.append((pattern, CustomAuthorizationAreaHandler))
-            else:
-                new_handlers.append((pattern, handler))
-        return new_handlers
-
-# Only call get_config() when running as JupyterHub config (not when imported as module)
-try:
-    c = get_config()
-except NameError:
-    # Being imported as a module, not loaded by JupyterHub
-    c = None
-
-# SQLAlchemy event listener to sync NativeAuthenticator on user rename
-# This intercepts ALL User.name changes (admin panel, API, etc.) and syncs UserInfo.username
-from sqlalchemy import event
-from jupyterhub import orm
-
-@event.listens_for(orm.User.name, 'set')
-def sync_nativeauth_on_rename(target, value, oldvalue, initiator):
-    """Sync NativeAuthenticator UserInfo and ActivityMonitor when User.name changes"""
-    if oldvalue == value or oldvalue is None:
-        return  # No change or initial set
-
-    # Sync NativeAuthenticator
-    try:
-        from nativeauthenticator.orm import UserInfo
-        from sqlalchemy.orm import object_session
-
-        session = object_session(target)
-        if session:
-            user_info = session.query(UserInfo).filter(UserInfo.username == oldvalue).first()
-            if user_info:
-                user_info.username = value
-                # Don't commit here - let the parent transaction handle it
-                print(f"[NativeAuth Sync] Queued UserInfo rename: {oldvalue} -> {value}")
-    except ImportError:
-        pass  # NativeAuthenticator not available
-    except Exception as e:
-        print(f"[NativeAuth Sync] Error: {e}")
-
-    # Sync ActivityMonitor
-    try:
-        from custom_handlers import rename_activity_user
-        rename_activity_user(oldvalue, value)
-    except Exception as e:
-        print(f"[ActivityMonitor Sync] Error renaming: {e}")
+# Branding URIs - file:// copies to static dir, http(s):// passed to templates, empty = stock assets
+JUPYTERHUB_LOGO_URI = os.environ.get("JUPYTERHUB_LOGO_URI", "")                                # hub logo (login page, nav bar)
+JUPYTERHUB_FAVICON_URI = os.environ.get("JUPYTERHUB_FAVICON_URI", "")                          # browser tab icon (hub + JupyterLab via CHP route)
+JUPYTERHUB_LAB_MAIN_ICON_URI = os.environ.get("JUPYTERHUB_LAB_MAIN_ICON_URI", "")             # JupyterLab main area icon
+JUPYTERHUB_LAB_SPLASH_ICON_URI = os.environ.get("JUPYTERHUB_LAB_SPLASH_ICON_URI", "")         # JupyterLab splash screen icon
 
 
-@event.listens_for(orm.User, 'after_insert')
-def create_nativeauth_on_user_insert(mapper, connection, target):
-    """Auto-create NativeAuthenticator UserInfo when a new User is created via admin panel.
-    Generates a memorable password using xkcdpass and auto-approves the user."""
-    username = target.name
-    try:
-        import bcrypt
-        from xkcdpass import xkcd_password as xp
-        from sqlalchemy import text
+# ── Section 2: Data Literals ─────────────────────────────────────────────────
+# Static data that does not come from environment variables.
 
-        # Check if UserInfo already exists (user might have signed up normally)
-        result = connection.execute(
-            text("SELECT id FROM users_info WHERE username = :username"),
-            {"username": username}
-        )
-        if result.fetchone():
-            print(f"[NativeAuth Auto-Create] UserInfo already exists for: {username}")
-            return
-
-        # Generate memorable password using xkcdpass (configurable via env)
-        num_words = int(os.environ.get('JUPYTERHUB_AUTOGENERATED_PASSWORD_WORDS', 4))
-        delimiter = os.environ.get('JUPYTERHUB_AUTOGENERATED_PASSWORD_DELIMITER', '-')
-        wordfile = xp.locate_wordfile()
-        words = xp.generate_wordlist(wordfile=wordfile, min_length=4, max_length=6)
-        password = xp.generate_xkcdpassword(words, numwords=num_words, delimiter=delimiter)
-
-        # Hash password with bcrypt
-        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-
-        # Insert into users_info with is_authorized=1 (auto-approved since admin created them)
-        connection.execute(
-            text("INSERT INTO users_info (username, password, is_authorized) VALUES (:username, :password, 1)"),
-            {"username": username, "password": hashed_password}
-        )
-
-        # Cache password for admin retrieval
-        from custom_handlers import cache_password
-        cache_password(username, password)
-
-        # Initialize activity tracking for new user
-        try:
-            from custom_handlers import initialize_activity_for_user
-            initialize_activity_for_user(username)
-        except Exception as ae:
-            print(f"[Activity Init] Error initializing activity for {username}: {ae}")
-
-        print(f"[NativeAuth Auto-Create] User '{username}' created and authorized")
-
-    except Exception as e:
-        print(f"[NativeAuth Auto-Create] Error for {username}: {e}")
-
-
-@event.listens_for(orm.User, 'after_delete')
-def remove_nativeauth_on_user_delete(mapper, connection, target):
-    """Remove NativeAuthenticator UserInfo and ActivityMonitor data when a User is deleted."""
-    username = target.name
-
-    # Remove NativeAuthenticator UserInfo
-    try:
-        from sqlalchemy import text
-
-        result = connection.execute(
-            text("DELETE FROM users_info WHERE username = :username"),
-            {"username": username}
-        )
-        if result.rowcount > 0:
-            print(f"[NativeAuth Cleanup] Removed UserInfo for deleted user: {username}")
-
-        # Clear cached password if any
-        try:
-            from custom_handlers import clear_cached_password
-            clear_cached_password(username)
-        except ImportError:
-            pass
-
-    except Exception as e:
-        print(f"[NativeAuth Cleanup] Error removing UserInfo for {username}: {e}")
-
-    # Remove ActivityMonitor data
-    try:
-        from custom_handlers import delete_activity_user
-        delete_activity_user(username)
-    except Exception as e:
-        print(f"[ActivityMonitor Cleanup] Error removing data for {username}: {e}")
-
-
-# NVIDIA GPU auto-detection 
-def detect_nvidia(nvidia_autodetect_image='nvidia/cuda:13.0.2-base-ubuntu24.04'):
-    """ function to run docker image with nvidia driver, and execute `nvidia-smi` utility
-    to verify if nvidia GPU is present and in functional state """
-    client = docker.DockerClient('unix://var/run/docker.sock')
-    # spin up a container to test if nvidia works
-    result = 0
-    container = None
-    try:
-        client.containers.run(
-            image=nvidia_autodetect_image,
-            command='nvidia-smi',
-            runtime='nvidia',
-            name='jupyterhub_nvidia_autodetect',
-            stderr=True,
-            stdout=True,
-        )
-        result = 1
-    except:
-        result = 0
-    # cleanup that container
-    try:
-        container = client.containers.get('jupyterhub_nvidia_autodetect').remove(force=True)
-    except:
-        pass
-    return result
-
-
-# Standard variables imported from env (all use JUPYTERHUB_ prefix)
-JUPYTERHUB_SSL_ENABLED = int(os.environ.get("JUPYTERHUB_SSL_ENABLED", 1))
-JUPYTERHUB_GPU_ENABLED = int(os.environ.get("JUPYTERHUB_GPU_ENABLED", 2))
-JUPYTERHUB_SERVICE_MLFLOW = int(os.environ.get("JUPYTERHUB_SERVICE_MLFLOW", 1))
-JUPYTERHUB_SERVICE_RESOURCES_MONITOR = int(os.environ.get("JUPYTERHUB_SERVICE_RESOURCES_MONITOR", 1))
-JUPYTERHUB_SERVICE_TENSORBOARD = int(os.environ.get("JUPYTERHUB_SERVICE_TENSORBOARD", 1))
-JUPYTERHUB_SIGNUP_ENABLED = int(os.environ.get("JUPYTERHUB_SIGNUP_ENABLED", 1))  # 0=disabled, 1=enabled
-JUPYTERHUB_IDLE_CULLER_ENABLED = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_ENABLED", 0))
-JUPYTERHUB_IDLE_CULLER_TIMEOUT = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_TIMEOUT", 86400))
-JUPYTERHUB_IDLE_CULLER_INTERVAL = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_INTERVAL", 600))
-JUPYTERHUB_IDLE_CULLER_MAX_AGE = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_AGE", 0))
-JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION", 24))  # hours
-TF_CPP_MIN_LOG_LEVEL = int(os.environ.get("TF_CPP_MIN_LOG_LEVEL", 3))
+# Default working directory inside spawned containers (also used as workspace volume mount point)
 DOCKER_NOTEBOOK_DIR = "/home/lab/workspace"
-JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")
-JUPYTERHUB_NETWORK_NAME = os.environ.get("JUPYTERHUB_NETWORK_NAME", "jupyterhub_network")
-JUPYTERHUB_NOTEBOOK_IMAGE = os.environ.get("JUPYTERHUB_NOTEBOOK_IMAGE", "stellars/stellars-jupyterlab-ds:latest")
-JUPYTERHUB_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_NVIDIA_IMAGE", "nvidia/cuda:13.0.2-base-ubuntu24.04")
-# Normalize base URL - use empty string for root path to avoid double slashes
+
+# Normalize base URL prefix - empty string for root path to avoid double slashes (e.g. //hub/home)
 if JUPYTERHUB_BASE_URL in ['/', '', None]:
     JUPYTERHUB_BASE_URL_PREFIX = ''
 else:
     JUPYTERHUB_BASE_URL_PREFIX = JUPYTERHUB_BASE_URL
-JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN") 
 
-# perform autodetection when JUPYTERHUB_GPU_ENABLED is set to autodetect
-# gpu support: 0 - disabled, 1 - enabled, 2 - autodetect
-NVIDIA_DETECTED = 0  # Initialize before potential auto-detection
-if JUPYTERHUB_GPU_ENABLED == 2:
-    NVIDIA_DETECTED = detect_nvidia(JUPYTERHUB_NVIDIA_IMAGE)
-    if NVIDIA_DETECTED: JUPYTERHUB_GPU_ENABLED = 1 # means - gpu enabled
-    else: JUPYTERHUB_GPU_ENABLED = 0 # means - disable 
-
-# Apply JupyterHub configuration (only when loaded by JupyterHub, not when imported)
-if c is not None:
-    # ensure that we are using SSL, it should be enabled by default
-    if JUPYTERHUB_SSL_ENABLED == 1:
-        c.JupyterHub.ssl_cert = '/mnt/certs/server.crt'
-        c.JupyterHub.ssl_key = '/mnt/certs/server.key'
-
-    # we use dockerspawner
-    c.JupyterHub.spawner_class = "dockerspawner.DockerSpawner"
-
-    # default env variables passed to the spawned containers
-    c.DockerSpawner.environment = {
-         'TF_CPP_MIN_LOG_LEVEL':TF_CPP_MIN_LOG_LEVEL, # tensorflow logging level: 3 - err only
-         'TENSORBOARD_LOGDIR':'/tmp/tensorboard',
-         'MLFLOW_TRACKING_URI': 'http://localhost:5000',
-         'MLFLOW_PORT':5000,
-         'MLFLOW_HOST':'0.0.0.0',  # new 3.5 mlflow launched with guinicorn requires this
-         'MLFLOW_WORKERS':1,
-         'ENABLE_SERVICE_MLFLOW': JUPYTERHUB_SERVICE_MLFLOW,
-         'ENABLE_SERVICE_RESOURCES_MONITOR': JUPYTERHUB_SERVICE_RESOURCES_MONITOR,
-         'ENABLE_SERVICE_TENSORBOARD': JUPYTERHUB_SERVICE_TENSORBOARD,
-         'ENABLE_GPU_SUPPORT': JUPYTERHUB_GPU_ENABLED,
-         'ENABLE_GPUSTAT': JUPYTERHUB_GPU_ENABLED,
-         'NVIDIA_DETECTED': NVIDIA_DETECTED,
-         'JUPYTERLAB_AUX_SCRIPTS_PATH': os.environ.get('JUPYTERLAB_AUX_SCRIPTS_PATH', ''),
-    }
-
-    # configure access to GPU if possible
-    if JUPYTERHUB_GPU_ENABLED == 1:
-        c.DockerSpawner.extra_host_config = {
-            'device_requests': [
-                {
-                    'Driver': 'nvidia',
-                    'Count': -1,
-                    'Capabilities': [['gpu']]
-                }
-            ]
-        }
-
-    # spawn containers from this image
-    c.DockerSpawner.image = JUPYTERHUB_NOTEBOOK_IMAGE
-
-    # networking configuration
-    c.DockerSpawner.use_internal_ip = True
-    c.DockerSpawner.network_name = JUPYTERHUB_NETWORK_NAME
-
-    # prevent auto-spawn for admin users
-    # Redirect admin to admin panel instead
-    c.JupyterHub.default_url = JUPYTERHUB_BASE_URL_PREFIX + '/hub/home'  
-
-# User mounts in the spawned container (defined as constant for import by handlers)
+# Per-user Docker volumes: {volume_name_template: mount_point}
+# jupyterlab-{username}_* volumes are user-resettable via Manage Volumes UI
+# jupyterhub_shared is read-only shared storage (can be CIFS via compose_override.yml)
 DOCKER_SPAWNER_VOLUMES = {
     "jupyterlab-{username}_home": "/home",
     "jupyterlab-{username}_workspace": DOCKER_NOTEBOOK_DIR,
     "jupyterlab-{username}_cache": "/home/lab/.cache",
-    "jupyterhub_shared": "/mnt/shared" # shared drive across hub
+    "jupyterhub_shared": "/mnt/shared",
 }
 
-# Optional descriptions for user volumes (shown in UI)
-# If a volume suffix is not listed here, no description will be shown
+# Human-readable descriptions shown in the volume reset UI
 VOLUME_DESCRIPTIONS = {
     'home': 'User home directory files, configurations',
     'workspace': 'Project files, notebooks, code',
-    'cache': 'Temporary files, pip cache, conda cache'
+    'cache': 'Temporary files, pip cache, conda cache',
 }
 
-# Helper function to extract user-specific volume suffixes
-def get_user_volume_suffixes(volumes_dict):
-    """Extract volume suffixes from volumes dict that follow jupyterlab-{username}_<suffix> pattern"""
-    suffixes = []
-    for volume_name in volumes_dict.keys():
-        # Match pattern: jupyterlab-{username}_<suffix>
-        if volume_name.startswith("jupyterlab-{username}_"):
-            suffix = volume_name.replace("jupyterlab-{username}_", "")
-            suffixes.append(suffix)
-    return suffixes
-
-# Store user volume suffixes for use in templates and handlers (importable by custom_handlers.py)
-USER_VOLUME_SUFFIXES = get_user_volume_suffixes(DOCKER_SPAWNER_VOLUMES)
-
-# Apply configuration only when running as JupyterHub config
-if c is not None:
-    # Force container user
-    c.DockerSpawner.notebook_dir = DOCKER_NOTEBOOK_DIR
-
-    # Set container name prefix
-    c.DockerSpawner.name_template = "jupyterlab-{username}"
-
-    # Set volumes from constant
-    c.DockerSpawner.volumes = DOCKER_SPAWNER_VOLUMES
-
-    # Custom logo URI - supports file:// for local files, or http(s):// for external resources
-    # JupyterHub serves local logos at {{ base_url }}logo automatically
-    # External URIs (http/https) are passed to templates for custom rendering
-    logo_uri = os.environ.get('JUPYTERHUB_LOGO_URI', '')
-    if logo_uri.startswith('file://'):
-        logo_file = logo_uri[7:]  # Strip file:// prefix to get local path
-        if os.path.exists(logo_file):
-            c.JupyterHub.logo_file = logo_file
-
-    # Custom favicon URI - mirrors logo pattern
-    # file:// copies to static dir, http(s):// passed to template directly
-    favicon_uri = os.environ.get('JUPYTERHUB_FAVICON_URI', '')
-    if favicon_uri.startswith('file://'):
-        favicon_file = favicon_uri[7:]
-        if os.path.exists(favicon_file):
-            import shutil
-            static_favicon = os.path.join(
-                sys.prefix, 'share', 'jupyterhub',
-                'static', 'favicon.ico'
-            )
-            shutil.copy2(favicon_file, static_favicon)
-        favicon_uri = ''  # Reset - served via static_url after copy
-
-    # Custom JupyterLab icons - file:// copies to static dir, external URL passed through
-    # Static filenames stored for runtime URL resolution in pre_spawn_hook
-    _lab_main_icon_static = ''  # static filename after copy (e.g., 'lab-main-icon.svg')
-    _lab_main_icon_url = ''     # external URL if not file://
-    lab_main_icon_uri = os.environ.get('JUPYTERHUB_LAB_MAIN_ICON_URI', '')
-    if lab_main_icon_uri.startswith('file://'):
-        icon_file = lab_main_icon_uri[7:]
-        if os.path.exists(icon_file):
-            ext = os.path.splitext(icon_file)[1] or '.svg'
-            static_name = f'lab-main-icon{ext}'
-            static_dest = os.path.join(sys.prefix, 'share', 'jupyterhub', 'static', static_name)
-            shutil.copy2(icon_file, static_dest)
-            _lab_main_icon_static = static_name
-    elif lab_main_icon_uri:
-        _lab_main_icon_url = lab_main_icon_uri
-
-    _lab_splash_icon_static = ''
-    _lab_splash_icon_url = ''
-    lab_splash_icon_uri = os.environ.get('JUPYTERHUB_LAB_SPLASH_ICON_URI', '')
-    if lab_splash_icon_uri.startswith('file://'):
-        icon_file = lab_splash_icon_uri[7:]
-        if os.path.exists(icon_file):
-            ext = os.path.splitext(icon_file)[1] or '.svg'
-            static_name = f'lab-splash-icon{ext}'
-            static_dest = os.path.join(sys.prefix, 'share', 'jupyterhub', 'static', static_name)
-            shutil.copy2(icon_file, static_dest)
-            _lab_splash_icon_static = static_name
-    elif lab_splash_icon_uri:
-        _lab_splash_icon_url = lab_splash_icon_uri
-
-    # Make volume suffixes, descriptions, version, and idle culler config available to templates
-    ACTIVITYMON_TARGET_HOURS = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_TARGET_HOURS', 8))
-    ACTIVITYMON_SAMPLE_INTERVAL = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL', 600))
-    c.JupyterHub.template_vars = {
-        'user_volume_suffixes': USER_VOLUME_SUFFIXES,
-        'volume_descriptions': VOLUME_DESCRIPTIONS,
-        'stellars_version': os.environ.get('STELLARS_JUPYTERHUB_VERSION', 'dev'),
-        'server_version': jupyterhub.__version__,
-        'idle_culler_enabled': JUPYTERHUB_IDLE_CULLER_ENABLED,
-        'idle_culler_timeout': JUPYTERHUB_IDLE_CULLER_TIMEOUT,
-        'idle_culler_max_extension': JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION,
-        'activitymon_target_hours': ACTIVITYMON_TARGET_HOURS,
-        'activitymon_sample_interval': ACTIVITYMON_SAMPLE_INTERVAL,
-        'favicon_uri': favicon_uri,
-    }
-
-# Built-in groups that cannot be deleted (auto-recreated if missing)
-# docker-sock: grants /var/run/docker.sock access (container orchestration)
-# docker-privileged: runs container with --privileged flag (full host access)
+# Groups auto-created at startup and before each spawn (protection against accidental deletion)
+# docker-sock: mounts /var/run/docker.sock into user container
+# docker-privileged: runs user container with --privileged flag
 BUILTIN_GROUPS = ['docker-sock', 'docker-privileged']
 
-# Pre-spawn hook to conditionally grant docker access based on group membership
-async def pre_spawn_hook(spawner):
-    """Grant docker access to users based on group membership"""
-    from jupyterhub.orm import Group
+# Derived: extract user-resettable volume suffixes ['home', 'workspace', 'cache'] from volumes dict
+user_volume_suffixes = get_user_volume_suffixes(DOCKER_SPAWNER_VOLUMES)
 
-    # Ensure built-in groups exist (protection against deletion)
-    for group_name in BUILTIN_GROUPS:
-        existing_group = spawner.db.query(Group).filter(Group.name == group_name).first()
-        if not existing_group:
-            spawner.log.warning(f"Built-in group '{group_name}' was missing - recreating")
-            new_group = Group(name=group_name)
-            spawner.db.add(new_group)
-            spawner.db.commit()
 
-    username = spawner.user.name
-    user_groups = [g.name for g in spawner.user.groups]
+# ── Section 3: Logic Calls ───────────────────────────────────────────────────
+# Functions with side effects: event listeners, Docker commands, file copies.
 
-    # docker-sock: mount docker.sock for container orchestration
-    if 'docker-sock' in user_groups:
-        spawner.log.info(f"Granting docker.sock access to user: {username}")
-        spawner.volumes['/var/run/docker.sock'] = '/var/run/docker.sock'
-    else:
-        spawner.volumes.pop('/var/run/docker.sock', None)
+# Attach SQLAlchemy event listeners for user rename/delete sync (activity data, NativeAuthenticator)
+register_events()
 
-    # docker-privileged: run container with --privileged flag
-    if 'docker-privileged' in user_groups:
-        spawner.log.info(f"Granting privileged container mode to user: {username}")
-        spawner.extra_host_config['privileged'] = True
-    else:
-        spawner.extra_host_config.pop('privileged', None)
+# Detect GPU availability: mode 2 runs nvidia-smi in a CUDA container to auto-detect
+# Returns (gpu_enabled: 0|1, nvidia_detected: 0|1)
+gpu_enabled, nvidia_detected = resolve_gpu_mode(JUPYTERHUB_GPU_ENABLED, JUPYTERHUB_NVIDIA_IMAGE)
 
-    # Favicon proxy route: redirect user-server favicon requests to hub's static favicon
-    # Only active when JUPYTERHUB_FAVICON_URI is set (custom branding)
-    favicon_uri = os.environ.get('JUPYTERHUB_FAVICON_URI', '')
-    if favicon_uri:
-        from jupyterhub.app import JupyterHub
-        app = JupyterHub.instance()
+# Process branding URIs: file:// copies to JupyterHub static dir, URLs pass through
+# Returns dict with resolved paths/URLs for logo_file, favicon_uri, lab icons
+branding = setup_branding(
+    logo_uri=JUPYTERHUB_LOGO_URI,
+    favicon_uri=JUPYTERHUB_FAVICON_URI,
+    lab_main_icon_uri=JUPYTERHUB_LAB_MAIN_ICON_URI,
+    lab_splash_icon_uri=JUPYTERHUB_LAB_SPLASH_ICON_URI,
+)
 
-        # One-time: inject Tornado handler into app (outside /hub/ prefix)
-        # Uses wildcard_router to insert into existing host group (not add_handlers
-        # which creates a new group checked AFTER existing catch-all handlers)
-        if not getattr(app, '_favicon_handler_injected', False):
-            from custom_handlers import FaviconRedirectHandler
-            from tornado.web import url
-            pattern = app.base_url + r'user/[^/]+/static/favicons/favicon\.ico'
-            rule = url(pattern, FaviconRedirectHandler)
-            app.tornado_application.wildcard_router.rules.insert(0, rule)
-            app._favicon_handler_injected = True
-            spawner.log.info(f"[Favicon] Injected Tornado handler for pattern: {pattern}")
 
-        # Per-user: add CHP route for favicon path -> hub (idempotent)
-        # Target must be host:port only (no path) - same as hub's own route.
-        # app.hub.url includes /hub/ path which causes CHP path rewriting.
-        # Route must also be registered in extra_routes so check_routes() (runs
-        # every ~5min) doesn't delete it as "stale".
-        from urllib.parse import urlparse
-        parsed = urlparse(app.hub.url)
-        hub_target = f'{parsed.scheme}://{parsed.netloc}'
-        routespec = f'{app.base_url}user/{username}/static/favicons/'
-        await app.proxy.add_route(routespec, hub_target, {})
-        app.proxy.extra_routes[routespec] = hub_target
-        spawner.log.info(f"[Favicon] Added CHP route: {routespec} -> {hub_target}")
+# ── Section 4: JupyterHub Configuration ──────────────────────────────────────
+# All c.* traitlet settings. Grouped by subsystem.
 
-    # JupyterLab icon URIs - resolve static filenames to fully qualified http:// URLs
-    # Lab extensions require protocol-qualified URIs (bare paths are treated as filesystem)
-    if _lab_main_icon_static or _lab_main_icon_url or _lab_splash_icon_static or _lab_splash_icon_url:
-        from jupyterhub.app import JupyterHub
-        app = JupyterHub.instance()
+# ── SSL ──
+# Direct SSL termination (certs auto-generated by /mkcert.sh at container startup)
+# Disable when running behind a reverse proxy that handles TLS (e.g. Traefik)
+if JUPYTERHUB_SSL_ENABLED == 1:
+    c.JupyterHub.ssl_cert = '/mnt/certs/server.crt'
+    c.JupyterHub.ssl_key = '/mnt/certs/server.key'
 
-        if _lab_main_icon_static:
-            from urllib.parse import urlparse
-            parsed = urlparse(app.hub.url)
-            hub_origin = f'{parsed.scheme}://{parsed.netloc}'
-            spawner.environment['JUPYTERLAB_MAIN_ICON_URI'] = f'{hub_origin}{app.base_url}hub/static/{_lab_main_icon_static}'
-        elif _lab_main_icon_url:
-            spawner.environment['JUPYTERLAB_MAIN_ICON_URI'] = _lab_main_icon_url
+# ── Spawner ──
+c.JupyterHub.spawner_class = "dockerspawner.DockerSpawner"
 
-        if _lab_splash_icon_static:
-            from urllib.parse import urlparse
-            parsed = urlparse(app.hub.url)
-            hub_origin = f'{parsed.scheme}://{parsed.netloc}'
-            spawner.environment['JUPYTERLAB_SPLASH_ICON_URI'] = f'{hub_origin}{app.base_url}hub/static/{_lab_splash_icon_static}'
-        elif _lab_splash_icon_url:
-            spawner.environment['JUPYTERLAB_SPLASH_ICON_URI'] = _lab_splash_icon_url
+# Environment variables injected into every spawned JupyterLab container
+c.DockerSpawner.environment = {
+    'TF_CPP_MIN_LOG_LEVEL': TF_CPP_MIN_LOG_LEVEL,          # suppress TF C++ logging
+    'TENSORBOARD_LOGDIR': '/tmp/tensorboard',                # TensorBoard log directory
+    'MLFLOW_TRACKING_URI': 'http://localhost:5000',          # MLflow tracking server URL
+    'MLFLOW_PORT': 5000,                                     # MLflow server port
+    'MLFLOW_HOST': '0.0.0.0',                                # MLflow bind address
+    'MLFLOW_WORKERS': 1,                                     # MLflow worker count
+    'ENABLE_SERVICE_MLFLOW': JUPYTERHUB_SERVICE_MLFLOW,      # toggle MLflow in container startup
+    'ENABLE_SERVICE_RESOURCES_MONITOR': JUPYTERHUB_SERVICE_RESOURCES_MONITOR,  # toggle resource monitor widget
+    'ENABLE_SERVICE_TENSORBOARD': JUPYTERHUB_SERVICE_TENSORBOARD,  # toggle TensorBoard in container startup
+    'ENABLE_GPU_SUPPORT': gpu_enabled,                       # GPU libraries initialization
+    'ENABLE_GPUSTAT': gpu_enabled,                           # gpustat monitoring widget
+    'NVIDIA_DETECTED': nvidia_detected,                      # GPU hardware availability flag
+    'JUPYTERLAB_AUX_SCRIPTS_PATH': os.environ.get('JUPYTERLAB_AUX_SCRIPTS_PATH', ''),  # admin startup scripts path
+}
 
-# Apply remaining configuration (only when loaded by JupyterHub, not when imported)
-if c is not None:
-    c.DockerSpawner.pre_spawn_hook = pre_spawn_hook
-
-    # Ensure containers can accept proxy connections
-    c.DockerSpawner.args = [
-        '--ServerApp.allow_origin=*',
-        '--ServerApp.disable_check_xsrf=True'
-    ]
-
-    # update internal routing for spawned containers
-    c.JupyterHub.hub_connect_url = 'http://jupyterhub:8080' + JUPYTERHUB_BASE_URL_PREFIX + '/hub'
-
-    # remove containers once they are stopped
-    c.DockerSpawner.remove = True
-
-    # for debugging arguments passed to spawned containers
-    c.DockerSpawner.debug = False
-
-    # user containers will access hub by container name on the Docker network
-    c.JupyterHub.hub_ip = "jupyterhub"
-    c.JupyterHub.hub_port = 8080
-    c.JupyterHub.base_url = JUPYTERHUB_BASE_URL_PREFIX + '/' if JUPYTERHUB_BASE_URL_PREFIX else '/'
-
-    # persist hub data on volume mounted inside container
-    c.JupyterHub.cookie_secret_file = "/data/jupyterhub_cookie_secret"
-    c.JupyterHub.db_url = "sqlite:////data/jupyterhub.sqlite"
-
-    # authenticate users with Custom Native Authenticator
-    # (subclass that injects hub_usernames into authorization template)
-    c.JupyterHub.authenticator_class = StellarsNativeAuthenticator
-
-    # Template paths - must include default JupyterHub templates
-    import jupyterhub
-    c.JupyterHub.template_paths = [
-        "/srv/jupyterhub/templates/",  # Custom templates (highest priority)
-        f"{os.path.dirname(nativeauthenticator.__file__)}/templates/",  # NativeAuthenticator templates
-        f"{os.path.dirname(jupyterhub.__file__)}/templates"  # Default JupyterHub templates
-    ]
-
-    # allow anyone to sign-up without approval
-    # allow all signed-up users to login
-    c.NativeAuthenticator.open_signup = False
-    c.NativeAuthenticator.enable_signup = bool(JUPYTERHUB_SIGNUP_ENABLED)  # controlled by JUPYTERHUB_SIGNUP_ENABLED env var
-    c.Authenticator.allow_all = True
-
-    # allowed admins
-    c.Authenticator.admin_users = [JUPYTERHUB_ADMIN]
-    c.JupyterHub.admin_access = True
-
-    # Custom API handlers for volume management and server control
-    import sys
-    sys.path.insert(0, '/srv/jupyterhub')
-    sys.path.insert(0, '/start-platform.d')
-    sys.path.insert(0, '/')
-
-    from custom_handlers import (
-        ManageVolumesHandler,
-        RestartServerHandler,
-        NotificationsPageHandler,
-        ActiveServersHandler,
-        BroadcastNotificationHandler,
-        GetUserCredentialsHandler,
-        SettingsPageHandler,
-        SessionInfoHandler,
-        ExtendSessionHandler,
-        ActivityPageHandler,
-        ActivityDataHandler,
-        ActivityResetHandler,
-        ActivitySampleHandler
-    )
-
-    c.JupyterHub.extra_handlers = [
-        (r'/api/users/([^/]+)/manage-volumes', ManageVolumesHandler),
-        (r'/api/users/([^/]+)/restart-server', RestartServerHandler),
-        (r'/api/users/([^/]+)/session-info', SessionInfoHandler),
-        (r'/api/users/([^/]+)/extend-session', ExtendSessionHandler),
-        (r'/api/notifications/active-servers', ActiveServersHandler),
-        (r'/api/notifications/broadcast', BroadcastNotificationHandler),
-        (r'/api/admin/credentials', GetUserCredentialsHandler),
-        (r'/api/activity', ActivityDataHandler),
-        (r'/api/activity/reset', ActivityResetHandler),
-        (r'/api/activity/sample', ActivitySampleHandler),
-        (r'/notifications', NotificationsPageHandler),
-        (r'/settings', SettingsPageHandler),
-        (r'/activity', ActivityPageHandler),
-    ]
-
-    # ==========================================================================
-    # Background Services
-    # ==========================================================================
-    import sys
-
-    # Initialize services and roles lists
-    services = []
-    roles = []
-
-    # Activity Sampler Service - records user activity for scoring (always enabled)
-    ACTIVITY_SAMPLE_INTERVAL = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL', 600))
-
-    roles.append({
-        "name": "activity-sampler-role",
-        "scopes": [
-            "list:users",
-            "read:users:activity",
-            "read:servers",
-        ],
-        "services": ["activity-sampler"],
-    })
-
-    services.append({
-        "name": "activity-sampler",
-        "command": [sys.executable, "/srv/jupyterhub/activity_sampler.py"],
-    })
-
-    print(f"[Activity Sampler] Enabled - interval={ACTIVITY_SAMPLE_INTERVAL}s")
-
-    # Idle Culler Service - automatically stops servers after inactivity (optional)
-    if JUPYTERHUB_IDLE_CULLER_ENABLED == 1:
-        roles.append({
-            "name": "jupyterhub-idle-culler-role",
-            "scopes": [
-                "list:users",
-                "read:users:activity",
-                "read:servers",
-                "delete:servers",
-            ],
-            "services": ["jupyterhub-idle-culler"],
-        })
-
-        culler_cmd = [
-            sys.executable,
-            "-m", "jupyterhub_idle_culler",
-            f"--timeout={JUPYTERHUB_IDLE_CULLER_TIMEOUT}",
-            f"--cull-every={JUPYTERHUB_IDLE_CULLER_INTERVAL}",
+# GPU device passthrough - expose all GPUs to spawned containers
+if gpu_enabled == 1:
+    c.DockerSpawner.extra_host_config = {
+        'device_requests': [
+            {'Driver': 'nvidia', 'Count': -1, 'Capabilities': [['gpu']]}
         ]
-        if JUPYTERHUB_IDLE_CULLER_MAX_AGE > 0:
-            culler_cmd.append(f"--max-age={JUPYTERHUB_IDLE_CULLER_MAX_AGE}")
+    }
 
-        services.append({
-            "name": "jupyterhub-idle-culler",
-            "command": culler_cmd,
-        })
+c.DockerSpawner.image = JUPYTERHUB_NOTEBOOK_IMAGE           # JupyterLab Docker image to spawn
+c.DockerSpawner.use_internal_ip = True                       # use container IP on Docker network (not host)
+c.DockerSpawner.network_name = JUPYTERHUB_NETWORK_NAME       # Docker network connecting hub and user containers
+c.JupyterHub.default_url = JUPYTERHUB_BASE_URL_PREFIX + '/hub/home'  # redirect after login
+# c.DockerSpawner.notebook_dir = DOCKER_NOTEBOOK_DIR         # redundant - stellars-jupyterlab-ds image defaults to /home/lab/workspace
+c.DockerSpawner.name_template = "jupyterlab-{username}"      # container name pattern (used in volume names too)
+c.DockerSpawner.volumes = DOCKER_SPAWNER_VOLUMES             # per-user persistent volumes + shared storage
 
-        print(f"[Idle Culler] Enabled - timeout={JUPYTERHUB_IDLE_CULLER_TIMEOUT}s, interval={JUPYTERHUB_IDLE_CULLER_INTERVAL}s, max_age={JUPYTERHUB_IDLE_CULLER_MAX_AGE}s")
+# ── Branding: logo ──
+# Set custom logo file if resolved from file:// URI
+if branding['logo_file']:
+    c.JupyterHub.logo_file = branding['logo_file']
 
-    # Apply services and roles
-    c.JupyterHub.services = services
-    c.JupyterHub.load_roles = roles
+# ── Template variables ──
+# Passed to Jinja2 templates for UI rendering
+c.JupyterHub.template_vars = {
+    'user_volume_suffixes': user_volume_suffixes,            # ['home', 'workspace', 'cache'] for volume reset UI
+    'volume_descriptions': VOLUME_DESCRIPTIONS,              # human-readable volume labels
+    'stellars_version': os.environ.get('STELLARS_JUPYTERHUB_VERSION', 'dev'),  # platform version shown in UI
+    'server_version': jupyterhub.__version__,                # JupyterHub version shown in UI
+    'idle_culler_enabled': JUPYTERHUB_IDLE_CULLER_ENABLED,   # toggle culler UI elements
+    'idle_culler_timeout': JUPYTERHUB_IDLE_CULLER_TIMEOUT,   # timeout display in session panel
+    'idle_culler_max_extension': JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION,  # max extension hours display
+    'activitymon_target_hours': ACTIVITYMON_TARGET_HOURS,    # activity scoring window display
+    'activitymon_sample_interval': ACTIVITYMON_SAMPLE_INTERVAL,  # sampling interval display
+    'favicon_uri': branding['favicon_uri'],                  # external favicon URL (empty = static_url default)
+}
 
-    # ======================================================================
-    # Startup: register favicon CHP routes for already-running servers
-    # ======================================================================
-    # pre_spawn_hook only fires on new spawns. Servers that survive a hub
-    # restart never trigger it, so their favicon CHP routes are missing.
-    # This callback runs once after the event loop starts and registers
-    # routes for all active servers.
+# ── Tornado settings ──
+# Handler-accessible config via self.settings['stellars_config']
+# Replaces os.environ.get() calls in handlers with explicit typed values
+c.JupyterHub.tornado_settings = {
+    'stellars_config': {
+        'user_volume_suffixes': user_volume_suffixes,        # for ManageVolumesHandler validation
+        'idle_culler_enabled': JUPYTERHUB_IDLE_CULLER_ENABLED,  # for SessionInfoHandler, ActivityDataHandler
+        'idle_culler_timeout': JUPYTERHUB_IDLE_CULLER_TIMEOUT,  # for SessionInfoHandler, ExtendSessionHandler
+        'idle_culler_max_extension': JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION,  # for ExtendSessionHandler limits
+    }
+}
 
-    _favicon_uri_startup = os.environ.get('JUPYTERHUB_FAVICON_URI', '')
-    if _favicon_uri_startup:
-        async def _register_favicon_routes_for_active_servers():
-            """Register CHP favicon routes for servers already running at startup."""
-            from jupyterhub.app import JupyterHub
-            from urllib.parse import urlparse
-            app = JupyterHub.instance()
+# ── Pre-spawn hook ──
+# Factory returns async closure capturing branding state + group list
+# Hook runs before each container spawn: enforces group permissions,
+# injects CHP favicon proxy routes, resolves JupyterLab icon URLs
+c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
+    branding,                                                # icon static names and URLs from setup_branding()
+    builtin_groups=BUILTIN_GROUPS,                           # groups to auto-recreate if deleted
+    favicon_uri=JUPYTERHUB_FAVICON_URI,                      # non-empty activates CHP favicon routing
+)
 
-            # Inject Tornado handler (same as pre_spawn_hook, guarded by flag)
-            if not getattr(app, '_favicon_handler_injected', False):
-                from custom_handlers import FaviconRedirectHandler
-                from tornado.web import url
-                pattern = app.base_url + r'user/[^/]+/static/favicons/favicon\.ico'
-                rule = url(pattern, FaviconRedirectHandler)
-                app.tornado_application.wildcard_router.rules.insert(0, rule)
-                app._favicon_handler_injected = True
-                app.log.info(f"[Favicon Startup] Injected Tornado handler for pattern: {pattern}")
+# ── Spawner args ──
+# Command-line arguments passed to the spawned JupyterLab ServerApp
+c.DockerSpawner.args = [
+    '--ServerApp.allow_origin=*',                            # allow cross-origin requests (required behind proxy)
+    '--ServerApp.disable_check_xsrf=True',                   # disable XSRF for API access from hub
+]
 
-            # Build hub target (host:port only)
-            parsed = urlparse(app.hub.url)
-            hub_target = f'{parsed.scheme}://{parsed.netloc}'
+# ── Networking ──
+c.JupyterHub.hub_connect_url = 'http://jupyterhub:8080' + JUPYTERHUB_BASE_URL_PREFIX + '/hub'  # URL spawned containers use to reach hub
+c.DockerSpawner.remove = True                                # auto-remove containers after stop (volumes persist)
+c.DockerSpawner.debug = False                                # DockerSpawner debug logging
+c.JupyterHub.hub_ip = "jupyterhub"                           # bind hub to container hostname
+c.JupyterHub.hub_port = 8080                                 # internal hub port (not exposed externally)
+c.JupyterHub.base_url = JUPYTERHUB_BASE_URL_PREFIX + '/' if JUPYTERHUB_BASE_URL_PREFIX else '/'  # URL prefix for all hub routes
 
-            # Register CHP route for each active user server
-            from jupyterhub import orm
-            count = 0
-            for orm_user in app.db.query(orm.User).all():
-                user = app.users.get(orm_user.name)
-                if user and user.spawner and user.spawner.active:
-                    username = user.name
-                    routespec = f'{app.base_url}user/{username}/static/favicons/'
-                    await app.proxy.add_route(routespec, hub_target, {})
-                    app.proxy.extra_routes[routespec] = hub_target
-                    count += 1
-                    app.log.info(f"[Favicon Startup] Added CHP route: {routespec} -> {hub_target}")
+# ── Persistence ──
+c.JupyterHub.cookie_secret_file = "/data/jupyterhub_cookie_secret"  # cookie signing key (persisted in jupyterhub_data volume)
+c.JupyterHub.db_url = "sqlite:////data/jupyterhub.sqlite"           # user database (persisted in jupyterhub_data volume)
 
-            if count:
-                app.log.info(f"[Favicon Startup] Registered {count} CHP route(s) for active servers")
+# ── Authentication ──
+c.JupyterHub.authenticator_class = StellarsNativeAuthenticator       # NativeAuthenticator with admin rename sync
+c.JupyterHub.template_paths = [
+    "/srv/jupyterhub/templates/",                                    # custom Stellars templates (override priority)
+    f"{os.path.dirname(nativeauthenticator.__file__)}/templates/",   # NativeAuthenticator signup/authorize templates
+    f"{os.path.dirname(jupyterhub.__file__)}/templates",             # JupyterHub default templates (fallback)
+]
+c.NativeAuthenticator.open_signup = False                            # require admin authorization for new users
+c.NativeAuthenticator.enable_signup = bool(JUPYTERHUB_SIGNUP_ENABLED)  # self-registration form (0=admin creates users)
+c.Authenticator.allow_all = True                                     # all authorized users may login
+c.Authenticator.admin_users = [JUPYTERHUB_ADMIN]                     # admin username list
+c.JupyterHub.admin_access = True                                     # admins can access user servers
 
-        from tornado.ioloop import IOLoop
-        IOLoop.current().add_callback(_register_favicon_routes_for_active_servers)
+# ── Extra handlers ──
+# Custom API endpoints and admin pages (routes are relative to /hub/)
+c.JupyterHub.extra_handlers = [
+    (r'/api/users/([^/]+)/manage-volumes', ManageVolumesHandler),    # DELETE - reset user volumes
+    (r'/api/users/([^/]+)/restart-server', RestartServerHandler),    # POST - Docker container restart
+    (r'/api/users/([^/]+)/session-info', SessionInfoHandler),        # GET - idle culler status
+    (r'/api/users/([^/]+)/extend-session', ExtendSessionHandler),    # POST - extend idle timeout
+    (r'/api/notifications/active-servers', ActiveServersHandler),     # GET - list running servers
+    (r'/api/notifications/broadcast', BroadcastNotificationHandler), # POST - broadcast to all servers
+    (r'/api/admin/credentials', GetUserCredentialsHandler),          # GET - cached auto-generated passwords
+    (r'/api/activity', ActivityDataHandler),                          # GET - activity data + Docker stats
+    (r'/api/activity/reset', ActivityResetHandler),                   # POST - clear activity samples
+    (r'/api/activity/sample', ActivitySampleHandler),                 # POST - trigger manual sampling
+    (r'/notifications', NotificationsPageHandler),                    # GET - admin broadcast UI page
+    (r'/settings', SettingsPageHandler),                              # GET - platform settings page
+    (r'/activity', ActivityPageHandler),                              # GET - activity monitoring page
+]
+
+
+# ── Section 5: Services & Startup Callbacks ──────────────────────────────────
+# JupyterHub managed services (background processes) and one-time startup hooks.
+
+# Build service definitions: activity sampler (always), idle culler (conditional)
+services, roles = get_services_and_roles(
+    culler_enabled=JUPYTERHUB_IDLE_CULLER_ENABLED,           # 0=off, 1=on
+    culler_timeout=JUPYTERHUB_IDLE_CULLER_TIMEOUT,           # seconds before cull
+    culler_interval=JUPYTERHUB_IDLE_CULLER_INTERVAL,         # seconds between checks
+    culler_max_age=JUPYTERHUB_IDLE_CULLER_MAX_AGE,           # max server lifetime (0=unlimited)
+    sample_interval=ACTIVITYMON_SAMPLE_INTERVAL,             # activity sampling interval
+)
+c.JupyterHub.services = services                             # register managed services
+c.JupyterHub.load_roles = roles                              # service API token scopes
+
+# Register CHP favicon proxy routes for servers that survived a hub restart
+# (pre_spawn_hook only fires on new spawns, this catches already-running servers)
+schedule_startup_favicon_callback(favicon_uri=JUPYTERHUB_FAVICON_URI)
 
 # EOF

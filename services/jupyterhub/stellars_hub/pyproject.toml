@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stellars-hub"
+version = "3.8.0"
+description = "Stellars JupyterHub platform logic package"
+requires-python = ">=3.10"
+dependencies = [
+    "docker",
+    "dockerspawner",
+    "jupyterhub-nativeauthenticator",
+    "jupyterhub-idle-culler",
+    "pyyaml",
+    "xkcdpass",
+    "aiohttp",
+    "escapism",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
