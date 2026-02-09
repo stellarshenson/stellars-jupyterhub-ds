@@ -587,4 +587,52 @@ if c is not None:
     c.JupyterHub.services = services
     c.JupyterHub.load_roles = roles
 
+    # ======================================================================
+    # Startup: register favicon CHP routes for already-running servers
+    # ======================================================================
+    # pre_spawn_hook only fires on new spawns. Servers that survive a hub
+    # restart never trigger it, so their favicon CHP routes are missing.
+    # This callback runs once after the event loop starts and registers
+    # routes for all active servers.
+
+    _favicon_uri_startup = os.environ.get('JUPYTERHUB_FAVICON_URI', '')
+    if _favicon_uri_startup:
+        async def _register_favicon_routes_for_active_servers():
+            """Register CHP favicon routes for servers already running at startup."""
+            from jupyterhub.app import JupyterHub
+            from urllib.parse import urlparse
+            app = JupyterHub.instance()
+
+            # Inject Tornado handler (same as pre_spawn_hook, guarded by flag)
+            if not getattr(app, '_favicon_handler_injected', False):
+                from custom_handlers import FaviconRedirectHandler
+                from tornado.web import url
+                pattern = app.base_url + r'user/[^/]+/static/favicons/favicon\.ico'
+                rule = url(pattern, FaviconRedirectHandler)
+                app.tornado_application.wildcard_router.rules.insert(0, rule)
+                app._favicon_handler_injected = True
+                app.log.info(f"[Favicon Startup] Injected Tornado handler for pattern: {pattern}")
+
+            # Build hub target (host:port only)
+            parsed = urlparse(app.hub.url)
+            hub_target = f'{parsed.scheme}://{parsed.netloc}'
+
+            # Register CHP route for each active user server
+            from jupyterhub import orm
+            count = 0
+            for orm_user in app.db.query(orm.User).all():
+                user = app.users.get(orm_user.name)
+                if user and user.spawner and user.spawner.active:
+                    username = user.name
+                    routespec = f'{app.base_url}user/{username}/static/favicons/'
+                    await app.proxy.add_route(routespec, hub_target, {})
+                    count += 1
+                    app.log.info(f"[Favicon Startup] Added CHP route: {routespec} -> {hub_target}")
+
+            if count:
+                app.log.info(f"[Favicon Startup] Registered {count} CHP route(s) for active servers")
+
+        from tornado.ioloop import IOLoop
+        IOLoop.current().add_callback(_register_favicon_routes_for_active_servers)
+
 # EOF
