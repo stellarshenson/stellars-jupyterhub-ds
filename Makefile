@@ -70,9 +70,9 @@ tag:
 	else \
 		echo "Creating git tag: $(TAG)"; \
 		git tag $(TAG); \
-		echo "Creating docker tag: $(TAG)"; \
-		docker tag stellars/stellars-jupyterhub-ds:latest stellars/stellars-jupyterhub-ds:$(TAG); \
 	fi
+	@echo "Creating docker tag: $(TAG)"
+	@docker tag stellars/stellars-jupyterhub-ds:latest stellars/stellars-jupyterhub-ds:$(TAG)
 
 ## start jupyterhub (fg)
 start:
