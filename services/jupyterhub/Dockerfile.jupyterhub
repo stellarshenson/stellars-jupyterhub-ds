@@ -61,13 +61,15 @@ COPY --chmod=755  services/jupyterhub/conf/bin/start-platform.d /start-platform.
 COPY --chmod=600  services/jupyterhub/templates/certs /mnt/certs
 COPY --chmod=644  services/jupyterhub/html_templates_enhanced/*.html /srv/jupyterhub/templates/
 COPY --chmod=644  services/jupyterhub/html_templates_enhanced/static/custom.css /tmp/custom.css
+COPY --chmod=644  services/jupyterhub/html_templates_enhanced/static/session-timer.js /tmp/session-timer.js
 COPY --chmod=644  config/jupyterhub_config.py /srv/jupyterhub/jupyterhub_config.py
 COPY --chmod=644  services/jupyterhub/conf/settings_dictionary.yml /srv/jupyterhub/settings_dictionary.yml
 
-## copy custom.css to JupyterHub's static directory
+## copy custom assets to JupyterHub's static directory
 RUN <<-EOF
-    echo "installing custom.css to JupyterHub static directory"
+    echo "installing custom assets to JupyterHub static directory"
     cp /tmp/custom.css /srv/venv/share/jupyterhub/static/css/custom.css
+    cp /tmp/session-timer.js /srv/venv/share/jupyterhub/static/js/session-timer.js
 EOF
 
 ## default environment variables

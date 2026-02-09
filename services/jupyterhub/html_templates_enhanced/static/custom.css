@@ -1632,3 +1632,54 @@ textarea.form-control {
 .notifications-table .col-details {
   width: auto;
 }
+
+/* ==========================================================================
+   20. Session Timer Progress Bar
+   ========================================================================== */
+
+#session-timer-row {
+  --timer-color-full: 13, 110, 253;    /* blue  - at 100% */
+  --timer-color-mid:  255, 193, 7;     /* yellow - saturation at 30% */
+  --timer-color-low:  220, 53, 69;     /* red   - saturation at 10% */
+}
+
+#session-timer-bar .progress {
+  height: 10px;
+  border-radius: 5px;
+  background-color: rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+#session-timer-bar .progress-bar {
+  transition: width 1s ease-in-out, background-color 0.5s ease;
+  border-radius: 4px;
+}
+
+#session-time-text {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  min-width: 5.5em;
+  text-align: right;
+}
+
+#extend-session-trigger {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+/* Loading spinner */
+#session-timer-loading {
+  font-size: 0.8125rem;
+}
+
+/* Inline error alert */
+#session-timer-row .alert {
+  font-size: 0.75rem;
+}
+
+/* Dark mode session timer */
+[data-bs-theme="dark"] #session-timer-bar .progress {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}

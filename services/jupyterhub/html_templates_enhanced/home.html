@@ -45,48 +45,30 @@
       </div>
     </div>
 
-    {# Session Extension UI - only visible when culler enabled and server active #}
+    {# Session Timer Bar - compact progress bar, only when culler enabled and server active #}
     {% if idle_culler_enabled and default_server.active %}
-    <div class="row mt-4">
+    <div class="row mt-3" id="session-timer-row">
       <div class="col-md-6 offset-md-3">
-        <div class="card" id="session-status-card">
-          <div class="card-body">
-            <h6 class="card-title mb-3">
-              <i class="fa fa-clock" aria-hidden="true"></i>
-              Idle Session Timeout
-            </h6>
-            <div id="session-loading" class="text-center py-2">
-              <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-              Loading session info...
-            </div>
-            <div id="session-info" class="d-none">
-              <p class="text-muted small mb-2">
-                Your server will be stopped after a period of inactivity to free up resources.
-              </p>
-              <div class="mb-3">
-                <span class="text-muted">Session expires in:</span>
-                <strong id="time-remaining" class="ms-2">--</strong>
-              </div>
-              <div class="d-flex align-items-center gap-2 flex-wrap">
-                <label for="extend-hours" class="text-muted mb-0">Extend by:</label>
-                <input type="number" id="extend-hours" class="form-control form-control-sm"
-                       style="width: 70px;" min="1" max="24" value="1">
-                <span class="text-muted">hour(s)</span>
-                <button id="extend-session-btn" class="btn btn-sm btn-outline-primary">
-                  <i class="fa fa-plus" aria-hidden="true"></i>
-                  Extend
-                </button>
-              </div>
-              <div class="mt-2">
-                <small class="text-muted" id="extension-allowance">
-                  You can extend up to <span id="extensions-available">--</span> more hour(s)
-                </small>
-              </div>
-            </div>
-            <div id="session-error" class="d-none alert alert-warning mb-0 mt-2">
-              <small id="session-error-msg"></small>
-            </div>
+        <div id="session-timer-loading" class="text-center py-1">
+          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          <small class="text-muted ms-1">Loading session...</small>
+        </div>
+        <div id="session-timer-bar" class="d-none d-flex align-items-center gap-2">
+          <div class="progress flex-grow-1">
+            <div id="session-progress-bar" class="progress-bar" role="progressbar"
+                 style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
           </div>
+          <span id="session-time-text" class="text-nowrap">
+            <i class="fa fa-clock" aria-hidden="true"></i>
+            <span id="session-time-value">--</span>
+          </span>
+          <button id="extend-session-trigger" class="btn btn-sm btn-outline-secondary"
+                  data-bs-toggle="modal" data-bs-target="#extend-session-modal">
+            Extend
+          </button>
+        </div>
+        <div id="session-error" class="d-none alert alert-warning mb-0 mt-1 py-1 px-2">
+          <small id="session-error-msg"></small>
         </div>
       </div>
     </div>
@@ -238,6 +220,43 @@
       </div>
     </div>
   </div>
+  <!-- Extend Session Modal -->
+  {% if idle_culler_enabled and default_server.active %}
+  <div class="modal fade" id="extend-session-modal" tabindex="-1" role="dialog" aria-labelledby="extendSessionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="extendSessionModalLabel">
+            <i class="fa fa-clock" aria-hidden="true"></i>
+            Extend Session
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-2">Add hours to prevent idle timeout.</p>
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <label for="extend-session-hours" class="text-muted mb-0 small">Hours:</label>
+            <input type="number" id="extend-session-hours" class="form-control form-control-sm"
+                   style="width: 70px;" min="1" max="24" value="1">
+          </div>
+          <small class="text-muted" id="extend-available-hours">
+            Available: <strong>--</strong> hour(s)
+          </small>
+          <div id="extend-session-feedback" class="d-none alert mb-0 mt-2 py-1 px-2">
+            <small id="extend-feedback-msg"></small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-sm btn-primary" id="confirm-extend-btn">
+            <i class="fa fa-plus" aria-hidden="true"></i>
+            Extend
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 {% endblock main %}
 
 {% block footer %}
@@ -449,6 +468,12 @@
                           $('#manage-volumes-btn').show();
                           console.log('[Stop Server] Updated button visibility - showing Manage Volumes');
 
+                          // Hide session timer bar
+                          if (typeof window.SessionTimer !== 'undefined') {
+                              SessionTimer.hide();
+                              console.log('[Stop Server] Session timer hidden');
+                          }
+
                           setTimeout(function() {
                               console.log('[Stop Server] Refreshing now');
                               location.reload();
@@ -476,184 +501,14 @@
           console.log('[Custom Handlers] Stop button exists:', $('#stop').length > 0);
 
           // ============================================================
-          // Session Extension Feature
+          // Session Timer (progress bar + extend modal)
           // ============================================================
-
-          const $sessionCard = $('#session-status-card');
-          const $sessionLoading = $('#session-loading');
-          const $sessionInfo = $('#session-info');
-          const $sessionError = $('#session-error');
-          const $sessionErrorMsg = $('#session-error-msg');
-          const $timeRemaining = $('#time-remaining');
-          const $extensionsAvailable = $('#extensions-available');
-          const $extendBtn = $('#extend-session-btn');
-          const $extendHours = $('#extend-hours');
-
-          // Only initialize if session card exists (culler enabled + server active)
-          if ($sessionCard.length > 0) {
-              console.log('[Session Extension] Initializing session extension feature');
-
-              let sessionUpdateInterval = null;
-              let currentSessionInfo = null;
-
-              // Format seconds to human readable string
-              function formatTimeRemaining(seconds) {
-                  if (seconds <= 0) {
-                      return 'Session may be culled soon';
-                  }
-                  const hours = Math.floor(seconds / 3600);
-                  const minutes = Math.floor((seconds % 3600) / 60);
-                  if (hours > 0) {
-                      return `${hours}h ${minutes}m`;
-                  }
-                  return `${minutes}m`;
-              }
-
-              // Update the UI with session info
-              function updateSessionUI(info) {
-                  currentSessionInfo = info;
-
-                  if (!info.culler_enabled || !info.server_active) {
-                      $sessionCard.hide();
-                      return;
-                  }
-
-                  $sessionLoading.addClass('d-none');
-                  $sessionInfo.removeClass('d-none');
-
-                  // Update time remaining
-                  const timeRemainingSeconds = info.time_remaining_seconds || 0;
-                  $timeRemaining.text(formatTimeRemaining(timeRemainingSeconds));
-
-                  // Style based on time remaining
-                  if (timeRemainingSeconds < 1800) { // Less than 30 minutes
-                      $timeRemaining.removeClass('text-warning').addClass('text-danger');
-                  } else if (timeRemainingSeconds < 3600) { // Less than 1 hour
-                      $timeRemaining.removeClass('text-danger').addClass('text-warning');
-                  } else {
-                      $timeRemaining.removeClass('text-danger text-warning');
-                  }
-
-                  // Update extensions available
-                  const available = info.extensions_available_hours || 0;
-                  $extensionsAvailable.text(available);
-
-                  // No static warning when max reached - backend shows disappearing error on click
-
-                  console.log('[Session Extension] UI updated - remaining:', timeRemainingSeconds, 'available ext:', available);
-              }
-
-              // Fetch session info from API
-              function fetchSessionInfo() {
-                  const apiUrl = `{{ base_url }}api/users/${username}/session-info`;
-                  console.log('[Session Extension] Fetching session info from:', apiUrl);
-
-                  $.ajax({
-                      url: apiUrl,
-                      type: 'GET',
-                      headers: {
-                          'X-XSRFToken': getCookie('_xsrf')
-                      },
-                      success: function(response) {
-                          console.log('[Session Extension] Session info received:', response);
-                          $sessionError.addClass('d-none');
-                          updateSessionUI(response);
-                      },
-                      error: function(xhr) {
-                          console.error('[Session Extension] Failed to fetch session info:', xhr.status, xhr.responseText);
-                          $sessionLoading.addClass('d-none');
-                          $sessionError.removeClass('d-none');
-                          $sessionErrorMsg.text('Unable to load session info');
-                      }
-                  });
-              }
-
-              // Handle extend session button click
-              $extendBtn.on('click', function() {
-                  const hours = parseInt($extendHours.val()) || 0;
-                  const apiUrl = `{{ base_url }}api/users/${username}/extend-session`;
-
-                  // Validate input
-                  if (hours < 1) {
-                      $sessionError.removeClass('d-none');
-                      $sessionErrorMsg.text('Please enter at least 1 hour');
-                      return;
-                  }
-
-                  console.log('[Session Extension] Extending session by', hours, 'hour(s)');
-
-                  // Disable button during request
-                  $extendBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status"></span> Extending...');
-
-                  $.ajax({
-                      url: apiUrl,
-                      type: 'POST',
-                      headers: {
-                          'X-XSRFToken': getCookie('_xsrf')
-                      },
-                      data: JSON.stringify({ hours: hours }),
-                      contentType: 'application/json',
-                      success: function(response) {
-                          console.log('[Session Extension] Extension successful:', response);
-                          $extendBtn.prop('disabled', false).html('<i class="fa fa-plus" aria-hidden="true"></i> Extend');
-
-                          if (response.success) {
-                              // Update UI with new session info
-                              if (response.session_info) {
-                                  updateSessionUI({
-                                      culler_enabled: true,
-                                      server_active: true,
-                                      time_remaining_seconds: response.session_info.time_remaining_seconds,
-                                      extensions_used_hours: response.session_info.extensions_used_hours,
-                                      extensions_available_hours: response.session_info.extensions_available_hours
-                                  });
-                              }
-                              // Show feedback - warning if truncated, success otherwise
-                              const alertClass = response.truncated ? 'alert-warning' : 'alert-success';
-                              $sessionError.removeClass('d-none alert-warning alert-success').addClass(alertClass);
-                              $sessionErrorMsg.text(response.message);
-                              setTimeout(function() {
-                                  $sessionError.addClass('d-none').removeClass('alert-success alert-warning');
-                                  fetchSessionInfo(); // Refresh to get accurate time
-                              }, response.truncated ? 4000 : 2000); // Show warning longer
-                          }
-                      },
-                      error: function(xhr) {
-                          console.error('[Session Extension] Extension failed:', xhr.status, xhr.responseText);
-                          $extendBtn.prop('disabled', false).html('<i class="fa fa-plus" aria-hidden="true"></i> Extend');
-
-                          const errorMsg = xhr.responseJSON?.error || 'Failed to extend session';
-                          // Show as warning alert that disappears after 4 seconds
-                          $sessionError.removeClass('d-none alert-success').addClass('alert-warning');
-                          $sessionErrorMsg.text(errorMsg);
-                          setTimeout(function() {
-                              $sessionError.addClass('d-none');
-                          }, 4000);
-                      }
-                  });
+          if (typeof window.SessionTimer !== 'undefined') {
+              SessionTimer.init({
+                  username: username,
+                  baseUrl: '{{ base_url }}',
+                  getCookie: getCookie
               });
-
-              // Initial fetch
-              fetchSessionInfo();
-
-              // Update every 60 seconds
-              sessionUpdateInterval = setInterval(function() {
-                  // Decrement local counter between fetches
-                  if (currentSessionInfo && currentSessionInfo.time_remaining_seconds > 0) {
-                      currentSessionInfo.time_remaining_seconds = Math.max(0, currentSessionInfo.time_remaining_seconds - 60);
-                      $timeRemaining.text(formatTimeRemaining(currentSessionInfo.time_remaining_seconds));
-
-                      // Update styling
-                      if (currentSessionInfo.time_remaining_seconds < 1800) {
-                          $timeRemaining.removeClass('text-warning').addClass('text-danger');
-                      } else if (currentSessionInfo.time_remaining_seconds < 3600) {
-                          $timeRemaining.removeClass('text-danger').addClass('text-warning');
-                      }
-                  }
-              }, 60000);
-
-              // Refresh from server every 5 minutes
-              setInterval(fetchSessionInfo, 300000);
           }
       });
     });
