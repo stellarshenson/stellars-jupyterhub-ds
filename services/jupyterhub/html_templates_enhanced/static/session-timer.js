@@ -283,6 +283,13 @@
     if ($row.length === 0) return;
 
     readCssColors();
+
+    // Bootstrap tooltip on progress track
+    var tooltipEl = $bar.find('.progress[data-bs-toggle="tooltip"]')[0];
+    if (tooltipEl && typeof bootstrap !== 'undefined') {
+      new bootstrap.Tooltip(tooltipEl);
+    }
+
     console.log('[SessionTimer] initializing for', username);
 
     // modal reset on open

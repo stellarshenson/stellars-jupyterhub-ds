@@ -1681,5 +1681,5 @@ textarea.form-control {
 /* Dark mode session timer */
 [data-bs-theme="dark"] #session-timer-bar .progress {
   background-color: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: #6f757c;
 }
