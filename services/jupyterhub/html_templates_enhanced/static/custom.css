@@ -1638,16 +1638,16 @@ textarea.form-control {
    ========================================================================== */
 
 #session-timer-row {
-  --timer-color-full: 13, 110, 253;    /* blue  - at 100% */
-  --timer-color-mid:  255, 193, 7;     /* yellow - saturation at 30% */
-  --timer-color-low:  220, 53, 69;     /* red   - saturation at 10% */
+  --timer-color-full: #446897;          /* pale blue  - at 100% */
+  --timer-color-mid:  #bfa348;          /* pale yellow - saturation at 30% */
+  --timer-color-low:  #af4e56;          /* pale red   - saturation at 10% */
 }
 
 #session-timer-bar .progress {
   height: 10px;
   border-radius: 5px;
   background-color: rgba(0, 0, 0, 0.06);
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid #6f757c;
 }
 
 #session-timer-bar .progress-bar {
