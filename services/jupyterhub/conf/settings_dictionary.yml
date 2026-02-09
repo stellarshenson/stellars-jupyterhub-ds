@@ -109,6 +109,11 @@ Activity Monitor:
     description: Volume sizes refresh interval in seconds (background)
     default: "3600"
 
+User Environment:
+  - name: JUPYTERLAB_AUX_SCRIPTS_PATH
+    description: Admin-managed startup scripts executed in user containers on launch
+    default: ""
+
 Branding:
   - name: JUPYTERHUB_LOGO_URI
     description: Custom logo URI (file:// or URL)

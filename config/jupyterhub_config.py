@@ -266,6 +266,7 @@ if c is not None:
          'ENABLE_GPU_SUPPORT': JUPYTERHUB_GPU_ENABLED,
          'ENABLE_GPUSTAT': JUPYTERHUB_GPU_ENABLED,
          'NVIDIA_DETECTED': NVIDIA_DETECTED,
+         'JUPYTERLAB_AUX_SCRIPTS_PATH': os.environ.get('JUPYTERLAB_AUX_SCRIPTS_PATH', ''),
     }
 
     # configure access to GPU if possible

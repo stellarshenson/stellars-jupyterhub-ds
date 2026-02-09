@@ -414,18 +414,46 @@ services:
 
 #### Custom Branding
 
-Replace the default JupyterHub logo with a custom logo. Mount your logo file and set the path:
+Replace the default JupyterHub logo, favicon, and JupyterLab icons with custom assets. Mount files into the container and set `file://` URIs, or use external URLs directly.
+
+| Variable | Purpose |
+|----------|---------|
+| `JUPYTERHUB_LOGO_URI` | Hub login and navigation logo |
+| `JUPYTERHUB_FAVICON_URI` | Browser tab favicon for hub and JupyterLab sessions |
+| `JUPYTERHUB_LAB_MAIN_ICON_URI` | JupyterLab main toolbar logo |
+| `JUPYTERHUB_LAB_SPLASH_ICON_URI` | JupyterLab splash screen icon |
+
+Lab icons are resolved to hub static URLs and passed to spawned containers as `JUPYTERLAB_MAIN_ICON_URI` and `JUPYTERLAB_SPLASH_ICON_URI` environment variables for extensions to consume.
 
 ```yaml
 services:
   jupyterhub:
     environment:
       - JUPYTERHUB_LOGO_URI=file:///srv/jupyterhub/logo.svg
+      - JUPYTERHUB_FAVICON_URI=file:///srv/jupyterhub/favicon.ico
+      - JUPYTERHUB_LAB_MAIN_ICON_URI=file:///srv/jupyterhub/lab-icon.svg
+      - JUPYTERHUB_LAB_SPLASH_ICON_URI=file:///srv/jupyterhub/splash-icon.svg
     volumes:
-      - ./logo.svg:/srv/jupyterhub/logo.svg:ro
+      - ./branding/logo.svg:/srv/jupyterhub/logo.svg:ro
+      - ./branding/favicon.ico:/srv/jupyterhub/favicon.ico:ro
+      - ./branding/lab-icon.svg:/srv/jupyterhub/lab-icon.svg:ro
+      - ./branding/splash-icon.svg:/srv/jupyterhub/splash-icon.svg:ro
 ```
 
-Supported formats: SVG, PNG, JPG. The default path `/srv/jupyterhub/logo.svg` is used if file exists.
+See [docs/custom-branding.md](docs/custom-branding.md) for technical details on favicon CHP proxy routing and icon resolution.
+
+#### Admin Startup Scripts
+
+Run custom shell scripts in every user container at launch. Place scripts in a shared volume directory accessible to all containers. Scripts execute sequentially during container startup, before JupyterLab starts.
+
+```yaml
+services:
+  jupyterhub:
+    environment:
+      - JUPYTERLAB_AUX_SCRIPTS_PATH=/mnt/shared/start-platform.d
+```
+
+The default path `/mnt/shared/start-platform.d` resides on the shared volume, allowing admins to add, modify, or remove scripts without rebuilding images. Useful for installing additional packages, configuring environment variables, or setting up project-specific tooling across all user environments.
 
 #### Enable shared CIFS mount
 
