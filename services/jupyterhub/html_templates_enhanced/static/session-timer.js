@@ -48,7 +48,7 @@
   function readCssColors() {
     var el = $row[0];
     var style = getComputedStyle(el);
-    COLOR_FULL = parseColor(style.getPropertyValue('--timer-color-full')) || [68, 104, 151];
+    COLOR_FULL = parseColor(style.getPropertyValue('--timer-color-full')) || [81, 123, 177];
     COLOR_MID  = parseColor(style.getPropertyValue('--timer-color-mid'))  || [191, 163, 72];
     COLOR_LOW  = parseColor(style.getPropertyValue('--timer-color-low'))  || [175, 78, 86];
   }
@@ -284,13 +284,6 @@
     if ($row.length === 0) return;
 
     readCssColors();
-
-    // Bootstrap tooltip on progress track
-    var tooltipEl = $bar.find('.progress[data-bs-toggle="tooltip"]')[0];
-    if (tooltipEl && typeof bootstrap !== 'undefined') {
-      new bootstrap.Tooltip(tooltipEl);
-    }
-
     console.log('[SessionTimer] initializing for', username);
 
     // modal reset on open
