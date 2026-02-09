@@ -38,13 +38,15 @@ Browser: GET /user/alice/static/favicons/favicon.ico
   -> Browser follows redirect, hub serves custom favicon
 ```
 
-### Technical Details - Two Pitfalls
+### Technical Details - Three Pitfalls
 
-Two non-obvious issues required specific solutions during implementation:
+Three non-obvious issues required specific solutions during implementation:
 
 **CHP target must be host:port only (no path)**. `app.hub.url` returns `http://jupyterhub:8080/hub/` which includes a `/hub/` path. When a CHP target has a path component, CHP rewrites the forwarded request path - stripping the matched route prefix and prepending the target path. This causes the hub to receive a mangled path that no handler matches. The fix uses `urlparse` to extract just `scheme://netloc` from `app.hub.url`, matching how JupyterHub registers its own hub route (`/ -> http://jupyterhub:8080`).
 
 **Tornado handler must be inserted into the existing wildcard router**. `app.tornado_application.add_handlers(".*", ...)` creates a new host group that Tornado checks after all existing host groups. Since JupyterHub's default handlers include catch-all patterns, the new group is never reached. The fix uses `app.tornado_application.wildcard_router.rules.insert(0, rule)` to prepend the handler rule into the existing host group, ensuring it's checked before any catch-all.
+
+**Routes must be registered in `extra_routes` to survive `check_routes()`**. JupyterHub periodically (~5 min) calls `check_routes()` which fetches all CHP routes and deletes any not in its known `good_routes` set. Routes added only via `add_route()` are treated as stale and removed. The fix registers each favicon route in `app.proxy.extra_routes[routespec] = hub_target` so `check_routes()` includes it in `good_routes` and re-adds it if missing.
 
 ### Why not `extra_handlers`?
 
@@ -52,10 +54,11 @@ JupyterHub auto-prefixes all `extra_handlers` routes with `/hub/`. CHP forwards 
 
 ### Route Lifecycle
 
-- **New spawns**: `pre_spawn_hook` registers per-user CHP route before each spawn (idempotent)
+- **New spawns**: `pre_spawn_hook` registers per-user CHP route and adds to `app.proxy.extra_routes` before each spawn (idempotent)
 - **Surviving servers**: A one-shot `IOLoop.current().add_callback()` startup callback iterates all active servers and registers their CHP routes immediately after the event loop starts - this covers servers that were already running when JupyterHub restarted
+- **Persistence**: Routes registered in `extra_routes` survive `check_routes()` periodic cleanup and are re-added automatically if missing
 - Tornado handler is injected once (guarded by `app._favicon_handler_injected` flag) by whichever path executes first
-- Stale routes when servers stop are harmless (hub is always running to handle them)
+- Leftover routes when servers stop are harmless (hub is always running to handle them)
 - No cleanup needed
 
 ### Conditionality
