@@ -97,10 +97,11 @@
     var color = getColor(pct);
     var css = rgbStr(color);
 
-    // progress bar - inline style overrides Bootstrap bg-* classes
+    // progress bar + track border
     $progressBar
       .removeClass('bg-success bg-warning bg-danger')
       .css('background-color', css);
+    $progressBar.closest('.progress').css('border-color', css);
 
     // time text
     $timeText.css('color', css);
