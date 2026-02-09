@@ -1648,14 +1648,12 @@ textarea.form-control {
   border-radius: 2px;
   background-color: rgba(0, 0, 0, 0.06);
   border: 2px solid #446897;  /* initial; JS syncs to bar color */
-}
-
-#session-timer-bar .progress {
   transition: border-color 0.5s ease;
 }
 
 #session-timer-bar .progress-bar {
-  transition: width 1s ease-in-out, background-color 0.5s ease;
+  --bs-progress-bar-bg: transparent;  /* clear Bootstrap default */
+  transition: width 1s ease-in-out;
   border-radius: 1px;
 }
 
