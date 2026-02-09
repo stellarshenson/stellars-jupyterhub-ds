@@ -102,7 +102,7 @@ else:
 
 # Per-user Docker volumes: {volume_name_template: mount_point}
 # jupyterlab-{username}_* volumes are user-resettable via Manage Volumes UI
-# jupyterhub_shared is read-only shared storage (can be CIFS via compose_override.yml)
+# jupyterhub_shared is read-write shared storage (can be CIFS via compose_override.yml)
 DOCKER_SPAWNER_VOLUMES = {
     "jupyterlab-{username}_home": "/home",
     "jupyterlab-{username}_workspace": DOCKER_NOTEBOOK_DIR,
