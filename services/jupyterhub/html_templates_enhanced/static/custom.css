@@ -1638,7 +1638,7 @@ textarea.form-control {
    ========================================================================== */
 
 #session-timer-row {
-  --timer-color-full: #446897;          /* pale blue  - at 100% */
+  --timer-color-full: #517bb1;          /* blue  - at 100% */
   --timer-color-mid:  #bfa348;          /* pale yellow - saturation at 30% */
   --timer-color-low:  #af4e56;          /* pale red   - saturation at 10% */
 }
