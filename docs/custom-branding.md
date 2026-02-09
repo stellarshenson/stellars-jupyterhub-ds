@@ -68,16 +68,18 @@ The entire mechanism only activates when `JUPYTERHUB_FAVICON_URI` is non-empty. 
 
 **Resolution logic** (`config/jupyterhub_config.py`):
 
-- `file://` - copies to hub static dir as `lab-main-icon{ext}` or `lab-splash-icon{ext}`, resolves to `{base_url}hub/static/lab-main-icon{ext}`
+- `file://` - copies to hub static dir as `lab-main-icon{ext}` or `lab-splash-icon{ext}` at startup, then resolved to a fully qualified `http://` URL at spawn time using `app.hub.url` (e.g., `http://jupyterhub:8080/hub/static/lab-main-icon.svg`)
 - `http(s)://` - passed through as-is
 - Empty - env var not injected into containers
 
+URIs must be fully qualified with protocol - bare paths like `/hub/static/icon.svg` would be interpreted as filesystem locations by JupyterLab. The `pre_spawn_hook` resolves the hub origin from `app.hub.url` at runtime, avoiding hardcoded hostnames.
+
 **Container env vars** (only set when URI is non-empty):
 
-| Hub env var | Container env var | Static path after `file://` copy |
-|-------------|-------------------|----------------------------------|
-| `JUPYTERHUB_LAB_MAIN_ICON_URI` | `JUPYTERLAB_MAIN_ICON_URI` | `{base_url}hub/static/lab-main-icon{ext}` |
-| `JUPYTERHUB_LAB_SPLASH_ICON_URI` | `JUPYTERLAB_SPLASH_ICON_URI` | `{base_url}hub/static/lab-splash-icon{ext}` |
+| Hub env var | Container env var | Resolved URL example |
+|-------------|-------------------|----------------------|
+| `JUPYTERHUB_LAB_MAIN_ICON_URI` | `JUPYTERLAB_MAIN_ICON_URI` | `http://jupyterhub:8080/hub/static/lab-main-icon.svg` |
+| `JUPYTERHUB_LAB_SPLASH_ICON_URI` | `JUPYTERLAB_SPLASH_ICON_URI` | `http://jupyterhub:8080/hub/static/lab-splash-icon.svg` |
 
 Extensions running in JupyterLab can read `JUPYTERLAB_MAIN_ICON_URI` and `JUPYTERLAB_SPLASH_ICON_URI` from the container environment to fetch the icon URLs.
 
@@ -85,7 +87,7 @@ Extensions running in JupyterLab can read `JUPYTERLAB_MAIN_ICON_URI` and `JUPYTE
 
 | File | Role |
 |------|------|
-| `config/jupyterhub_config.py` | File copy at startup, CHP route + Tornado handler injection in `pre_spawn_hook`, lab icon env var injection into `DockerSpawner.environment` |
+| `config/jupyterhub_config.py` | File copy at startup, CHP route + Tornado handler injection in `pre_spawn_hook`, lab icon runtime URL resolution and env var injection in `pre_spawn_hook` |
 | `services/jupyterhub/conf/bin/custom_handlers.py` | `FaviconRedirectHandler` class (extends `tornado.web.RequestHandler`) |
 | `services/jupyterhub/templates/page.html` | Conditional favicon rendering in `<head>` |
 
