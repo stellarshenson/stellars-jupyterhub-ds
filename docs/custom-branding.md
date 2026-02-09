@@ -50,11 +50,11 @@ JupyterHub auto-prefixes all `extra_handlers` routes with `/hub/`. CHP forwards 
 
 ### Route Lifecycle
 
-- CHP routes are added in `pre_spawn_hook` before each spawn (idempotent - CHP overwrites existing routes)
-- Tornado handler is injected once (guarded by `app._favicon_handler_injected` flag)
+- **New spawns**: `pre_spawn_hook` registers per-user CHP route before each spawn (idempotent)
+- **Surviving servers**: A one-shot `IOLoop.current().add_callback()` startup callback iterates all active servers and registers their CHP routes immediately after the event loop starts - this covers servers that were already running when JupyterHub restarted
+- Tornado handler is injected once (guarded by `app._favicon_handler_injected` flag) by whichever path executes first
 - Stale routes when servers stop are harmless (hub is always running to handle them)
 - No cleanup needed
-- Servers already running when JupyterHub restarts will not have CHP routes until their next stop/start cycle
 
 ### Conditionality
 
