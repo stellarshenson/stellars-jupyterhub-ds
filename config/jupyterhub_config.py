@@ -460,11 +460,14 @@ async def pre_spawn_hook(spawner):
         # Per-user: add CHP route for favicon path -> hub (idempotent)
         # Target must be host:port only (no path) - same as hub's own route.
         # app.hub.url includes /hub/ path which causes CHP path rewriting.
+        # Route must also be registered in extra_routes so check_routes() (runs
+        # every ~5min) doesn't delete it as "stale".
         from urllib.parse import urlparse
         parsed = urlparse(app.hub.url)
         hub_target = f'{parsed.scheme}://{parsed.netloc}'
         routespec = f'{app.base_url}user/{username}/static/favicons/'
         await app.proxy.add_route(routespec, hub_target, {})
+        app.proxy.extra_routes[routespec] = hub_target
         spawner.log.info(f"[Favicon] Added CHP route: {routespec} -> {hub_target}")
 
     # JupyterLab icon URIs - resolve static filenames to fully qualified http:// URLs
@@ -678,6 +681,7 @@ if c is not None:
                     username = user.name
                     routespec = f'{app.base_url}user/{username}/static/favicons/'
                     await app.proxy.add_route(routespec, hub_target, {})
+                    app.proxy.extra_routes[routespec] = hub_target
                     count += 1
                     app.log.info(f"[Favicon Startup] Added CHP route: {routespec} -> {hub_target}")
 

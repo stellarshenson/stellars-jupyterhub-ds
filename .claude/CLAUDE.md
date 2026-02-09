@@ -310,7 +310,7 @@ Custom logo and favicon via `JUPYTERHUB_LOGO_URI` and `JUPYTERHUB_FAVICON_URI` e
 **Implementation**:
 - Handler: `services/jupyterhub/conf/bin/custom_handlers.py::FaviconRedirectHandler` (extends `tornado.web.RequestHandler`)
 - Route injection: `config/jupyterhub_config.py::pre_spawn_hook` (conditional on `JUPYTERHUB_FAVICON_URI`)
-- CHP route added per-user before each spawn (idempotent, no cleanup needed)
+- CHP route added per-user before each spawn and registered in `app.proxy.extra_routes` to survive `check_routes()` periodic cleanup
 - Tornado handler injected once into `app.tornado_application` (outside `/hub/` prefix)
 
 **Request Flow**:
