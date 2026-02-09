@@ -356,35 +356,35 @@ if c is not None:
             shutil.copy2(favicon_file, static_favicon)
         favicon_uri = ''  # Reset - served via static_url after copy
 
-    # Custom JupyterLab main icon - file:// copies to static dir, external URL passed through
+    # Custom JupyterLab icons - file:// copies to static dir, external URL passed through
+    # Static filenames stored for runtime URL resolution in pre_spawn_hook
+    _lab_main_icon_static = ''  # static filename after copy (e.g., 'lab-main-icon.svg')
+    _lab_main_icon_url = ''     # external URL if not file://
     lab_main_icon_uri = os.environ.get('JUPYTERHUB_LAB_MAIN_ICON_URI', '')
     if lab_main_icon_uri.startswith('file://'):
         icon_file = lab_main_icon_uri[7:]
         if os.path.exists(icon_file):
             ext = os.path.splitext(icon_file)[1] or '.svg'
-            static_dest = os.path.join(sys.prefix, 'share', 'jupyterhub', 'static', f'lab-main-icon{ext}')
+            static_name = f'lab-main-icon{ext}'
+            static_dest = os.path.join(sys.prefix, 'share', 'jupyterhub', 'static', static_name)
             shutil.copy2(icon_file, static_dest)
-            lab_main_icon_uri = JUPYTERHUB_BASE_URL_PREFIX + '/hub/static/lab-main-icon' + ext
-        else:
-            lab_main_icon_uri = ''
+            _lab_main_icon_static = static_name
+    elif lab_main_icon_uri:
+        _lab_main_icon_url = lab_main_icon_uri
 
-    # Custom JupyterLab splash icon - file:// copies to static dir, external URL passed through
+    _lab_splash_icon_static = ''
+    _lab_splash_icon_url = ''
     lab_splash_icon_uri = os.environ.get('JUPYTERHUB_LAB_SPLASH_ICON_URI', '')
     if lab_splash_icon_uri.startswith('file://'):
         icon_file = lab_splash_icon_uri[7:]
         if os.path.exists(icon_file):
             ext = os.path.splitext(icon_file)[1] or '.svg'
-            static_dest = os.path.join(sys.prefix, 'share', 'jupyterhub', 'static', f'lab-splash-icon{ext}')
+            static_name = f'lab-splash-icon{ext}'
+            static_dest = os.path.join(sys.prefix, 'share', 'jupyterhub', 'static', static_name)
             shutil.copy2(icon_file, static_dest)
-            lab_splash_icon_uri = JUPYTERHUB_BASE_URL_PREFIX + '/hub/static/lab-splash-icon' + ext
-        else:
-            lab_splash_icon_uri = ''
-
-    # Pass resolved icon URIs to spawned JupyterLab containers
-    if lab_main_icon_uri:
-        c.DockerSpawner.environment['JUPYTERLAB_MAIN_ICON_URI'] = lab_main_icon_uri
-    if lab_splash_icon_uri:
-        c.DockerSpawner.environment['JUPYTERLAB_SPLASH_ICON_URI'] = lab_splash_icon_uri
+            _lab_splash_icon_static = static_name
+    elif lab_splash_icon_uri:
+        _lab_splash_icon_url = lab_splash_icon_uri
 
     # Make volume suffixes, descriptions, version, and idle culler config available to templates
     ACTIVITYMON_TARGET_HOURS = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_TARGET_HOURS', 8))
@@ -466,6 +466,28 @@ async def pre_spawn_hook(spawner):
         routespec = f'{app.base_url}user/{username}/static/favicons/'
         await app.proxy.add_route(routespec, hub_target, {})
         spawner.log.info(f"[Favicon] Added CHP route: {routespec} -> {hub_target}")
+
+    # JupyterLab icon URIs - resolve static filenames to fully qualified http:// URLs
+    # Lab extensions require protocol-qualified URIs (bare paths are treated as filesystem)
+    if _lab_main_icon_static or _lab_main_icon_url or _lab_splash_icon_static or _lab_splash_icon_url:
+        from jupyterhub.app import JupyterHub
+        app = JupyterHub.instance()
+
+        if _lab_main_icon_static:
+            from urllib.parse import urlparse
+            parsed = urlparse(app.hub.url)
+            hub_origin = f'{parsed.scheme}://{parsed.netloc}'
+            spawner.environment['JUPYTERLAB_MAIN_ICON_URI'] = f'{hub_origin}{app.base_url}hub/static/{_lab_main_icon_static}'
+        elif _lab_main_icon_url:
+            spawner.environment['JUPYTERLAB_MAIN_ICON_URI'] = _lab_main_icon_url
+
+        if _lab_splash_icon_static:
+            from urllib.parse import urlparse
+            parsed = urlparse(app.hub.url)
+            hub_origin = f'{parsed.scheme}://{parsed.netloc}'
+            spawner.environment['JUPYTERLAB_SPLASH_ICON_URI'] = f'{hub_origin}{app.base_url}hub/static/{_lab_splash_icon_static}'
+        elif _lab_splash_icon_url:
+            spawner.environment['JUPYTERLAB_SPLASH_ICON_URI'] = _lab_splash_icon_url
 
 # Apply remaining configuration (only when loaded by JupyterHub, not when imported)
 if c is not None:
