@@ -87,6 +87,8 @@ services:
       - CERTIFICATE_DOMAIN_NAME=localhost # self-signed certificate domain
       - JUPYTERHUB_LOGO_URI= # custom logo URI (file:// or http(s)://)
       - JUPYTERHUB_FAVICON_URI= # custom favicon URI (file:// or http(s)://)
+      - JUPYTERHUB_LAB_MAIN_ICON_URI= # JupyterLab main icon (file:// or URL)
+      - JUPYTERHUB_LAB_SPLASH_ICON_URI= # JupyterLab splash icon (file:// or URL)
     labels:
       # Enable proxy support from Traefik
       - "traefik.enable=true"

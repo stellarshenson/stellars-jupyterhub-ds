@@ -118,6 +118,14 @@ Branding:
     description: Custom favicon URI (file:// or URL)
     default: ""
 
+  - name: JUPYTERHUB_LAB_MAIN_ICON_URI
+    description: JupyterLab main icon (file:// or URL)
+    default: ""
+
+  - name: JUPYTERHUB_LAB_SPLASH_ICON_URI
+    description: JupyterLab splash icon (file:// or URL)
+    default: ""
+
   - name: STELLARS_JUPYTERHUB_VERSION
     description: Platform version
     default: unknown

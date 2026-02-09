@@ -8,10 +8,12 @@ Custom logo and favicon for the JupyterHub platform, controlled via environment 
 |----------|---------|--------|
 | `JUPYTERHUB_LOGO_URI` | Hub login and navigation logo | `file:///path/to/logo.svg` or `https://example.com/logo.svg` |
 | `JUPYTERHUB_FAVICON_URI` | Browser tab favicon for hub and JupyterLab | `file:///path/to/favicon.ico` or `https://example.com/favicon.ico` |
+| `JUPYTERHUB_LAB_MAIN_ICON_URI` | JupyterLab main logo (toolbar) | `file:///path/to/icon.svg` or `https://example.com/icon.svg` |
+| `JUPYTERHUB_LAB_SPLASH_ICON_URI` | JupyterLab splash screen icon | `file:///path/to/splash.svg` or `https://example.com/splash.svg` |
 
-**`file://` handling**: The file is copied to JupyterHub's static directory at startup, then served via `static_url()`. The source file must be accessible inside the container (mount via compose volumes).
+**`file://` handling**: The file is copied to JupyterHub's static directory at startup. The source file must be accessible inside the container (mount via compose volumes). Logo and favicon are served via `static_url()`. Lab icons are resolved to hub static URLs and passed to spawned containers as `JUPYTERLAB_MAIN_ICON_URI` and `JUPYTERLAB_SPLASH_ICON_URI` environment variables.
 
-**URL handling**: External URLs are passed directly to templates for rendering.
+**URL handling**: External URLs are passed directly to templates (logo, favicon) or to spawned container env vars (lab icons).
 
 ## Favicon in JupyterLab Sessions
 
@@ -60,11 +62,30 @@ JupyterHub auto-prefixes all `extra_handlers` routes with `/hub/`. CHP forwards 
 
 The entire mechanism only activates when `JUPYTERHUB_FAVICON_URI` is non-empty. When empty, JupyterLab sessions display their own default favicon.
 
+## JupyterLab Icons
+
+`JUPYTERHUB_LAB_MAIN_ICON_URI` and `JUPYTERHUB_LAB_SPLASH_ICON_URI` customize the JupyterLab main toolbar logo and splash screen icon. Unlike logo and favicon (which are served by the hub directly), lab icons are passed as environment variables to spawned JupyterLab containers so that extensions can reference them.
+
+**Resolution logic** (`config/jupyterhub_config.py`):
+
+- `file://` - copies to hub static dir as `lab-main-icon{ext}` or `lab-splash-icon{ext}`, resolves to `{base_url}hub/static/lab-main-icon{ext}`
+- `http(s)://` - passed through as-is
+- Empty - env var not injected into containers
+
+**Container env vars** (only set when URI is non-empty):
+
+| Hub env var | Container env var | Static path after `file://` copy |
+|-------------|-------------------|----------------------------------|
+| `JUPYTERHUB_LAB_MAIN_ICON_URI` | `JUPYTERLAB_MAIN_ICON_URI` | `{base_url}hub/static/lab-main-icon{ext}` |
+| `JUPYTERHUB_LAB_SPLASH_ICON_URI` | `JUPYTERLAB_SPLASH_ICON_URI` | `{base_url}hub/static/lab-splash-icon{ext}` |
+
+Extensions running in JupyterLab can read `JUPYTERLAB_MAIN_ICON_URI` and `JUPYTERLAB_SPLASH_ICON_URI` from the container environment to fetch the icon URLs.
+
 ## Implementation Files
 
 | File | Role |
 |------|------|
-| `config/jupyterhub_config.py` | Favicon file copy at startup, CHP route + Tornado handler injection in `pre_spawn_hook` |
+| `config/jupyterhub_config.py` | File copy at startup, CHP route + Tornado handler injection in `pre_spawn_hook`, lab icon env var injection into `DockerSpawner.environment` |
 | `services/jupyterhub/conf/bin/custom_handlers.py` | `FaviconRedirectHandler` class (extends `tornado.web.RequestHandler`) |
 | `services/jupyterhub/templates/page.html` | Conditional favicon rendering in `<head>` |
 
@@ -75,9 +96,13 @@ The entire mechanism only activates when `JUPYTERHUB_FAVICON_URI` is non-empty. 
 services:
   jupyterhub:
     volumes:
-      - ./favicon.ico:/srv/jupyterhub/favicon.ico:ro
-      - ./logo.svg:/srv/jupyterhub/logo.svg:ro
+      - ./branding/favicon.ico:/srv/jupyterhub/favicon.ico:ro
+      - ./branding/logo.svg:/srv/jupyterhub/logo.svg:ro
+      - ./branding/lab-icon.svg:/srv/jupyterhub/lab-icon.svg:ro
+      - ./branding/splash-icon.svg:/srv/jupyterhub/splash-icon.svg:ro
     environment:
-      - JUPYTERHUB_FAVICON_URI=file:///srv/jupyterhub/favicon.ico
       - JUPYTERHUB_LOGO_URI=file:///srv/jupyterhub/logo.svg
+      - JUPYTERHUB_FAVICON_URI=file:///srv/jupyterhub/favicon.ico
+      - JUPYTERHUB_LAB_MAIN_ICON_URI=file:///srv/jupyterhub/lab-icon.svg
+      - JUPYTERHUB_LAB_SPLASH_ICON_URI=file:///srv/jupyterhub/splash-icon.svg
 ```

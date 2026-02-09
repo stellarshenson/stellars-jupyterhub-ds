@@ -260,12 +260,11 @@ if c is not None:
          'MLFLOW_PORT':5000,
          'MLFLOW_HOST':'0.0.0.0',  # new 3.5 mlflow launched with guinicorn requires this
          'MLFLOW_WORKERS':1,
-         'JUPYTERHUB_SERVICE_MLFLOW': JUPYTERHUB_SERVICE_MLFLOW,
-         'JUPYTERHUB_SERVICE_RESOURCES_MONITOR': JUPYTERHUB_SERVICE_RESOURCES_MONITOR,
-         'JUPYTERHUB_SERVICE_TENSORBOARD': JUPYTERHUB_SERVICE_TENSORBOARD,
-         'JUPYTERHUB_GPU_ENABLED': JUPYTERHUB_GPU_ENABLED,
-         'ENABLE_GPUSTAT': JUPYTERHUB_GPU_ENABLED,
+         'ENABLE_SERVICE_MLFLOW': JUPYTERHUB_SERVICE_MLFLOW,
+         'ENABLE_SERVICE_RESOURCES_MONITOR': JUPYTERHUB_SERVICE_RESOURCES_MONITOR,
+         'ENABLE_SERVICE_TENSORBOARD': JUPYTERHUB_SERVICE_TENSORBOARD,
          'ENABLE_GPU_SUPPORT': JUPYTERHUB_GPU_ENABLED,
+         'ENABLE_GPUSTAT': JUPYTERHUB_GPU_ENABLED,
          'NVIDIA_DETECTED': NVIDIA_DETECTED,
     }
 
@@ -355,6 +354,36 @@ if c is not None:
             )
             shutil.copy2(favicon_file, static_favicon)
         favicon_uri = ''  # Reset - served via static_url after copy
+
+    # Custom JupyterLab main icon - file:// copies to static dir, external URL passed through
+    lab_main_icon_uri = os.environ.get('JUPYTERHUB_LAB_MAIN_ICON_URI', '')
+    if lab_main_icon_uri.startswith('file://'):
+        icon_file = lab_main_icon_uri[7:]
+        if os.path.exists(icon_file):
+            ext = os.path.splitext(icon_file)[1] or '.svg'
+            static_dest = os.path.join(sys.prefix, 'share', 'jupyterhub', 'static', f'lab-main-icon{ext}')
+            shutil.copy2(icon_file, static_dest)
+            lab_main_icon_uri = JUPYTERHUB_BASE_URL_PREFIX + '/hub/static/lab-main-icon' + ext
+        else:
+            lab_main_icon_uri = ''
+
+    # Custom JupyterLab splash icon - file:// copies to static dir, external URL passed through
+    lab_splash_icon_uri = os.environ.get('JUPYTERHUB_LAB_SPLASH_ICON_URI', '')
+    if lab_splash_icon_uri.startswith('file://'):
+        icon_file = lab_splash_icon_uri[7:]
+        if os.path.exists(icon_file):
+            ext = os.path.splitext(icon_file)[1] or '.svg'
+            static_dest = os.path.join(sys.prefix, 'share', 'jupyterhub', 'static', f'lab-splash-icon{ext}')
+            shutil.copy2(icon_file, static_dest)
+            lab_splash_icon_uri = JUPYTERHUB_BASE_URL_PREFIX + '/hub/static/lab-splash-icon' + ext
+        else:
+            lab_splash_icon_uri = ''
+
+    # Pass resolved icon URIs to spawned JupyterLab containers
+    if lab_main_icon_uri:
+        c.DockerSpawner.environment['JUPYTERLAB_MAIN_ICON_URI'] = lab_main_icon_uri
+    if lab_splash_icon_uri:
+        c.DockerSpawner.environment['JUPYTERLAB_SPLASH_ICON_URI'] = lab_splash_icon_uri
 
     # Make volume suffixes, descriptions, version, and idle culler config available to templates
     ACTIVITYMON_TARGET_HOURS = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_TARGET_HOURS', 8))
