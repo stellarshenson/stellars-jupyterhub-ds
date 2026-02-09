@@ -48,16 +48,22 @@
   function readCssColors() {
     var el = $row[0];
     var style = getComputedStyle(el);
-    COLOR_FULL = parseTriplet(style.getPropertyValue('--timer-color-full')) || [13, 110, 253];
-    COLOR_MID  = parseTriplet(style.getPropertyValue('--timer-color-mid'))  || [255, 193, 7];
-    COLOR_LOW  = parseTriplet(style.getPropertyValue('--timer-color-low'))  || [220, 53, 69];
+    COLOR_FULL = parseColor(style.getPropertyValue('--timer-color-full')) || [68, 104, 151];
+    COLOR_MID  = parseColor(style.getPropertyValue('--timer-color-mid'))  || [191, 163, 72];
+    COLOR_LOW  = parseColor(style.getPropertyValue('--timer-color-low'))  || [175, 78, 86];
   }
 
-  function parseTriplet(val) {
+  /** Parse hex (#rrggbb) or rgb triplet (r, g, b) into [r, g, b] array. */
+  function parseColor(val) {
     if (!val) return null;
-    var parts = val.trim().split(/\s*,\s*/);
-    if (parts.length !== 3) return null;
-    return [parseInt(parts[0], 10), parseInt(parts[1], 10), parseInt(parts[2], 10)];
+    val = val.trim();
+    // hex: #446897
+    var hex = val.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (hex) return [parseInt(hex[1], 16), parseInt(hex[2], 16), parseInt(hex[3], 16)];
+    // rgb triplet fallback: 68, 104, 151
+    var parts = val.split(/\s*,\s*/);
+    if (parts.length === 3) return [parseInt(parts[0], 10), parseInt(parts[1], 10), parseInt(parts[2], 10)];
+    return null;
   }
 
   function lerp(a, b, t) {
