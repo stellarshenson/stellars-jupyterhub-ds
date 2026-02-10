@@ -97,10 +97,9 @@
     var color = getColor(pct);
     var css = rgbStr(color);
 
-    // progress bar + track border (setProperty to bypass Bootstrap variable)
+    // progress bar color via Bootstrap CSS variable
     $progressBar.removeClass('bg-success bg-warning bg-danger');
-    $progressBar[0].style.setProperty('background-color', css, 'important');
-    $progressBar.closest('.progress').css('border-color', css);
+    $progressBar[0].style.setProperty('--bs-progress-bar-bg', css);
 
     // time text
     $timeText.css('color', css);

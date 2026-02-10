@@ -1645,16 +1645,10 @@ textarea.form-control {
 
 #session-timer-bar .progress {
   height: 10px;
-  border-radius: 2px;
-  background-color: rgba(0, 0, 0, 0.06);
-  border: 2px solid #446897;  /* initial; JS syncs to bar color */
-  transition: border-color 0.5s ease;
 }
 
 #session-timer-bar .progress-bar {
-  --bs-progress-bar-bg: transparent;  /* clear Bootstrap default */
   transition: width 1s ease-in-out;
-  border-radius: 1px;
 }
 
 #session-time-text {
@@ -1680,7 +1674,4 @@ textarea.form-control {
   font-size: 0.75rem;
 }
 
-/* Dark mode session timer */
-[data-bs-theme="dark"] #session-timer-bar .progress {
-  background-color: rgba(255, 255, 255, 0.08);
-}
+/* Dark mode session timer - stock Bootstrap styling, no overrides needed */
