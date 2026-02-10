@@ -78,6 +78,7 @@ This Python configuration file controls all JupyterHub behavior:
 - `JUPYTERHUB_LAB_MAIN_ICON_URI`: JupyterLab main icon - `file://` copies to static dir as `lab-main-icon{ext}`, URL passed to template (default: empty)
 - `JUPYTERHUB_LAB_SPLASH_ICON_URI`: JupyterLab splash icon - `file://` copies to static dir as `lab-splash-icon{ext}`, URL passed to template (default: empty)
 - `JUPYTERLAB_AUX_SCRIPTS_PATH`: Admin-managed startup scripts executed in user containers on launch, typically pointing to shared volume (default: empty)
+- `JUPYTERLAB_AUX_MENU_PATH`: Admin-managed custom menu definitions for JupyterLab UI, typically pointing to shared volume (default: empty)
 
 **GPU Auto-Detection**: When `JUPYTERHUB_GPU_ENABLED=2`, the platform attempts to run `nvidia-smi` in a CUDA container. If successful, GPU support is enabled for all spawned user containers via `device_requests`.
 
