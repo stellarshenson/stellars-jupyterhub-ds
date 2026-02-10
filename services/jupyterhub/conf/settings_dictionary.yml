@@ -114,6 +114,10 @@ User Environment:
     description: Admin-managed startup scripts executed in user containers on launch
     default: ""
 
+  - name: JUPYTERLAB_AUX_MENU_PATH
+    description: Admin-managed custom menu definitions for JupyterLab UI
+    default: ""
+
 Branding:
   - name: JUPYTERHUB_LOGO_URI
     description: Custom logo URI (file:// or URL)

@@ -87,6 +87,10 @@ JUPYTERHUB_FAVICON_URI = os.environ.get("JUPYTERHUB_FAVICON_URI", "")           
 JUPYTERHUB_LAB_MAIN_ICON_URI = os.environ.get("JUPYTERHUB_LAB_MAIN_ICON_URI", "")             # JupyterLab main area icon
 JUPYTERHUB_LAB_SPLASH_ICON_URI = os.environ.get("JUPYTERHUB_LAB_SPLASH_ICON_URI", "")         # JupyterLab splash screen icon
 
+# User environment customization - paths passed through to spawned containers
+JUPYTERLAB_AUX_SCRIPTS_PATH = os.environ.get("JUPYTERLAB_AUX_SCRIPTS_PATH", "")             # admin startup scripts executed on container launch
+JUPYTERLAB_AUX_MENU_PATH = os.environ.get("JUPYTERLAB_AUX_MENU_PATH", "")                   # admin-managed custom menu definitions for JupyterLab
+
 
 # ── Section 2: Data Literals ─────────────────────────────────────────────────
 # Static data that does not come from environment variables.
@@ -173,7 +177,8 @@ c.DockerSpawner.environment = {
     'ENABLE_GPU_SUPPORT': gpu_enabled,                       # GPU libraries initialization
     'ENABLE_GPUSTAT': gpu_enabled,                           # gpustat monitoring widget
     'NVIDIA_DETECTED': nvidia_detected,                      # GPU hardware availability flag
-    'JUPYTERLAB_AUX_SCRIPTS_PATH': os.environ.get('JUPYTERLAB_AUX_SCRIPTS_PATH', ''),  # admin startup scripts path
+    'JUPYTERLAB_AUX_SCRIPTS_PATH': JUPYTERLAB_AUX_SCRIPTS_PATH,  # admin startup scripts path
+    'JUPYTERLAB_AUX_MENU_PATH': JUPYTERLAB_AUX_MENU_PATH,      # admin-managed custom menu definitions
 }
 
 # GPU device passthrough - expose all GPUs to spawned containers
