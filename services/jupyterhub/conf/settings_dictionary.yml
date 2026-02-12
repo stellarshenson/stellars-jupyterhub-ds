@@ -28,6 +28,10 @@ JupyterHub Core:
     description: Delimiter in auto-generated passwords
     default: "-"
 
+  - name: JUPYTERHUB_TIMEZONE
+    description: IANA timezone (e.g. Europe/Warsaw), empty = UTC
+    default: ""
+
 Docker Spawner:
   - name: JUPYTERHUB_NOTEBOOK_IMAGE
     description: User container image
