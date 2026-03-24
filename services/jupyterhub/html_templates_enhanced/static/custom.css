@@ -1845,6 +1845,12 @@ textarea.form-control {
   padding: 0.35rem 0.75rem;
   font-size: 0.85rem;
   border-radius: 8px;
+  transition: opacity 0.2s, background-color 0.2s, border-color 0.2s;
+}
+[data-device="mobile"] #extend-session-trigger:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 [data-device="mobile"] #session-time-text {
   font-size: 0.9rem;
