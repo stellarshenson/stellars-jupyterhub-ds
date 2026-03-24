@@ -82,8 +82,11 @@
       });
     }
 
-    // Start uptime counter
+    // Start uptime counter and health monitor
     initUptime();
+    if (serverRunning) {
+      startHealthCheck(baseUrl, username, getCookie);
+    }
   }
 
   /**
@@ -117,6 +120,85 @@
 
     updateUptime();
     setInterval(updateUptime, 60000);
+  }
+
+  // ── Health Check ─────────────────────────────────────────────────
+
+  var healthState = 'online';  // online | unreachable | stopped
+
+  /**
+   * Poll server status every 15s. On failure or server stopped,
+   * transition status strip to yellow blinking.
+   * Uses navigator.onLine events for instant network loss detection.
+   */
+  function startHealthCheck(baseUrl, username, getCookie) {
+    var statusEl = document.getElementById('mobile-server-status');
+    if (!statusEl) return;
+
+    function check() {
+      if (!navigator.onLine) {
+        setHealthState(statusEl, 'unreachable');
+        return;
+      }
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', baseUrl + 'api/users/' + encodeURIComponent(username));
+      xhr.setRequestHeader('X-XSRFToken', getCookie('_xsrf'));
+      xhr.timeout = 10000;
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          try {
+            var data = JSON.parse(xhr.responseText);
+            // Check if default server is still active
+            var servers = data.servers || {};
+            var defaultServer = servers[''];
+            if (defaultServer && defaultServer.ready) {
+              setHealthState(statusEl, 'online');
+            } else {
+              setHealthState(statusEl, 'stopped');
+            }
+          } catch(e) {
+            setHealthState(statusEl, 'unreachable');
+          }
+        } else {
+          setHealthState(statusEl, 'unreachable');
+        }
+      };
+      xhr.onerror = function() { setHealthState(statusEl, 'unreachable'); };
+      xhr.ontimeout = function() { setHealthState(statusEl, 'unreachable'); };
+      xhr.send();
+    }
+
+    // Instant detection for network changes
+    window.addEventListener('offline', function() { setHealthState(statusEl, 'unreachable'); });
+    window.addEventListener('online', function() { check(); });
+
+    setInterval(check, 15000);
+  }
+
+  function setHealthState(statusEl, state) {
+    if (state === healthState) return;
+    healthState = state;
+
+    var dot = statusEl.querySelector('.mobile-status-dot');
+    var label = statusEl.querySelector('.mobile-status-label');
+    var uptime = statusEl.querySelector('.mobile-status-uptime');
+
+    if (state === 'online') {
+      statusEl.className = 'desktop-hidden mobile-status-strip';
+      dot.className = 'mobile-status-dot active';
+      label.textContent = 'Server Online';
+      if (uptime) uptime.style.display = '';
+    } else if (state === 'unreachable') {
+      statusEl.className = 'desktop-hidden mobile-status-strip unreachable';
+      dot.className = 'mobile-status-dot unreachable';
+      label.textContent = 'Connection Lost';
+      if (uptime) uptime.style.display = 'none';
+    } else if (state === 'stopped') {
+      statusEl.className = 'desktop-hidden mobile-status-strip offline';
+      dot.className = 'mobile-status-dot offline';
+      label.textContent = 'Server Stopped';
+      if (uptime) uptime.style.display = 'none';
+    }
   }
 
   /**
