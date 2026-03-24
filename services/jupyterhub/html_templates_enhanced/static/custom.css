@@ -1675,3 +1675,70 @@ textarea.form-control {
 }
 
 /* Dark mode session timer - stock Bootstrap styling, no overrides needed */
+
+/* ==========================================================================
+   21. Mobile Interface
+   All rules scoped to [data-device="mobile"] / [data-device="desktop"]
+   attribute set by mobile.js before first paint.
+   ========================================================================== */
+
+/* --- Visibility toggles --- */
+[data-device="mobile"] .mobile-hidden { display: none !important; }
+[data-device="desktop"] .desktop-hidden { display: none !important; }
+
+/* --- Global mobile adjustments --- */
+[data-device="mobile"] .container { padding: 0.5rem; }
+[data-device="mobile"] h1 { font-size: 1.5rem; }
+[data-device="mobile"] h2 { font-size: 1.25rem; }
+
+/* --- Navbar compact --- */
+[data-device="mobile"] .navbar { padding: 0.25rem 0.5rem; }
+[data-device="mobile"] .jpy-logo { height: 1.75rem; }
+
+/* --- Login / Signup: touch-friendly --- */
+[data-device="mobile"] .auth-form-body { max-width: 100%; padding: 1rem; }
+[data-device="mobile"] .auth-form-body input[type="text"],
+[data-device="mobile"] .auth-form-body input[type="password"] {
+  font-size: 1rem;
+  padding: 0.75rem;
+  height: auto;
+}
+[data-device="mobile"] .auth-form-body .btn,
+[data-device="mobile"] .auth-form-body input[type="submit"] {
+  width: 100%;
+  min-height: 48px;
+  font-size: 1rem;
+}
+[data-device="mobile"] .auth-form-header h1 { font-size: 1.5rem; }
+
+/* --- Home: Server control buttons stacked --- */
+[data-device="mobile"] .container > .row > .text-center {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0 0.5rem;
+}
+[data-device="mobile"] .container > .row > .text-center .btn-lg {
+  width: 100%;
+  min-height: 56px;
+  font-size: 1.1rem;
+}
+
+/* --- Home: Session timer full-width on mobile --- */
+[data-device="mobile"] #session-timer-row .col-md-4 {
+  flex: 0 0 100%;
+  max-width: 100%;
+  padding: 0 0.5rem;
+}
+[data-device="mobile"] #session-timer-row .offset-md-4 { margin-left: 0; }
+
+/* --- Home: Mobile activity monitor --- */
+[data-device="mobile"] #mobile-activity-section .card { border-radius: 6px; }
+[data-device="mobile"] .mobile-user-row { min-height: 44px; }
+
+/* --- Activity page: Mobile cards --- */
+[data-device="mobile"] .mobile-activity-card { border-radius: 6px; }
+[data-device="mobile"] .mobile-activity-card .card-body { padding: 0.5rem 0.75rem; }
+
+/* --- Footer mobile --- */
+[data-device="mobile"] .version_footer { font-size: 0.75rem; text-align: center; }

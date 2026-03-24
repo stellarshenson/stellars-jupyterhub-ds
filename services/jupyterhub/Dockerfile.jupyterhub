@@ -22,6 +22,7 @@ FROM jupyterhub/jupyterhub:5.4.2 AS target
 
 # Build arguments
 ARG VERSION=dev
+ARG CACHEBUST=0
 
 # File Author / Maintainer
 LABEL maintainer="Konrad Jelen <konrad.jelenext@delaval.com>"
@@ -62,6 +63,7 @@ COPY --chmod=600  services/jupyterhub/templates/certs /mnt/certs
 COPY --chmod=644  services/jupyterhub/html_templates_enhanced/*.html /srv/jupyterhub/templates/
 COPY --chmod=644  services/jupyterhub/html_templates_enhanced/static/custom.css /tmp/custom.css
 COPY --chmod=644  services/jupyterhub/html_templates_enhanced/static/session-timer.js /tmp/session-timer.js
+COPY --chmod=644  services/jupyterhub/html_templates_enhanced/static/mobile.js /tmp/mobile.js
 COPY --chmod=644  config/jupyterhub_config.py /srv/jupyterhub/jupyterhub_config.py
 COPY --chmod=644  services/jupyterhub/conf/settings_dictionary.yml /srv/jupyterhub/settings_dictionary.yml
 
@@ -70,6 +72,7 @@ RUN <<-EOF
     echo "installing custom assets to JupyterHub static directory"
     cp /tmp/custom.css /srv/venv/share/jupyterhub/static/css/custom.css
     cp /tmp/session-timer.js /srv/venv/share/jupyterhub/static/js/session-timer.js
+    cp /tmp/mobile.js /srv/venv/share/jupyterhub/static/js/mobile.js
 EOF
 
 ## default environment variables

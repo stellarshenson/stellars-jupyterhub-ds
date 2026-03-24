@@ -38,6 +38,7 @@
     </title>
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="{{static_url("js/mobile.js") }}" type="text/javascript" charset="utf-8"></script>
     {% block stylesheet %}
       <link rel="stylesheet"
             href="{{ static_url('css/style.min.css') }}"
@@ -153,31 +154,31 @@
                   <li class="nav-item">
                     <a class="nav-link" href="{{ base_url }}home">Home</a>
                   </li>
-                  <li class="nav-item">
+                  <li class="nav-item mobile-hidden">
                     <a class="nav-link" href="{{ base_url }}token">Token</a>
                   </li>
                   {% if 'admin-ui' in parsed_scopes %}
-                    <li class="nav-item">
+                    <li class="nav-item mobile-hidden">
                       <a class="nav-link" href="{{ base_url }}admin">Admin</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item mobile-hidden">
                       <a class="nav-link" href="{{ base_url }}authorize">Authorize Users</a>
                     </li>
                     <li class="nav-item">
                       <a class="nav-link" href="{{ base_url }}activity">Activity</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item mobile-hidden">
                       <a class="nav-link" href="{{ base_url }}notifications">Notifications</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item mobile-hidden">
                       <a class="nav-link" href="{{ base_url }}settings">Settings</a>
                     </li>
                   {% endif %}
-                  <li class="nav-item">
+                  <li class="nav-item mobile-hidden">
                     <a class="nav-link" href="{{ base_url }}change-password">Change Password</a>
                   </li>
                   {% if services %}
-                    <li class="nav-item dropdown">
+                    <li class="nav-item dropdown mobile-hidden">
                       <a href="#"
                          class="nav-link dropdown-toggle"
                          data-bs-toggle="dropdown"
