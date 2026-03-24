@@ -50,11 +50,35 @@
     var stopBtn = document.getElementById('stop');
     var serverRunning = stopBtn && stopBtn.offsetParent !== null;
 
+    var restartBtn = document.getElementById('restart-server-btn');
+
     if (serverRunning) {
       // Hide the "My Server" link - status strip handles this
       startBtn.classList.add('mobile-hidden');
+
+      // Intercept Stop button: show spinner, call API, reload on complete
+      if (stopBtn) {
+        stopBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopImmediatePropagation();  // prevent JupyterHub's home.js handler
+          var btn = this;
+          btn.classList.add('disabled');
+          btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Stopping...';
+          if (restartBtn) restartBtn.style.display = 'none';
+
+          var xhr = new XMLHttpRequest();
+          xhr.open('DELETE', baseUrl + 'api/users/' + encodeURIComponent(username) + '/server');
+          xhr.setRequestHeader('X-XSRFToken', getCookie('_xsrf'));
+          xhr.onload = function() { location.reload(); };
+          xhr.onerror = function() { location.reload(); };
+          xhr.send();
+        });
+      }
     } else {
-      // Server stopped - intercept Start to use API
+      // Server stopped - hide Restart (Jinja may render it on edge cases)
+      if (restartBtn) restartBtn.style.display = 'none';
+
+      // Intercept Start to use API (no JupyterLab navigation)
       startBtn.addEventListener('click', function(e) {
         e.preventDefault();
         var btn = this;
@@ -70,13 +94,11 @@
           } else {
             btn.classList.remove('disabled');
             btn.innerHTML = '<i class="fa fa-play" aria-hidden="true"></i> Start My Server';
-            alert('Failed to start server');
           }
         };
         xhr.onerror = function() {
           btn.classList.remove('disabled');
           btn.innerHTML = '<i class="fa fa-play" aria-hidden="true"></i> Start My Server';
-          alert('Network error');
         };
         xhr.send();
       });

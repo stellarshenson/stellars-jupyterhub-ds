@@ -1850,6 +1850,22 @@ textarea.form-control {
   font-size: 0.9rem;
 }
 
+/* --- Home: Mobile extend panel (inline slider) --- */
+.mobile-extend-container {
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+}
+.mobile-extend-container .form-range {
+  height: 1.5rem;
+}
+.mobile-extend-container .btn-sm {
+  border-radius: 8px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+}
+
 /* --- Home: Mobile activity monitor --- */
 [data-device="mobile"] #mobile-activity-section .card {
   border-radius: 8px;
