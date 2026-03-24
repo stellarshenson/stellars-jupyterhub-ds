@@ -4,7 +4,7 @@
 # GLOBALS                                                                       #
 #################################################################################
 .DEFAULT_GOAL := help
-.PHONY: help build push start stop clean increment_version maybe_increment_version tag logs
+.PHONY: help build rebuild push start stop clean increment_version maybe_increment_version tag logs
 
 # Include project configuration
 include project.env
@@ -54,6 +54,19 @@ build: maybe_increment_version
 ## build with verbose output (BUILD_OPTS='--no-version-increment --no-cache')
 build_verbose: maybe_increment_version
 	@cd ./scripts && ./build_verbose.sh $(DOCKER_BUILD_OPTS)
+
+## rebuild 'target' stage only (uses cached 'builder' stage)
+rebuild: clean maybe_increment_version
+	@echo "Rebuilding 'target' stage (builder stage uses cache if available)..."
+	@docker build \
+		--network=host \
+		--platform linux/amd64 \
+		--target target \
+		--build-arg CACHEBUST=$$(date +%s) \
+		$(DOCKER_BUILD_OPTS) \
+		--tag stellars/stellars-jupyterhub-ds:latest \
+		-f services/jupyterhub/Dockerfile.jupyterhub \
+		.
 
 ## pull docker image from dockerhub
 pull:

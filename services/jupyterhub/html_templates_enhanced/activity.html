@@ -21,22 +21,23 @@
     </div>
   </div>
 
-  <!-- Activity table -->
-  <div id="activity-table-container" style="display: none;">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <div>
-        <span class="badge bg-dark" id="active-count"></span>
-      </div>
-      <div>
-        <button class="btn btn-outline-danger btn-sm me-2" id="reset-btn">
-          <i class="fa fa-trash" aria-hidden="true"></i> Reset
-        </button>
-        <button class="btn btn-outline-secondary btn-sm" id="refresh-btn">
-          <i class="fa fa-refresh" aria-hidden="true"></i> Refresh
-        </button>
-      </div>
+  <!-- Toolbar: badge + buttons (shared between mobile and desktop) -->
+  <div id="activity-toolbar" class="d-flex justify-content-between align-items-center mb-3" style="display: none !important;">
+    <div>
+      <span class="badge bg-dark" id="active-count"></span>
     </div>
+    <div>
+      <button class="btn btn-outline-danger btn-sm me-2 mobile-hidden" id="reset-btn">
+        <i class="fa fa-trash" aria-hidden="true"></i> Reset
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" id="refresh-btn">
+        <i class="fa fa-refresh" aria-hidden="true"></i> Refresh
+      </button>
+    </div>
+  </div>
 
+  <!-- Activity table (desktop) -->
+  <div id="activity-table-container" class="mobile-hidden" style="display: none;">
     <table class="table table-sm table-striped table-hover activity-table">
       <thead class="table-dark">
         <tr>
@@ -56,6 +57,9 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Activity cards (mobile) -->
+  <div id="mobile-activity-cards-container" class="desktop-hidden" style="display: none;"></div>
 
 </div>
 
@@ -165,19 +169,23 @@ require(["jquery"], function($) {
     });
   }
 
+  var isMobileView = typeof MobileUI !== 'undefined' && MobileUI.isMobile;
+
   function renderActivityTable(data) {
     var users = data.users || [];
 
     $('#loading-indicator').hide();
 
     if (users.length === 0) {
+      $('#activity-toolbar').css('display', 'none').attr('style', 'display: none !important;');
       $('#activity-table-container').hide();
+      $('#mobile-activity-cards-container').hide();
       $('#no-data-message').show();
       return;
     }
 
     $('#no-data-message').hide();
-    $('#activity-table-container').show();
+    $('#activity-toolbar').attr('style', '').addClass('d-flex');
 
     // Update header info - count users by status
     var activeCount = users.filter(function(u) { return u.server_active && u.recently_active; }).length;
@@ -189,7 +197,15 @@ require(["jquery"], function($) {
 
     // Store data for sorting
     currentUsersData = users;
-    renderTableRows();
+
+    if (isMobileView) {
+      $('#mobile-activity-cards-container').show();
+      var container = document.getElementById('mobile-activity-cards-container');
+      MobileUI.renderActivityCards(users, container);
+    } else {
+      $('#activity-table-container').show();
+      renderTableRows();
+    }
   }
 
   function renderTableRows() {
