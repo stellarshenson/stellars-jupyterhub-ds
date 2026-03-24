@@ -1692,7 +1692,7 @@ textarea.form-control {
 [data-device="mobile"] h2 { font-size: 1.25rem; }
 
 /* --- Navbar: compact with inline right controls --- */
-[data-device="mobile"] .navbar { padding: 0.25rem 0.75rem; margin-bottom: 0 !important; }
+[data-device="mobile"] .navbar { padding: 0.25rem 0.75rem; margin-bottom: 0.75rem !important; }
 [data-device="mobile"] .jpy-logo { height: 1.5rem; }
 [data-device="mobile"] .mobile-navbar-right { gap: 0.25rem; }
 [data-device="mobile"] .mobile-navbar-right .btn { padding: 0.25rem 0.5rem; font-size: 0.85rem; }
@@ -1798,6 +1798,10 @@ textarea.form-control {
   font-size: 0.95rem;
   border-radius: 10px;
   padding: 0.5rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
 }
 
 /* --- Home: Session timer full-width on mobile --- */
