@@ -1785,6 +1785,12 @@ textarea.form-control {
   50% { box-shadow: 0 0 0 5px rgba(255, 193, 7, 0); }
 }
 
+/* --- Home: Neutralize Bootstrap .row margins on mobile so children align with status strip --- */
+[data-device="mobile"] .container > .row {
+  margin-left: 0;
+  margin-right: 0;
+}
+
 /* --- Home: Server control buttons --- */
 [data-device="mobile"] .container > .row > .text-center {
   display: flex;
@@ -1814,10 +1820,23 @@ textarea.form-control {
 [data-device="mobile"] #session-timer-row .col-md-4 {
   flex: 0 0 100%;
   max-width: 100%;
+  margin-left: 0;
   padding: 0;
 }
-[data-device="mobile"] #session-timer-row .offset-md-4 { margin-left: 0; }
-[data-device="mobile"] #session-timer-row .col-md-4 { padding: 0; }
+
+/* --- Home: Session timer taller on mobile --- */
+[data-device="mobile"] #session-timer-bar .progress {
+  height: 16px;
+  border-radius: 8px;
+}
+[data-device="mobile"] #extend-session-trigger {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  border-radius: 8px;
+}
+[data-device="mobile"] #session-time-text {
+  font-size: 0.9rem;
+}
 
 /* --- Home: Mobile activity monitor --- */
 [data-device="mobile"] #mobile-activity-section .card {
