@@ -3,7 +3,8 @@
  *
  * Detects mobile devices and adapts the UI:
  * - Hides desktop-only elements (volumes, named servers, admin nav items)
- * - Intercepts "My Server" link to start via API without navigating to JupyterLab
+ * - Replaces "My Server" link with API-based start (no JupyterLab navigation)
+ * - Shows server status strip with pulsating indicator and uptime
  * - Renders inline activity monitor for admin users on the home page
  * - Renders card-based activity layout on the activity page
  *
@@ -21,14 +22,28 @@
 
   if (!isMobile) return;  // Desktop: nothing more to do
 
+  // ── Dark Mode Toggle (mobile duplicate) ────────────────────────────
+  document.addEventListener('DOMContentLoaded', function() {
+    var mobileToggle = document.getElementById('dark-theme-toggle-mobile');
+    if (mobileToggle) {
+      mobileToggle.addEventListener('click', function() {
+        var current = document.documentElement.getAttribute('data-bs-theme');
+        var next = current === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('jupyterhub-bs-theme', next);
+        document.documentElement.setAttribute('data-bs-theme', next);
+      });
+    }
+  });
+
   // ── Mobile Home Page Logic ─────────────────────────────────────────
 
   /**
-   * Intercept the "My Server" / "Start My Server" link on mobile.
-   * When server is running: show disabled "Server Running" button.
-   * When server is stopped: start via API POST without navigating to JupyterLab.
+   * Adapt the home page for mobile:
+   * - When server running: hide "My Server" button (status strip shows state),
+   *   keep Stop + Restart as compact actions
+   * - When server stopped: intercept Start to use API (no JupyterLab navigation)
    */
-  function interceptStartButton(baseUrl, username, getCookie) {
+  function setupHomePage(baseUrl, username, getCookie) {
     var startBtn = document.getElementById('start');
     if (!startBtn) return;
 
@@ -36,14 +51,10 @@
     var serverRunning = stopBtn && stopBtn.offsetParent !== null;
 
     if (serverRunning) {
-      // Server is active - disable navigation, show status
-      startBtn.removeAttribute('href');
-      startBtn.style.cursor = 'default';
-      startBtn.classList.remove('btn-primary');
-      startBtn.classList.add('btn-success', 'disabled');
-      startBtn.innerHTML = '<i class="fa fa-check" aria-hidden="true"></i> Server Running';
+      // Hide the "My Server" link - status strip handles this
+      startBtn.classList.add('mobile-hidden');
     } else {
-      // Server is stopped - start via API
+      // Server stopped - intercept Start to use API
       startBtn.addEventListener('click', function(e) {
         e.preventDefault();
         var btn = this;
@@ -70,11 +81,46 @@
         xhr.send();
       });
     }
+
+    // Start uptime counter
+    initUptime();
+  }
+
+  /**
+   * Calculate and display uptime from spawner.started timestamp.
+   */
+  function initUptime() {
+    var statusEl = document.getElementById('mobile-server-status');
+    var uptimeEl = document.getElementById('mobile-uptime');
+    if (!statusEl || !uptimeEl) return;
+
+    var started = statusEl.getAttribute('data-started');
+    if (!started) return;
+
+    var startTime = new Date(started).getTime();
+    if (isNaN(startTime)) return;
+
+    function updateUptime() {
+      var diff = Date.now() - startTime;
+      if (diff < 0) { uptimeEl.textContent = ''; return; }
+      var sec = Math.floor(diff / 1000);
+      var min = Math.floor(sec / 60);
+      var hr = Math.floor(min / 60);
+      var day = Math.floor(hr / 24);
+
+      var text;
+      if (day > 0) text = day + 'd ' + (hr % 24) + 'h';
+      else if (hr > 0) text = hr + 'h ' + (min % 60) + 'm';
+      else text = min + 'm';
+      uptimeEl.textContent = text;
+    }
+
+    updateUptime();
+    setInterval(updateUptime, 60000);
   }
 
   /**
    * Fetch activity data and render card-based list for mobile home page.
-   * Shows status dot, username, and time remaining per user.
    */
   function initMobileActivityMonitor(baseUrl, getCookie) {
     var section = document.getElementById('mobile-activity-section');
@@ -109,11 +155,10 @@
       });
 
       if (badge) {
-        badge.textContent = users.length + ' users (' + activeCount + ' active, ' +
-          idleCount + ' idle, ' + offlineCount + ' offline)';
+        badge.textContent = activeCount + '/' + users.length;
       }
 
-      // Sort: active first, then idle, then offline; alphabetical within each group
+      // Sort: active first, then idle, then offline
       users.sort(function(a, b) {
         var aStatus = a.server_active ? (a.recently_active ? 2 : 1) : 0;
         var bStatus = b.server_active ? (b.recently_active ? 2 : 1) : 0;
@@ -124,22 +169,22 @@
       if (!list) return;
       list.innerHTML = '';
       users.forEach(function(user) {
-        var statusColor = user.server_active
-          ? (user.recently_active ? '#28a745' : '#ffc107')
-          : '#dc3545';
+        var statusClass = user.server_active
+          ? (user.recently_active ? 'active' : 'idle')
+          : 'offline';
         var timeLeft = formatTimeShort(user.time_remaining_seconds);
 
         var row = document.createElement('div');
-        row.className = 'mobile-user-row d-flex align-items-center py-2 border-bottom';
+        row.className = 'mobile-user-row';
         row.innerHTML =
-          '<span class="me-2" style="color:' + statusColor + ';font-size:1.1em;">&#9679;</span>' +
+          '<span class="mobile-status-dot ' + statusClass + ' small"></span>' +
           '<span class="flex-grow-1 text-truncate">' + escapeHtml(user.username) + '</span>' +
-          '<span class="text-muted small ms-2">' + timeLeft + '</span>';
+          (timeLeft !== '--' ? '<span class="text-muted small">' + timeLeft + '</span>' : '');
         list.appendChild(row);
       });
 
       if (users.length === 0) {
-        list.innerHTML = '<div class="text-muted small py-2">No users found</div>';
+        list.innerHTML = '<div class="text-muted small py-2">No users</div>';
       }
     }
 
@@ -150,11 +195,9 @@
   // ── Mobile Activity Page Logic ─────────────────────────────────────
 
   /**
-   * Replace table rendering with card-based layout on the activity page.
-   * Called from activity.html when mobile is detected.
+   * Render activity cards for the mobile activity page.
    */
-  function renderActivityCards(users, container, opts) {
-    opts = opts || {};
+  function renderActivityCards(users, container) {
     container.innerHTML = '';
 
     if (users.length === 0) {
@@ -163,13 +206,13 @@
     }
 
     users.forEach(function(user) {
-      var statusColor, statusLabel;
+      var statusClass, statusLabel;
       if (user.server_active && user.recently_active) {
-        statusColor = '#28a745'; statusLabel = 'active';
+        statusClass = 'active'; statusLabel = 'active';
       } else if (user.server_active) {
-        statusColor = '#ffc107'; statusLabel = 'idle';
+        statusClass = 'idle'; statusLabel = 'idle';
       } else {
-        statusColor = '#dc3545'; statusLabel = 'offline';
+        statusClass = 'offline'; statusLabel = 'offline';
       }
 
       var timeLeft = formatTimeShort(user.time_remaining_seconds);
@@ -178,22 +221,20 @@
       var cpu = user.cpu_percent != null ? user.cpu_percent.toFixed(1) + '%' : '--';
 
       var card = document.createElement('div');
-      card.className = 'mobile-activity-card card mb-2';
+      card.className = 'mobile-activity-card';
       card.innerHTML =
-        '<div class="card-body py-2 px-3">' +
-          '<div class="d-flex align-items-center justify-content-between">' +
-            '<div class="d-flex align-items-center text-truncate">' +
-              '<span class="me-2" style="color:' + statusColor + ';font-size:1em;">&#9679;</span>' +
-              '<strong class="text-truncate">' + escapeHtml(user.username) + '</strong>' +
-            '</div>' +
-            '<span class="badge bg-' + (statusLabel === 'active' ? 'success' : statusLabel === 'idle' ? 'warning' : 'secondary') + ' ms-2">' + statusLabel + '</span>' +
+        '<div class="d-flex align-items-center justify-content-between">' +
+          '<div class="d-flex align-items-center text-truncate">' +
+            '<span class="mobile-status-dot ' + statusClass + ' small me-2"></span>' +
+            '<strong class="text-truncate">' + escapeHtml(user.username) + '</strong>' +
           '</div>' +
-          '<div class="d-flex justify-content-between mt-1 small text-muted">' +
-            '<span>CPU: ' + cpu + '</span>' +
-            '<span>Mem: ' + mem + '</span>' +
-            (timeLeft !== '--' ? '<span>TTL: ' + timeLeft + '</span>' : '') +
-            (lastActive !== '--' ? '<span>' + lastActive + '</span>' : '') +
-          '</div>' +
+          '<span class="mobile-activity-badge ' + statusClass + '">' + statusLabel + '</span>' +
+        '</div>' +
+        '<div class="mobile-activity-meta">' +
+          '<span>CPU ' + cpu + '</span>' +
+          '<span>Mem ' + mem + '</span>' +
+          (timeLeft !== '--' ? '<span>TTL ' + timeLeft + '</span>' : '') +
+          (lastActive !== '--' ? '<span>' + lastActive + '</span>' : '') +
         '</div>';
       container.appendChild(card);
     });
@@ -238,7 +279,7 @@
 
   window.MobileUI = {
     isMobile: isMobile,
-    interceptStartButton: interceptStartButton,
+    setupHomePage: setupHomePage,
     initMobileActivityMonitor: initMobileActivityMonitor,
     renderActivityCards: renderActivityCards
   };

@@ -137,7 +137,7 @@
             </span>
           {% endblock logo %}
           {% if user %}
-            <button class="navbar-toggler"
+            <button class="navbar-toggler mobile-hidden"
                     type="button"
                     data-bs-toggle="collapse"
                     data-bs-target="#thenavbar"
@@ -147,6 +147,22 @@
               <span class="navbar-toggler-icon"></span>
             </button>
           {% endif %}
+
+          {# Mobile: inline right-side controls (no hamburger) #}
+          {% if user %}
+          <div class="d-flex align-items-center desktop-hidden mobile-navbar-right">
+            <button class="btn btn-sm"
+                    id="dark-theme-toggle-mobile"
+                    aria-label="Toggle dark mode"
+                    title="Toggle dark mode">
+              <i aria-hidden="true" class="fa fa-circle-half-stroke"></i>
+            </button>
+            <a role="button"
+               class="btn btn-sm btn-outline-contrast ms-2"
+               href="{{ logout_url }}"><i aria-hidden="true" class="fa fa-sign-out"></i></a>
+          </div>
+          {% endif %}
+
           <div class="collapse navbar-collapse" id="thenavbar">
             <ul class="navbar-nav me-auto mb-0">
               {% if user %}
