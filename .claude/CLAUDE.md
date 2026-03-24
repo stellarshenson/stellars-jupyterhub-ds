@@ -1,4 +1,23 @@
+<!-- @import /home/lab/workspace/.claude/CLAUDE.md -->
+
 # CLAUDE.md
+
+This file imports workspace-level configuration from `/home/lab/workspace/.claude/CLAUDE.md`.
+All workspace rules apply. Project-specific rules below strengthen or extend them.
+
+The workspace `/home/lab/workspace/.claude/` directory contains additional instruction files
+(MERMAID.md, NOTEBOOK.md, DATASCIENCE.md, GIT.md, and others) referenced by CLAUDE.md.
+Consult workspace CLAUDE.md and the .claude directory to discover all applicable standards.
+
+## Mandatory Bans (Reinforced)
+
+The following workspace rules are STRICTLY ENFORCED for this project:
+
+- **No automatic git tags** - only create tags when user explicitly requests
+- **No automatic version changes** - only modify version in project.env when user explicitly requests
+- **No automatic publishing** - never run `make publish`, `make push`, or similar without explicit user request
+- **No manual package installs if Makefile exists** - use `make install` or equivalent Makefile targets, not direct `pip install`/`uv install`/`npm install`
+- **No automatic git commits or pushes** - only when user explicitly requests
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
