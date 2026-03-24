@@ -5,6 +5,22 @@
 {% block main %}
   <div class="container">
     <h1 class="visually-hidden">JupyterHub home page</h1>
+
+    {# Mobile status strip - shows server state with pulsating indicator #}
+    {% if default_server.active %}
+    <div class="desktop-hidden mobile-status-strip" id="mobile-server-status"
+         data-started="{{ default_server.started }}">
+      <span class="mobile-status-dot active"></span>
+      <span class="mobile-status-label">Server Online</span>
+      <span class="mobile-status-uptime text-muted" id="mobile-uptime"></span>
+    </div>
+    {% else %}
+    <div class="desktop-hidden mobile-status-strip offline" id="mobile-server-status">
+      <span class="mobile-status-dot offline"></span>
+      <span class="mobile-status-label">Server Offline</span>
+    </div>
+    {% endif %}
+
     <div class="row">
       <div class="text-center">
         {% if default_server.active %}
@@ -537,7 +553,7 @@
           // Mobile UI adaptations
           // ============================================================
           if (typeof window.MobileUI !== 'undefined' && MobileUI.isMobile) {
-              MobileUI.interceptStartButton('{{ base_url }}', username, getCookie);
+              MobileUI.setupHomePage('{{ base_url }}', username, getCookie);
               MobileUI.initMobileActivityMonitor('{{ base_url }}', getCookie);
           }
       });
