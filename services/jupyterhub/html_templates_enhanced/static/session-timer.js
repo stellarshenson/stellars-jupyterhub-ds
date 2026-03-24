@@ -21,6 +21,11 @@
   var $trigger;
   var $modal, $hours, $available, $feedback, $feedbackMsg, $confirmBtn;
 
+  // mobile extend panel
+  var isMobile = typeof MobileUI !== 'undefined' && MobileUI.isMobile;
+  var $mobilePanel, $mobileSlider, $mobileValue, $mobileMax;
+  var $mobileConfirm, $mobileCancel, $mobileFeedback, $mobileFeedbackMsg;
+
   function cacheElements() {
     $row          = $('#session-timer-row');
     $loading      = $('#session-timer-loading');
@@ -38,6 +43,16 @@
     $feedback     = $('#extend-session-feedback');
     $feedbackMsg  = $('#extend-feedback-msg');
     $confirmBtn   = $('#confirm-extend-btn');
+
+    // mobile extend panel
+    $mobilePanel      = $('#mobile-extend-panel');
+    $mobileSlider     = $('#mobile-extend-slider');
+    $mobileValue      = $('#mobile-extend-value');
+    $mobileMax        = $('#mobile-extend-max');
+    $mobileConfirm    = $('#mobile-extend-confirm');
+    $mobileCancel     = $('#mobile-extend-cancel');
+    $mobileFeedback   = $('#mobile-extend-feedback');
+    $mobileFeedbackMsg = $('#mobile-extend-feedback-msg');
   }
 
   // -------------------------------------------------------- colour helpers
@@ -164,6 +179,7 @@
       success: function (resp) {
         $error.addClass('d-none');
         updateUI(resp);
+        if (isMobile) updateMobileSliderMax();
       },
       error: function (xhr) {
         console.error('[SessionTimer] fetch failed', xhr.status);
@@ -228,6 +244,85 @@
       .html('<i class="fa fa-plus" aria-hidden="true"></i> Extend');
   }
 
+  // --------------------------------------------------- mobile extend
+  function updateSliderLabel() {
+    var val = parseInt($mobileSlider.val(), 10);
+    var suffix = val === 1 ? 'hour' : 'hours';
+    $mobileValue.html('<strong>+' + val + ' ' + suffix + '</strong>');
+  }
+
+  function updateMobileSliderMax() {
+    if (!currentInfo || !$mobileSlider.length) return;
+    var avail = currentInfo.extensions_available_hours || 0;
+    var noHoursLeft = avail <= 0;
+
+    // Disable slider and confirm when no hours available
+    $mobileSlider.prop('disabled', noHoursLeft);
+    $mobileConfirm.prop('disabled', noHoursLeft);
+
+    if (noHoursLeft) {
+      $mobileValue.html('<span class="text-muted">No extension hours available</span>');
+      $mobilePanel.addClass('d-none');
+      return;
+    }
+
+    var max = Math.floor(avail);
+    $mobileSlider.attr('max', max);
+    $mobileMax.text(max + 'h');
+    if (parseInt($mobileSlider.val(), 10) > max) {
+      $mobileSlider.val(max);
+      updateSliderLabel();
+    }
+  }
+
+  function handleMobileExtend() {
+    var hours = parseInt($mobileSlider.val(), 10) || 1;
+    var url = baseUrl + 'api/users/' + username + '/extend-session';
+
+    $mobileConfirm.prop('disabled', true)
+      .html('<span class="spinner-border spinner-border-sm"></span>');
+
+    $.ajax({
+      url: url,
+      type: 'POST',
+      headers: { 'X-XSRFToken': getCookie('_xsrf') },
+      data: JSON.stringify({ hours: hours }),
+      contentType: 'application/json',
+      success: function (resp) {
+        $mobileConfirm.prop('disabled', false)
+          .html('<i class="fa fa-plus" aria-hidden="true"></i> Extend');
+        if (resp.success) {
+          if (resp.session_info) {
+            updateUI({
+              culler_enabled: true,
+              server_active: true,
+              timeout_seconds: currentInfo ? currentInfo.timeout_seconds : 0,
+              time_remaining_seconds: resp.session_info.time_remaining_seconds,
+              extensions_used_hours: resp.session_info.extensions_used_hours,
+              extensions_available_hours: resp.session_info.extensions_available_hours
+            });
+            updateMobileSliderMax();
+          }
+          var cls = resp.truncated ? 'alert-warning' : 'alert-success';
+          $mobileFeedback.removeClass('d-none alert-warning alert-success').addClass(cls);
+          $mobileFeedbackMsg.text(resp.message);
+          setTimeout(function () {
+            $mobilePanel.addClass('d-none');
+            $mobileFeedback.addClass('d-none');
+            fetchInfo();
+          }, resp.truncated ? 2500 : 1500);
+        }
+      },
+      error: function (xhr) {
+        $mobileConfirm.prop('disabled', false)
+          .html('<i class="fa fa-plus" aria-hidden="true"></i> Extend');
+        var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Failed to extend';
+        $mobileFeedback.removeClass('d-none alert-warning alert-success').addClass('alert-warning');
+        $mobileFeedbackMsg.text(msg);
+      }
+    });
+  }
+
   // --------------------------------------------------------- feedback
   function showError(msg, cls) {
     cls = cls || 'warning';
@@ -284,15 +379,40 @@
     readCssColors();
     console.log('[SessionTimer] initializing for', username);
 
-    // modal reset on open
-    $modal.on('show.bs.modal', function () {
-      $hours.val(1);
-      $feedback.addClass('d-none');
-      resetExtendBtn();
-    });
+    if (isMobile && $mobilePanel.length) {
+      // Mobile: override trigger to toggle inline panel instead of modal
+      $trigger.removeAttr('data-bs-toggle').removeAttr('data-bs-target');
+      $trigger.on('click', function () {
+        var isVisible = !$mobilePanel.hasClass('d-none');
+        if (isVisible) {
+          $mobilePanel.addClass('d-none');
+        } else {
+          $mobileSlider.val(1);
+          updateSliderLabel();
+          $mobileFeedback.addClass('d-none');
+          $mobilePanel.removeClass('d-none');
+        }
+      });
 
-    // extend button
-    $confirmBtn.on('click', handleExtend);
+      // slider label update
+      $mobileSlider.on('input', updateSliderLabel);
+
+      // cancel
+      $mobileCancel.on('click', function () {
+        $mobilePanel.addClass('d-none');
+      });
+
+      // confirm
+      $mobileConfirm.on('click', handleMobileExtend);
+    } else {
+      // Desktop: modal
+      $modal.on('show.bs.modal', function () {
+        $hours.val(1);
+        $feedback.addClass('d-none');
+        resetExtendBtn();
+      });
+      $confirmBtn.on('click', handleExtend);
+    }
 
     // initial fetch + recurring
     fetchInfo();
