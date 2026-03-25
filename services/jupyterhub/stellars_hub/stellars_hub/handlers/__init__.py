@@ -8,6 +8,7 @@ from .settings import SettingsPageHandler
 from .session import SessionInfoHandler, ExtendSessionHandler
 from .activity import ActivityPageHandler, ActivityDataHandler, ActivityResetHandler, ActivitySampleHandler
 from .favicon import FaviconRedirectHandler
+from .health import HealthCheckHandler
 
 __all__ = [
     "ManageVolumesHandler",
@@ -24,4 +25,5 @@ __all__ = [
     "ActivityResetHandler",
     "ActivitySampleHandler",
     "FaviconRedirectHandler",
+    "HealthCheckHandler",
 ]
