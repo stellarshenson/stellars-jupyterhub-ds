@@ -38,6 +38,7 @@ from stellars_hub.handlers import (
     BroadcastNotificationHandler,           # POST /api/notifications/broadcast - send to all active servers
     ExtendSessionHandler,                   # POST /api/users/{user}/extend-session - add idle culler hours
     GetUserCredentialsHandler,              # GET  /api/admin/credentials - retrieve cached passwords
+    HealthCheckHandler,                     # GET  /health - unauthenticated monitoring endpoint
     ManageVolumesHandler,                   # DELETE /api/users/{user}/manage-volumes - delete user volumes
     NotificationsPageHandler,               # GET  /notifications - admin broadcast UI
     RestartServerHandler,                   # POST /api/users/{user}/restart-server - Docker restart
@@ -289,6 +290,7 @@ c.JupyterHub.extra_handlers = [
     (r'/notifications', NotificationsPageHandler),                    # GET - admin broadcast UI page
     (r'/settings', SettingsPageHandler),                              # GET - platform settings page
     (r'/activity', ActivityPageHandler),                              # GET - activity monitoring page
+    (r'/health', HealthCheckHandler),                                 # GET - unauthenticated monitoring endpoint
 ]
 
 

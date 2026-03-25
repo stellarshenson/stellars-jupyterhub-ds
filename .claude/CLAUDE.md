@@ -73,6 +73,7 @@ make clean
 
 - JupyterHub: `https://localhost/jupyterhub`
 - Traefik Dashboard: `http://localhost:8080/dashboard`
+- Health Check: `GET /jupyterhub/hub/health` - unauthenticated JSON endpoint (rate-limited 1 req/s per IP)
 - First-time setup: Self-register as `admin` user (auto-authorized)
 
 ## Configuration Architecture

@@ -21,6 +21,8 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 - **Shared Storage**: Optional CIFS/NAS mount support for shared datasets across all users
 - **Idle Server Culler**: Automatic shutdown of inactive servers after configurable timeout (default: 24 hours). Frees resources when users leave servers running
 - **Activity Monitor**: Admin-only dashboard showing real-time CPU/memory usage, volume sizes with per-volume breakdown, 3-state status indicator (active/inactive/offline), and historical activity scoring with exponential decay
+- **Mobile Interface**: Server management from mobile devices - status strip with pulsating indicator and uptime, inline session extension slider, admin activity monitor with card-based layout, health check with auto-reload on state change. No JupyterLab navigation - start/stop/restart only
+- **Health Check Endpoint**: Unauthenticated `GET /hub/health` returning JSON with hub status, uptime, version, and active server count. Rate-limited to 1 req/s per IP. Designed for Zabbix, Prometheus, or other monitoring agents
 - **Production Ready**: Traefik reverse proxy with TLS termination, automatic container updates via Watchtower
 
 ## User Interface
