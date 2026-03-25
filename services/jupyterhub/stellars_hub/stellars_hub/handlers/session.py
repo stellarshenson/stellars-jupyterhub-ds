@@ -150,7 +150,12 @@ class ExtendSessionHandler(BaseHandler):
             hours = available
             truncated = True
 
-        new_total_extensions = current_extensions + hours
+        # When extending by full available amount, snap to ceiling exactly
+        # (avoids fractional remaining like 71h37m instead of clean 72h)
+        if hours >= available:
+            new_total_extensions = max_extension_hours
+        else:
+            new_total_extensions = current_extensions + hours
 
         new_state = dict(current_state)
         new_state['extension_hours_used'] = new_total_extensions
