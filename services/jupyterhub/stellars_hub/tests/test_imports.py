@@ -118,10 +118,11 @@ def test_handlers():
         ActivityResetHandler,
         ActivitySampleHandler,
         FaviconRedirectHandler,
+        HealthCheckHandler,
     )
     # Verify handler count matches expected
     from stellars_hub import handlers
-    assert len(handlers.__all__) == 14
+    assert len(handlers.__all__) == 15
 
 
 def test_auth():
