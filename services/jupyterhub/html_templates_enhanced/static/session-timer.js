@@ -159,8 +159,10 @@
     // enable/disable extend trigger based on available hours
     if (avail > 0) {
       $trigger.prop('disabled', false).removeAttr('disabled');
+      $trigger.attr('title', 'Extend session by ' + Math.floor(avail) + 'h');
     } else {
       $trigger.prop('disabled', true);
+      $trigger.attr('title', 'All extension hours used');
     }
 
     // swap loading -> bar

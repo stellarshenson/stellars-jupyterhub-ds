@@ -1848,9 +1848,8 @@ textarea.form-control {
   transition: opacity 0.2s, background-color 0.2s, border-color 0.2s;
 }
 [data-device="mobile"] #extend-session-trigger:disabled {
-  opacity: 0.35;
+  opacity: 0.5;
   cursor: not-allowed;
-  pointer-events: none;
 }
 [data-device="mobile"] #session-time-text {
   font-size: 0.9rem;
