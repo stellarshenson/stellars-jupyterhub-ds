@@ -57,12 +57,13 @@ build_verbose: maybe_increment_version
 
 ## rebuild 'target' stage only (uses cached 'builder' stage, no stop/clean)
 rebuild: maybe_increment_version
-	@echo "Rebuilding 'target' stage (builder stage uses cache if available)..."
+	$(eval CURRENT_VERSION := $(shell grep '^VERSION=' project.env | sed 's/VERSION=//;s/"//g'))
+	@echo "Rebuilding 'target' stage (version: $(CURRENT_VERSION))..."
 	@docker build \
 		--network=host \
 		--platform linux/amd64 \
 		--target target \
-		--build-arg VERSION=$(TAG) \
+		--build-arg VERSION=$(CURRENT_VERSION) \
 		--build-arg CACHEBUST=$$(date +%s) \
 		$(DOCKER_BUILD_OPTS) \
 		--tag stellars/stellars-jupyterhub-ds:latest \
