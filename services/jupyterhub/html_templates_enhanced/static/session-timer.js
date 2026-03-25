@@ -156,8 +156,12 @@
     var avail = info.extensions_available_hours || 0;
     $available.html('Available: <strong>' + avail + '</strong> hour(s)');
 
-    // disable extend trigger when nothing left
-    $trigger.prop('disabled', avail <= 0);
+    // enable/disable extend trigger based on available hours
+    if (avail > 0) {
+      $trigger.prop('disabled', false).removeAttr('disabled');
+    } else {
+      $trigger.prop('disabled', true);
+    }
 
     // swap loading -> bar
     $loading.addClass('d-none');
@@ -256,9 +260,14 @@
     var avail = currentInfo.extensions_available_hours || 0;
     var noHoursLeft = avail <= 0;
 
-    // Disable slider and confirm when no hours available
-    $mobileSlider.prop('disabled', noHoursLeft);
-    $mobileConfirm.prop('disabled', noHoursLeft);
+    // Enable/disable slider and confirm based on available hours
+    if (noHoursLeft) {
+      $mobileSlider.prop('disabled', true);
+      $mobileConfirm.prop('disabled', true);
+    } else {
+      $mobileSlider.prop('disabled', false).removeAttr('disabled');
+      $mobileConfirm.prop('disabled', false).removeAttr('disabled');
+    }
 
     if (noHoursLeft) {
       $mobileValue.html('<span class="text-muted">No extension hours available</span>');
