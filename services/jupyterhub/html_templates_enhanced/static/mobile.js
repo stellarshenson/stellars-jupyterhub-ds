@@ -205,43 +205,19 @@
     var label = statusEl.querySelector('.mobile-status-label');
     var uptime = statusEl.querySelector('.mobile-status-uptime');
 
-    // Server control elements
-    var stopBtn = document.getElementById('stop');
-    var restartBtn = document.getElementById('restart-server-btn');
-    var startBtn = document.getElementById('start');
-    var timerRow = document.getElementById('session-timer-row');
-    var extendPanel = document.getElementById('mobile-extend-panel');
-
     if (state === 'online') {
       statusEl.className = 'desktop-hidden mobile-status-strip';
       dot.className = 'mobile-status-dot active';
       label.textContent = 'Server Online';
       if (uptime) uptime.style.display = '';
-      if (stopBtn) stopBtn.style.display = '';
-      if (restartBtn) restartBtn.style.display = '';
-      if (startBtn) startBtn.classList.add('mobile-hidden');
-      if (timerRow) timerRow.style.display = '';
     } else if (state === 'unreachable') {
       statusEl.className = 'desktop-hidden mobile-status-strip unreachable';
       dot.className = 'mobile-status-dot unreachable';
       label.textContent = 'Connection Lost';
       if (uptime) uptime.style.display = 'none';
     } else if (state === 'stopped') {
-      statusEl.className = 'desktop-hidden mobile-status-strip offline';
-      dot.className = 'mobile-status-dot offline';
-      label.textContent = 'Server Stopped';
-      if (uptime) uptime.style.display = 'none';
-      // Hide server-running controls
-      if (stopBtn) stopBtn.style.display = 'none';
-      if (restartBtn) restartBtn.style.display = 'none';
-      if (timerRow) timerRow.style.display = 'none';
-      if (extendPanel) extendPanel.classList.add('d-none');
-      // Show Start button
-      if (startBtn) {
-        startBtn.classList.remove('mobile-hidden');
-        startBtn.classList.remove('disabled');
-        startBtn.innerHTML = '<i class="fa fa-play" aria-hidden="true"></i> Start My Server';
-      }
+      // Server state changed - reload to get correct Jinja-rendered UI
+      location.reload();
     }
   }
 
