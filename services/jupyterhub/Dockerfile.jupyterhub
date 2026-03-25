@@ -13,7 +13,7 @@ RUN uv venv /build-venv
 ENV VIRTUAL_ENV=/build-venv
 ENV PATH="/build-venv/bin:$PATH"
 
-RUN uv pip install build && python -m build /src/stellars_hub --outdir /dist
+RUN uv pip install pip build && python -m build /src/stellars_hub --outdir /dist
 RUN uv pip install /dist/stellars_hub-*.whl pytest && pytest /src/stellars_hub/tests/ -v
 
 ##############################################################################################
