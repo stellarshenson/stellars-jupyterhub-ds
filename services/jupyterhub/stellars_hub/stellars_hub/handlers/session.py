@@ -57,8 +57,13 @@ class SessionInfoHandler(BaseHandler):
                 response["last_activity"] = None
                 response["time_remaining_seconds"] = effective_timeout
 
+            # Available = how many hours can be added before hitting the ceiling
+            # Ceiling = base timeout + max extension hours
+            # As time passes, remaining decreases and more hours become available
+            max_total_seconds = timeout_seconds + max_extension_hours * 3600
+            available_seconds = max(0, max_total_seconds - response.get("time_remaining_seconds", 0))
             response["extensions_used_hours"] = extensions_used_hours
-            response["extensions_available_hours"] = max(0, max_extension_hours - extensions_used_hours)
+            response["extensions_available_hours"] = int(available_seconds / 3600)
         else:
             response["last_activity"] = None
             response["time_remaining_seconds"] = None
@@ -112,14 +117,31 @@ class ExtendSessionHandler(BaseHandler):
 
         current_state = spawner.orm_spawner.state or {}
         current_extensions = current_state.get('extension_hours_used', 0)
-        available = max_extension_hours - current_extensions
+
+        # Calculate available based on remaining time vs ceiling
+        # Ceiling = base timeout + max extension hours
+        max_total_seconds = timeout_seconds + max_extension_hours * 3600
+        extension_seconds = current_extensions * 3600
+        effective_timeout = timeout_seconds + extension_seconds
+
+        last_activity = spawner.orm_spawner.last_activity if spawner.orm_spawner else None
+        if last_activity:
+            now_utc = datetime.now(timezone.utc)
+            last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
+            elapsed_seconds = (now_utc - last_activity_utc).total_seconds()
+            time_remaining = max(0, effective_timeout - elapsed_seconds)
+        else:
+            time_remaining = effective_timeout
+
+        available_seconds = max(0, max_total_seconds - time_remaining)
+        available = int(available_seconds / 3600)
 
         if available <= 0:
-            self.log.warning(f"[Extend Session] {username}: DENIED - no extension hours available (used={current_extensions}h, max={max_extension_hours}h)")
+            self.log.warning(f"[Extend Session] {username}: DENIED - at ceiling (remaining={time_remaining/3600:.1f}h, ceiling={max_total_seconds/3600:.0f}h)")
             self.set_status(400)
             return self.finish({
                 "success": False,
-                "error": f"Maximum extension limit reached ({max_extension_hours} hours). No more extensions available.",
+                "error": f"Session already at maximum ({max_total_seconds // 3600}h). Wait for time to elapse before extending.",
             })
 
         truncated = False
@@ -135,18 +157,17 @@ class ExtendSessionHandler(BaseHandler):
         spawner.orm_spawner.state = new_state
         self.db.commit()
 
-        extension_seconds = new_total_extensions * 3600
-        effective_timeout = timeout_seconds + extension_seconds
-        last_activity = spawner.orm_spawner.last_activity if spawner.orm_spawner else None
+        new_extension_seconds = new_total_extensions * 3600
+        new_effective_timeout = timeout_seconds + new_extension_seconds
         if last_activity:
-            now_utc = datetime.now(timezone.utc)
-            last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
-            elapsed_seconds = (now_utc - last_activity_utc).total_seconds()
-            time_remaining = max(0, int(effective_timeout - elapsed_seconds))
+            new_time_remaining = max(0, int(new_effective_timeout - elapsed_seconds))
         else:
-            time_remaining = effective_timeout
+            new_time_remaining = new_effective_timeout
 
-        self.log.info(f"[Extend Session] {username}: SUCCESS - added {hours}h, total extensions={new_total_extensions}h, remaining={time_remaining/3600:.1f}h")
+        new_available_seconds = max(0, max_total_seconds - new_time_remaining)
+        new_available = int(new_available_seconds / 3600)
+
+        self.log.info(f"[Extend Session] {username}: SUCCESS - added {hours}h, total extensions={new_total_extensions}h, remaining={new_time_remaining/3600:.1f}h")
 
         message = f"Added {hours} hour(s) to session"
         if truncated:
@@ -157,8 +178,8 @@ class ExtendSessionHandler(BaseHandler):
             "message": message,
             "truncated": truncated,
             "session_info": {
-                "time_remaining_seconds": time_remaining,
+                "time_remaining_seconds": new_time_remaining,
                 "extensions_used_hours": new_total_extensions,
-                "extensions_available_hours": max_extension_hours - new_total_extensions,
+                "extensions_available_hours": new_available,
             },
         })
