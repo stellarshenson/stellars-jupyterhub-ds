@@ -149,20 +149,11 @@ class ExtendSessionHandler(BaseHandler):
             hours = available
             truncated = True
 
-        # When extending by full available amount, compute exact extensions_used
-        # to hit ceiling precisely (avoids fractional remaining like 71h37m)
+        # Update extensions_used to increase effective_timeout
+        # When extending by full available: set to max_extension_hours
+        # (effective = base + max_ext = ceiling, remaining = ceiling - elapsed)
         if hours >= available:
-            # Set extensions_used so that effective_timeout = ceiling
-            # ceiling = timeout + extensions_used * 3600
-            # extensions_used = (ceiling - timeout) / 3600 = max_extension_hours
-            # But we need to account for elapsed time to snap remaining to ceiling
-            # desired_remaining = ceiling, desired_effective = ceiling + elapsed
-            # extensions_used = (desired_effective - timeout) / 3600
-            if last_activity:
-                desired_effective = max_total_seconds + elapsed_seconds
-                new_total_extensions = (desired_effective - timeout_seconds) / 3600
-            else:
-                new_total_extensions = max_extension_hours
+            new_total_extensions = max_extension_hours
         else:
             new_total_extensions = current_extensions + hours
 
