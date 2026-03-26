@@ -57,14 +57,13 @@ class SessionInfoHandler(BaseHandler):
                 response["last_activity"] = None
                 response["time_remaining_seconds"] = effective_timeout
 
-            # Available = min of time-based and allocation-based limits
-            # Time-based: hours until remaining hits ceiling (base + max_extension)
-            # Allocation-based: hours until extensions_used hits max_extension
+            # Available = whole hours between current remaining and ceiling
+            # Ceiling = base timeout + max extension hours
+            # As time passes, remaining drops and hours become available again
             max_total_seconds = timeout_seconds + max_extension_hours * 3600
-            time_based = int(max(0, max_total_seconds - response.get("time_remaining_seconds", 0)) / 3600)
-            allocation_based = max(0, max_extension_hours - extensions_used_hours)
+            available = int(max(0, max_total_seconds - response.get("time_remaining_seconds", 0)) / 3600)
             response["extensions_used_hours"] = extensions_used_hours
-            response["extensions_available_hours"] = min(time_based, allocation_based)
+            response["extensions_available_hours"] = available
         else:
             response["last_activity"] = None
             response["time_remaining_seconds"] = None
@@ -119,8 +118,7 @@ class ExtendSessionHandler(BaseHandler):
         current_state = spawner.orm_spawner.state or {}
         current_extensions = current_state.get('extension_hours_used', 0)
 
-        # Calculate available based on remaining time vs ceiling
-        # Ceiling = base timeout + max extension hours
+        # Compute current remaining time
         max_total_seconds = timeout_seconds + max_extension_hours * 3600
         extension_seconds = current_extensions * 3600
         effective_timeout = timeout_seconds + extension_seconds
@@ -134,15 +132,11 @@ class ExtendSessionHandler(BaseHandler):
         else:
             time_remaining = effective_timeout
 
-        # Available = min of time-based and allocation-based limits
-        # Time-based: how many hours until remaining hits ceiling
-        # Allocation-based: how many hours until extensions_used hits max
-        time_based = int(max(0, max_total_seconds - time_remaining) / 3600)
-        allocation_based = max(0, max_extension_hours - current_extensions)
-        available = min(time_based, allocation_based)
+        # Available = whole hours between remaining and ceiling
+        available = int(max(0, max_total_seconds - time_remaining) / 3600)
 
         if available <= 0:
-            self.log.warning(f"[Extend Session] {username}: DENIED - at ceiling (remaining={time_remaining/3600:.1f}h, ceiling={max_total_seconds/3600:.0f}h, used={current_extensions}h)")
+            self.log.warning(f"[Extend Session] {username}: DENIED - at ceiling (remaining={time_remaining/3600:.1f}h, ceiling={max_total_seconds/3600:.0f}h)")
             self.set_status(400)
             return self.finish({
                 "success": False,
@@ -155,13 +149,22 @@ class ExtendSessionHandler(BaseHandler):
             hours = available
             truncated = True
 
-        # When extending by full available amount, snap to ceiling exactly
-        # (avoids fractional remaining like 71h37m instead of clean 72h)
-        # Always cap at max_extension_hours to prevent exceeding ceiling
+        # When extending by full available amount, compute exact extensions_used
+        # to hit ceiling precisely (avoids fractional remaining like 71h37m)
         if hours >= available:
-            new_total_extensions = max_extension_hours
+            # Set extensions_used so that effective_timeout = ceiling
+            # ceiling = timeout + extensions_used * 3600
+            # extensions_used = (ceiling - timeout) / 3600 = max_extension_hours
+            # But we need to account for elapsed time to snap remaining to ceiling
+            # desired_remaining = ceiling, desired_effective = ceiling + elapsed
+            # extensions_used = (desired_effective - timeout) / 3600
+            if last_activity:
+                desired_effective = max_total_seconds + elapsed_seconds
+                new_total_extensions = (desired_effective - timeout_seconds) / 3600
+            else:
+                new_total_extensions = max_extension_hours
         else:
-            new_total_extensions = min(current_extensions + hours, max_extension_hours)
+            new_total_extensions = current_extensions + hours
 
         new_state = dict(current_state)
         new_state['extension_hours_used'] = new_total_extensions
@@ -175,9 +178,7 @@ class ExtendSessionHandler(BaseHandler):
         else:
             new_time_remaining = new_effective_timeout
 
-        new_time_based = int(max(0, max_total_seconds - new_time_remaining) / 3600)
-        new_allocation_based = max(0, max_extension_hours - new_total_extensions)
-        new_available = min(new_time_based, new_allocation_based)
+        new_available = int(max(0, max_total_seconds - new_time_remaining) / 3600)
 
         self.log.info(f"[Extend Session] {username}: SUCCESS - added {hours}h, total extensions={new_total_extensions}h, remaining={new_time_remaining/3600:.1f}h")
 
