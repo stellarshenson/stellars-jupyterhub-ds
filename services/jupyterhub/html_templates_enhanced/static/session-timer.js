@@ -138,9 +138,9 @@
     }
 
     var remaining   = Math.max(0, info.time_remaining_seconds || 0);
-    var ceiling     = (info.timeout_seconds || 0)
-                    + ((info.max_extension_hours || 0) * 3600);
-    var pct         = ceiling > 0 ? (remaining / ceiling) * 100 : 0;
+    var effective   = (info.timeout_seconds || 0)
+                    + ((info.extensions_used_hours || 0) * 3600);
+    var pct         = effective > 0 ? Math.min(100, (remaining / effective) * 100) : 0;
 
     // progress bar
     $progressBar
@@ -358,9 +358,9 @@
 
       currentInfo.time_remaining_seconds = Math.max(0, currentInfo.time_remaining_seconds - 60);
       var remaining = currentInfo.time_remaining_seconds;
-      var ceiling = (currentInfo.timeout_seconds || 0)
-                  + ((currentInfo.max_extension_hours || 0) * 3600);
-      var pct  = ceiling > 0 ? (remaining / ceiling) * 100 : 0;
+      var effective = (currentInfo.timeout_seconds || 0)
+                    + ((currentInfo.extensions_used_hours || 0) * 3600);
+      var pct  = effective > 0 ? Math.min(100, (remaining / effective) * 100) : 0;
 
       $progressBar.css('width', pct + '%').attr('aria-valuenow', Math.round(pct));
       applyColor(pct);
