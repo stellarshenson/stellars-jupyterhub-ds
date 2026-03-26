@@ -138,9 +138,9 @@
     }
 
     var remaining   = Math.max(0, info.time_remaining_seconds || 0);
-    var effective   = (info.timeout_seconds || 0)
-                    + ((info.extensions_used_hours || 0) * 3600);
-    var pct         = effective > 0 ? (remaining / effective) * 100 : 0;
+    var ceiling     = (info.timeout_seconds || 0)
+                    + ((info.max_extension_hours || 0) * 3600);
+    var pct         = ceiling > 0 ? (remaining / ceiling) * 100 : 0;
 
     // progress bar
     $progressBar
@@ -223,6 +223,7 @@
               culler_enabled: true,
               server_active: true,
               timeout_seconds: currentInfo ? currentInfo.timeout_seconds : 0,
+              max_extension_hours: currentInfo ? currentInfo.max_extension_hours : 0,
               time_remaining_seconds: resp.session_info.time_remaining_seconds,
               extensions_used_hours: resp.session_info.extensions_used_hours,
               extensions_available_hours: resp.session_info.extensions_available_hours
@@ -308,6 +309,7 @@
               culler_enabled: true,
               server_active: true,
               timeout_seconds: currentInfo ? currentInfo.timeout_seconds : 0,
+              max_extension_hours: currentInfo ? currentInfo.max_extension_hours : 0,
               time_remaining_seconds: resp.session_info.time_remaining_seconds,
               extensions_used_hours: resp.session_info.extensions_used_hours,
               extensions_available_hours: resp.session_info.extensions_available_hours
@@ -356,9 +358,9 @@
 
       currentInfo.time_remaining_seconds = Math.max(0, currentInfo.time_remaining_seconds - 60);
       var remaining = currentInfo.time_remaining_seconds;
-      var effective = (currentInfo.timeout_seconds || 0)
-                    + ((currentInfo.extensions_used_hours || 0) * 3600);
-      var pct  = effective > 0 ? (remaining / effective) * 100 : 0;
+      var ceiling = (currentInfo.timeout_seconds || 0)
+                  + ((currentInfo.max_extension_hours || 0) * 3600);
+      var pct  = ceiling > 0 ? (remaining / ceiling) * 100 : 0;
 
       $progressBar.css('width', pct + '%').attr('aria-valuenow', Math.round(pct));
       applyColor(pct);
