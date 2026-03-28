@@ -29,6 +29,8 @@ I decided to fix it. Not with a managed cloud service that costs a fortune, but 
 
 ![Platform Overview](images/01-platform-overview.svg)
 
+![Friction Funnel](images/13-friction-funnel.svg)
+
 ![](images/section-divider-hub.svg)
 
 ## Two Projects, One Ecosystem
@@ -73,6 +75,8 @@ Here's what I added on top of each.
 - AI coding assistant installers (Claude Code, Cursor, Gemini CLI, OpenAI Codex)
 - Docker MCP Gateway and Buildx plugin compiled from source in the builder stage
 
+![User Journey](images/14-user-journey.svg)
+
 ![](images/section-divider-lab.svg)
 
 ## What Users Actually Get
@@ -99,6 +103,8 @@ All local environments persist in user volumes between server image refreshes. W
 
 ![Integrated Services](images/10-integrated-services.svg)
 
+![Technology Stack](images/15-tech-rings.svg)
+
 **Developer experience.** Full Git integration in the sidebar. Black formatter for one-click code formatting. Notebook diffing and merging with nbdime. Execution timing on every cell. Jupytext for version-controlling notebooks as plain Python files. Fish shell with a custom powerline prompt that displays the active conda environment, current git branch, and GPU status. One-command installers for Claude Code, Cursor, Gemini CLI, and OpenAI Codex.
 
 **Visual polish.** Two custom dark themes - Sublime and Darcula, both inspired by IntelliJ's design language - with fixed scrollbar rendering that vanilla JupyterLab still gets wrong in dark mode.
@@ -112,6 +118,8 @@ The single most impactful design decision was making the platform self-service. 
 The home page gives each user three buttons: **Start**, **Stop**, and **Restart**. Below that sits a session timer - a thin progress bar showing how long until the idle culler reclaims their server. If they need more time, they click **Extend** and add hours to their session. The system silently truncates requests that exceed the maximum, returning a warning instead of an error. No admin involvement.
 
 ![User Self-Service](images/02-user-self-service.svg)
+
+![Session Lifecycle](images/16-session-lifecycle.svg)
 
 When something goes wrong - a corrupted pip cache, a broken Conda environment, a home directory full of failed experiments - users can selectively reset their own volumes. Home directory, workspace, cache. Pick which ones to wipe, confirm, and start fresh. This alone eliminated roughly half of the support requests we used to get.
 

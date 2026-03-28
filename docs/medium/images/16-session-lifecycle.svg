@@ -1,0 +1,88 @@
+<!--
+  16-session-lifecycle.svg - Server session lifecycle as orbital loop
+  Shows: Circular orbit representing a server session with phases
+  and the idle culler/extension mechanism as orbital mechanics.
+  Theme: Stellars-Tech
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- The main orbit ellipse -->
+  <ellipse cx="400" cy="120" rx="340" ry="85" fill="none" stroke="#0096d1" stroke-width="1" opacity="0.2"/>
+
+  <!-- Progress arc (active session ~70%) -->
+  <path d="M60,120 A340,85 0 1,1 680,55" fill="none" stroke="#0096d1" stroke-width="3" opacity="0.25" stroke-linecap="round"/>
+
+  <!-- Remaining arc (countdown zone) -->
+  <path d="M680,55 A340,85 0 0,1 680,185" fill="none" stroke="#da8230" stroke-width="2" opacity="0.2" stroke-dasharray="6,4" stroke-linecap="round"/>
+
+  <!-- Decay zone (culler approaches) -->
+  <path d="M680,185 A340,85 0 0,1 60,120" fill="none" stroke="#c43030" stroke-width="1.5" opacity="0.15" stroke-dasharray="3,5" stroke-linecap="round"/>
+
+  <!-- Phase markers as bubbles along orbit -->
+
+  <!-- Start -->
+  <circle cx="60" cy="120" r="14" fill="#1a8a4a" fill-opacity="0.08" stroke="#1a8a4a" stroke-width="1"/>
+  <circle cx="60" cy="120" r="4" fill="#1a8a4a" opacity="0.5"/>
+  <text x="60" y="148" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">Start</text>
+
+  <!-- Active work (top of arc) -->
+  <circle cx="260" cy="40" r="16" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1"/>
+  <circle cx="260" cy="40" r="4.5" fill="#0096d1" opacity="0.45"/>
+  <text x="260" y="22" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-1">Active work</text>
+
+  <!-- Peak productivity -->
+  <circle cx="460" cy="36" r="18" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1"/>
+  <circle cx="460" cy="36" r="5" fill="#0096d1" opacity="0.45"/>
+  <text x="460" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-1">Training job</text>
+
+  <!-- Warning zone -->
+  <circle cx="680" cy="55" r="14" fill="#da8230" fill-opacity="0.08" stroke="#da8230" stroke-width="1"/>
+  <circle cx="680" cy="55" r="3.5" fill="#da8230" opacity="0.5"/>
+  <text x="720" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Idle warning</text>
+  <text x="720" y="56" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Timer counting</text>
+
+  <!-- Extend boost (rocket icon area) -->
+  <circle cx="700" cy="120" r="20" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1.2" stroke-dasharray="3,3"/>
+  <text x="700" y="117" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" class="fg-1">Extend</text>
+  <text x="700" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">+hours</text>
+
+  <!-- Arrow from extend back to active arc -->
+  <path d="M718,108 C740,80 720,50 695,52" fill="none" stroke="#0096d1" stroke-width="0.8" opacity="0.35" stroke-dasharray="3,2"/>
+  <polygon points="693,49 695,53 698,50" fill="#0096d1" opacity="0.4"/>
+
+  <!-- Culler zone -->
+  <circle cx="680" cy="185" r="12" fill="#c43030" fill-opacity="0.06" stroke="#c43030" stroke-width="0.8"/>
+  <circle cx="680" cy="185" r="3" fill="#c43030" opacity="0.4"/>
+  <text x="708" y="182" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-3">Culler</text>
+  <text x="708" y="194" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Auto-stop</text>
+
+  <!-- Stop -->
+  <circle cx="380" cy="204" r="10" fill="#c43030" fill-opacity="0.06" stroke="#c43030" stroke-width="0.8"/>
+  <text x="380" y="228" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Shutdown</text>
+
+  <!-- Center label -->
+  <text x="400" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-2">Session</text>
+  <text x="400" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-2">Lifecycle</text>
+
+  <!-- Legend -->
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="7">
+    <line x1="20" y1="235" x2="40" y2="235" stroke="#0096d1" stroke-width="2" opacity="0.25"/>
+    <text x="44" y="238" class="fg-4">Active session</text>
+    <line x1="120" y1="235" x2="140" y2="235" stroke="#da8230" stroke-width="2" opacity="0.2" stroke-dasharray="4,3"/>
+    <text x="144" y="238" class="fg-4">Idle countdown</text>
+    <line x1="230" y1="235" x2="250" y2="235" stroke="#c43030" stroke-width="1.5" opacity="0.15" stroke-dasharray="3,3"/>
+    <text x="254" y="238" class="fg-4">Culler zone</text>
+  </g>
+</svg>

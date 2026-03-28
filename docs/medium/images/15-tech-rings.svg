@@ -1,0 +1,81 @@
+<!--
+  15-tech-rings.svg - Technology stack as concentric rings
+  Shows: Concentric rings from OS core outward to user-facing layer.
+  Organic radial layout with labeled arcs, not a table.
+  Theme: Stellars-Tech
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 340">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- Ring 5 (outermost): User Experience -->
+  <circle cx="400" cy="170" r="155" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.6" opacity="0.4"/>
+
+  <!-- Ring 4: JupyterLab Extensions -->
+  <circle cx="400" cy="170" r="125" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="0.7" opacity="0.5"/>
+
+  <!-- Ring 3: Integrated Services -->
+  <circle cx="400" cy="170" r="95" fill="#da8230" fill-opacity="0.04" stroke="#da8230" stroke-width="0.8" opacity="0.5"/>
+
+  <!-- Ring 2: Conda / Python Runtime -->
+  <circle cx="400" cy="170" r="65" fill="#0096d1" fill-opacity="0.05" stroke="#0096d1" stroke-width="0.8" opacity="0.6"/>
+
+  <!-- Ring 1 (innermost): CUDA / OS -->
+  <circle cx="400" cy="170" r="35" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="1" opacity="0.6"/>
+
+  <!-- Center dot -->
+  <circle cx="400" cy="170" r="8" fill="#0096d1" opacity="0.15"/>
+  <circle cx="400" cy="170" r="3" fill="#0096d1" opacity="0.4"/>
+
+  <!-- Ring 1 label: CUDA/OS -->
+  <text x="400" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" class="fg-2">CUDA 13</text>
+  <text x="400" y="178" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">Ubuntu 24.04</text>
+
+  <!-- Ring 2 labels: Conda -->
+  <text x="400" y="118" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">Miniforge + Python 3.12</text>
+  <text x="330" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">uv</text>
+  <text x="470" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">conda</text>
+  <text x="400" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">43 packages</text>
+
+  <!-- Ring 3 labels: Services -->
+  <text x="310" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" fill="#da8230" opacity="0.7">MLflow</text>
+  <text x="490" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" fill="#da8230" opacity="0.7">TensorBoard</text>
+  <text x="300" y="235" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" fill="#da8230" opacity="0.7">btop</text>
+  <text x="500" y="235" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" fill="#da8230" opacity="0.7">Optuna</text>
+  <text x="400" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" fill="#da8230" opacity="0.7">Traefik</text>
+
+  <!-- Ring 4 labels: Extensions -->
+  <text x="400" y="56" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">21 JupyterLab Extensions</text>
+  <text x="268" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">Git</text>
+  <text x="532" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">Black</text>
+  <text x="255" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">Kernels</text>
+  <text x="545" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">Themes</text>
+  <text x="268" y="252" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">nbdime</text>
+  <text x="532" y="252" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">Jupytext</text>
+
+  <!-- Ring 5 labels: User Experience -->
+  <text x="400" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-1">User Experience</text>
+  <text x="228" y="65" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Lab Utilities</text>
+  <text x="572" y="65" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">AI Assistants</text>
+  <text x="230" y="280" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Fish Shell</text>
+  <text x="570" y="280" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Copier Templates</text>
+  <text x="400" y="326" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Custom Startup Scripts</text>
+
+  <!-- Legend -->
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="7">
+    <circle cx="30" cy="310" r="4" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.8"/>
+    <text x="40" y="313" class="fg-4">Infrastructure</text>
+    <circle cx="120" cy="310" r="4" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.8"/>
+    <text x="130" y="313" class="fg-4">Platform</text>
+  </g>
+</svg>
