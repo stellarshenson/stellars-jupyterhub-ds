@@ -1,0 +1,84 @@
+<!--
+  20-deploy-delta.svg - One codebase branching into deployment configurations
+  River delta: single source splitting into multiple channels/deployments.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- Main river (single codebase) -->
+  <path d="M40,110 C120,110 180,110 260,110"
+        stroke="#0096d1" stroke-width="6" fill="none" opacity="0.2" stroke-linecap="round"/>
+
+  <!-- Delta split point -->
+  <circle cx="280" cy="110" r="10" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="1"/>
+
+  <!-- Branch 1: Dev laptop (top) -->
+  <path d="M290,105 C340,80 400,50 520,40"
+        stroke="#0096d1" stroke-width="3" fill="none" opacity="0.15" stroke-linecap="round"/>
+  <path d="M520,40 C560,38 600,38 660,40"
+        stroke="#0096d1" stroke-width="2" fill="none" opacity="0.1" stroke-linecap="round"/>
+
+  <!-- Branch 2: Staging (middle-top) -->
+  <path d="M290,108 C350,95 420,82 520,78"
+        stroke="#da8230" stroke-width="2.5" fill="none" opacity="0.15" stroke-linecap="round"/>
+  <path d="M520,78 C560,77 600,78 660,80"
+        stroke="#da8230" stroke-width="1.5" fill="none" opacity="0.1" stroke-linecap="round"/>
+
+  <!-- Branch 3: Production (middle) -->
+  <path d="M290,112 C360,112 430,112 520,112"
+        stroke="#0096d1" stroke-width="4" fill="none" opacity="0.2" stroke-linecap="round"/>
+  <path d="M520,112 C560,112 600,112 660,112"
+        stroke="#0096d1" stroke-width="3" fill="none" opacity="0.15" stroke-linecap="round"/>
+
+  <!-- Branch 4: GPU cluster (middle-bottom) -->
+  <path d="M290,115 C350,128 420,142 520,148"
+        stroke="#da8230" stroke-width="2.5" fill="none" opacity="0.15" stroke-linecap="round"/>
+  <path d="M520,148 C560,150 600,150 660,148"
+        stroke="#da8230" stroke-width="1.5" fill="none" opacity="0.1" stroke-linecap="round"/>
+
+  <!-- Branch 5: K8s future (bottom) -->
+  <path d="M290,118 C340,140 400,170 520,180"
+        stroke="#0096d1" stroke-width="2" fill="none" opacity="0.1" stroke-dasharray="6,4" stroke-linecap="round"/>
+  <path d="M520,180 C560,182 600,182 660,180"
+        stroke="#0096d1" stroke-width="1.5" fill="none" opacity="0.08" stroke-dasharray="4,3" stroke-linecap="round"/>
+
+  <!-- Source label -->
+  <text x="40" y="98" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-1">One codebase</text>
+
+  <!-- Split label -->
+  <text x="280" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">compose_override.yml</text>
+
+  <!-- Endpoint pools -->
+  <circle cx="690" cy="40" r="8" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.6"/>
+  <text x="710" y="38" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Dev laptop</text>
+  <text x="710" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">No GPU</text>
+
+  <circle cx="690" cy="80" r="8" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.6"/>
+  <text x="710" y="78" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Staging</text>
+  <text x="710" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Auto-detect GPU</text>
+
+  <circle cx="690" cy="112" r="10" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="0.8"/>
+  <text x="710" y="110" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Production</text>
+  <text x="710" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">CIFS + branding</text>
+
+  <circle cx="690" cy="148" r="8" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.6"/>
+  <text x="710" y="146" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">GPU cluster</text>
+  <text x="710" y="156" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">4x A100</text>
+
+  <circle cx="690" cy="180" r="7" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="0.5" stroke-dasharray="3,2"/>
+  <text x="710" y="178" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Kubernetes</text>
+  <text x="710" y="188" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">coming soon</text>
+
+  <text x="400" y="212" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Same images, different override files - credentials never in version control</text>
+</svg>

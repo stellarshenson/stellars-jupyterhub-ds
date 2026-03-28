@@ -1,0 +1,67 @@
+<!--
+  19-activity-pulse.svg - Multi-user activity as overlapping waveforms
+  Each user's activity rendered as a sine-like pulse, layered and fading.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 180">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- Baseline -->
+  <line x1="60" y1="90" x2="740" y2="90" stroke="#0096d1" stroke-width="0.3" opacity="0.1"/>
+
+  <!-- User 1: alice - high activity, strong signal -->
+  <path d="M60,90 C80,90 90,40 110,40 C130,40 140,90 160,90 C180,90 190,50 210,50 C230,50 240,90 260,90 C280,90 290,45 310,45 C330,45 340,90 360,90 C380,90 390,55 410,55 C430,55 440,90 460,90 C480,90 490,60 510,60 C530,60 540,90 560,90 C580,90 590,70 610,70 C630,70 640,90 660,90 C680,90 690,80 710,80 C720,80 730,90 740,90"
+        fill="none" stroke="#0096d1" stroke-width="1.5" opacity="0.3" stroke-linecap="round"/>
+
+  <!-- User 2: bob - moderate activity, offset phase -->
+  <path d="M60,90 C85,90 95,60 120,60 C145,60 155,90 180,90 C205,90 215,55 240,55 C265,55 275,90 300,90 C325,90 335,65 360,65 C385,65 395,90 420,90 C445,90 455,70 480,70 C505,70 515,90 540,90 C565,90 575,75 600,75 C625,75 635,90 660,90 L740,90"
+        fill="none" stroke="#da8230" stroke-width="1.2" opacity="0.2" stroke-linecap="round"/>
+
+  <!-- User 3: charlie - sporadic bursts -->
+  <path d="M60,90 L180,90 C195,90 200,50 215,50 C230,50 235,90 250,90 L420,90 C435,90 440,60 455,60 C470,60 475,90 490,90 L740,90"
+        fill="none" stroke="#0096d1" stroke-width="0.8" opacity="0.15" stroke-linecap="round"/>
+
+  <!-- User 4: dana - offline, flat -->
+  <line x1="60" y1="95" x2="740" y2="95" stroke="#c43030" stroke-width="0.5" opacity="0.08"/>
+
+  <!-- Decay envelope (exponential fade from left to right) -->
+  <defs>
+    <linearGradient id="decay" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0096d1" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#0096d1" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="60" y="35" width="680" height="65" fill="url(#decay)"/>
+
+  <!-- Time labels -->
+  <text x="60" y="118" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">now</text>
+  <text x="740" y="118" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="end" class="fg-4">7 days ago</text>
+
+  <!-- User labels -->
+  <circle cx="80" cy="140" r="3" fill="#0096d1" opacity="0.3"/>
+  <text x="88" y="143" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">alice (active)</text>
+
+  <circle cx="200" cy="140" r="3" fill="#da8230" opacity="0.2"/>
+  <text x="208" y="143" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">bob (moderate)</text>
+
+  <circle cx="340" cy="140" r="3" fill="#0096d1" opacity="0.15"/>
+  <text x="348" y="143" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">charlie (sporadic)</text>
+
+  <circle cx="490" cy="140" r="3" fill="#c43030" opacity="0.1"/>
+  <text x="498" y="143" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">dana (offline)</text>
+
+  <!-- Decay arrow -->
+  <path d="M680,130 L740,130" stroke="#0096d1" stroke-width="0.4" opacity="0.15"/>
+  <polygon points="740,128 746,130 740,132" fill="#0096d1" opacity="0.15"/>
+  <text x="660" y="134" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="end" class="fg-4">exponential decay</text>
+
+  <text x="400" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Activity scoring weights recent work more heavily - older signals fade with 72h half-life</text>
+</svg>

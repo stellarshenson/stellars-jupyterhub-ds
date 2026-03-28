@@ -45,6 +45,8 @@ Both can run independently. You can use the JupyterLab image as a standalone sin
 
 ![Ecosystem Overview](images/12-ecosystem-overview.svg)
 
+![Gravity Well](images/18-gravity-well.svg)
+
 ## What Vanilla Gives You (And What It Doesn't)
 
 Stock JupyterHub is an excellent multi-user notebook server. It handles authentication, spawns notebook containers, and provides basic admin controls. Stock JupyterLab is a solid browser-based IDE with a notebook interface. Both are good foundations. Neither knows anything about data science workflows.
@@ -82,6 +84,8 @@ Here's what I added on top of each.
 ## What Users Actually Get
 
 When a team member logs in and starts their server, they land in a full data science workspace. Not a blank JupyterLab with a Python kernel and nothing else - a workspace where every common friction point has been addressed.
+
+![Spawn Tree](images/17-spawn-tree.svg)
 
 ![JupyterLab Workspace](images/06-jupyterlab-workspace.svg)
 
@@ -151,6 +155,8 @@ The Lab image is built on the same CUDA 13.0.2 base, so GPU libraries are always
 
 Both platforms are designed to be configured entirely through environment variables and compose override files - no code changes needed for any deployment.
 
+![Deploy Delta](images/20-deploy-delta.svg)
+
 ![Configuration](images/11-configuration.svg)
 
 The Hub accepts 29 environment variables controlling everything from admin username and GPU mode to idle culler timeouts and branding URIs. The Lab image uses service toggles (`JUPYTERHUB_SERVICE_MLFLOW`, `JUPYTERHUB_SERVICE_TENSORBOARD`, `JUPYTERHUB_SERVICE_RESOURCES_MONITOR`) to enable or disable background services per deployment. Branding is configurable through four URI variables that accept either local `file://` paths or external `http(s)://` URLs for logos, favicons, and JupyterLab icons.
@@ -166,6 +172,8 @@ The **Activity Monitor** is an admin-only dashboard that shows every user at a g
 The activity score uses exponential decay with a configurable half-life (default: 72 hours). The formula is straightforward: `weight = exp(-lambda * age_hours)` where `lambda = ln(2) / half_life`. Recent activity weighs more. A user who worked intensely three days ago but hasn't logged in since will see their score gradually fade. The score is displayed as a five-segment color-coded bar - green for high engagement, amber for moderate, red for low.
 
 The Activity Monitor also runs an independent background sampler as a JupyterHub managed service. It samples all users - active, idle, and offline - at a configurable interval (default: every 10 minutes), recording activity snapshots to a separate SQLite database to avoid lock contention with JupyterHub's main database.
+
+![Activity Pulse](images/19-activity-pulse.svg)
 
 ![Activity Monitor](images/03-activity-monitor.svg)
 

@@ -1,0 +1,81 @@
+<!--
+  18-gravity-well.svg - Platform as gravity well pulling scattered tools together
+  Concentric distortion rings around a center, with tool names drifting inward.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 260">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- Warped gravity rings -->
+  <ellipse cx="400" cy="130" rx="360" ry="110" fill="none" stroke="#0096d1" stroke-width="0.3" opacity="0.08"/>
+  <ellipse cx="400" cy="130" rx="300" ry="95" fill="none" stroke="#0096d1" stroke-width="0.4" opacity="0.1"/>
+  <ellipse cx="400" cy="132" rx="240" ry="78" fill="none" stroke="#0096d1" stroke-width="0.5" opacity="0.12"/>
+  <ellipse cx="400" cy="134" rx="180" ry="60" fill="none" stroke="#0096d1" stroke-width="0.6" opacity="0.15"/>
+  <ellipse cx="400" cy="136" rx="120" ry="42" fill="none" stroke="#0096d1" stroke-width="0.8" opacity="0.18"/>
+  <ellipse cx="400" cy="138" rx="65" ry="24" fill="none" stroke="#0096d1" stroke-width="1" opacity="0.22"/>
+
+  <!-- Subtle fill at center (the well bottom) -->
+  <ellipse cx="400" cy="140" rx="30" ry="12" fill="#0096d1" opacity="0.08"/>
+  <circle cx="400" cy="140" r="4" fill="#0096d1" opacity="0.35"/>
+
+  <!-- Center label -->
+  <text x="400" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle" class="fg-1">Stellars Platform</text>
+
+  <!-- Drifting inward: scattered tools at various distances from center -->
+  <!-- Outer ring - far tools -->
+  <circle cx="82" cy="68" r="2" fill="#da8230" opacity="0.25"/>
+  <text x="92" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">conda</text>
+
+  <circle cx="700" cy="58" r="2" fill="#da8230" opacity="0.25"/>
+  <text x="672" y="62" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="end" class="fg-4">Docker</text>
+
+  <circle cx="120" cy="200" r="1.8" fill="#da8230" opacity="0.2"/>
+  <text x="130" y="204" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">CUDA</text>
+
+  <circle cx="680" cy="195" r="1.8" fill="#da8230" opacity="0.2"/>
+  <text x="653" y="199" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="end" class="fg-4">Traefik</text>
+
+  <!-- Mid ring -->
+  <circle cx="185" cy="88" r="2.5" fill="#0096d1" opacity="0.3"/>
+  <text x="196" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">TensorFlow</text>
+
+  <circle cx="615" cy="82" r="2.5" fill="#0096d1" opacity="0.3"/>
+  <text x="580" y="86" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="end" class="fg-3">PyTorch</text>
+
+  <circle cx="200" cy="178" r="2" fill="#0096d1" opacity="0.25"/>
+  <text x="211" y="182" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Fish shell</text>
+
+  <circle cx="600" cy="175" r="2" fill="#0096d1" opacity="0.25"/>
+  <text x="570" y="179" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="end" class="fg-3">Git</text>
+
+  <!-- Inner ring - close tools -->
+  <circle cx="275" cy="105" r="3" fill="#0096d1" opacity="0.35"/>
+  <text x="288" y="109" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">MLflow</text>
+
+  <circle cx="530" cy="100" r="3" fill="#0096d1" opacity="0.35"/>
+  <text x="502" y="104" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="end" class="fg-2">TensorBoard</text>
+
+  <circle cx="290" cy="165" r="2.5" fill="#da8230" opacity="0.3"/>
+  <text x="302" y="169" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-2">nb_venv_kernels</text>
+
+  <circle cx="510" cy="168" r="2.5" fill="#da8230" opacity="0.3"/>
+  <text x="482" y="172" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="end" class="fg-2">Lab Utilities</text>
+
+  <!-- Spiral hint lines (tools being pulled in) -->
+  <path d="M88,68 C150,75 200,90 270,105" fill="none" stroke="#0096d1" stroke-width="0.3" opacity="0.1"/>
+  <path d="M695,58 C640,70 580,85 530,100" fill="none" stroke="#0096d1" stroke-width="0.3" opacity="0.1"/>
+  <path d="M190,88 C220,95 245,100 272,105" fill="none" stroke="#0096d1" stroke-width="0.3" opacity="0.08"/>
+  <path d="M610,82 C580,88 555,94 532,100" fill="none" stroke="#0096d1" stroke-width="0.3" opacity="0.08"/>
+
+  <text x="400" y="252" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">One coherent ecosystem instead of scattered tools</text>
+</svg>
