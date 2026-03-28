@@ -115,6 +115,8 @@ All local environments persist in user volumes between server image refreshes. W
 
 ![Integrated Services](images/10-integrated-services.svg)
 
+![Extension Nebula](images/43-extension-nebula.svg)
+
 ![Technology Stack](images/15-tech-rings.svg)
 
 ![Fish Prompt](images/37-fish-prompt-wave.svg)
@@ -141,6 +143,8 @@ The home page gives each user three buttons: **Start**, **Stop**, and **Restart*
 
 ![Session Lifecycle](images/16-session-lifecycle.svg)
 
+![Volume Reset](images/44-volume-reset-eraser.svg)
+
 When something goes wrong - a corrupted pip cache, a broken Conda environment, a home directory full of failed experiments - users can selectively reset their own volumes. Home directory, workspace, cache. Pick which ones to wipe, confirm, and start fresh. This alone eliminated roughly half of the support requests we used to get.
 
 ![](images/section-divider-notify.svg)
@@ -148,6 +152,8 @@ When something goes wrong - a corrupted pip cache, a broken Conda environment, a
 ## Notification Broadcast
 
 When you need to reach everyone working on the platform - planned maintenance, a shared dataset update, a GPU driver change - the notification system delivers messages directly inside every active JupyterLab session.
+
+![Token Hourglass](images/42-token-hourglass.svg)
 
 ![Notification Ripple](images/23-notification-ripple.svg)
 
@@ -276,6 +282,8 @@ networks:
 Three services. A handful of environment variables. That's the entire infrastructure. For production, override the defaults in a `compose_override.yml` file - custom image name, GPU mode, idle culler settings, NAS mounts, branding. The override file is gitignored by design, so deployment-specific credentials never end up in version control.
 
 Updates happen automatically. Watchtower checks DockerHub daily for new images and rolls them out with zero downtime.
+
+![Platform Heartbeat](images/41-heartbeat-monitor.svg)
 
 ![Watchtower](images/27-admin-watchtower.svg)
 

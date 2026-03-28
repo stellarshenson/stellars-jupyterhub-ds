@@ -1,0 +1,109 @@
+<!--
+  43-extension-nebula.svg - 21 extensions as a nebula cloud
+  Pure creative: dense cloud of labeled particles, brighter near center.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 260">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- Nebula glow -->
+  <defs>
+    <radialGradient id="nebula" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0096d1" stop-opacity="0.08"/>
+      <stop offset="40%" stop-color="#0096d1" stop-opacity="0.04"/>
+      <stop offset="70%" stop-color="#da8230" stop-opacity="0.02"/>
+      <stop offset="100%" stop-color="#da8230" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="400" cy="120" rx="380" ry="110" fill="url(#nebula)"/>
+
+  <!-- Extension particles (21 extensions as labeled stars) -->
+  <!-- Core extensions (brighter, near center) -->
+  <circle cx="360" cy="85" r="6" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="0.7" opacity="0.45"/>
+  <text x="360" y="75" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-1">jupyterlab-git</text>
+
+  <circle cx="440" cy="95" r="5.5" fill="#0096d1" fill-opacity="0.07" stroke="#0096d1" stroke-width="0.6" opacity="0.4"/>
+  <text x="440" y="85" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">nb_venv_kernels</text>
+
+  <circle cx="395" cy="130" r="5" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.6" opacity="0.4"/>
+  <text x="395" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" class="fg-2">stellars-extensions</text>
+
+  <circle cx="330" cy="120" r="5" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.6" opacity="0.35"/>
+  <text x="330" y="110" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" class="fg-2">sublime-theme</text>
+
+  <circle cx="470" cy="125" r="4.5" fill="#da8230" fill-opacity="0.05" stroke="#da8230" stroke-width="0.5" opacity="0.35"/>
+  <text x="470" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" class="fg-2">darcula-theme</text>
+
+  <!-- Mid-range extensions -->
+  <circle cx="280" cy="70" r="4" fill="#0096d1" opacity="0.2"/>
+  <text x="280" y="62" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">jupytext</text>
+
+  <circle cx="520" cy="75" r="4" fill="#0096d1" opacity="0.2"/>
+  <text x="520" y="67" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">execute-time</text>
+
+  <circle cx="300" cy="150" r="3.5" fill="#0096d1" opacity="0.18"/>
+  <text x="300" y="165" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">resource-usage</text>
+
+  <circle cx="500" cy="155" r="3.5" fill="#da8230" opacity="0.18"/>
+  <text x="500" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">code-formatter</text>
+
+  <circle cx="250" cy="110" r="3.5" fill="#0096d1" opacity="0.18"/>
+  <text x="250" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-3">nb_conda</text>
+
+  <circle cx="550" cy="110" r="3" fill="#0096d1" opacity="0.15"/>
+  <text x="550" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-3">ipywidgets</text>
+
+  <!-- Outer extensions (dimmer) -->
+  <circle cx="190" cy="90" r="3" fill="#da8230" opacity="0.12"/>
+  <text x="190" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">favorites</text>
+
+  <circle cx="610" cy="90" r="3" fill="#da8230" opacity="0.12"/>
+  <text x="610" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">iframe</text>
+
+  <circle cx="220" cy="155" r="2.5" fill="#0096d1" opacity="0.1"/>
+  <text x="220" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">nbdime</text>
+
+  <circle cx="580" cy="155" r="2.5" fill="#0096d1" opacity="0.1"/>
+  <text x="580" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">app-launcher</text>
+
+  <circle cx="160" cy="130" r="2" fill="#da8230" opacity="0.08"/>
+  <text x="160" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">server-proxy</text>
+
+  <circle cx="640" cy="130" r="2" fill="#da8230" opacity="0.08"/>
+  <text x="640" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">notebook-intel</text>
+
+  <circle cx="350" cy="170" r="2.5" fill="#0096d1" opacity="0.1"/>
+  <text x="350" y="182" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">stellars-fixes</text>
+
+  <circle cx="450" cy="168" r="2" fill="#0096d1" opacity="0.08"/>
+  <text x="450" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">widgets</text>
+
+  <!-- Dust particles (unnamed, just atmosphere) -->
+  <circle cx="145" cy="70" r="0.8" fill="#0096d1" opacity="0.06"/>
+  <circle cx="665" cy="70" r="0.6" fill="#da8230" opacity="0.05"/>
+  <circle cx="130" cy="150" r="0.7" fill="#da8230" opacity="0.04"/>
+  <circle cx="670" cy="150" r="0.8" fill="#0096d1" opacity="0.04"/>
+  <circle cx="400" cy="50" r="1" fill="#0096d1" opacity="0.06"/>
+  <circle cx="400" cy="195" r="0.8" fill="#da8230" opacity="0.04"/>
+  <circle cx="100" cy="110" r="0.5" fill="#0096d1" opacity="0.03"/>
+  <circle cx="700" cy="115" r="0.5" fill="#da8230" opacity="0.03"/>
+
+  <!-- Faint connecting wisps -->
+  <path d="M360,85 C375,90 385,100 395,130" fill="none" stroke="#0096d1" stroke-width="0.2" opacity="0.06"/>
+  <path d="M440,95 C450,105 460,115 470,125" fill="none" stroke="#da8230" stroke-width="0.2" opacity="0.05"/>
+  <path d="M330,120 C340,125 350,128 395,130" fill="none" stroke="#da8230" stroke-width="0.2" opacity="0.05"/>
+
+  <!-- Title and count -->
+  <text x="400" y="225" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-1">21 JupyterLab Extensions</text>
+  <text x="400" y="242" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Pre-installed and pre-configured - from kernel discovery to code formatting to dark themes</text>
+</svg>
