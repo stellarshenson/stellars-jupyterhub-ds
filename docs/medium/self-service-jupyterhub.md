@@ -117,6 +117,10 @@ All local environments persist in user volumes between server image refreshes. W
 
 ![Technology Stack](images/15-tech-rings.svg)
 
+![Fish Prompt](images/37-fish-prompt-wave.svg)
+
+![AI Assistants](images/39-ai-assistants-constellation.svg)
+
 **Developer experience.** Full Git integration in the sidebar. Black formatter for one-click code formatting. Notebook diffing and merging with nbdime. Execution timing on every cell. Jupytext for version-controlling notebooks as plain Python files. Fish shell with a custom powerline prompt that displays the active conda environment, current git branch, and GPU status. One-command installers for Claude Code, Cursor, Gemini CLI, and OpenAI Codex.
 
 ![Theme Prism](images/33-theme-prism.svg)
@@ -294,6 +298,10 @@ Updates happen automatically. Watchtower checks DockerHub daily for new images a
 ## What's Next: Kubernetes
 
 The current Docker Compose deployment works well for single-server teams, but the next chapter is Kubernetes. The same JupyterHub orchestration and JupyterLab workspace images are being adapted for Helm-based deployment on Kubernetes clusters - enabling elastic scaling, resource quotas per user, node affinity for GPU workloads, and multi-node setups for larger organizations. The goal remains the same: friction-free data science, just at a larger scale.
+
+![Development Spiral](images/40-three-year-spiral.svg)
+
+![Multi-Team Galaxy](images/38-multi-team-galaxy.svg)
 
 ## Try It
 

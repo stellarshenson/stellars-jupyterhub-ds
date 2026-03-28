@@ -1,0 +1,73 @@
+<!--
+  37-fish-prompt-wave.svg - Fish shell prompt as a sound waveform
+  Left: waveform segments representing prompt components. Right: what it shows.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 160">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- LEFT: Waveform prompt -->
+  <g id="waveform">
+    <!-- Segment 1: conda env (tall, cyan) -->
+    <path d="M30,80 C35,55 40,45 45,45 C50,45 55,55 60,80 C65,105 70,115 75,115 C80,115 85,105 90,80"
+          fill="none" stroke="#0096d1" stroke-width="2" opacity="0.35" stroke-linecap="round"/>
+    <text x="60" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">(torch)</text>
+
+    <!-- Segment 2: path (medium, cyan) -->
+    <path d="M100,80 C105,60 110,52 115,52 C120,52 125,60 130,80 C135,100 140,108 145,108 C150,108 155,100 160,80 C165,60 170,52 175,52 C180,52 185,60 190,80"
+          fill="none" stroke="#0096d1" stroke-width="1.5" opacity="0.25" stroke-linecap="round"/>
+    <text x="145" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">~/workspace/project-1</text>
+
+    <!-- Segment 3: git branch (small, orange) -->
+    <path d="M200,80 C205,68 210,62 215,62 C220,62 225,68 230,80 C235,92 240,98 245,98 C250,98 255,92 260,80"
+          fill="none" stroke="#da8230" stroke-width="1.5" opacity="0.25" stroke-linecap="round"/>
+    <text x="230" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" fill="#da8230" opacity="0.5">main*</text>
+
+    <!-- Segment 4: GPU status (tiny pulse, green) -->
+    <path d="M275,80 L280,80 L283,65 L286,95 L289,80 L300,80"
+          fill="none" stroke="#1a8a4a" stroke-width="1.2" opacity="0.25" stroke-linecap="round"/>
+    <text x="290" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" fill="#1a8a4a" opacity="0.4">GPU:0</text>
+
+    <!-- Cursor blink -->
+    <rect x="310" y="72" width="2" height="16" fill="#0096d1" opacity="0.3"/>
+
+    <!-- Baseline -->
+    <line x1="25" y1="80" x2="320" y2="80" stroke="#0096d1" stroke-width="0.3" opacity="0.08"/>
+  </g>
+
+  <!-- Arrow -->
+  <path d="M340,80 L394,80" fill="none" stroke="#0096d1" stroke-width="0.6" opacity="0.2"/>
+  <polygon points="394,77 400,80 394,83" fill="#0096d1" opacity="0.3"/>
+
+  <!-- RIGHT: Prompt explanation card -->
+  <g id="prompt-card">
+    <path d="M408,10 H780 V150 Q780,154 776,154 H412 Q408,154 408,150 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M408,10 H780 V150 Q780,154 776,154 H412 Q408,154 408,150 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="408" y="10" width="372" height="5" fill="#0096d1" opacity="0.6"/>
+
+    <text x="422" y="32" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#0096d1">FISH SHELL</text>
+    <text x="422" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-1">Custom Powerline Prompt</text>
+
+    <!-- Prompt mockup -->
+    <rect x="422" y="58" width="342" height="22" rx="3" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.4"/>
+    <text x="432" y="73" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">(torch) ~/workspace/project-1</text>
+    <text x="630" y="73" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#da8230" opacity="0.5">main*</text>
+    <text x="670" y="73" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#1a8a4a" opacity="0.4">GPU:0</text>
+    <text x="710" y="73" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-4">></text>
+
+    <text x="422" y="98" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Shows active conda/venv environment</text>
+    <text x="422" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Current directory + git branch with dirty flag</text>
+    <text x="422" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">GPU availability at a glance</text>
+    <text x="422" y="146" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Auto-suggestions, syntax highlighting, no external dependencies</text>
+  </g>
+</svg>
