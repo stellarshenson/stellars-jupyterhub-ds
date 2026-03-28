@@ -29,7 +29,7 @@ I decided to fix it. Not with a managed cloud service that costs a fortune, but 
 
 ![Platform Overview](images/01-platform-overview.svg)
 
-![](images/section-divider-hub.png)
+![](images/section-divider-hub.svg)
 
 ## Two Projects, One Ecosystem
 
@@ -73,7 +73,7 @@ Here's what I added on top of each.
 - AI coding assistant installers (Claude Code, Cursor, Gemini CLI, OpenAI Codex)
 - Docker MCP Gateway and Buildx plugin compiled from source in the builder stage
 
-![](images/section-divider-lab.png)
+![](images/section-divider-lab.svg)
 
 ## What Users Actually Get
 
@@ -115,7 +115,7 @@ The home page gives each user three buttons: **Start**, **Stop**, and **Restart*
 
 When something goes wrong - a corrupted pip cache, a broken Conda environment, a home directory full of failed experiments - users can selectively reset their own volumes. Home directory, workspace, cache. Pick which ones to wipe, confirm, and start fresh. This alone eliminated roughly half of the support requests we used to get.
 
-![](images/section-divider-notify.png)
+![](images/section-divider-notify.svg)
 
 ## Notification Broadcast
 
@@ -129,7 +129,7 @@ Each notification lands in the user's JupyterLab with a dismiss button and visua
 
 The system requires the `jupyterlab_notifications_extension` on spawned servers - a companion JupyterLab extension that exposes an `/ingest` endpoint for receiving notifications. The full endpoint path accounts for JupyterHub's base URL and per-user routing: `http://jupyterlab-{username}:8888{base_url}jupyterlab-notifications-extension/ingest`.
 
-![](images/section-divider-gpu.png)
+![](images/section-divider-gpu.svg)
 
 ## GPU Auto-Detection
 
@@ -137,7 +137,7 @@ GPU support is handled at both layers. The Hub detects availability at startup w
 
 The Lab image is built on the same CUDA 13.0.2 base, so GPU libraries are always in the image. The on-demand TensorFlow and PyTorch environments come pre-configured for GPU acceleration. This means the same images work on a developer's laptop without a GPU, a staging server, and a production machine with four NVIDIA A100s. Zero manual configuration at either layer.
 
-![](images/section-divider-env.png)
+![](images/section-divider-env.svg)
 
 ## Configuration, Not Code
 

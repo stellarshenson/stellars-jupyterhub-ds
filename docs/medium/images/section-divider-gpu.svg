@@ -1,0 +1,30 @@
+<!-- Abstract decorative divider: geometric shards -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 55">
+  <defs>
+    <linearGradient id="sg" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0096d1" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#0096d1" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#0096d1" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Horizontal baseline shimmer -->
+  <rect x="100" y="26" width="600" height="1" fill="url(#sg)"/>
+  <!-- Angular shards -->
+  <polygon points="320,27 345,8 348,27" fill="#0096d1" opacity="0.08"/>
+  <polygon points="360,27 378,14 382,27" fill="#da8230" opacity="0.06"/>
+  <polygon points="395,27 420,5 425,27" fill="#0096d1" opacity="0.12"/>
+  <polygon points="430,27 448,16 452,27" fill="#0096d1" opacity="0.06"/>
+  <polygon points="460,27 485,10 490,27" fill="#da8230" opacity="0.08"/>
+  <!-- Downward shards -->
+  <polygon points="340,28 358,45 362,28" fill="#0096d1" opacity="0.06"/>
+  <polygon points="385,28 405,48 410,28" fill="#da8230" opacity="0.05"/>
+  <polygon points="435,28 455,42 458,28" fill="#0096d1" opacity="0.1"/>
+  <polygon points="470,28 490,50 495,28" fill="#0096d1" opacity="0.05"/>
+  <!-- Scattered particles -->
+  <circle cx="280" cy="22" r="1" fill="#0096d1" opacity="0.2"/>
+  <circle cx="510" cy="18" r="1.2" fill="#da8230" opacity="0.15"/>
+  <circle cx="400" cy="4" r="0.8" fill="#0096d1" opacity="0.25"/>
+  <circle cx="420" cy="52" r="0.8" fill="#0096d1" opacity="0.2"/>
+  <circle cx="530" cy="35" r="1" fill="#0096d1" opacity="0.12"/>
+  <circle cx="305" cy="38" r="0.7" fill="#da8230" opacity="0.18"/>
+</svg>
