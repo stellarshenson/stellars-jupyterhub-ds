@@ -1,0 +1,15 @@
+<!-- Abstract decorative divider: flowing wave -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 60">
+  <defs>
+    <linearGradient id="w1" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0096d1" stop-opacity="0"/>
+      <stop offset="30%" stop-color="#0096d1" stop-opacity="0.3"/>
+      <stop offset="50%" stop-color="#da8230" stop-opacity="0.2"/>
+      <stop offset="70%" stop-color="#0096d1" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#0096d1" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <path d="M0,35 C80,15 160,50 240,30 C320,10 400,45 480,25 C560,5 640,40 720,20 C760,12 790,28 800,25" fill="none" stroke="url(#w1)" stroke-width="1.5"/>
+  <path d="M0,40 C100,55 200,20 300,38 C400,56 500,18 600,36 C700,54 750,28 800,35" fill="none" stroke="#0096d1" stroke-width="0.6" opacity="0.15"/>
+  <path d="M0,30 C120,10 240,48 360,28 C480,8 600,46 720,26 C780,18 800,30 800,30" fill="none" stroke="#da8230" stroke-width="0.4" opacity="0.12"/>
+</svg>

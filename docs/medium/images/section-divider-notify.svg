@@ -1,0 +1,17 @@
+<!-- Abstract decorative divider: concentric ripples -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 60">
+  <defs>
+    <radialGradient id="rp" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#da8230" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#da8230" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="400" cy="30" rx="80" ry="20" fill="url(#rp)"/>
+  <ellipse cx="400" cy="30" rx="40" ry="12" fill="none" stroke="#da8230" stroke-width="0.5" opacity="0.2"/>
+  <ellipse cx="400" cy="30" rx="80" ry="20" fill="none" stroke="#da8230" stroke-width="0.4" opacity="0.15"/>
+  <ellipse cx="400" cy="30" rx="130" ry="26" fill="none" stroke="#da8230" stroke-width="0.3" opacity="0.1"/>
+  <ellipse cx="400" cy="30" rx="190" ry="28" fill="none" stroke="#0096d1" stroke-width="0.3" opacity="0.08"/>
+  <ellipse cx="400" cy="30" rx="260" ry="28" fill="none" stroke="#0096d1" stroke-width="0.2" opacity="0.06"/>
+  <ellipse cx="400" cy="30" rx="340" ry="28" fill="none" stroke="#0096d1" stroke-width="0.2" opacity="0.04"/>
+  <circle cx="400" cy="30" r="2" fill="#da8230" opacity="0.35"/>
+</svg>
