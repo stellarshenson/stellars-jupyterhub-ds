@@ -1,0 +1,70 @@
+<!--
+  21-isolation-bubbles.svg - Container isolation as floating bubbles
+  Each user exists in their own membrane, sharing nothing but the
+  shared volume thread connecting them at the bottom.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- Shared volume thread at bottom connecting all bubbles -->
+  <path d="M80,195 C160,200 240,198 320,200 C400,202 480,198 560,200 C640,202 700,198 720,195"
+        fill="none" stroke="#da8230" stroke-width="1.5" opacity="0.2"/>
+  <text x="400" y="222" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">/mnt/shared - the only thing connecting user environments</text>
+
+  <!-- Bubble 1: large, active -->
+  <circle cx="120" cy="100" r="68" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="1" opacity="0.3"/>
+  <circle cx="120" cy="100" r="55" fill="#0096d1" fill-opacity="0.02" stroke="#0096d1" stroke-width="0.4" opacity="0.15"/>
+  <!-- Inner contents: mini circles for services -->
+  <circle cx="100" cy="80" r="6" fill="#da8230" fill-opacity="0.08" stroke="#da8230" stroke-width="0.5" opacity="0.4"/>
+  <circle cx="130" cy="75" r="5" fill="#da8230" fill-opacity="0.08" stroke="#da8230" stroke-width="0.5" opacity="0.3"/>
+  <circle cx="145" cy="95" r="4" fill="#da8230" fill-opacity="0.08" stroke="#da8230" stroke-width="0.5" opacity="0.25"/>
+  <circle cx="105" cy="110" r="7" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.5" opacity="0.3"/>
+  <circle cx="135" cy="115" r="5" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.5" opacity="0.25"/>
+  <text x="120" y="146" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">alice</text>
+  <text x="120" y="158" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">GPU + MLflow + 3 envs</text>
+  <!-- Tether to shared -->
+  <line x1="120" y1="168" x2="120" y2="197" stroke="#da8230" stroke-width="0.5" opacity="0.15"/>
+
+  <!-- Bubble 2: medium -->
+  <circle cx="310" cy="85" r="58" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.8" opacity="0.25"/>
+  <circle cx="310" cy="85" r="45" fill="#0096d1" fill-opacity="0.02" stroke="#0096d1" stroke-width="0.3" opacity="0.12"/>
+  <circle cx="295" cy="72" r="5" fill="#da8230" fill-opacity="0.08" stroke="#da8230" stroke-width="0.5" opacity="0.3"/>
+  <circle cx="320" cy="68" r="4" fill="#da8230" fill-opacity="0.08" stroke="#da8230" stroke-width="0.5" opacity="0.25"/>
+  <circle cx="305" cy="95" r="6" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.5" opacity="0.25"/>
+  <text x="310" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">bob</text>
+  <text x="310" y="138" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">TensorBoard + 1 env</text>
+  <line x1="310" y1="143" x2="310" y2="199" stroke="#da8230" stroke-width="0.5" opacity="0.15"/>
+
+  <!-- Bubble 3: small, new user -->
+  <circle cx="460" cy="105" r="42" fill="#0096d1" fill-opacity="0.02" stroke="#0096d1" stroke-width="0.6" opacity="0.2"/>
+  <circle cx="460" cy="105" r="30" fill="#0096d1" fill-opacity="0.01" stroke="#0096d1" stroke-width="0.3" opacity="0.1"/>
+  <circle cx="452" cy="95" r="4" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.5" opacity="0.2"/>
+  <text x="460" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-3">charlie</text>
+  <text x="460" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">base env only</text>
+  <line x1="460" y1="147" x2="460" y2="200" stroke="#da8230" stroke-width="0.5" opacity="0.15"/>
+
+  <!-- Bubble 4: docker-privileged, special -->
+  <circle cx="620" cy="90" r="62" fill="#da8230" fill-opacity="0.02" stroke="#da8230" stroke-width="1" opacity="0.25"/>
+  <circle cx="620" cy="90" r="48" fill="#da8230" fill-opacity="0.01" stroke="#da8230" stroke-width="0.4" opacity="0.12"/>
+  <circle cx="605" cy="75" r="5" fill="#da8230" fill-opacity="0.08" stroke="#da8230" stroke-width="0.5" opacity="0.35"/>
+  <circle cx="635" cy="70" r="6" fill="#da8230" fill-opacity="0.08" stroke="#da8230" stroke-width="0.5" opacity="0.3"/>
+  <circle cx="640" cy="95" r="4" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.5" opacity="0.25"/>
+  <circle cx="610" cy="100" r="5" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.5" opacity="0.2"/>
+  <text x="620" y="134" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">dana</text>
+  <text x="620" y="146" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">docker-sock + PyTorch</text>
+  <line x1="620" y1="152" x2="620" y2="198" stroke="#da8230" stroke-width="0.5" opacity="0.15"/>
+
+  <!-- No connections between bubbles - that's the point -->
+  <text x="400" y="14" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-1">Complete isolation - nothing shared between users except /mnt/shared</text>
+</svg>

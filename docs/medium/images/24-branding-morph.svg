@@ -1,0 +1,72 @@
+<!--
+  24-branding-morph.svg - Same platform, different visual identities
+  Three overlapping silhouettes of the same UI with different
+  brand colors, showing customization without code changes.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 180">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- Deployment 1 (back, offset left) - purple tint -->
+  <g opacity="0.3" transform="translate(-40, -8)">
+    <rect x="120" y="30" width="280" height="18" rx="3" fill="none" stroke="#7b5ea7" stroke-width="0.8"/>
+    <rect x="120" y="30" width="40" height="18" rx="3" fill="#7b5ea7" fill-opacity="0.1"/>
+    <rect x="120" y="55" width="280" height="90" rx="4" fill="none" stroke="#7b5ea7" stroke-width="0.6"/>
+    <circle cx="140" cy="70" r="4" fill="#7b5ea7" opacity="0.2"/>
+    <rect x="150" y="67" width="60" height="6" rx="2" fill="#7b5ea7" opacity="0.1"/>
+    <rect x="150" y="80" width="80" height="4" rx="1" fill="#7b5ea7" opacity="0.06"/>
+    <rect x="150" y="90" width="70" height="4" rx="1" fill="#7b5ea7" opacity="0.06"/>
+  </g>
+
+  <!-- Deployment 2 (middle) - orange/teal (Stellars) -->
+  <g opacity="0.55">
+    <rect x="200" y="30" width="280" height="18" rx="3" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="200" y="30" width="40" height="18" rx="3" fill="#0096d1" fill-opacity="0.12"/>
+    <rect x="248" y="34" width="30" height="10" rx="2" fill="#0096d1" fill-opacity="0.06"/>
+    <rect x="284" y="34" width="30" height="10" rx="2" fill="#0096d1" fill-opacity="0.06"/>
+    <rect x="200" y="55" width="280" height="90" rx="4" fill="none" stroke="#0096d1" stroke-width="0.8"/>
+    <circle cx="220" cy="70" r="4" fill="#da8230" opacity="0.3"/>
+    <rect x="230" y="67" width="60" height="6" rx="2" fill="#0096d1" opacity="0.15"/>
+    <rect x="230" y="80" width="80" height="4" rx="1" fill="#0096d1" opacity="0.08"/>
+    <rect x="230" y="90" width="70" height="4" rx="1" fill="#0096d1" opacity="0.08"/>
+    <rect x="230" y="105" width="200" height="8" rx="2" fill="#0096d1" fill-opacity="0.06"/>
+    <rect x="230" y="105" width="140" height="8" rx="2" fill="#0096d1" fill-opacity="0.1"/>
+    <rect x="230" y="120" width="50" height="14" rx="3" fill="#1a8a4a" fill-opacity="0.15"/>
+    <rect x="288" y="120" width="50" height="14" rx="3" fill="#c43030" fill-opacity="0.12"/>
+    <rect x="346" y="120" width="50" height="14" rx="3" fill="#da8230" fill-opacity="0.12"/>
+  </g>
+
+  <!-- Deployment 3 (front, offset right) - green tint -->
+  <g opacity="0.25" transform="translate(40, 8)">
+    <rect x="280" y="30" width="280" height="18" rx="3" fill="none" stroke="#2e8b57" stroke-width="0.8"/>
+    <rect x="280" y="30" width="40" height="18" rx="3" fill="#2e8b57" fill-opacity="0.1"/>
+    <rect x="280" y="55" width="280" height="90" rx="4" fill="none" stroke="#2e8b57" stroke-width="0.6"/>
+    <circle cx="300" cy="70" r="4" fill="#2e8b57" opacity="0.2"/>
+    <rect x="310" y="67" width="60" height="6" rx="2" fill="#2e8b57" opacity="0.1"/>
+    <rect x="310" y="80" width="80" height="4" rx="1" fill="#2e8b57" opacity="0.06"/>
+    <rect x="310" y="90" width="70" height="4" rx="1" fill="#2e8b57" opacity="0.06"/>
+  </g>
+
+  <!-- Labels -->
+  <text x="140" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" fill="#7b5ea7" opacity="0.5">Team A</text>
+  <text x="340" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">Team B</text>
+  <text x="540" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" fill="#2e8b57" opacity="0.5">Team C</text>
+
+  <!-- Env var callouts -->
+  <text x="620" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">JUPYTERHUB_LOGO_URI</text>
+  <text x="620" y="62" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">JUPYTERHUB_FAVICON_URI</text>
+  <text x="620" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">JUPYTERHUB_LAB_MAIN_ICON_URI</text>
+  <text x="620" y="86" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">JUPYTERHUB_LAB_SPLASH_ICON_URI</text>
+
+  <text x="400" y="12" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-1">Same platform, different identity - via 4 environment variables</text>
+</svg>
