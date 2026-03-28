@@ -37,7 +37,7 @@
 
     TOP ZONE (Terminal / AI): y=10..154
       Card T1 (Fish shell): x=180, y=10, w=140, h=70
-      Card T2 (Screen): x=330, y=10, w=140, h=70
+      Card T2 (Themes): x=330, y=10, w=140, h=70
       Card T3 (Claude/Cursor): x=480, y=10, w=140, h=70
       Spoke lines: from card bottom (y=80) to hub top (y=174)
 
@@ -64,7 +64,7 @@
 
   <!-- === LAYOUT TOPOLOGY ===
     contain: viewBox > top-zone, left-zone, centre-hub, right-zone, bottom-zone
-    h-stack: top-zone > fish-card, screen-card, ai-card
+    h-stack: top-zone > fish-card, themes-card, ai-card
     v-stack: left-zone > mlflow-card, tensorboard-card, resources-card
     v-stack: right-zone > git-card, lsp-card, nbdime-card
     h-stack: bottom-zone > lab-utils-card, traefik-card
@@ -92,7 +92,7 @@
   <line x1="250" y1="80" x2="330" y2="170" stroke="#0096d1" stroke-width="1" opacity="0.25"/>
   <polygon points="328,166 330,170 333,167" fill="#0096d1" opacity="0.4"/>
 
-  <!-- Spoke: Screen(400,80) -> hub(400,174) -->
+  <!-- Spoke: Themes(400,80) -> hub(400,174) -->
   <line x1="400" y1="80" x2="400" y2="170" stroke="#0096d1" stroke-width="1" opacity="0.25"/>
   <polygon points="397,170 400,174 403,170" fill="#0096d1" opacity="0.4"/>
 

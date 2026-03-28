@@ -239,8 +239,8 @@
       <path d="M600,244 H780 V275 Q780,278 777,278 H603 Q600,278 600,275 Z" fill="#da8230" fill-opacity="0.04"/>
       <path d="M600,244 H780 V275 Q780,278 777,278 H603 Q600,278 600,275 Z" fill="none" stroke="#da8230" stroke-width="1"/>
       <rect x="600" y="244" width="180" height="4" fill="#da8230" opacity="0.5"/>
-      <text x="612" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Fish Shell + Screen</text>
-      <text x="612" y="274" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Powerline, persistent sessions</text>
+      <text x="612" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Fish Shell + AI Assistants</text>
+      <text x="612" y="274" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Powerline prompt, Claude Code</text>
     </g>
 
     <g id="lab-gpu">
