@@ -87,6 +87,8 @@ When a team member logs in and starts their server, they land in a full data sci
 
 ![Spawn Tree](images/17-spawn-tree.svg)
 
+![Isolation Bubbles](images/21-isolation-bubbles.svg)
+
 ![JupyterLab Workspace](images/06-jupyterlab-workspace.svg)
 
 The 40+ enhancement categories span the entire workflow.
@@ -102,6 +104,8 @@ The glue that makes this seamless is `nb_venv_kernels` - a custom extension that
 All local environments persist in user volumes between server image refreshes. When the admin pushes a new image via Watchtower, user-created conda environments, uv venvs, and project directories survive because they live on persistent volumes. The base image gets updated, user customizations stay intact.
 
 ![Environment Strategy](images/07-conda-environments.svg)
+
+![Volume Strata](images/22-volume-strata.svg)
 
 **Integrated services.** Every user gets their own local instances of MLflow, TensorBoard, Resources Monitor, and Optuna Dashboard running inside their container. Not shared services - personal ones. This eliminates conflicts entirely. MLflow tracks experiments to a per-user SQLite database with local artifact storage. TensorBoard reads from the user's own log directory. The resources monitor shows that user's container stats. Each service opens as a tab inside JupyterLab through the launcher, so users never leave the notebook interface. All services route through a per-user Traefik instance at a single HTTPS endpoint with path-based routing. No port conflicts, no configuration, no shared state.
 
@@ -133,6 +137,8 @@ When something goes wrong - a corrupted pip cache, a broken Conda environment, a
 
 When you need to reach everyone working on the platform - planned maintenance, a shared dataset update, a GPU driver change - the notification system delivers messages directly inside every active JupyterLab session.
 
+![Notification Ripple](images/23-notification-ripple.svg)
+
 ![Notification Broadcast](images/08-notification-broadcast.svg)
 
 The admin composes a short message (140-character limit, deliberately Twitter-brief) and picks a notification type: info for routine updates, warning for upcoming disruptions, error for urgent issues, success for resolved problems, or in-progress for ongoing work. The system queries all active spawners, generates a temporary API token for each recipient (5-minute expiry for security), and delivers notifications concurrently via `asyncio.gather()` with a 5-second timeout per server.
@@ -156,6 +162,8 @@ The Lab image is built on the same CUDA 13.0.2 base, so GPU libraries are always
 Both platforms are designed to be configured entirely through environment variables and compose override files - no code changes needed for any deployment.
 
 ![Deploy Delta](images/20-deploy-delta.svg)
+
+![Branding Morph](images/24-branding-morph.svg)
 
 ![Configuration](images/11-configuration.svg)
 

@@ -1,0 +1,65 @@
+<!--
+  22-volume-strata.svg - Persistent volumes as geological strata
+  Layered sedimentary bands: image refreshes wash over the top
+  but user data persists underneath like bedrock.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- Top: ephemeral layer (image, washes away) -->
+  <path d="M0,45 C100,40 200,48 300,42 C400,36 500,46 600,40 C700,34 750,42 800,38 L800,0 L0,0 Z"
+        fill="#c43030" fill-opacity="0.04"/>
+  <path d="M0,45 C100,40 200,48 300,42 C400,36 500,46 600,40 C700,34 750,42 800,38"
+        fill="none" stroke="#c43030" stroke-width="0.6" opacity="0.2"/>
+  <text x="400" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Docker image layer - replaced on Watchtower refresh</text>
+
+  <!-- Erosion particles (image being washed away) -->
+  <circle cx="150" cy="35" r="1" fill="#c43030" opacity="0.12"/>
+  <circle cx="380" cy="30" r="0.8" fill="#c43030" opacity="0.1"/>
+  <circle cx="620" cy="33" r="1.2" fill="#c43030" opacity="0.08"/>
+
+  <!-- Wavy boundary -->
+  <path d="M0,50 C80,55 160,48 240,52 C320,56 400,47 480,53 C560,59 640,50 720,54 C760,56 790,52 800,50"
+        fill="none" stroke="#0096d1" stroke-width="0.8" opacity="0.25" stroke-dasharray="4,3"/>
+
+  <!-- Stratum 1: home volume -->
+  <path d="M0,52 C80,57 160,50 240,54 C320,58 400,49 480,55 C560,61 640,52 720,56 C760,58 790,54 800,52
+           L800,90 C720,92 640,88 560,93 C480,98 400,86 320,92 C240,98 160,88 80,93 C40,95 10,92 0,90 Z"
+        fill="#0096d1" fill-opacity="0.06"/>
+  <path d="M0,90 C80,93 160,88 240,92 C320,98 400,86 480,93 C560,98 640,88 720,92 C790,95 800,90 800,90"
+        fill="none" stroke="#0096d1" stroke-width="0.5" opacity="0.2"/>
+  <text x="400" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">home volume</text>
+  <text x="400" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">.jupyter, .config, dotfiles, shell history</text>
+
+  <!-- Stratum 2: workspace volume -->
+  <path d="M0,92 C80,95 160,90 240,94 C320,100 400,88 480,95 C560,100 640,90 720,94 C790,97 800,92 800,92
+           L800,132 C720,135 640,128 560,133 C480,138 400,126 320,132 C240,138 160,128 80,133 C40,136 10,132 0,132 Z"
+        fill="#da8230" fill-opacity="0.05"/>
+  <path d="M0,132 C80,133 160,128 240,132 C320,138 400,126 480,133 C560,138 640,128 720,132 C790,135 800,132 800,132"
+        fill="none" stroke="#da8230" stroke-width="0.5" opacity="0.2"/>
+  <text x="400" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">workspace volume</text>
+  <text x="400" y="128" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">notebooks, projects, .venv environments, uv.lock</text>
+
+  <!-- Stratum 3: cache volume (deepest, bedrock) -->
+  <path d="M0,134 C80,135 160,130 240,134 C320,140 400,128 480,135 C560,140 640,130 720,134 C790,137 800,134 800,134
+           L800,175 C720,176 640,172 560,175 C480,178 400,170 320,175 C240,178 160,172 80,175 C40,177 10,175 0,175 Z"
+        fill="#0096d1" fill-opacity="0.04"/>
+  <path d="M0,175 C80,175 160,172 240,175 C320,178 400,170 480,175 C560,178 640,172 720,175 C790,176 800,175 800,175"
+        fill="none" stroke="#0096d1" stroke-width="0.5" opacity="0.15"/>
+  <text x="400" y="156" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">cache volume</text>
+  <text x="400" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">pip cache, conda pkgs, MLflow artifacts, model weights</text>
+
+  <!-- Bedrock label -->
+  <text x="400" y="194" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-1">User data persists like bedrock - image updates flow over without disturbing it</text>
+</svg>

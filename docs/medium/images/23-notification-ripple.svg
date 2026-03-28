@@ -1,0 +1,63 @@
+<!--
+  23-notification-ripple.svg - Broadcast as ripple propagation
+  Admin drops a message like a stone in water, ripples reach
+  each user at different distances.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- Ripple rings expanding from admin -->
+  <ellipse cx="160" cy="110" rx="30" ry="18" fill="none" stroke="#da8230" stroke-width="1" opacity="0.35"/>
+  <ellipse cx="160" cy="110" rx="70" ry="35" fill="none" stroke="#da8230" stroke-width="0.8" opacity="0.25"/>
+  <ellipse cx="160" cy="110" rx="120" ry="55" fill="none" stroke="#da8230" stroke-width="0.6" opacity="0.18"/>
+  <ellipse cx="160" cy="110" rx="180" ry="72" fill="none" stroke="#da8230" stroke-width="0.5" opacity="0.12"/>
+  <ellipse cx="160" cy="110" rx="250" ry="88" fill="none" stroke="#da8230" stroke-width="0.4" opacity="0.08"/>
+  <ellipse cx="160" cy="110" rx="330" ry="100" fill="none" stroke="#da8230" stroke-width="0.3" opacity="0.05"/>
+
+  <!-- Admin (the stone) -->
+  <circle cx="160" cy="110" r="8" fill="#da8230" fill-opacity="0.12" stroke="#da8230" stroke-width="1"/>
+  <circle cx="160" cy="110" r="3" fill="#da8230" opacity="0.5"/>
+  <text x="160" y="132" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">admin</text>
+
+  <!-- Users caught by ripples at various distances -->
+  <!-- Near -->
+  <circle cx="280" cy="75" r="10" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.8"/>
+  <circle cx="280" cy="75" r="3" fill="#1a8a4a" opacity="0.5"/>
+  <text x="280" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">alice</text>
+
+  <circle cx="300" cy="148" r="10" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.8"/>
+  <circle cx="300" cy="148" r="3" fill="#1a8a4a" opacity="0.5"/>
+  <text x="300" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">bob</text>
+
+  <!-- Mid distance -->
+  <circle cx="430" cy="55" r="10" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.8"/>
+  <circle cx="430" cy="55" r="3" fill="#1a8a4a" opacity="0.4"/>
+  <text x="430" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">charlie</text>
+
+  <circle cx="460" cy="160" r="10" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.8"/>
+  <circle cx="460" cy="160" r="3" fill="#1a8a4a" opacity="0.4"/>
+  <text x="460" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">dana</text>
+
+  <!-- Far - timeout -->
+  <circle cx="580" cy="90" r="10" fill="#0096d1" fill-opacity="0.04" stroke="#c43030" stroke-width="0.6"/>
+  <circle cx="580" cy="90" r="3" fill="#c43030" opacity="0.3"/>
+  <text x="580" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">emma</text>
+  <text x="580" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">timeout</text>
+
+  <!-- Message snippet floating near admin -->
+  <rect x="90" cy="40" y="40" width="140" height="20" rx="4" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.5"/>
+  <text x="160" y="54" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">"GPU update at 22:00"</text>
+
+  <text x="400" y="212" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Concurrent delivery via asyncio.gather() - 5s timeout per server</text>
+</svg>
