@@ -1,0 +1,86 @@
+<!--
+  30-group-access-shield.svg - Docker access control as layered shields
+  Left: concentric shields with gates. Right: group permission card.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 210">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- LEFT: Nested shields -->
+  <g id="shields">
+    <!-- Outer shield: standard user (everyone) -->
+    <path d="M170,30 C240,30 280,40 280,60 C280,140 240,175 170,190 C100,175 60,140 60,60 C60,40 100,30 170,30 Z"
+          fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.6" opacity="0.25"/>
+    <text x="170" y="52" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">all users</text>
+
+    <!-- Middle shield: docker-sock -->
+    <path d="M170,60 C220,60 248,68 248,82 C248,130 220,155 170,165 C120,155 92,130 92,82 C92,68 120,60 170,60 Z"
+          fill="#da8230" fill-opacity="0.04" stroke="#da8230" stroke-width="0.8" opacity="0.35"/>
+    <text x="170" y="80" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">docker-sock</text>
+
+    <!-- Inner shield: docker-privileged -->
+    <path d="M170,90 C200,90 215,96 215,105 C215,128 200,140 170,148 C140,140 125,128 125,105 C125,96 140,90 170,90 Z"
+          fill="#c43030" fill-opacity="0.04" stroke="#c43030" stroke-width="0.8" opacity="0.35"/>
+    <text x="170" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#c43030" opacity="0.6">privileged</text>
+
+    <!-- Center: Docker daemon -->
+    <circle cx="170" cy="128" r="6" fill="#c43030" fill-opacity="0.08" stroke="#c43030" stroke-width="0.6" opacity="0.4"/>
+    <text x="170" y="131" font-family="Segoe UI, Arial, sans-serif" font-size="5" font-weight="600" text-anchor="middle" class="fg-3">docker</text>
+
+    <!-- User dots at different shield levels -->
+    <circle cx="130" cy="45" r="3" fill="#0096d1" opacity="0.3"/>
+    <circle cx="210" cy="48" r="3" fill="#0096d1" opacity="0.3"/>
+    <circle cx="250" cy="50" r="2.5" fill="#0096d1" opacity="0.2"/>
+    <circle cx="115" cy="75" r="3" fill="#da8230" opacity="0.3"/>
+    <circle cx="225" cy="78" r="3" fill="#da8230" opacity="0.3"/>
+    <circle cx="155" cy="100" r="3" fill="#c43030" opacity="0.25"/>
+
+    <text x="170" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Deeper access = more privilege</text>
+  </g>
+
+  <!-- Arrow -->
+  <path d="M290,105 L370,105" fill="none" stroke="#0096d1" stroke-width="0.6" opacity="0.2"/>
+  <polygon points="370,102 376,105 370,108" fill="#0096d1" opacity="0.3"/>
+
+  <!-- RIGHT: Permission card -->
+  <g id="perm-card">
+    <path d="M384,12 H780 V196 Q780,200 776,200 H388 Q384,200 384,196 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M384,12 H780 V196 Q780,200 776,200 H388 Q384,200 384,196 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="384" y="12" width="396" height="5" fill="#0096d1" opacity="0.6"/>
+
+    <text x="398" y="34" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#0096d1">ACCESS CONTROL GROUPS</text>
+
+    <!-- Standard user -->
+    <rect x="398" y="46" width="368" height="36" rx="3" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="0.5"/>
+    <circle cx="412" cy="58" r="4" fill="#0096d1" opacity="0.25"/>
+    <text x="424" y="56" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Standard user</text>
+    <text x="424" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Isolated container, own volumes, GPU passthrough, all services</text>
+    <text x="424" y="80" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">No Docker host access</text>
+
+    <!-- docker-sock -->
+    <rect x="398" y="90" width="368" height="36" rx="3" fill="#da8230" fill-opacity="0.04" stroke="#da8230" stroke-width="0.5"/>
+    <circle cx="412" cy="102" r="4" fill="#da8230" opacity="0.3"/>
+    <text x="424" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">docker-sock group</text>
+    <text x="424" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Mounts /var/run/docker.sock - container orchestration, image builds</text>
+    <text x="424" y="124" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Can manage other containers on the Docker host</text>
+
+    <!-- docker-privileged -->
+    <rect x="398" y="134" width="368" height="36" rx="3" fill="#c43030" fill-opacity="0.04" stroke="#c43030" stroke-width="0.5"/>
+    <circle cx="412" cy="146" r="4" fill="#c43030" opacity="0.25"/>
+    <text x="424" y="144" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">docker-privileged group</text>
+    <text x="424" y="158" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Runs with --privileged flag - hardware access, kernel modules</text>
+    <text x="424" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Highest privilege level - grant only to trusted users</text>
+
+    <text x="398" y="192" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Both groups auto-recreate if deleted - checked in pre-spawn hook before every launch</text>
+  </g>
+</svg>

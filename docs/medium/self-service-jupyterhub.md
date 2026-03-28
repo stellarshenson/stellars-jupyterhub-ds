@@ -187,6 +187,8 @@ The activity score uses exponential decay with a configurable half-life (default
 
 The Activity Monitor also runs an independent background sampler as a JupyterHub managed service. It samples all users - active, idle, and offline - at a configurable interval (default: every 10 minutes), recording activity snapshots to a separate SQLite database to avoid lock contention with JupyterHub's main database.
 
+![Decay Waterfall](images/32-decay-waterfall.svg)
+
 ![Activity Pulse](images/19-activity-pulse.svg)
 
 ![Activity Monitor](images/03-activity-monitor.svg)
@@ -195,7 +197,11 @@ The Activity Monitor also runs an independent background sampler as a JupyterHub
 
 Some features don't sound impressive in a bullet list but make a real difference in daily use.
 
+![Password Dandelion](images/29-password-dandelion.svg)
+
 **Mnemonic passwords.** When admins create user accounts through the admin panel, the platform generates a memorable password via xkcdpass (e.g., `storm-apple-ocean`), hashes it with bcrypt, and caches the plaintext for 5 minutes. The credentials appear in a modal with per-row copy icons and a download button.
+
+![Group Access Shields](images/30-group-access-shield.svg)
 
 **Group-based Docker access.** Two protected groups - `docker-sock` for Docker API access and `docker-privileged` for full privileged mode. The pre-spawn hook checks group membership before every container launch. Both groups auto-recreate if accidentally deleted from the admin panel.
 
@@ -274,6 +280,8 @@ Updates happen automatically. Watchtower checks DockerHub daily for new images a
 **Simple beats clever.** Docker Compose with three services and a handful of configuration files turned out to be exactly enough for single-server deployments. The platform runs on one machine, serves a team comfortably, and the entire configuration fits in your head.
 
 ![Architecture](images/05-architecture.svg)
+
+![K8s Horizon](images/31-k8s-horizon.svg)
 
 ## What's Next: Kubernetes
 
