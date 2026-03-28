@@ -1,0 +1,85 @@
+<!--
+  35-startup-helix.svg - Admin+User startup scripts as a double helix
+  Two intertwined strands: admin scripts and user scripts, with a card.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 180">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- LEFT: Double helix -->
+  <g id="helix">
+    <!-- Admin strand (cyan) -->
+    <path d="M30,90 C55,50 85,50 110,90 C135,130 165,130 190,90 C215,50 245,50 270,90 C295,130 325,130 350,90"
+          fill="none" stroke="#0096d1" stroke-width="1.8" opacity="0.3" stroke-linecap="round"/>
+
+    <!-- User strand (orange) - offset phase -->
+    <path d="M30,90 C55,130 85,130 110,90 C135,50 165,50 190,90 C215,130 245,130 270,90 C295,50 325,50 350,90"
+          fill="none" stroke="#da8230" stroke-width="1.8" opacity="0.25" stroke-linecap="round"/>
+
+    <!-- Crosslinks (rungs) at crossing points -->
+    <line x1="70" y1="70" x2="70" y2="110" stroke="#0096d1" stroke-width="0.4" opacity="0.12"/>
+    <line x1="150" y1="70" x2="150" y2="110" stroke="#0096d1" stroke-width="0.4" opacity="0.12"/>
+    <line x1="230" y1="70" x2="230" y2="110" stroke="#0096d1" stroke-width="0.4" opacity="0.12"/>
+    <line x1="310" y1="70" x2="310" y2="110" stroke="#0096d1" stroke-width="0.4" opacity="0.12"/>
+
+    <!-- Nodes at peaks -->
+    <circle cx="70" cy="55" r="3" fill="#0096d1" opacity="0.25"/>
+    <circle cx="70" cy="125" r="3" fill="#da8230" opacity="0.2"/>
+    <circle cx="150" cy="125" r="3" fill="#0096d1" opacity="0.25"/>
+    <circle cx="150" cy="55" r="3" fill="#da8230" opacity="0.2"/>
+    <circle cx="230" cy="55" r="3" fill="#0096d1" opacity="0.25"/>
+    <circle cx="230" cy="125" r="3" fill="#da8230" opacity="0.2"/>
+    <circle cx="310" cy="125" r="3" fill="#0096d1" opacity="0.25"/>
+    <circle cx="310" cy="55" r="3" fill="#da8230" opacity="0.2"/>
+
+    <!-- Arrow to output -->
+    <path d="M350,90 L385,90" fill="none" stroke="#0096d1" stroke-width="0.8" opacity="0.2"/>
+    <polygon points="385,87 391,90 385,93" fill="#0096d1" opacity="0.3"/>
+
+    <!-- Labels -->
+    <text x="70" y="42" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" fill="#0096d1" opacity="0.5">admin</text>
+    <text x="70" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" fill="#da8230" opacity="0.4">user</text>
+
+    <!-- Boot label -->
+    <text x="30" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">container boot</text>
+    <text x="350" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="end" class="fg-4">ready</text>
+    <path d="M90,165 L310,165" fill="none" stroke="#0096d1" stroke-width="0.3" opacity="0.1"/>
+    <polygon points="310,163 316,165 310,167" fill="#0096d1" opacity="0.1"/>
+  </g>
+
+  <!-- RIGHT: Entrypoints card -->
+  <g id="startup-card">
+    <path d="M400,10 H780 V170 Q780,174 776,174 H404 Q400,174 400,170 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M400,10 H780 V170 Q780,174 776,174 H404 Q400,174 400,170 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="400" y="10" width="380" height="5" fill="#0096d1" opacity="0.6"/>
+
+    <text x="414" y="32" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#0096d1">CUSTOM STARTUP SCRIPTS</text>
+    <text x="414" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-1">Two entrypoints, one boot sequence</text>
+
+    <!-- Admin row -->
+    <rect x="414" y="60" width="352" height="38" rx="3" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="0.5"/>
+    <circle cx="428" cy="72" r="4" fill="#0096d1" opacity="0.3"/>
+    <text x="440" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Admin scripts</text>
+    <text x="540" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">/mnt/shared/start-platform.d/</text>
+    <text x="440" y="86" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Team-wide configuration deployed to shared volume - every user runs them</text>
+
+    <!-- User row -->
+    <rect x="414" y="104" width="352" height="38" rx="3" fill="#da8230" fill-opacity="0.04" stroke="#da8230" stroke-width="0.5"/>
+    <circle cx="428" cy="116" r="4" fill="#da8230" opacity="0.25"/>
+    <text x="440" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">User scripts</text>
+    <text x="540" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">~/.local/start-platform.d/</text>
+    <text x="440" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Personal setup - auto-execute on start, notification on complete/fail</text>
+
+    <text x="414" y="162" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Both execute automatically at container boot - results delivered to JupyterLab UI</text>
+  </g>
+</svg>
