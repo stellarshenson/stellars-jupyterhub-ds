@@ -1,0 +1,81 @@
+<!--
+  17-spawn-tree.svg - Hub spawning containers as a branching tree
+  One root (Hub) branches into isolated user workspaces like a root system.
+  Organic tree form with tapering branches.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- Trunk from hub -->
+  <path d="M400,30 C400,60 400,70 400,80" stroke="#0096d1" stroke-width="4" fill="none" opacity="0.3" stroke-linecap="round"/>
+
+  <!-- Main branches -->
+  <path d="M400,80 C350,100 280,110 180,130" stroke="#0096d1" stroke-width="2.5" fill="none" opacity="0.25" stroke-linecap="round"/>
+  <path d="M400,80 C380,100 340,115 300,140" stroke="#0096d1" stroke-width="2" fill="none" opacity="0.2" stroke-linecap="round"/>
+  <path d="M400,80 C400,110 400,120 400,145" stroke="#0096d1" stroke-width="2.5" fill="none" opacity="0.25" stroke-linecap="round"/>
+  <path d="M400,80 C420,100 460,115 500,140" stroke="#0096d1" stroke-width="2" fill="none" opacity="0.2" stroke-linecap="round"/>
+  <path d="M400,80 C450,100 520,110 620,130" stroke="#0096d1" stroke-width="2.5" fill="none" opacity="0.25" stroke-linecap="round"/>
+
+  <!-- Sub-branches (thinner) -->
+  <path d="M180,130 C160,140 120,150 90,165" stroke="#da8230" stroke-width="1" fill="none" opacity="0.15" stroke-linecap="round"/>
+  <path d="M180,130 C190,145 200,155 210,170" stroke="#da8230" stroke-width="0.8" fill="none" opacity="0.12" stroke-linecap="round"/>
+  <path d="M620,130 C640,140 680,150 710,165" stroke="#da8230" stroke-width="1" fill="none" opacity="0.15" stroke-linecap="round"/>
+  <path d="M620,130 C610,145 600,155 590,170" stroke="#da8230" stroke-width="0.8" fill="none" opacity="0.12" stroke-linecap="round"/>
+  <path d="M300,140 C280,155 260,165 250,178" stroke="#da8230" stroke-width="0.8" fill="none" opacity="0.12" stroke-linecap="round"/>
+  <path d="M500,140 C520,155 540,165 550,178" stroke="#da8230" stroke-width="0.8" fill="none" opacity="0.12" stroke-linecap="round"/>
+
+  <!-- Hub root -->
+  <circle cx="400" cy="26" r="18" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="1.2"/>
+  <circle cx="400" cy="26" r="6" fill="#0096d1" opacity="0.4"/>
+  <text x="400" y="8" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-1">JupyterHub</text>
+
+  <!-- Leaf nodes: user workspaces -->
+  <circle cx="90" cy="170" r="12" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.8"/>
+  <circle cx="90" cy="170" r="3" fill="#da8230" opacity="0.4"/>
+  <text x="90" y="192" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">alice</text>
+
+  <circle cx="210" cy="175" r="10" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.8"/>
+  <circle cx="210" cy="175" r="2.5" fill="#da8230" opacity="0.35"/>
+  <text x="210" y="195" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">bob</text>
+
+  <circle cx="250" cy="183" r="8" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.8"/>
+  <circle cx="250" cy="183" r="2" fill="#da8230" opacity="0.3"/>
+  <text x="250" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">charlie</text>
+
+  <circle cx="400" cy="150" r="14" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.8"/>
+  <circle cx="400" cy="150" r="3.5" fill="#0096d1" opacity="0.4"/>
+  <text x="400" y="174" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">dana</text>
+
+  <circle cx="550" cy="183" r="8" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.8"/>
+  <circle cx="550" cy="183" r="2" fill="#da8230" opacity="0.3"/>
+  <text x="550" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">emma</text>
+
+  <circle cx="590" cy="175" r="10" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.8"/>
+  <circle cx="590" cy="175" r="2.5" fill="#da8230" opacity="0.35"/>
+  <text x="590" y="195" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">frank</text>
+
+  <circle cx="710" cy="170" r="12" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.8"/>
+  <circle cx="710" cy="170" r="3" fill="#da8230" opacity="0.4"/>
+  <text x="710" y="192" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">grace</text>
+
+  <!-- Tiny particles along branches -->
+  <circle cx="350" cy="92" r="1" fill="#0096d1" opacity="0.2"/>
+  <circle cx="450" cy="95" r="1.2" fill="#0096d1" opacity="0.15"/>
+  <circle cx="240" cy="118" r="0.8" fill="#da8230" opacity="0.2"/>
+  <circle cx="560" cy="115" r="0.8" fill="#da8230" opacity="0.2"/>
+  <circle cx="320" cy="125" r="1" fill="#0096d1" opacity="0.12"/>
+  <circle cx="480" cy="122" r="1" fill="#0096d1" opacity="0.12"/>
+
+  <text x="400" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Each branch is an isolated container with its own volumes, services, and GPU access</text>
+</svg>
