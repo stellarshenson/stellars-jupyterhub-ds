@@ -1,0 +1,86 @@
+<!--
+  38-multi-team-galaxy.svg - Multiple deployments as star clusters
+  Different team deployments as galaxy clusters, each with its own stars.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- Cluster 1: Manufacturing team (left, large) -->
+  <g id="cluster-mfg">
+    <ellipse cx="150" cy="100" rx="110" ry="75" fill="#0096d1" fill-opacity="0.02" stroke="#0096d1" stroke-width="0.4" opacity="0.12"/>
+    <!-- Stars (users) -->
+    <circle cx="100" cy="70" r="4" fill="#0096d1" opacity="0.25"/>
+    <circle cx="140" cy="55" r="3.5" fill="#0096d1" opacity="0.3"/>
+    <circle cx="180" cy="65" r="5" fill="#0096d1" opacity="0.2"/>
+    <circle cx="120" cy="95" r="3" fill="#0096d1" opacity="0.2"/>
+    <circle cx="160" cy="90" r="6" fill="#0096d1" opacity="0.15"/>
+    <circle cx="195" cy="100" r="3.5" fill="#0096d1" opacity="0.22"/>
+    <circle cx="130" cy="120" r="4" fill="#0096d1" opacity="0.18"/>
+    <circle cx="170" cy="125" r="3" fill="#0096d1" opacity="0.15"/>
+    <circle cx="100" cy="110" r="2.5" fill="#0096d1" opacity="0.12"/>
+    <circle cx="85" cy="85" r="2" fill="#0096d1" opacity="0.1"/>
+    <!-- Hub center -->
+    <circle cx="150" cy="90" r="8" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.8" opacity="0.3"/>
+    <text x="150" y="155" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">Manufacturing</text>
+    <text x="150" y="167" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">10 users, 4xA100 GPU</text>
+  </g>
+
+  <!-- Cluster 2: Research team (center-top, medium) -->
+  <g id="cluster-research">
+    <ellipse cx="400" cy="70" rx="85" ry="55" fill="#da8230" fill-opacity="0.02" stroke="#da8230" stroke-width="0.4" opacity="0.12"/>
+    <circle cx="370" cy="50" r="4" fill="#da8230" opacity="0.2"/>
+    <circle cx="400" cy="40" r="3.5" fill="#da8230" opacity="0.25"/>
+    <circle cx="430" cy="48" r="3" fill="#da8230" opacity="0.22"/>
+    <circle cx="380" cy="75" r="5" fill="#da8230" opacity="0.15"/>
+    <circle cx="420" cy="70" r="4" fill="#da8230" opacity="0.2"/>
+    <circle cx="445" cy="80" r="2.5" fill="#da8230" opacity="0.12"/>
+    <circle cx="360" cy="90" r="2" fill="#da8230" opacity="0.1"/>
+    <circle cx="400" cy="65" r="7" fill="#da8230" fill-opacity="0.05" stroke="#da8230" stroke-width="0.7" opacity="0.25"/>
+    <text x="400" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">Research Lab</text>
+    <text x="400" y="127" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">7 users, NAS storage</text>
+  </g>
+
+  <!-- Cluster 3: Finance team (right, small) -->
+  <g id="cluster-finance">
+    <ellipse cx="620" cy="105" rx="70" ry="50" fill="#0096d1" fill-opacity="0.02" stroke="#0096d1" stroke-width="0.3" opacity="0.1"/>
+    <circle cx="600" cy="85" r="3.5" fill="#0096d1" opacity="0.2"/>
+    <circle cx="630" cy="80" r="4" fill="#0096d1" opacity="0.18"/>
+    <circle cx="650" cy="95" r="3" fill="#0096d1" opacity="0.22"/>
+    <circle cx="610" cy="110" r="4.5" fill="#0096d1" opacity="0.15"/>
+    <circle cx="640" cy="115" r="2.5" fill="#0096d1" opacity="0.12"/>
+    <circle cx="620" cy="98" r="6" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="0.6" opacity="0.2"/>
+    <text x="620" y="145" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">Finance</text>
+    <text x="620" y="157" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">5 users, no GPU</text>
+  </g>
+
+  <!-- Cluster 4: Emerging (far right, tiny, forming) -->
+  <g id="cluster-new" opacity="0.5">
+    <ellipse cx="750" cy="80" rx="35" ry="28" fill="#da8230" fill-opacity="0.01" stroke="#da8230" stroke-width="0.3" opacity="0.08" stroke-dasharray="3,3"/>
+    <circle cx="742" cy="75" r="2" fill="#da8230" opacity="0.12"/>
+    <circle cx="758" cy="82" r="2.5" fill="#da8230" opacity="0.1"/>
+    <circle cx="748" cy="90" r="1.5" fill="#da8230" opacity="0.08"/>
+    <text x="750" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">New team</text>
+    <text x="750" y="125" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">deploying...</text>
+  </g>
+
+  <!-- Faint connection threads between clusters (shared codebase) -->
+  <path d="M240,100 C290,90 320,80 340,75" fill="none" stroke="#0096d1" stroke-width="0.3" opacity="0.06"/>
+  <path d="M460,85 C500,90 540,95 560,100" fill="none" stroke="#0096d1" stroke-width="0.3" opacity="0.06"/>
+  <path d="M670,100 C690,92 710,86 730,82" fill="none" stroke="#da8230" stroke-width="0.2" opacity="0.04"/>
+
+  <!-- Bottom -->
+  <text x="400" y="195" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-1">Same codebase, different deployments across industries</text>
+  <text x="400" y="210" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Each cluster runs independently with its own compose_override.yml, branding, GPU config, and storage</text>
+  <text x="400" y="225" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Clone, configure, deploy - fifteen minutes from zero to first login</text>
+</svg>
