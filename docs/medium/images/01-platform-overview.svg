@@ -1,0 +1,206 @@
+<!--
+  01-platform-overview.svg - JupyterHub platform architecture overview
+  Shows: Browser at top, Traefik reverse proxy with port labels, JupyterHub hub
+  with feature labels, three user JupyterLab containers (alice, bob, charlie)
+  each with persistent volumes, shared storage bar at bottom, Watchtower alongside.
+  Intent: illustrate the 3-service Docker Compose architecture for the Medium article.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 infrastructure, accent-2=#da8230 auxiliary.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 440">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 800x440
+    Margins: left=14, right=786, top=10, bottom=436
+
+    Browser pill: x=310, y=10, w=180, h=36, cx=400
+    Arrow: browser(400,46) -> traefik(400,84), tip at y=84
+
+    Docker Compose boundary: x=14, y=56, w=772, h=376
+
+    Traefik card: x=200, y=84, w=350, h=44, cx=375
+    Watchtower card: x=620, y=84, w=160, h=44, cx=700
+    Port labels: x=188 (right-aligned), y=102 and y=118
+
+    Arrow: traefik(375,128) -> hub(400,160), tip at y=160
+
+    JupyterHub card: x=160, y=160, w=480, h=60, cx=400
+    Feature labels: y=198, y=212
+
+    Arrows: hub -> containers fan out
+      alice:   L-route from (290,220) to (155,268)
+      bob:     straight (400,220) to (400,268)
+      charlie: L-route from (510,220) to (645,268)
+
+    Container row y=268:
+      alice:   x=60,  w=190, h=48, cx=155
+      bob:     x=305, w=190, h=48, cx=400
+      charlie: x=550, w=190, h=48, cx=645
+
+    Volume row y=326:
+      alice:   x=60,  w=190, h=30
+      bob:     x=305, w=190, h=30
+      charlie: x=550, w=190, h=30
+
+    Shared storage bar: x=60, y=376, w=680, h=32
+
+    Network label: y=430
+
+    Vertical rhythm: 14px
+    Card padding: 12px from accent bar bottom to first text baseline
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    v-stack: browser, traefik-row, hub, container-row, volume-row, shared-bar
+    h-align: browser, hub (cx=400)
+    h-stack: traefik, watchtower (traefik-row)
+    h-stack: alice-container, bob-container, charlie-container
+    mirror: alice-container, charlie-container (around bob)
+    v-stack per user: container, volume-box
+    contain: docker-compose > traefik, watchtower, hub, containers, volumes, shared
+    flow: browser -> traefik -> hub -> [alice, bob, charlie]
+  === -->
+
+  <g id="guide-grid" display="none">
+    <line x1="400" y1="0" x2="400" y2="440" stroke="red" stroke-width="0.5"/>
+    <line x1="0" y1="268" x2="800" y2="268" stroke="red" stroke-width="0.5"/>
+  </g>
+
+  <!-- Docker Compose boundary -->
+  <rect x="14" y="56" width="772" height="376" rx="6" fill="none" stroke="#0096d1" stroke-width="0.6" stroke-dasharray="6,4" opacity="0.2"/>
+  <text x="24" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="8" letter-spacing="1" class="fg-4">DOCKER COMPOSE</text>
+
+  <!-- Browser pill -->
+  <g id="browser-box">
+    <rect x="310" y="10" width="180" height="36" rx="6" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1"/>
+    <text x="400" y="33" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" text-anchor="middle" class="fg-1">Browser</text>
+  </g>
+
+  <!-- Arrow: browser(400,46) -> traefik(400,84) -->
+  <line x1="400" y1="46" x2="400" y2="80" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="397,80 400,84 403,80" fill="#0096d1" opacity="0.6"/>
+
+  <!-- Traefik card -->
+  <g id="traefik-box">
+    <path d="M200,84 H550 V125 Q550,128 547,128 H203 Q200,128 200,125 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M200,84 H550 V125 Q550,128 547,128 H203 Q200,128 200,125 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="200" y="84" width="350" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="375" y="106" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle" class="fg-1">Traefik</text>
+    <text x="375" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" class="fg-3">TLS termination + reverse proxy (443/80/8080)</text>
+  </g>
+
+  <!-- Port labels left of Traefik -->
+  <text x="188" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="end" class="accent-2">:443</text>
+  <text x="188" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="end" class="accent-2">:80</text>
+
+  <!-- Watchtower card -->
+  <g id="watchtower-box">
+    <path d="M620,84 H780 V125 Q780,128 777,128 H623 Q620,128 620,125 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M620,84 H780 V125 Q780,128 777,128 H623 Q620,128 620,125 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="620" y="84" width="160" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="700" y="106" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" text-anchor="middle" class="fg-2">Watchtower</text>
+    <text x="700" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Auto-update daily</text>
+  </g>
+
+  <!-- Arrow: traefik(375,128) -> hub(400,160) -->
+  <line x1="400" y1="128" x2="400" y2="156" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="397,156 400,160 403,156" fill="#0096d1" opacity="0.6"/>
+
+  <!-- JupyterHub card -->
+  <g id="hub-box">
+    <path d="M160,160 H640 V217 Q640,220 637,220 H163 Q160,220 160,217 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M160,160 H640 V217 Q640,220 637,220 H163 Q160,220 160,217 Z" fill="none" stroke="#0096d1" stroke-width="1.5"/>
+    <rect x="160" y="160" width="480" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="400" y="182" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle" class="fg-1">JupyterHub</text>
+    <text x="400" y="198" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" class="fg-3">Authentication + DockerSpawner + Self-Service APIs</text>
+    <text x="400" y="212" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">NativeAuthenticator + Activity Monitor + Notifications + Branding</text>
+  </g>
+
+  <!-- Arrows: hub -> user containers -->
+  <!-- hub(290,220) -> alice(155,268): chamfered L-route -->
+  <path d="M290,220 V240 L286,244 H159 L155,248 V264" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="152,264 155,268 158,264" fill="#0096d1" opacity="0.6"/>
+
+  <!-- hub(400,220) -> bob(400,268): straight down -->
+  <line x1="400" y1="220" x2="400" y2="264" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="397,264 400,268 403,264" fill="#0096d1" opacity="0.6"/>
+
+  <!-- hub(510,220) -> charlie(645,268): chamfered L-route -->
+  <path d="M510,220 V240 L514,244 H641 L645,248 V264" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="642,264 645,268 648,264" fill="#0096d1" opacity="0.6"/>
+
+  <!-- User container: alice -->
+  <g id="container-alice">
+    <path d="M60,268 H250 V313 Q250,316 247,316 H63 Q60,316 60,313 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M60,268 H250 V313 Q250,316 247,316 H63 Q60,316 60,313 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="60" y="268" width="190" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="155" y="290" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" text-anchor="middle" class="fg-1">JupyterLab</text>
+    <text x="155" y="304" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" class="fg-3">alice</text>
+  </g>
+
+  <!-- User container: bob -->
+  <g id="container-bob">
+    <path d="M305,268 H495 V313 Q495,316 492,316 H308 Q305,316 305,313 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M305,268 H495 V313 Q495,316 492,316 H308 Q305,316 305,313 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="305" y="268" width="190" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="400" y="290" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" text-anchor="middle" class="fg-1">JupyterLab</text>
+    <text x="400" y="304" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" class="fg-3">bob</text>
+  </g>
+
+  <!-- User container: charlie -->
+  <g id="container-charlie">
+    <path d="M550,268 H740 V313 Q740,316 737,316 H553 Q550,316 550,313 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M550,268 H740 V313 Q740,316 737,316 H553 Q550,316 550,313 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="550" y="268" width="190" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="645" y="290" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" text-anchor="middle" class="fg-1">JupyterLab</text>
+    <text x="645" y="304" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" class="fg-3">charlie</text>
+  </g>
+
+  <!-- Per-user volumes -->
+  <g id="volume-alice">
+    <rect x="60" y="326" width="190" height="30" rx="3" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.6" stroke-dasharray="3,2"/>
+    <text x="155" y="339" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-3">Persistent Volumes</text>
+    <text x="155" y="351" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">home / workspace / cache</text>
+  </g>
+
+  <g id="volume-bob">
+    <rect x="305" y="326" width="190" height="30" rx="3" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.6" stroke-dasharray="3,2"/>
+    <text x="400" y="339" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-3">Persistent Volumes</text>
+    <text x="400" y="351" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">home / workspace / cache</text>
+  </g>
+
+  <g id="volume-charlie">
+    <rect x="550" y="326" width="190" height="30" rx="3" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.6" stroke-dasharray="3,2"/>
+    <text x="645" y="339" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-3">Persistent Volumes</text>
+    <text x="645" y="351" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">home / workspace / cache</text>
+  </g>
+
+  <!-- Shared storage bar -->
+  <g id="shared-storage">
+    <rect x="60" y="376" width="680" height="40" rx="4" fill="#da8230" fill-opacity="0.04" stroke="#da8230" stroke-width="0.8"/>
+    <rect x="60" y="376" width="680" height="4" fill="#da8230" opacity="0.4"/>
+    <text x="400" y="394" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-2">/mnt/shared</text>
+    <text x="400" y="408" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Shared storage across all users (CIFS/NAS mountable)</text>
+  </g>
+
+  <!-- Network label -->
+  <text x="400" y="434" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">jupyterhub_network (bridge)</text>
+
+</svg>

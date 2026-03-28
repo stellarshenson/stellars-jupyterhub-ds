@@ -1,0 +1,168 @@
+<!--
+  08-notification-broadcast.svg - Notification broadcast system flow
+  Shows: Admin composes message (140 chars, 6 types) -> Hub generates temp API tokens ->
+  concurrent delivery to active JupyterLab sessions -> per-user delivery status.
+  Intent: Illustrate the admin notification broadcast feature for the Medium article.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 primary, accent-2=#da8230 for notifications.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 340">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 800x340
+    Margins: left=16, right=784, top=10, bottom=330
+
+    Row 1 - Compose card: x=16, y=10, w=240, h=190
+    Row 1 - Delivery flow: x=280, y=10, w=504, h=190
+
+    Arrow compose->delivery: from x=256 to x=280, y=105
+
+    Delivery card: x=280, y=10, w=504, h=190
+    Inside delivery: hub box, 4 user targets, status badges
+
+    Bottom bar: y=220, h=110, notification type pills
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: compose-card, delivery-card
+    flow: compose -> hub-generates-tokens -> concurrent-delivery -> status
+    v-stack: [card-row, type-pills-section]
+    contain: delivery-card > hub-box, user-targets, status-badges
+  === -->
+
+  <g id="guide-grid" display="none">
+    <line x1="270" y1="0" x2="270" y2="340" stroke="red" stroke-width="0.5"/>
+  </g>
+
+  <!-- === COMPOSE CARD === -->
+  <path d="M16,10 H256 V197 Q256,200 253,200 H19 Q16,200 16,197 Z" fill="#da8230" fill-opacity="0.04"/>
+  <path d="M16,10 H256 V197 Q256,200 253,200 H19 Q16,200 16,197 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+  <rect x="16" y="10" width="240" height="5" fill="#da8230" opacity="0.6"/>
+
+  <!-- Icon: edit (Lucide, ISC license) -->
+  <g transform="translate(220, 24) scale(0.583)" fill="none" stroke="#da8230" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+    <path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.855z"/>
+  </g>
+
+  <text x="30" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#da8230">ADMIN COMPOSES</text>
+  <text x="30" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Broadcast Message</text>
+
+  <!-- Message mockup -->
+  <rect x="30" y="64" width="212" height="44" rx="3" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.6"/>
+  <text x="38" y="80" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-2">"GPU driver update tonight at</text>
+  <text x="38" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-2">22:00 UTC. Save your work."</text>
+  <text x="220" y="104" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="end" class="fg-4">87 / 140</text>
+
+  <!-- Type selector -->
+  <text x="30" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Type:</text>
+  <rect x="56" y="116" width="56" height="16" rx="3" fill="#da8230" opacity="0.7"/>
+  <text x="84" y="128" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="on-fill">warning</text>
+
+  <!-- Recipients -->
+  <text x="30" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Recipients: all active (4)</text>
+
+  <!-- Send button -->
+  <rect x="30" y="164" width="100" height="24" rx="3" fill="#da8230" opacity="0.7"/>
+  <text x="80" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="on-fill">Send</text>
+
+  <!-- Arrow compose -> delivery -->
+  <g transform="translate(280,105) rotate(0)">
+    <line x1="-24" y1="0" x2="-10" y2="0" stroke="#da8230" stroke-width="1.2" opacity="0.5"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#da8230" opacity="0.7"/>
+  </g>
+
+  <!-- === DELIVERY CARD === -->
+  <path d="M290,10 H784 V197 Q784,200 781,200 H293 Q290,200 290,197 Z" fill="#0096d1" fill-opacity="0.04"/>
+  <path d="M290,10 H784 V197 Q784,200 781,200 H293 Q290,200 290,197 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+  <rect x="290" y="10" width="494" height="5" fill="#0096d1" opacity="0.6"/>
+
+  <text x="304" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#0096d1">CONCURRENT DELIVERY</text>
+  <text x="304" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="fg-1">Hub generates temp API tokens (5-min expiry)</text>
+
+  <!-- 4 user delivery cards -->
+  <!-- alice - success -->
+  <rect x="304" y="64" width="108" height="68" rx="3" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.6"/>
+  <circle cx="318" cy="80" r="4" fill="#1a8a4a"/>
+  <text x="328" y="84" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">alice</text>
+  <text x="318" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Token generated</text>
+  <text x="318" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">POST /ingest</text>
+  <rect x="318" y="118" width="46" height="10" rx="2" fill="#1a8a4a" opacity="0.7"/>
+  <text x="341" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="6" font-weight="600" text-anchor="middle" class="on-fill">SUCCESS</text>
+
+  <!-- bob - success -->
+  <rect x="422" y="64" width="108" height="68" rx="3" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.6"/>
+  <circle cx="436" cy="80" r="4" fill="#1a8a4a"/>
+  <text x="446" y="84" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">bob</text>
+  <text x="436" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Token generated</text>
+  <text x="436" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">POST /ingest</text>
+  <rect x="436" y="118" width="46" height="10" rx="2" fill="#1a8a4a" opacity="0.7"/>
+  <text x="459" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="6" font-weight="600" text-anchor="middle" class="on-fill">SUCCESS</text>
+
+  <!-- charlie - success -->
+  <rect x="540" y="64" width="108" height="68" rx="3" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.6"/>
+  <circle cx="554" cy="80" r="4" fill="#1a8a4a"/>
+  <text x="564" y="84" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">charlie</text>
+  <text x="554" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Token generated</text>
+  <text x="554" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">POST /ingest</text>
+  <rect x="554" y="118" width="46" height="10" rx="2" fill="#1a8a4a" opacity="0.7"/>
+  <text x="577" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="6" font-weight="600" text-anchor="middle" class="on-fill">SUCCESS</text>
+
+  <!-- dana - failed (timeout) -->
+  <rect x="658" y="64" width="108" height="68" rx="3" fill="#0096d1" fill-opacity="0.03" stroke="#c43030" stroke-width="0.6"/>
+  <circle cx="672" cy="80" r="4" fill="#c43030"/>
+  <text x="682" y="84" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">dana</text>
+  <text x="672" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Token generated</text>
+  <text x="672" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">5s timeout</text>
+  <rect x="672" y="118" width="42" height="10" rx="2" fill="#c43030" opacity="0.7"/>
+  <text x="693" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="6" font-weight="600" text-anchor="middle" class="on-fill">FAILED</text>
+
+  <!-- Summary -->
+  <text x="304" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Result: 3 delivered, 1 failed</text>
+  <text x="304" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">asyncio.gather() with 5-second timeout per server</text>
+  <text x="304" y="184" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Tokens auto-expire after 5 minutes - never logged or exposed</text>
+
+  <!-- === NOTIFICATION TYPES BAR === -->
+  <rect x="16" y="220" width="768" height="110" rx="6" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.6"/>
+  <text x="400" y="242" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-1">Six Notification Types</text>
+
+  <!-- Type pills row -->
+  <rect x="42" y="256" width="70" height="22" rx="4" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="0.6"/>
+  <text x="77" y="271" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" class="fg-2">default</text>
+
+  <rect x="124" y="256" width="70" height="22" rx="4" fill="#0096d1" fill-opacity="0.15" stroke="#0096d1" stroke-width="0.6"/>
+  <text x="159" y="271" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" class="accent-1">info</text>
+
+  <rect x="206" y="256" width="80" height="22" rx="4" fill="#1a8a4a" fill-opacity="0.1" stroke="#1a8a4a" stroke-width="0.6"/>
+  <text x="246" y="271" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" fill="#1a8a4a">success</text>
+
+  <rect x="298" y="256" width="80" height="22" rx="4" fill="#da8230" fill-opacity="0.1" stroke="#da8230" stroke-width="0.6"/>
+  <text x="338" y="271" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" fill="#da8230">warning</text>
+
+  <rect x="390" y="256" width="70" height="22" rx="4" fill="#c43030" fill-opacity="0.1" stroke="#c43030" stroke-width="0.6"/>
+  <text x="425" y="271" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" fill="#c43030">error</text>
+
+  <rect x="472" y="256" width="90" height="22" rx="4" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="0.6"/>
+  <text x="517" y="271" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" class="fg-2">in-progress</text>
+
+  <!-- Description -->
+  <text x="400" y="300" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Each notification lands in JupyterLab with visual styling matching the type and a dismiss button</text>
+  <text x="400" y="314" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Requires jupyterlab_notifications_extension on spawned servers - delivers to /ingest endpoint via internal Docker network</text>
+
+</svg>

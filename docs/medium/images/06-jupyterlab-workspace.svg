@@ -1,0 +1,333 @@
+<!--
+  06-jupyterlab-workspace.svg - JupyterLab workspace capabilities
+  Shows: Central JupyterLab 4.5.1 hub with spokes radiating to four zones -
+  Left: MLflow, TensorBoard, Resources Monitor (services).
+  Right: Git, Code Quality, nbdime (dev tools).
+  Top: Fish shell, Custom Themes, AI assistants.
+  Bottom: Lab Utilities menu, Traefik single endpoint.
+  Intent: demonstrate the rich workspace users receive, not a blank JupyterLab.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 primary, accent-2=#da8230 services.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 800x420
+    Margins: left=14, right=786, top=10, bottom=416
+
+    Centre hub: x=290, y=174, w=220, h=72, cx=400, cy=210
+    Hub accent bar: y=174, h=5
+
+    TOP ZONE (Terminal / AI): y=10..154
+      Card T1 (Fish shell): x=180, y=10, w=140, h=70
+      Card T2 (Screen): x=330, y=10, w=140, h=70
+      Card T3 (Claude/Cursor): x=480, y=10, w=140, h=70
+      Spoke lines: from card bottom (y=80) to hub top (y=174)
+
+    LEFT ZONE (Services): x=14..270
+      Card L1 (MLflow): x=14, y=110, w=140, h=78
+      Card L2 (TensorBoard): x=14, y=198, w=140, h=78
+      Card L3 (Resources Mon): x=14, y=286, w=140, h=78
+      Spoke lines: from card right (x=154) to hub left (x=290)
+
+    RIGHT ZONE (Dev Tools): x=530..786
+      Card R1 (Git): x=646, y=110, w=140, h=78
+      Card R2 (LSP/Black): x=646, y=198, w=140, h=78
+      Card R3 (nbdime): x=646, y=286, w=140, h=78
+      Spoke lines: from card left (x=646) to hub right (x=510)
+
+    BOTTOM ZONE: y=266..416
+      Card B1 (Lab Utilities): x=220, y=296, w=160, h=70
+      Card B2 (Traefik HTTPS): x=420, y=296, w=160, h=70
+      Spoke lines: from card top (y=296) to hub bottom (y=246)
+
+    Vertical rhythm: 14px
+    Card padding: 12px from accent bar bottom to first text baseline
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    contain: viewBox > top-zone, left-zone, centre-hub, right-zone, bottom-zone
+    h-stack: top-zone > fish-card, screen-card, ai-card
+    v-stack: left-zone > mlflow-card, tensorboard-card, resources-card
+    v-stack: right-zone > git-card, lsp-card, nbdime-card
+    h-stack: bottom-zone > lab-utils-card, traefik-card
+    flow: each spoke-card -> centre-hub (radial spokes)
+  === -->
+
+  <g id="guide-grid" display="none">
+    <line x1="400" y1="0" x2="400" y2="420" stroke="red" stroke-width="0.5"/>
+    <line x1="0" y1="210" x2="800" y2="210" stroke="red" stroke-width="0.5"/>
+  </g>
+
+  <!-- ==================== CENTRE HUB ==================== -->
+  <g id="centre-hub">
+    <path d="M290,174 H510 V243 Q510,246 507,246 H293 Q290,246 290,243 Z" fill="#0096d1" fill-opacity="0.06"/>
+    <path d="M290,174 H510 V243 Q510,246 507,246 H293 Q290,246 290,243 Z" fill="none" stroke="#0096d1" stroke-width="1.5"/>
+    <rect x="290" y="174" width="220" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="400" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle" class="fg-1">JupyterLab 4.5.1</text>
+    <text x="400" y="216" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" class="fg-3">stellars/stellars-jupyterlab-ds</text>
+    <text x="400" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">40+ enhancement categories</text>
+  </g>
+
+  <!-- ==================== TOP ZONE: Terminal / AI ==================== -->
+
+  <!-- Spoke: Fish(250,80) -> hub(330,174) -->
+  <line x1="250" y1="80" x2="330" y2="170" stroke="#0096d1" stroke-width="1" opacity="0.25"/>
+  <polygon points="328,166 330,170 333,167" fill="#0096d1" opacity="0.4"/>
+
+  <!-- Spoke: Screen(400,80) -> hub(400,174) -->
+  <line x1="400" y1="80" x2="400" y2="170" stroke="#0096d1" stroke-width="1" opacity="0.25"/>
+  <polygon points="397,170 400,174 403,170" fill="#0096d1" opacity="0.4"/>
+
+  <!-- Spoke: AI(550,80) -> hub(470,174) -->
+  <line x1="550" y1="80" x2="470" y2="170" stroke="#0096d1" stroke-width="1" opacity="0.25"/>
+  <polygon points="468,166 470,170 473,167" fill="#0096d1" opacity="0.4"/>
+
+  <!-- Card T1: Fish Shell -->
+  <g id="fish-card">
+    <path d="M180,10 H320 V77 Q320,80 317,80 H183 Q180,80 180,77 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M180,10 H320 V77 Q320,80 317,80 H183 Q180,80 180,77 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="180" y="10" width="140" height="5" fill="#0096d1" opacity="0.6"/>
+    <!-- Icon: terminal (Lucide, ISC license) -->
+    <g transform="translate(284, 22) scale(0.583)" fill="none" stroke="#0096d1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+    </g>
+    <text x="192" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2">Fish Shell</text>
+    <text x="192" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Powerline prompt</text>
+    <text x="192" y="56" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Auto-suggestions</text>
+    <text x="192" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Syntax highlighting</text>
+  </g>
+
+  <!-- Card T2: Dark Themes -->
+  <g id="themes-card">
+    <path d="M330,10 H470 V77 Q470,80 467,80 H333 Q330,80 330,77 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M330,10 H470 V77 Q470,80 467,80 H333 Q330,80 330,77 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="330" y="10" width="140" height="5" fill="#0096d1" opacity="0.6"/>
+    <!-- Icon: palette (Lucide, ISC license) -->
+    <g transform="translate(434, 22) scale(0.583)" fill="none" stroke="#0096d1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <circle cx="13.5" cy="6.5" r=".5" fill="#0096d1"/><circle cx="17.5" cy="10.5" r=".5" fill="#0096d1"/><circle cx="8.5" cy="7.5" r=".5" fill="#0096d1"/><circle cx="6.5" cy="12.5" r=".5" fill="#0096d1"/>
+      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+    </g>
+    <text x="342" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2">Custom Themes</text>
+    <text x="342" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Sublime dark theme</text>
+    <text x="342" y="56" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Darcula dark theme</text>
+    <text x="342" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">IntelliJ-inspired</text>
+  </g>
+
+  <!-- Card T3: AI Assistants -->
+  <g id="ai-card">
+    <path d="M480,10 H620 V77 Q620,80 617,80 H483 Q480,80 480,77 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M480,10 H620 V77 Q620,80 617,80 H483 Q480,80 480,77 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="480" y="10" width="140" height="5" fill="#da8230" opacity="0.6"/>
+    <!-- Icon: bot (Lucide, ISC license) -->
+    <g transform="translate(584, 22) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/>
+      <path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>
+    </g>
+    <text x="492" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2">AI Assistants</text>
+    <text x="492" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Claude Code</text>
+    <text x="492" y="56" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Cursor IDE</text>
+    <text x="492" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">MCP servers</text>
+  </g>
+
+  <!-- ==================== LEFT ZONE: Services ==================== -->
+
+  <!-- Spoke: MLflow(154,149) -> hub(290,195) -->
+  <line x1="154" y1="149" x2="286" y2="195" stroke="#da8230" stroke-width="1" opacity="0.25"/>
+  <polygon points="283,192 287,195 285,199" fill="#da8230" opacity="0.4"/>
+
+  <!-- Spoke: TensorBoard(154,237) -> hub(290,210) -->
+  <line x1="154" y1="237" x2="286" y2="210" stroke="#da8230" stroke-width="1" opacity="0.25"/>
+  <polygon points="283,207 287,210 284,214" fill="#da8230" opacity="0.4"/>
+
+  <!-- Spoke: Resources(154,325) -> hub(290,230) -->
+  <line x1="154" y1="325" x2="286" y2="232" stroke="#da8230" stroke-width="1" opacity="0.25"/>
+  <polygon points="283,229 287,232 285,236" fill="#da8230" opacity="0.4"/>
+
+  <!-- Card L1: MLflow -->
+  <g id="mlflow-card">
+    <path d="M14,110 H154 V185 Q154,188 151,188 H17 Q14,188 14,185 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M14,110 H154 V185 Q154,188 151,188 H17 Q14,188 14,185 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="14" y="110" width="140" height="5" fill="#da8230" opacity="0.6"/>
+    <!-- Icon: flask-conical (Lucide, ISC license) -->
+    <g transform="translate(118, 122) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/>
+      <path d="M8.5 2h7"/><path d="M7 16.5h10"/>
+    </g>
+    <text x="26" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2">MLflow</text>
+    <text x="26" y="144" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Experiment tracking</text>
+    <text x="26" y="156" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Model registry</text>
+    <text x="26" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Artifact storage</text>
+    <text x="26" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Port 5000</text>
+  </g>
+
+  <!-- Card L2: TensorBoard -->
+  <g id="tensorboard-card">
+    <path d="M14,198 H154 V273 Q154,276 151,276 H17 Q14,276 14,273 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M14,198 H154 V273 Q154,276 151,276 H17 Q14,276 14,273 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="14" y="198" width="140" height="5" fill="#da8230" opacity="0.6"/>
+    <!-- Icon: line-chart (Lucide, ISC license) -->
+    <g transform="translate(118, 210) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/>
+    </g>
+    <text x="26" y="218" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2">TensorBoard</text>
+    <text x="26" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Training metrics viz</text>
+    <text x="26" y="244" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Loss / accuracy curves</text>
+    <text x="26" y="256" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Configurable log dir</text>
+    <text x="26" y="268" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Port 6006</text>
+  </g>
+
+  <!-- Card L3: Resources Monitor -->
+  <g id="resources-card">
+    <path d="M14,286 H154 V361 Q154,364 151,364 H17 Q14,364 14,361 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M14,286 H154 V361 Q154,364 151,364 H17 Q14,364 14,361 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="14" y="286" width="140" height="5" fill="#da8230" opacity="0.6"/>
+    <!-- Icon: activity (Lucide, ISC license) -->
+    <g transform="translate(118, 298) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </g>
+    <text x="26" y="306" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2">Resources Monitor</text>
+    <text x="26" y="320" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">btop via ttyd</text>
+    <text x="26" y="332" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">CPU / GPU / memory</text>
+    <text x="26" y="344" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Network / disk I/O</text>
+    <text x="26" y="356" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Port 7681</text>
+  </g>
+
+  <!-- ==================== RIGHT ZONE: Dev Tools ==================== -->
+
+  <!-- Spoke: Git(646,149) -> hub(510,195) -->
+  <line x1="646" y1="149" x2="514" y2="195" stroke="#0096d1" stroke-width="1" opacity="0.25"/>
+  <polygon points="515,191 513,195 517,198" fill="#0096d1" opacity="0.4"/>
+
+  <!-- Spoke: LSP(646,237) -> hub(510,210) -->
+  <line x1="646" y1="237" x2="514" y2="210" stroke="#0096d1" stroke-width="1" opacity="0.25"/>
+  <polygon points="516,206 513,210 517,213" fill="#0096d1" opacity="0.4"/>
+
+  <!-- Spoke: nbdime(646,325) -> hub(510,230) -->
+  <line x1="646" y1="325" x2="514" y2="232" stroke="#0096d1" stroke-width="1" opacity="0.25"/>
+  <polygon points="515,228 513,232 517,235" fill="#0096d1" opacity="0.4"/>
+
+  <!-- Card R1: Git Integration -->
+  <g id="git-card">
+    <path d="M646,110 H786 V185 Q786,188 783,188 H649 Q646,188 646,185 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M646,110 H786 V185 Q786,188 783,188 H649 Q646,188 646,185 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="646" y="110" width="140" height="5" fill="#0096d1" opacity="0.6"/>
+    <!-- Icon: git-branch (Lucide, ISC license) -->
+    <g transform="translate(750, 122) scale(0.583)" fill="none" stroke="#0096d1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>
+      <path d="M18 9a9 9 0 0 1-9 9"/>
+    </g>
+    <text x="658" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2">Git Integration</text>
+    <text x="658" y="144" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">jupyterlab-git</text>
+    <text x="658" y="156" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Visual diff / merge</text>
+    <text x="658" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Branch management</text>
+    <text x="658" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">GitHub / GitLab</text>
+  </g>
+
+  <!-- Card R2: Code Quality -->
+  <g id="code-quality-card">
+    <path d="M646,198 H786 V273 Q786,276 783,276 H649 Q646,276 646,273 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M646,198 H786 V273 Q786,276 783,276 H649 Q646,276 646,273 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="646" y="198" width="140" height="5" fill="#0096d1" opacity="0.6"/>
+    <!-- Icon: code (Lucide, ISC license) -->
+    <g transform="translate(750, 210) scale(0.583)" fill="none" stroke="#0096d1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+    </g>
+    <text x="658" y="218" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2">Code Quality</text>
+    <text x="658" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Autocompletion</text>
+    <text x="658" y="244" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Black formatter</text>
+    <text x="658" y="256" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Execution timing</text>
+    <text x="658" y="268" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Jupytext notebooks</text>
+  </g>
+
+  <!-- Card R3: nbdime -->
+  <g id="nbdime-card">
+    <path d="M646,286 H786 V361 Q786,364 783,364 H649 Q646,364 646,361 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M646,286 H786 V361 Q786,364 783,364 H649 Q646,364 646,361 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="646" y="286" width="140" height="5" fill="#0096d1" opacity="0.6"/>
+    <!-- Icon: git-compare (Lucide, ISC license) -->
+    <g transform="translate(750, 298) scale(0.583)" fill="none" stroke="#0096d1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/>
+      <path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M11 18H8a2 2 0 0 1-2-2V9"/>
+    </g>
+    <text x="658" y="306" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2">nbdime</text>
+    <text x="658" y="320" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Notebook diff</text>
+    <text x="658" y="332" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Notebook merge</text>
+    <text x="658" y="344" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Cell-level tracking</text>
+    <text x="658" y="356" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Git-integrated</text>
+  </g>
+
+  <!-- ==================== BOTTOM ZONE ==================== -->
+
+  <!-- Spoke: Lab Utils(300,296) -> hub(350,246) -->
+  <line x1="300" y1="296" x2="350" y2="250" stroke="#0096d1" stroke-width="1" opacity="0.25"/>
+  <polygon points="348,247 350,246 352,250" fill="#0096d1" opacity="0.4"/>
+
+  <!-- Spoke: Traefik(500,296) -> hub(450,246) -->
+  <line x1="500" y1="296" x2="450" y2="250" stroke="#da8230" stroke-width="1" opacity="0.25"/>
+  <polygon points="448,247 450,246 452,250" fill="#da8230" opacity="0.4"/>
+
+  <!-- Card B1: Lab Utilities -->
+  <g id="lab-utils-card">
+    <path d="M220,296 H380 V363 Q380,366 377,366 H223 Q220,366 220,363 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M220,296 H380 V363 Q380,366 377,366 H223 Q220,366 220,363 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="220" y="296" width="160" height="5" fill="#0096d1" opacity="0.6"/>
+    <!-- Icon: menu (Lucide, ISC license) -->
+    <g transform="translate(344, 308) scale(0.583)" fill="none" stroke="#0096d1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="18" x2="20" y2="18"/>
+    </g>
+    <text x="232" y="318" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2">Lab Utilities Menu</text>
+    <text x="232" y="332" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Admin-managed actions</text>
+    <text x="232" y="344" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Custom menu definitions</text>
+    <text x="232" y="356" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">JSON-configurable</text>
+  </g>
+
+  <!-- Card B2: Traefik HTTPS -->
+  <g id="traefik-endpoint-card">
+    <path d="M420,296 H580 V363 Q580,366 577,366 H423 Q420,366 420,363 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M420,296 H580 V363 Q580,366 577,366 H423 Q420,366 420,363 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="420" y="296" width="160" height="5" fill="#da8230" opacity="0.6"/>
+    <!-- Icon: lock (Lucide, ISC license) -->
+    <g transform="translate(544, 308) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </g>
+    <text x="432" y="318" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2">Single HTTPS Endpoint</text>
+    <text x="432" y="332" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Traefik reverse proxy</text>
+    <text x="432" y="344" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Path-based routing</text>
+    <text x="432" y="356" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">All services via :443</text>
+  </g>
+
+  <!-- Zone labels -->
+  <text x="84" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" letter-spacing="1" class="fg-4">INTEGRATED SERVICES</text>
+  <text x="716" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" letter-spacing="1" class="fg-4">DEVELOPER TOOLS</text>
+  <text x="400" y="286" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" letter-spacing="1" class="fg-4">INFRASTRUCTURE</text>
+
+  <!-- Footer -->
+  <text x="400" y="390" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" class="fg-3">Every service pre-configured and accessible from a single browser tab</text>
+
+  <!-- Legend -->
+  <g id="legend">
+    <rect x="240" y="402" width="8" height="8" rx="1" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1"/>
+    <text x="252" y="410" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Platform tools</text>
+    <rect x="360" y="402" width="8" height="8" rx="1" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="1"/>
+    <text x="372" y="410" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Auxiliary services</text>
+  </g>
+
+</svg>

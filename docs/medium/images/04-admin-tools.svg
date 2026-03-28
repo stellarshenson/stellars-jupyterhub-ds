@@ -1,0 +1,188 @@
+<!--
+  04-admin-tools.svg - Admin toolkit overview cards
+  Shows: Five admin tool cards in a row - Activity (CPU/memory/scoring),
+  Notifications (broadcast, 6 types, 140 chars), Settings (read-only env vars),
+  Users (batch create, mnemonic passwords), Access (docker-sock, docker-privileged).
+  Bottom bar: Idle Server Culler description.
+  Intent: Overview of admin capabilities in the JupyterHub platform.
+  Theme: Stellars-Tech derived - accent-1=#0096d1, accent-2=#da8230.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 268">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 800x268
+    Margins: left=16, right=786, top=10, bottom=258
+
+    5 cards: w=(786-16-4*10)/5 = 146, gap=10
+    Card 1 (Activity):      x=16,  w=146, right=162
+    Card 2 (Notifications): x=172, w=146, right=318
+    Card 3 (Settings):      x=328, w=146, right=474
+    Card 4 (Users):         x=484, w=146, right=630
+    Card 5 (Access):        x=640, w=146, right=786
+
+    Card top: y=10, accent bar h=5, card h=180, card bottom=190
+    Category label: y=28
+    Title: y=44
+    Feature lines start: y=64, rhythm 12px (compact)
+    Meta lines start: y=132, rhythm 12px
+
+    Bottom bar: y=210, h=48, bottom=258
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: card-1, card-2, card-3, card-4, card-5
+    v-stack: card-row, bottom-bar
+    h-align: bottom-bar (cx=400)
+  === -->
+
+  <g id="guide-grid" display="none">
+    <line x1="162" y1="0" x2="162" y2="268" stroke="red" stroke-width="0.5"/>
+    <line x1="172" y1="0" x2="172" y2="268" stroke="red" stroke-width="0.5"/>
+  </g>
+
+  <!-- === CARD 1: ACTIVITY === -->
+  <g id="card-activity">
+    <path d="M16,10 H162 V187 Q162,190 159,190 H19 Q16,190 16,187 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M16,10 H162 V187 Q162,190 159,190 H19 Q16,190 16,187 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="16" y="10" width="146" height="5" fill="#0096d1" opacity="0.6"/>
+
+    <!-- Icon: activity (Lucide, ISC license) -->
+    <g transform="translate(128, 22) scale(0.583)" fill="none" stroke="#0096d1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+      <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>
+    </g>
+
+    <text x="28" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#0096d1">ACTIVITY</text>
+    <text x="28" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="fg-1">Monitor</text>
+    <text x="28" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">CPU utilization</text>
+    <text x="28" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Memory usage</text>
+    <text x="28" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Volume sizes</text>
+    <text x="28" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Activity scoring</text>
+    <text x="28" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Reset history</text>
+    <text x="28" y="132" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Auto-refresh 10s</text>
+    <text x="28" y="144" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Docker stats API</text>
+    <text x="28" y="156" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">72h decay half-life</text>
+  </g>
+
+  <!-- === CARD 2: NOTIFICATIONS === -->
+  <g id="card-notifications">
+    <path d="M172,10 H318 V187 Q318,190 315,190 H175 Q172,190 172,187 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M172,10 H318 V187 Q318,190 315,190 H175 Q172,190 172,187 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="172" y="10" width="146" height="5" fill="#da8230" opacity="0.6"/>
+
+    <!-- Icon: bell (Lucide, ISC license) -->
+    <g transform="translate(284, 22) scale(0.583)" fill="none" stroke="#da8230" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+    </g>
+
+    <text x="184" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#da8230">NOTIFICATIONS</text>
+    <text x="184" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="fg-1">Broadcast</text>
+    <text x="184" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">All active servers</text>
+    <text x="184" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">6 notification types</text>
+    <text x="184" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">140-char limit</text>
+    <text x="184" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Auto-close toggle</text>
+    <text x="184" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Delivery status</text>
+    <text x="184" y="132" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Temp API tokens</text>
+    <text x="184" y="144" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">5-min token expiry</text>
+    <text x="184" y="156" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Per-user status table</text>
+  </g>
+
+  <!-- === CARD 3: SETTINGS === -->
+  <g id="card-settings">
+    <path d="M328,10 H474 V187 Q474,190 471,190 H331 Q328,190 328,187 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M328,10 H474 V187 Q474,190 471,190 H331 Q328,190 328,187 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="328" y="10" width="146" height="5" fill="#0096d1" opacity="0.6"/>
+
+    <!-- Icon: settings (Lucide, ISC license) -->
+    <g transform="translate(440, 22) scale(0.583)" fill="none" stroke="#0096d1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </g>
+
+    <text x="340" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#0096d1">SETTINGS</text>
+    <text x="340" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="fg-1">Configuration</text>
+    <text x="340" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Read-only env vars</text>
+    <text x="340" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Grouped by category</text>
+    <text x="340" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">With descriptions</text>
+    <text x="340" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">GPU status</text>
+    <text x="340" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Image version</text>
+    <text x="340" y="132" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Debug deployments</text>
+    <text x="340" y="144" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">No edit capability</text>
+    <text x="340" y="156" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Prevents accidental changes</text>
+  </g>
+
+  <!-- === CARD 4: USERS === -->
+  <g id="card-users">
+    <path d="M484,10 H630 V187 Q630,190 627,190 H487 Q484,190 484,187 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M484,10 H630 V187 Q630,190 627,190 H487 Q484,190 484,187 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="484" y="10" width="146" height="5" fill="#0096d1" opacity="0.6"/>
+
+    <!-- Icon: users (Lucide, ISC license) -->
+    <g transform="translate(596, 22) scale(0.583)" fill="none" stroke="#0096d1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </g>
+
+    <text x="496" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#0096d1">USERS</text>
+    <text x="496" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="fg-1">Management</text>
+    <text x="496" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Batch creation</text>
+    <text x="496" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Mnemonic passwords</text>
+    <text x="496" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Volume management</text>
+    <text x="496" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Authorization</text>
+    <text x="496" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Rename / delete</text>
+    <text x="496" y="132" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Word-based passwords</text>
+    <text x="496" y="144" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">NativeAuth sync</text>
+    <text x="496" y="156" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Downloadable CSV</text>
+  </g>
+
+  <!-- === CARD 5: ACCESS === -->
+  <g id="card-access">
+    <path d="M640,10 H786 V187 Q786,190 783,190 H643 Q640,190 640,187 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M640,10 H786 V187 Q786,190 783,190 H643 Q640,190 640,187 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="640" y="10" width="146" height="5" fill="#da8230" opacity="0.6"/>
+
+    <!-- Icon: shield (Lucide, ISC license) -->
+    <g transform="translate(752, 22) scale(0.583)" fill="none" stroke="#da8230" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+      <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>
+    </g>
+
+    <text x="652" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#da8230">ACCESS</text>
+    <text x="652" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="fg-1">Docker Groups</text>
+    <text x="652" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">docker-sock</text>
+    <text x="652" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">docker-privileged</text>
+    <text x="652" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Group-based control</text>
+    <text x="652" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Per-user assignment</text>
+    <text x="652" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Auto-recreate</text>
+    <text x="652" y="132" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Socket mount</text>
+    <text x="652" y="144" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Privileged mode</text>
+    <text x="652" y="156" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Trusted users only</text>
+  </g>
+
+  <!-- === BOTTOM BAR: IDLE CULLER === -->
+  <g id="idle-culler-bar">
+    <path d="M16,210 H784 V255 Q784,258 781,258 H19 Q16,258 16,255 Z" fill="#0096d1" fill-opacity="0.03"/>
+    <path d="M16,210 H784 V255 Q784,258 781,258 H19 Q16,258 16,255 Z" fill="none" stroke="#0096d1" stroke-width="0.6" opacity="0.3"/>
+    <rect x="16" y="210" width="768" height="4" fill="#0096d1" opacity="0.15"/>
+
+    <text x="400" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-2">Idle Server Culler</text>
+    <text x="400" y="248" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Automatically shuts down inactive servers after configurable timeout (default: 24h) - users can self-extend</text>
+  </g>
+
+</svg>
