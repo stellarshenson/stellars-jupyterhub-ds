@@ -29,6 +29,8 @@ I decided to fix it. Not with a managed cloud service that costs a fortune, but 
 
 ![Platform Overview](images/01-platform-overview.svg)
 
+![](images/section-divider-hub.png)
+
 ## Two Projects, One Ecosystem
 
 The platform is actually two independent open-source projects that work together.
@@ -71,6 +73,8 @@ Here's what I added on top of each.
 - AI coding assistant installers (Claude Code, Cursor, Gemini CLI, OpenAI Codex)
 - Docker MCP Gateway and Buildx plugin compiled from source in the builder stage
 
+![](images/section-divider-lab.png)
+
 ## What Users Actually Get
 
 When a team member logs in and starts their server, they land in a full data science workspace. Not a blank JupyterLab with a Python kernel and nothing else - a workspace where every common friction point has been addressed.
@@ -111,6 +115,8 @@ The home page gives each user three buttons: **Start**, **Stop**, and **Restart*
 
 When something goes wrong - a corrupted pip cache, a broken Conda environment, a home directory full of failed experiments - users can selectively reset their own volumes. Home directory, workspace, cache. Pick which ones to wipe, confirm, and start fresh. This alone eliminated roughly half of the support requests we used to get.
 
+![](images/section-divider-notify.png)
+
 ## Notification Broadcast
 
 When you need to reach everyone working on the platform - planned maintenance, a shared dataset update, a GPU driver change - the notification system delivers messages directly inside every active JupyterLab session.
@@ -123,11 +129,15 @@ Each notification lands in the user's JupyterLab with a dismiss button and visua
 
 The system requires the `jupyterlab_notifications_extension` on spawned servers - a companion JupyterLab extension that exposes an `/ingest` endpoint for receiving notifications. The full endpoint path accounts for JupyterHub's base URL and per-user routing: `http://jupyterlab-{username}:8888{base_url}jupyterlab-notifications-extension/ingest`.
 
+![](images/section-divider-gpu.png)
+
 ## GPU Auto-Detection
 
 GPU support is handled at both layers. The Hub detects availability at startup with a three-position switch: disabled, enabled, or auto-detect. Auto-detect spawns a temporary container from `nvidia/cuda:13.0.2-base-ubuntu24.04`, runs `nvidia-smi`, and checks if it succeeds. If GPUs are present, every user container gets NVIDIA device passthrough via Docker's `device_requests`. The test container is force-removed after the check regardless of outcome.
 
 The Lab image is built on the same CUDA 13.0.2 base, so GPU libraries are always in the image. The on-demand TensorFlow and PyTorch environments come pre-configured for GPU acceleration. This means the same images work on a developer's laptop without a GPU, a staging server, and a production machine with four NVIDIA A100s. Zero manual configuration at either layer.
+
+![](images/section-divider-env.png)
 
 ## Configuration, Not Code
 
