@@ -89,7 +89,7 @@ For new projects, the platform includes a standardized [copier-data-science](htt
 
 ![Conda Environments](images/07-conda-environments.svg)
 
-**Integrated services.** MLflow runs as a background service on every container with an SQLite backend and local artifact storage - experiment tracking with zero setup. TensorBoard is pre-configured for training visualization. A resources monitor serves btop through a web terminal, giving users real-time visibility into CPU, memory, GPU utilization, and network activity without leaving the browser. Optuna Dashboard is available for hyperparameter optimization. All services route through a per-user Traefik instance at a single HTTPS endpoint with path-based routing. No port conflicts, no manual proxy configuration.
+**Integrated services.** Every user gets their own local instances of MLflow, TensorBoard, Resources Monitor, and Optuna Dashboard running inside their container. Not shared services - personal ones. This eliminates conflicts entirely. MLflow tracks experiments to a per-user SQLite database with local artifact storage. TensorBoard reads from the user's own log directory. The resources monitor shows that user's container stats. Each service opens as a tab inside JupyterLab through the launcher, so users never leave the notebook interface. All services route through a per-user Traefik instance at a single HTTPS endpoint with path-based routing. No port conflicts, no configuration, no shared state.
 
 ![Integrated Services](images/10-integrated-services.svg)
 
@@ -125,11 +125,17 @@ The system requires the `jupyterlab_notifications_extension` on spawned servers 
 
 GPU support is handled at both layers. The Hub detects availability at startup with a three-position switch: disabled, enabled, or auto-detect. Auto-detect spawns a temporary container from `nvidia/cuda:13.0.2-base-ubuntu24.04`, runs `nvidia-smi`, and checks if it succeeds. If GPUs are present, every user container gets NVIDIA device passthrough via Docker's `device_requests`. The test container is force-removed after the check regardless of outcome.
 
-The Lab image is built on the same CUDA 13.0.2 base, so GPU libraries are always in the image. The on-demand TensorFlow and PyTorch environments come pre-configured for GPU acceleration. The multi-stage Docker build even compiles `llama-cpp-python` with CUDA support in the builder stage, so local LLM inference is GPU-accelerated out of the box.
+The Lab image is built on the same CUDA 13.0.2 base, so GPU libraries are always in the image. The on-demand TensorFlow and PyTorch environments come pre-configured for GPU acceleration. This means the same images work on a developer's laptop without a GPU, a staging server, and a production machine with four NVIDIA A100s. Zero manual configuration at either layer.
 
-![Docker Build Pipeline](images/11-docker-build-pipeline.svg)
+## Configuration, Not Code
 
-This means the same images work on a developer's laptop without a GPU, a staging server, and a production machine with four NVIDIA A100s. Zero manual configuration at either layer.
+Both platforms are designed to be configured entirely through environment variables and compose override files - no code changes needed for any deployment.
+
+![Configuration](images/11-configuration.svg)
+
+The Hub accepts 29 environment variables controlling everything from admin username and GPU mode to idle culler timeouts and branding URIs. The Lab image uses service toggles (`JUPYTERHUB_SERVICE_MLFLOW`, `JUPYTERHUB_SERVICE_TENSORBOARD`, `JUPYTERHUB_SERVICE_RESOURCES_MONITOR`) to enable or disable background services per deployment. Branding is configurable through four URI variables that accept either local `file://` paths or external `http(s)://` URLs for logos, favicons, and JupyterLab icons.
+
+For production deployments, create a `compose_override.yml` alongside the main `compose.yml`. Override environment variables, add CIFS/NAS mounts for shared storage, change the notebook image, enable the idle culler, set a custom timezone. The override file is gitignored by design, so deployment-specific credentials and settings never end up in version control. Multiple deployments can run from the same codebase with different override files.
 
 ## Keeping an Eye on Things
 

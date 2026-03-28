@@ -1,0 +1,98 @@
+<!--
+  11-configuration.svg - Platform configurability via environment variables
+  Shows: Two-column layout - Hub configuration (29 env vars across 6 categories)
+  and Lab configuration (service toggles, branding, environments).
+  Bottom bar: compose_override.yml pattern for production deployments.
+  Intent: Show that everything is configurable via env vars, no code changes needed.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 Hub, accent-2=#da8230 Lab.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 320">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 800x320
+    Hub card: x=16, y=10, w=378, h=220
+    Lab card: x=406, y=10, w=378, h=220
+    Bottom bar: x=16, y=250, w=768, h=60
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: hub-card, lab-card
+    v-stack: [card-row, bottom-bar]
+  === -->
+
+  <!-- Hub Configuration Card -->
+  <path d="M16,10 H394 V227 Q394,230 391,230 H19 Q16,230 16,227 Z" fill="#0096d1" fill-opacity="0.04"/>
+  <path d="M16,10 H394 V227 Q394,230 391,230 H19 Q16,230 16,227 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+  <rect x="16" y="10" width="378" height="5" fill="#0096d1" opacity="0.6"/>
+
+  <text x="30" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#0096d1">JUPYTERHUB CONFIGURATION</text>
+  <text x="30" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="fg-1">29 Environment Variables</text>
+
+  <text x="30" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Platform</text>
+  <text x="30" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">ADMIN, BASE_URL, SIGNUP_ENABLED, SSL, TIMEZONE</text>
+
+  <text x="30" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">GPU</text>
+  <text x="30" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">GPU_ENABLED (0/1/2), NVIDIA_IMAGE</text>
+
+  <text x="30" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Idle Culler</text>
+  <text x="30" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">ENABLED, TIMEOUT, INTERVAL, MAX_AGE, MAX_EXTENSION</text>
+
+  <text x="30" y="160" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Branding</text>
+  <text x="30" y="172" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">LOGO_URI, FAVICON_URI, LAB_MAIN_ICON, LAB_SPLASH_ICON</text>
+
+  <text x="30" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Services</text>
+  <text x="30" y="202" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">MLFLOW, TENSORBOARD, RESOURCES_MONITOR (per-user toggles)</text>
+
+  <text x="30" y="220" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Spawner</text>
+  <text x="30" y="222" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">NOTEBOOK_IMAGE, NETWORK_NAME</text>
+
+  <!-- Lab Configuration Card -->
+  <path d="M406,10 H784 V227 Q784,230 781,230 H409 Q406,230 406,227 Z" fill="#da8230" fill-opacity="0.04"/>
+  <path d="M406,10 H784 V227 Q784,230 781,230 H409 Q406,230 406,227 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+  <rect x="406" y="10" width="378" height="5" fill="#da8230" opacity="0.6"/>
+
+  <text x="420" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#da8230">JUPYTERLAB CONFIGURATION</text>
+  <text x="420" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="fg-1">Per-User Services</text>
+
+  <text x="420" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Service Toggles</text>
+  <text x="420" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">ENABLE_SERVICE_MLFLOW, TENSORBOARD, RESOURCES_MONITOR</text>
+
+  <text x="420" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">MLflow</text>
+  <text x="420" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">MLFLOW_PORT, HOST, WORKERS, BACKEND_STORE, ARTIFACT_ROOT</text>
+
+  <text x="420" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Environments</text>
+  <text x="420" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">CONDA_DEFAULT_ENV, on-demand TF/PyTorch/R/Rust via lab-utils</text>
+
+  <text x="420" y="160" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Startup Scripts</text>
+  <text x="420" y="172" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">AUX_SCRIPTS_PATH (admin), ~/.local/start-platform.d/ (user)</text>
+
+  <text x="420" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Custom Menus</text>
+  <text x="420" y="202" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">AUX_MENU_PATH for admin-defined Lab Utilities extensions</text>
+
+  <text x="420" y="220" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">All services open as JupyterLab tabs</text>
+
+  <!-- Bottom: Override pattern -->
+  <rect x="16" y="250" width="768" height="60" rx="6" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.6"/>
+  <text x="400" y="272" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-1">compose_override.yml</text>
+  <text x="400" y="290" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Production overrides: credentials, CIFS mounts, GPU mode, idle culler, branding - gitignored by design</text>
+  <text x="400" y="304" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Multiple deployments from same codebase with different override files</text>
+
+</svg>
