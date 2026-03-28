@@ -1,0 +1,83 @@
+<!--
+  25-gpu-detect-spiral.svg - GPU detection as a radar sweep with info card
+  Left: rotating sweep finding GPU hardware. Right: detection outcome card.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- LEFT: Radar sweep -->
+  <g id="radar">
+    <!-- Range rings -->
+    <circle cx="180" cy="110" r="90" fill="none" stroke="#0096d1" stroke-width="0.3" opacity="0.1"/>
+    <circle cx="180" cy="110" r="65" fill="none" stroke="#0096d1" stroke-width="0.4" opacity="0.15"/>
+    <circle cx="180" cy="110" r="40" fill="none" stroke="#0096d1" stroke-width="0.5" opacity="0.2"/>
+    <!-- Crosshairs -->
+    <line x1="80" y1="110" x2="280" y2="110" stroke="#0096d1" stroke-width="0.3" opacity="0.08"/>
+    <line x1="180" y1="15" x2="180" y2="205" stroke="#0096d1" stroke-width="0.3" opacity="0.08"/>
+
+    <!-- Sweep cone (frozen at ~45 degrees) -->
+    <path d="M180,110 L245,48 A90,90 0 0,0 270,105 Z" fill="#1a8a4a" fill-opacity="0.06"/>
+    <line x1="180" y1="110" x2="245" y2="48" stroke="#1a8a4a" stroke-width="0.8" opacity="0.3"/>
+
+    <!-- Detected blips -->
+    <circle cx="230" cy="72" r="4" fill="#1a8a4a" opacity="0.5"/>
+    <circle cx="230" cy="72" r="8" fill="none" stroke="#1a8a4a" stroke-width="0.5" opacity="0.2"/>
+    <text x="242" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="6" fill="#1a8a4a" opacity="0.6">GPU 0</text>
+
+    <circle cx="252" cy="92" r="3.5" fill="#1a8a4a" opacity="0.4"/>
+    <circle cx="252" cy="92" r="7" fill="none" stroke="#1a8a4a" stroke-width="0.4" opacity="0.15"/>
+    <text x="264" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="6" fill="#1a8a4a" opacity="0.5">GPU 1</text>
+
+    <!-- Undetected zone (faded trail) -->
+    <path d="M180,110 L115,48 A90,90 0 0,0 92,90 Z" fill="#0096d1" fill-opacity="0.02"/>
+
+    <!-- Center -->
+    <circle cx="180" cy="110" r="5" fill="#0096d1" fill-opacity="0.1" stroke="#0096d1" stroke-width="0.8" opacity="0.3"/>
+    <circle cx="180" cy="110" r="2" fill="#0096d1" opacity="0.4"/>
+
+    <text x="180" y="210" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">nvidia-smi probe</text>
+  </g>
+
+  <!-- RIGHT: Detection outcome card -->
+  <g id="outcome-card">
+    <path d="M380,16 H780 V200 Q780,204 776,204 H384 Q380,204 380,200 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M380,16 H780 V200 Q780,204 776,204 H384 Q380,204 380,200 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="380" y="16" width="400" height="5" fill="#0096d1" opacity="0.6"/>
+
+    <text x="394" y="38" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#0096d1">GPU AUTO-DETECTION</text>
+
+    <!-- Three modes -->
+    <rect x="394" y="50" width="60" height="18" rx="3" fill="#c43030" fill-opacity="0.08" stroke="#c43030" stroke-width="0.6"/>
+    <text x="424" y="63" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">mode 0</text>
+    <text x="462" y="63" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Disabled - no GPU passthrough</text>
+
+    <rect x="394" y="76" width="60" height="18" rx="3" fill="#1a8a4a" fill-opacity="0.08" stroke="#1a8a4a" stroke-width="0.6"/>
+    <text x="424" y="89" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">mode 1</text>
+    <text x="462" y="89" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Forced - always enable GPU</text>
+
+    <rect x="394" y="102" width="60" height="18" rx="3" fill="#0096d1" fill-opacity="0.12" stroke="#0096d1" stroke-width="0.8"/>
+    <text x="424" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">mode 2</text>
+    <text x="462" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Auto-detect (default)</text>
+
+    <!-- Detection flow -->
+    <text x="394" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">1. Spawn ephemeral CUDA container</text>
+    <text x="394" y="156" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">2. Run nvidia-smi inside container</text>
+    <text x="394" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">3. Success -> enable device_requests</text>
+    <text x="394" y="184" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">4. Cleanup test container automatically</text>
+    <text x="394" y="198" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Same image works laptop, staging, and 4xA100 cluster</text>
+  </g>
+
+  <!-- Connecting arc from radar to card -->
+  <path d="M275,80 C310,60 340,45 380,38" fill="none" stroke="#1a8a4a" stroke-width="0.6" opacity="0.2" stroke-dasharray="3,3"/>
+</svg>
