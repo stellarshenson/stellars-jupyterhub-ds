@@ -119,7 +119,11 @@ All local environments persist in user volumes between server image refreshes. W
 
 **Developer experience.** Full Git integration in the sidebar. Black formatter for one-click code formatting. Notebook diffing and merging with nbdime. Execution timing on every cell. Jupytext for version-controlling notebooks as plain Python files. Fish shell with a custom powerline prompt that displays the active conda environment, current git branch, and GPU status. One-command installers for Claude Code, Cursor, Gemini CLI, and OpenAI Codex.
 
+![Theme Prism](images/33-theme-prism.svg)
+
 **Visual polish.** Two custom dark themes - Sublime and Darcula, both inspired by IntelliJ's design language - with fixed scrollbar rendering that vanilla JupyterLab still gets wrong in dark mode.
+
+![Startup Helix](images/35-startup-helix.svg)
 
 **Custom startup scripts.** Both admins and users have dedicated entrypoints for startup automation. Admins deploy team-wide scripts to `/mnt/shared/start-platform.d/` for configuration that applies to every user. Users drop personal scripts into `~/.local/start-platform.d/` for their own setup. Both execute automatically on server start, and the system delivers success or failure notifications directly to the JupyterLab UI when they complete.
 
@@ -205,7 +209,11 @@ Some features don't sound impressive in a bullet list but make a real difference
 
 **Group-based Docker access.** Two protected groups - `docker-sock` for Docker API access and `docker-privileged` for full privileged mode. The pre-spawn hook checks group membership before every container launch. Both groups auto-recreate if accidentally deleted from the admin panel.
 
+![CIFS Roots](images/36-cifs-roots.svg)
+
 **Shared storage.** A shared volume is mounted at `/mnt/shared` in every container. Teams use it for common datasets, pre-trained models, shared startup scripts, and custom Lab Utilities extensions. It can be backed by local storage or a NAS mount via CIFS.
+
+![Lab Utilities Tree](images/34-lab-utils-tree.svg)
 
 **Lab Utilities menu.** A YAML-driven interactive dialog system inside each container with 15 helper scripts across 5 categories: conda environment installation, Git workflows, AI assistant setup, project scaffolding, and Docker tools. Admins extend it by deploying scripts to the shared volume.
 

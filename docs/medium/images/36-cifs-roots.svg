@@ -1,0 +1,78 @@
+<!--
+  36-cifs-roots.svg - Shared storage as underground root network
+  Left: trees connected by root network underground. Right: CIFS config card.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 210">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- LEFT: Trees with underground root network -->
+  <g id="forest">
+    <!-- Ground line -->
+    <line x1="20" y1="100" x2="330" y2="100" stroke="#da8230" stroke-width="0.8" opacity="0.2"/>
+
+    <!-- Tree 1 (alice) -->
+    <line x1="70" y1="100" x2="70" y2="50" stroke="#0096d1" stroke-width="1.5" opacity="0.2"/>
+    <circle cx="70" cy="38" r="16" fill="#0096d1" fill-opacity="0.05" stroke="#0096d1" stroke-width="0.6" opacity="0.25"/>
+    <text x="70" y="42" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">alice</text>
+
+    <!-- Tree 2 (bob) -->
+    <line x1="175" y1="100" x2="175" y2="45" stroke="#0096d1" stroke-width="1.8" opacity="0.22"/>
+    <circle cx="175" cy="30" r="20" fill="#0096d1" fill-opacity="0.05" stroke="#0096d1" stroke-width="0.6" opacity="0.25"/>
+    <text x="175" y="34" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">bob</text>
+
+    <!-- Tree 3 (charlie) -->
+    <line x1="280" y1="100" x2="280" y2="55" stroke="#0096d1" stroke-width="1.2" opacity="0.18"/>
+    <circle cx="280" cy="44" r="14" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="0.5" opacity="0.2"/>
+    <text x="280" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">charlie</text>
+
+    <!-- Underground roots (connecting all trees) -->
+    <path d="M70,105 C70,125 80,135 100,140" stroke="#da8230" stroke-width="1" fill="none" opacity="0.15" stroke-linecap="round"/>
+    <path d="M175,105 C175,120 165,132 140,138" stroke="#da8230" stroke-width="1.2" fill="none" opacity="0.18" stroke-linecap="round"/>
+    <path d="M175,105 C175,125 185,135 210,140" stroke="#da8230" stroke-width="1" fill="none" opacity="0.15" stroke-linecap="round"/>
+    <path d="M280,105 C280,120 270,130 250,138" stroke="#da8230" stroke-width="0.8" fill="none" opacity="0.12" stroke-linecap="round"/>
+
+    <!-- Shared root mass -->
+    <ellipse cx="175" cy="148" rx="100" ry="18" fill="#da8230" fill-opacity="0.04" stroke="#da8230" stroke-width="0.6" opacity="0.2"/>
+    <text x="175" y="152" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">/mnt/shared</text>
+
+    <!-- Root tendrils -->
+    <path d="M100,155 C120,168 140,172 160,170" stroke="#da8230" stroke-width="0.4" fill="none" opacity="0.08"/>
+    <path d="M250,155 C230,170 210,174 190,172" stroke="#da8230" stroke-width="0.4" fill="none" opacity="0.08"/>
+
+    <!-- Labels -->
+    <text x="175" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">above: isolated per-user containers</text>
+    <text x="175" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">below: shared datasets, models, scripts</text>
+  </g>
+
+  <!-- RIGHT: CIFS card -->
+  <g id="cifs-card">
+    <path d="M380,10 H780 V198 Q780,202 776,202 H384 Q380,202 380,198 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M380,10 H780 V198 Q780,202 776,202 H384 Q380,202 380,198 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="380" y="10" width="400" height="5" fill="#da8230" opacity="0.6"/>
+
+    <text x="394" y="32" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#da8230">SHARED STORAGE</text>
+    <text x="394" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-1">Collaborative Data Layer</text>
+
+    <text x="394" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-2">What teams share:</text>
+    <text x="394" y="86" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Common datasets and raw data files</text>
+    <text x="394" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Pre-trained model weights</text>
+    <text x="394" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Admin startup scripts (start-platform.d)</text>
+    <text x="394" y="128" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Lab Utilities extensions (lab-utils.d)</text>
+
+    <text x="394" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Backing options:</text>
+    <text x="394" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Local Docker volume (default)</text>
+    <text x="394" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">CIFS/NAS mount via compose_override.yml</text>
+    <text x="394" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Same /mnt/shared path regardless of backing - transparent to users</text>
+  </g>
+</svg>

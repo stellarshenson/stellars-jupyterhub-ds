@@ -1,0 +1,81 @@
+<!--
+  33-theme-prism.svg - Dark themes as light through a prism
+  Left: white light entering prism splits into two theme beams. Right: theme card.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- LEFT: Prism -->
+  <g id="prism">
+    <!-- Incoming light beam -->
+    <line x1="20" y1="100" x2="130" y2="100" stroke="#0096d1" stroke-width="2" opacity="0.15"/>
+    <line x1="20" y1="100" x2="130" y2="100" stroke="#0096d1" stroke-width="6" opacity="0.04"/>
+    <text x="75" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">vanilla JupyterLab</text>
+
+    <!-- Prism triangle -->
+    <polygon points="140,50 200,150 80,150" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="0.8" opacity="0.3"/>
+
+    <!-- Split beams -->
+    <!-- Sublime beam (upper) -->
+    <path d="M175,80 C220,55 260,42 330,35" stroke="#303841" stroke-width="3" opacity="0.2"/>
+    <path d="M175,80 C220,55 260,42 330,35" stroke="#5d6d7a" stroke-width="8" opacity="0.04"/>
+
+    <!-- Darcula beam (lower) -->
+    <path d="M175,120 C220,145 260,155 330,162" stroke="#2b2b2b" stroke-width="3" opacity="0.15"/>
+    <path d="M175,120 C220,145 260,155 330,162" stroke="#a9b7c6" stroke-width="8" opacity="0.03"/>
+
+    <!-- Refraction sparkles -->
+    <circle cx="178" cy="95" r="1.5" fill="#0096d1" opacity="0.2"/>
+    <circle cx="182" cy="105" r="1" fill="#da8230" opacity="0.15"/>
+    <circle cx="176" cy="88" r="0.8" fill="#5d6d7a" opacity="0.2"/>
+    <circle cx="180" cy="112" r="0.8" fill="#a9b7c6" opacity="0.15"/>
+
+    <!-- Theme name labels at beam ends -->
+    <circle cx="335" cy="35" r="8" fill="#303841" fill-opacity="0.15" stroke="#5d6d7a" stroke-width="0.6" opacity="0.4"/>
+    <text x="350" y="39" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Sublime</text>
+
+    <circle cx="335" cy="162" r="8" fill="#2b2b2b" fill-opacity="0.12" stroke="#a9b7c6" stroke-width="0.6" opacity="0.35"/>
+    <text x="350" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Darcula</text>
+  </g>
+
+  <!-- RIGHT: Theme details card -->
+  <g id="theme-card">
+    <path d="M400,12 H780 V188 Q780,192 776,192 H404 Q400,192 400,188 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M400,12 H780 V188 Q780,192 776,192 H404 Q400,192 400,188 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="400" y="12" width="380" height="5" fill="#0096d1" opacity="0.6"/>
+
+    <text x="414" y="34" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#0096d1">CUSTOM DARK THEMES</text>
+    <text x="414" y="52" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-1">IntelliJ-Inspired Design</text>
+
+    <!-- Sublime swatch -->
+    <rect x="414" y="64" width="160" height="48" rx="3" fill="#303841" fill-opacity="0.2" stroke="#5d6d7a" stroke-width="0.6"/>
+    <rect x="414" y="64" width="160" height="4" fill="#5d6d7a" opacity="0.3"/>
+    <text x="424" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" fill="#c3c3c3" opacity="0.7">Sublime</text>
+    <text x="424" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" fill="#a5a5a5" opacity="0.5">Gray-blue tones, muted contrast</text>
+    <text x="424" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="7" fill="#7d8b95" opacity="0.4">Fixed scrollbar rendering</text>
+
+    <!-- Darcula swatch -->
+    <rect x="584" y="64" width="160" height="48" rx="3" fill="#2b2b2b" fill-opacity="0.2" stroke="#a9b7c6" stroke-width="0.6"/>
+    <rect x="584" y="64" width="160" height="4" fill="#a9b7c6" opacity="0.25"/>
+    <text x="594" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" fill="#a9b7c6" opacity="0.7">Darcula</text>
+    <text x="594" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" fill="#a9b7c6" opacity="0.4">Classic IntelliJ gray</text>
+    <text x="594" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="7" fill="#a9b7c6" opacity="0.35">Warm code highlighting</text>
+
+    <text x="414" y="134" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Both fix vanilla JupyterLab's dark mode scrollbar issues</text>
+    <text x="414" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Designed for long coding sessions - reduced eye strain</text>
+    <text x="414" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Installable as JupyterLab extensions - switch via Settings</text>
+
+    <text x="414" y="186" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">stellars-jupyterlab-sublime-theme + stellars-jupyterlab-darcula-theme</text>
+  </g>
+</svg>
