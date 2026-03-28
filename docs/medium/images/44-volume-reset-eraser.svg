@@ -1,0 +1,82 @@
+<!--
+  44-volume-reset-eraser.svg - Selective volume reset as precision eraser
+  Left: three volumes with one being selectively wiped. Right: reset card.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 180">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- LEFT: Three volume blocks -->
+  <g id="volumes">
+    <!-- Home volume (untouched, solid) -->
+    <rect x="40" y="30" width="80" height="100" rx="4" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+    <text x="80" y="75" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">home</text>
+    <text x="80" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">.jupyter</text>
+    <text x="80" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">.config</text>
+    <!-- Checkmark: kept -->
+    <circle cx="100" cy="40" r="6" fill="#1a8a4a" fill-opacity="0.1" stroke="#1a8a4a" stroke-width="0.6"/>
+    <text x="100" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" fill="#1a8a4a" opacity="0.5">&#x2713;</text>
+
+    <!-- Cache volume (being erased - dissolving) -->
+    <rect x="140" y="30" width="80" height="100" rx="4" fill="#c43030" fill-opacity="0.04" stroke="#c43030" stroke-width="0.8" opacity="0.25" stroke-dasharray="4,3"/>
+    <text x="180" y="75" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-3" opacity="0.5">cache</text>
+    <text x="180" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4" opacity="0.3">pip</text>
+    <text x="180" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4" opacity="0.3">conda</text>
+    <!-- X mark: deleting -->
+    <circle cx="200" cy="40" r="6" fill="#c43030" fill-opacity="0.1" stroke="#c43030" stroke-width="0.6"/>
+    <text x="200" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" fill="#c43030" opacity="0.5">&#x2717;</text>
+    <!-- Dissolving particles -->
+    <circle cx="155" cy="45" r="1.2" fill="#c43030" opacity="0.12"/>
+    <circle cx="170" cy="38" r="0.8" fill="#c43030" opacity="0.08"/>
+    <circle cx="195" cy="52" r="1" fill="#c43030" opacity="0.1"/>
+    <circle cx="148" cy="65" r="0.6" fill="#c43030" opacity="0.06"/>
+    <circle cx="208" cy="70" r="0.8" fill="#c43030" opacity="0.08"/>
+    <circle cx="160" cy="110" r="0.7" fill="#c43030" opacity="0.05"/>
+
+    <!-- Workspace volume (untouched, solid) -->
+    <rect x="240" y="30" width="80" height="100" rx="4" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+    <text x="280" y="75" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">workspace</text>
+    <text x="280" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">notebooks</text>
+    <text x="280" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">.venv</text>
+    <!-- Checkmark: kept -->
+    <circle cx="300" cy="40" r="6" fill="#1a8a4a" fill-opacity="0.1" stroke="#1a8a4a" stroke-width="0.6"/>
+    <text x="300" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" fill="#1a8a4a" opacity="0.5">&#x2713;</text>
+
+    <text x="180" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Selective reset</text>
+    <text x="180" y="164" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Pick which volumes to wipe</text>
+  </g>
+
+  <!-- Arrow -->
+  <path d="M340,80 L394,80" fill="none" stroke="#0096d1" stroke-width="0.6" opacity="0.2"/>
+  <polygon points="394,77 400,80 394,83" fill="#0096d1" opacity="0.3"/>
+
+  <!-- RIGHT: Reset card -->
+  <g id="reset-card">
+    <path d="M408,10 H780 V168 Q780,172 776,172 H412 Q408,172 408,168 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M408,10 H780 V168 Q780,172 776,172 H412 Q408,172 408,168 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="408" y="10" width="372" height="5" fill="#0096d1" opacity="0.6"/>
+
+    <text x="422" y="32" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#0096d1">SELF-SERVICE VOLUME RESET</text>
+    <text x="422" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-1">Fix broken environments in seconds</text>
+
+    <text x="422" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Corrupted pip cache? Reset cache volume only</text>
+    <text x="422" y="86" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Messy home directory? Reset home, keep workspace</text>
+    <text x="422" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Want a completely fresh start? Reset all three</text>
+
+    <text x="422" y="124" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-2">Server must be stopped - confirmation modal with warning</text>
+    <text x="422" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Users manage own volumes, admins manage any user's</text>
+    <text x="422" y="156" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Volume list dynamically read from configuration</text>
+
+    <text x="422" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Eliminated ~50% of support requests</text>
+  </g>
+</svg>

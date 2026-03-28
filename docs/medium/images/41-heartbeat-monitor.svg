@@ -1,0 +1,84 @@
+<!--
+  41-heartbeat-monitor.svg - Platform health as a medical heartbeat
+  Left: ECG-style heartbeat trace with hub/spawner/proxy pulses. Right: health card.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 170">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- LEFT: ECG trace -->
+  <g id="ecg">
+    <!-- Baseline -->
+    <line x1="20" y1="85" x2="340" y2="85" stroke="#0096d1" stroke-width="0.3" opacity="0.08"/>
+
+    <!-- Heartbeat 1: Hub (strong) -->
+    <path d="M20,85 L50,85 L55,85 L60,65 L65,20 L70,110 L75,75 L80,85 L120,85"
+          fill="none" stroke="#0096d1" stroke-width="1.8" opacity="0.35" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="70" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">Hub</text>
+
+    <!-- Heartbeat 2: Spawner (medium) -->
+    <path d="M120,85 L140,85 L145,85 L150,70 L155,35 L160,100 L165,78 L170,85 L210,85"
+          fill="none" stroke="#da8230" stroke-width="1.5" opacity="0.25" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="155" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" fill="#da8230" opacity="0.4">Spawner</text>
+
+    <!-- Heartbeat 3: Traefik (small, regular) -->
+    <path d="M210,85 L230,85 L233,85 L236,72 L239,45 L242,98 L245,80 L248,85 L280,85"
+          fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="240" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Proxy</text>
+
+    <!-- Flatline leading to next beat (alive!) -->
+    <path d="M280,85 L310,85 L315,85 L318,72 L321,30 L324,105 L327,78 L330,85 L340,85"
+          fill="none" stroke="#1a8a4a" stroke-width="1.5" opacity="0.25" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Glow dot at latest beat -->
+    <circle cx="330" cy="85" r="3" fill="#1a8a4a" opacity="0.35"/>
+    <circle cx="330" cy="85" r="6" fill="#1a8a4a" opacity="0.08"/>
+
+    <!-- Faint grid -->
+    <g stroke="#0096d1" stroke-width="0.15" opacity="0.04">
+      <line x1="20" y1="45" x2="340" y2="45"/><line x1="20" y1="65" x2="340" y2="65"/>
+      <line x1="20" y1="105" x2="340" y2="105"/><line x1="20" y1="125" x2="340" y2="125"/>
+    </g>
+  </g>
+
+  <!-- Arrow -->
+  <path d="M350,85 L394,85" fill="none" stroke="#0096d1" stroke-width="0.6" opacity="0.2"/>
+  <polygon points="394,82 400,85 394,88" fill="#0096d1" opacity="0.3"/>
+
+  <!-- RIGHT: Health endpoint card -->
+  <g id="health-card">
+    <path d="M408,10 H780 V158 Q780,162 776,162 H412 Q408,162 408,158 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M408,10 H780 V158 Q780,162 776,162 H412 Q408,162 408,158 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="408" y="10" width="372" height="5" fill="#0096d1" opacity="0.6"/>
+
+    <text x="422" y="32" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#0096d1">HEALTH MONITORING</text>
+    <text x="422" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-1">Three layers of visibility</text>
+
+    <rect x="422" y="60" width="342" height="22" rx="3" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="0.5"/>
+    <circle cx="436" cy="71" r="3" fill="#1a8a4a" opacity="0.4"/>
+    <text x="446" y="75" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">GET /health</text>
+    <text x="540" y="75" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Unauthenticated JSON - Zabbix/Prometheus ready</text>
+
+    <rect x="422" y="88" width="342" height="22" rx="3" fill="#da8230" fill-opacity="0.04" stroke="#da8230" stroke-width="0.5"/>
+    <circle cx="436" cy="99" r="3" fill="#da8230" opacity="0.35"/>
+    <text x="446" y="103" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Activity Monitor</text>
+    <text x="560" y="103" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Per-user CPU, memory, volumes, scores</text>
+
+    <rect x="422" y="116" width="342" height="22" rx="3" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.4"/>
+    <circle cx="436" cy="127" r="3" fill="#0096d1" opacity="0.25"/>
+    <text x="446" y="131" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-2">Mobile status strip</text>
+    <text x="560" y="131" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Real-time server state in your pocket</text>
+
+    <text x="422" y="156" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Rate-limited 1 req/s per IP - returns uptime, version, user count, active servers</text>
+  </g>
+</svg>

@@ -1,0 +1,80 @@
+<!--
+  42-token-hourglass.svg - Temporary API tokens as sand draining through hourglass
+  Left: hourglass with sand draining (5-minute expiry). Right: security card.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- LEFT: Hourglass -->
+  <g id="hourglass">
+    <!-- Glass outline -->
+    <path d="M120,25 H220 L170,95 L220,165 H120 L170,95 Z"
+          fill="none" stroke="#da8230" stroke-width="1" opacity="0.3"/>
+
+    <!-- Top bulb sand (diminishing) -->
+    <path d="M148,45 H192 L170,75 Z" fill="#da8230" fill-opacity="0.12"/>
+
+    <!-- Falling stream -->
+    <line x1="170" y1="75" x2="170" y2="115" stroke="#da8230" stroke-width="1" opacity="0.2" stroke-dasharray="2,3"/>
+
+    <!-- Bottom bulb sand (accumulating) -->
+    <path d="M135,150 H205 L170,115 Z" fill="#da8230" fill-opacity="0.08"/>
+
+    <!-- Sand particles in stream -->
+    <circle cx="170" cy="82" r="0.8" fill="#da8230" opacity="0.25"/>
+    <circle cx="169" cy="90" r="0.6" fill="#da8230" opacity="0.2"/>
+    <circle cx="171" cy="98" r="0.7" fill="#da8230" opacity="0.18"/>
+    <circle cx="170" cy="106" r="0.5" fill="#da8230" opacity="0.15"/>
+
+    <!-- Frame top/bottom -->
+    <rect x="110" y="20" width="120" height="4" rx="2" fill="#da8230" fill-opacity="0.1" stroke="#da8230" stroke-width="0.6" opacity="0.3"/>
+    <rect x="110" y="166" width="120" height="4" rx="2" fill="#da8230" fill-opacity="0.1" stroke="#da8230" stroke-width="0.6" opacity="0.3"/>
+
+    <!-- Timer label -->
+    <text x="170" y="188" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" fill="#da8230" opacity="0.5">5:00</text>
+    <text x="170" y="14" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">token generated</text>
+
+    <!-- Concentric timer rings fading -->
+    <circle cx="170" cy="95" r="50" fill="none" stroke="#da8230" stroke-width="0.3" opacity="0.06"/>
+    <circle cx="170" cy="95" r="65" fill="none" stroke="#da8230" stroke-width="0.2" opacity="0.04"/>
+    <circle cx="170" cy="95" r="80" fill="none" stroke="#da8230" stroke-width="0.15" opacity="0.03"/>
+  </g>
+
+  <!-- Arrow -->
+  <path d="M265,95 L394,95" fill="none" stroke="#da8230" stroke-width="0.6" opacity="0.2"/>
+  <polygon points="394,92 400,95 394,98" fill="#da8230" opacity="0.3"/>
+  <text x="330" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">auto-expire</text>
+
+  <!-- RIGHT: Security card -->
+  <g id="security-card">
+    <path d="M408,10 H780 V190 Q780,194 776,194 H412 Q408,194 408,190 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M408,10 H780 V190 Q780,194 776,194 H412 Q408,194 408,190 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="408" y="10" width="372" height="5" fill="#da8230" opacity="0.6"/>
+
+    <text x="422" y="32" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#da8230">SECURITY BY DESIGN</text>
+    <text x="422" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-1">Ephemeral Tokens</text>
+
+    <text x="422" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-2">Notification broadcast tokens</text>
+    <text x="422" y="86" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Generated per-user, per-broadcast - never reused</text>
+    <text x="422" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">5-minute expiry window - auto-cleanup</text>
+    <text x="422" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Never logged, never exposed in responses</text>
+    <text x="422" y="128" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Transmitted via Authorization: Bearer header only</text>
+
+    <text x="422" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-2">Password cache tokens</text>
+    <text x="422" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Plaintext cached 5 minutes for admin credential modal</text>
+    <text x="422" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">bcrypt hash stored permanently - plaintext auto-evicted</text>
+
+    <text x="422" y="194" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Every secret has a built-in expiry - no stale credentials</text>
+  </g>
+</svg>
