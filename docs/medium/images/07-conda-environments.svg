@@ -54,7 +54,7 @@
     <rect x="28" y="44" width="68" height="14" rx="3" fill="#1a8a4a" fill-opacity="0.15" stroke="#1a8a4a" stroke-width="0.8"/>
     <text x="62" y="54" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#1a8a4a">ALWAYS ACTIVE</text>
     <!-- Icon: box (Lucide, ISC license) -->
-    <g transform="translate(168, 66) scale(0.583)" fill="none" stroke="#0096d1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+    <g transform="translate(168, 42) scale(0.583)" fill="none" stroke="#0096d1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
       <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
     </g>
     <text x="28" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="fg-1">Base Environment</text>
@@ -74,7 +74,7 @@
     <rect x="226" y="44" width="60" height="14" rx="3" fill="#da8230" fill-opacity="0.15" stroke="#da8230" stroke-width="0.8"/>
     <text x="256" y="54" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#da8230">ON-DEMAND</text>
     <!-- Icon: box (Lucide, ISC license) -->
-    <g transform="translate(366, 66) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+    <g transform="translate(366, 42) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
       <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
     </g>
     <text x="226" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="fg-1">TensorFlow</text>
@@ -92,7 +92,7 @@
     <rect x="424" y="44" width="60" height="14" rx="3" fill="#da8230" fill-opacity="0.15" stroke="#da8230" stroke-width="0.8"/>
     <text x="454" y="54" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#da8230">ON-DEMAND</text>
     <!-- Icon: box (Lucide, ISC license) -->
-    <g transform="translate(564, 66) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+    <g transform="translate(564, 42) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
       <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
     </g>
     <text x="424" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="fg-1">PyTorch</text>
@@ -110,7 +110,7 @@
     <rect x="622" y="44" width="60" height="14" rx="3" fill="#da8230" fill-opacity="0.15" stroke="#da8230" stroke-width="0.8"/>
     <text x="652" y="54" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#da8230">ON-DEMAND</text>
     <!-- Icon: box (Lucide, ISC license) -->
-    <g transform="translate(748, 66) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+    <g transform="translate(748, 42) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
       <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
     </g>
     <text x="622" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="fg-1">R + Rust</text>
