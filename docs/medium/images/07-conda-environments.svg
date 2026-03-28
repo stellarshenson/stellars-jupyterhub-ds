@@ -53,6 +53,10 @@
     <rect x="16" y="30" width="188" height="5" fill="#0096d1" opacity="0.8"/>
     <rect x="28" y="44" width="68" height="14" rx="3" fill="#1a8a4a" fill-opacity="0.15" stroke="#1a8a4a" stroke-width="0.8"/>
     <text x="62" y="54" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#1a8a4a">ALWAYS ACTIVE</text>
+    <!-- Icon: box (Lucide, ISC license) -->
+    <g transform="translate(168, 66) scale(0.583)" fill="none" stroke="#0096d1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
+    </g>
     <text x="28" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="fg-1">Base Environment</text>
     <text x="28" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Python 3.12 via Miniforge</text>
     <text x="28" y="104" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">NumPy, Pandas, Polars</text>
@@ -69,6 +73,10 @@
     <rect x="214" y="30" width="188" height="5" fill="#da8230" opacity="0.6"/>
     <rect x="226" y="44" width="60" height="14" rx="3" fill="#da8230" fill-opacity="0.15" stroke="#da8230" stroke-width="0.8"/>
     <text x="256" y="54" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#da8230">ON-DEMAND</text>
+    <!-- Icon: box (Lucide, ISC license) -->
+    <g transform="translate(366, 66) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
+    </g>
     <text x="226" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="fg-1">TensorFlow</text>
     <text x="226" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">TF 2.18+ with CUDA</text>
     <text x="226" y="104" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Keras 3</text>
@@ -83,6 +91,10 @@
     <rect x="412" y="30" width="188" height="5" fill="#da8230" opacity="0.6"/>
     <rect x="424" y="44" width="60" height="14" rx="3" fill="#da8230" fill-opacity="0.15" stroke="#da8230" stroke-width="0.8"/>
     <text x="454" y="54" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#da8230">ON-DEMAND</text>
+    <!-- Icon: box (Lucide, ISC license) -->
+    <g transform="translate(564, 66) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
+    </g>
     <text x="424" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="fg-1">PyTorch</text>
     <text x="424" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">PyTorch 2.4+ with CUDA</text>
     <text x="424" y="104" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">YOLO, Ultralytics</text>
@@ -97,6 +109,10 @@
     <rect x="610" y="30" width="174" height="5" fill="#da8230" opacity="0.6"/>
     <rect x="622" y="44" width="60" height="14" rx="3" fill="#da8230" fill-opacity="0.15" stroke="#da8230" stroke-width="0.8"/>
     <text x="652" y="54" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#da8230">ON-DEMAND</text>
+    <!-- Icon: box (Lucide, ISC license) -->
+    <g transform="translate(748, 66) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
+    </g>
     <text x="622" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="fg-1">R + Rust</text>
     <text x="622" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">R with IRkernel</text>
     <text x="622" y="104" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Rust with evcxr</text>
@@ -113,6 +129,10 @@
     <path d="M16,196 H262 V302 Q262,305 259,305 H19 Q16,305 16,302 Z" fill="#da8230" fill-opacity="0.04"/>
     <path d="M16,196 H262 V302 Q262,305 259,305 H19 Q16,305 16,302 Z" fill="none" stroke="#da8230" stroke-width="1"/>
     <rect x="16" y="196" width="246" height="5" fill="#da8230" opacity="0.6"/>
+    <!-- Icon: folder (Lucide, ISC license) -->
+    <g transform="translate(226, 208) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+    </g>
     <text x="28" y="218" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="fg-1">project-1/</text>
     <text x="28" y="236" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">.venv/ managed by uv</text>
     <text x="28" y="250" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">pyproject.toml with pinned deps</text>
@@ -126,6 +146,10 @@
     <path d="M278,196 H524 V302 Q524,305 521,305 H281 Q278,305 278,302 Z" fill="#da8230" fill-opacity="0.04"/>
     <path d="M278,196 H524 V302 Q524,305 521,305 H281 Q278,305 278,302 Z" fill="none" stroke="#da8230" stroke-width="1"/>
     <rect x="278" y="196" width="246" height="5" fill="#da8230" opacity="0.6"/>
+    <!-- Icon: folder (Lucide, ISC license) -->
+    <g transform="translate(488, 208) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+    </g>
     <text x="290" y="218" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="fg-1">project-2/</text>
     <text x="290" y="236" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">.venv/ managed by uv</text>
     <text x="290" y="250" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">pyproject.toml with pinned deps</text>
