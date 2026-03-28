@@ -1,0 +1,193 @@
+<!--
+  10-integrated-services.svg - Integrated services in each user container
+  Shows: Four service cards (MLflow, TensorBoard, Resources Monitor, Optuna Dashboard)
+  each showing port, backend, and capabilities. A bottom bar shows Traefik routing
+  all services through a single HTTPS endpoint with path-based routing.
+  Intent: show the pre-integrated services that just work in each user container.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 infrastructure, accent-2=#da8230 services.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 310">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 800x310
+    Margins: left=14, right=786, top=10, bottom=306
+
+    Title: y=22
+    Subtitle: y=36
+
+    4 cards: w=185, gap=10, total=4*185+3*10=770, start x=15
+    Card positions:
+      MLflow:      x=15,  w=185
+      TensorBoard: x=210, w=185
+      Resources:   x=405, w=185
+      Optuna:      x=600, w=185
+    Card height: 170 (y=48..218)
+    Accent bar: h=5, y=48
+
+    Port badge: y=62 inside card
+    Card padding: 12px from accent bar bottom
+
+    Connector lines: from card bottom cx to traefik bar top
+    Traefik bar: x=15, y=244, w=770, h=36
+
+    Footer: y=298
+
+    Vertical rhythm: 14px within cards
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: mlflow-card, tensorboard-card, resources-card, optuna-card
+    v-stack: card-row, connector-lines, traefik-bar
+    h-align: title (cx=400), traefik-bar (cx=400)
+    flow: each card -> traefik-bar
+  === -->
+
+  <g id="guide-grid" display="none">
+    <line x1="400" y1="0" x2="400" y2="310" stroke="red" stroke-width="0.5"/>
+  </g>
+
+  <!-- Title -->
+  <text x="400" y="22" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle" class="fg-1">Integrated Services Per User Container</text>
+  <text x="400" y="36" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" class="fg-3">Every user gets their own isolated instances - pre-configured at container startup</text>
+
+  <!-- ==================== CARD 1: MLflow ==================== -->
+  <g id="mlflow-card">
+    <path d="M15,48 H200 V215 Q200,218 197,218 H18 Q15,218 15,215 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M15,48 H200 V215 Q200,218 197,218 H18 Q15,218 15,215 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="15" y="48" width="185" height="5" fill="#da8230" opacity="0.6"/>
+    <!-- Port badge -->
+    <rect x="150" y="60" width="38" height="14" rx="3" fill="#da8230" fill-opacity="0.15" stroke="#da8230" stroke-width="0.8"/>
+    <text x="169" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#da8230">:5000</text>
+    <!-- Icon: flask-conical (Lucide, ISC license) -->
+    <g transform="translate(164, 82) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/>
+      <path d="M8.5 2h7"/><path d="M7 16.5h10"/>
+    </g>
+    <text x="27" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">MLflow</text>
+    <text x="27" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Experiment tracking</text>
+    <text x="27" y="106" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">SQLite backend</text>
+    <text x="27" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Local artifact storage</text>
+    <text x="27" y="134" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Model registry</text>
+    <text x="27" y="148" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Run comparison</text>
+    <text x="27" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Metrics, params, artifacts</text>
+    <text x="27" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">per experiment run</text>
+    <text x="27" y="206" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Auto-started at boot</text>
+  </g>
+
+  <!-- ==================== CARD 2: TensorBoard ==================== -->
+  <g id="tensorboard-card">
+    <path d="M210,48 H395 V215 Q395,218 392,218 H213 Q210,218 210,215 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M210,48 H395 V215 Q395,218 392,218 H213 Q210,218 210,215 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="210" y="48" width="185" height="5" fill="#da8230" opacity="0.6"/>
+    <!-- Port badge -->
+    <rect x="345" y="60" width="38" height="14" rx="3" fill="#da8230" fill-opacity="0.15" stroke="#da8230" stroke-width="0.8"/>
+    <text x="364" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#da8230">:6006</text>
+    <!-- Icon: line-chart (Lucide, ISC license) -->
+    <g transform="translate(359, 82) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/>
+    </g>
+    <text x="222" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">TensorBoard</text>
+    <text x="222" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Training metrics viz</text>
+    <text x="222" y="106" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Loss / accuracy curves</text>
+    <text x="222" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Histograms / distributions</text>
+    <text x="222" y="134" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Configurable log directory</text>
+    <text x="222" y="148" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Model graph visualization</text>
+    <text x="222" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Real-time metric updates</text>
+    <text x="222" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">during training runs</text>
+    <text x="222" y="206" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Auto-started at boot</text>
+  </g>
+
+  <!-- ==================== CARD 3: Resources Monitor ==================== -->
+  <g id="resources-card">
+    <path d="M405,48 H590 V215 Q590,218 587,218 H408 Q405,218 405,215 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M405,48 H590 V215 Q590,218 587,218 H408 Q405,218 405,215 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="405" y="48" width="185" height="5" fill="#da8230" opacity="0.6"/>
+    <!-- Port badge -->
+    <rect x="540" y="60" width="38" height="14" rx="3" fill="#da8230" fill-opacity="0.15" stroke="#da8230" stroke-width="0.8"/>
+    <text x="559" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#da8230">:7681</text>
+    <!-- Icon: activity (Lucide, ISC license) -->
+    <g transform="translate(554, 82) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </g>
+    <text x="417" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Resources Monitor</text>
+    <text x="417" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">btop via ttyd</text>
+    <text x="417" y="106" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">CPU utilization + load</text>
+    <text x="417" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">GPU utilization + VRAM</text>
+    <text x="417" y="134" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Memory + swap usage</text>
+    <text x="417" y="148" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Network + disk I/O</text>
+    <text x="417" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Browser-based terminal</text>
+    <text x="417" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">real-time updates</text>
+    <text x="417" y="206" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Auto-started at boot</text>
+  </g>
+
+  <!-- ==================== CARD 4: Optuna Dashboard ==================== -->
+  <g id="optuna-card">
+    <path d="M600,48 H785 V215 Q785,218 782,218 H603 Q600,218 600,215 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M600,48 H785 V215 Q785,218 782,218 H603 Q600,218 600,215 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="600" y="48" width="185" height="5" fill="#da8230" opacity="0.6"/>
+    <!-- Port badge -->
+    <rect x="735" y="60" width="38" height="14" rx="3" fill="#da8230" fill-opacity="0.15" stroke="#da8230" stroke-width="0.8"/>
+    <text x="754" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#da8230">:8080</text>
+    <!-- Icon: settings (Lucide, ISC license) -->
+    <g transform="translate(749, 82) scale(0.583)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </g>
+    <text x="612" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Optuna Dashboard</text>
+    <text x="612" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Hyperparameter optimization</text>
+    <text x="612" y="106" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Study visualization</text>
+    <text x="612" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Parameter importance</text>
+    <text x="612" y="134" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Trial history plots</text>
+    <text x="612" y="148" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Pareto front analysis</text>
+    <text x="612" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Bayesian optimization</text>
+    <text x="612" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">search space explorer</text>
+    <text x="612" y="206" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Auto-started at boot</text>
+  </g>
+
+  <!-- ==================== CONNECTOR LINES ==================== -->
+  <line x1="107" y1="218" x2="107" y2="240" stroke="#da8230" stroke-width="1" opacity="0.3"/>
+  <polygon points="104,240 107,244 110,240" fill="#da8230" opacity="0.5"/>
+
+  <line x1="302" y1="218" x2="302" y2="240" stroke="#da8230" stroke-width="1" opacity="0.3"/>
+  <polygon points="299,240 302,244 305,240" fill="#da8230" opacity="0.5"/>
+
+  <line x1="497" y1="218" x2="497" y2="240" stroke="#da8230" stroke-width="1" opacity="0.3"/>
+  <polygon points="494,240 497,244 500,240" fill="#da8230" opacity="0.5"/>
+
+  <line x1="692" y1="218" x2="692" y2="240" stroke="#da8230" stroke-width="1" opacity="0.3"/>
+  <polygon points="689,240 692,244 695,240" fill="#da8230" opacity="0.5"/>
+
+  <!-- ==================== TRAEFIK ROUTING BAR ==================== -->
+  <g id="traefik-bar">
+    <rect x="15" y="244" width="770" height="36" rx="4" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+    <rect x="15" y="244" width="770" height="4" fill="#0096d1" opacity="0.4"/>
+    <!-- Icon: lock (Lucide, ISC license) -->
+    <g transform="translate(25, 254) scale(0.583)" fill="none" stroke="#0096d1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </g>
+    <text x="47" y="264" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Traefik Reverse Proxy</text>
+    <text x="47" y="276" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Single HTTPS endpoint (:443) with path-based routing to all services per user</text>
+  </g>
+
+  <!-- Footer -->
+  <text x="400" y="300" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Each user container runs its own isolated instances - services start automatically via numbered startup scripts</text>
+
+</svg>

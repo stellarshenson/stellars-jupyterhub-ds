@@ -1,0 +1,194 @@
+<!--
+  07-conda-environments.svg - Conda environment strategy
+  Shows: Five environment cards (Base, TensorFlow, PyTorch, R, Rust) as a card grid,
+  with Base highlighted as always-active and the rest as on-demand. A bottom bar shows
+  nb_venv_kernels auto-discovery connecting all environments to Jupyter kernels.
+  Intent: illustrate the on-demand environment strategy avoiding dependency conflicts.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 base, accent-2=#da8230 on-demand.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 340">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 800x340
+    Margins: left=14, right=786, top=10, bottom=336
+
+    Title: y=22
+    Subtitle: y=36
+
+    Card row: y=52
+    5 cards: w=148, gap=10, total=5*148+4*10=780 -> start x=10
+    Card positions:
+      Base:       x=10,  w=148
+      TensorFlow: x=168, w=148
+      PyTorch:    x=326, w=148
+      R:          x=484, w=148
+      Rust:       x=642, w=148
+    Card height: 190 (y=52..242)
+    Accent bar: h=5, y=52
+
+    Status badges: y=62 (inside card, below accent bar)
+
+    Connector lines: from card bottom cx to kernel bar top
+    Kernel bar: x=10, y=268, w=780, h=36
+
+    Footer: y=326
+
+    Vertical rhythm: 14px within cards
+    Card padding: 12px from accent bar bottom
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: base-card, tensorflow-card, pytorch-card, r-card, rust-card
+    v-stack: card-row, connector-lines, kernel-bar
+    h-align: title (cx=400), kernel-bar (cx=400)
+    flow: each card -> kernel-bar (vertical connectors)
+  === -->
+
+  <g id="guide-grid" display="none">
+    <line x1="400" y1="0" x2="400" y2="340" stroke="red" stroke-width="0.5"/>
+    <line x1="0" y1="52" x2="800" y2="52" stroke="red" stroke-width="0.5"/>
+  </g>
+
+  <!-- Title -->
+  <text x="400" y="22" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle" class="fg-1">Conda Environment Strategy</text>
+  <text x="400" y="36" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" class="fg-3">On-demand activation eliminates dependency conflicts</text>
+
+  <!-- ==================== CARD 1: Base (always active) ==================== -->
+  <g id="base-card">
+    <path d="M10,52 H158 V239 Q158,242 155,242 H13 Q10,242 10,239 Z" fill="#0096d1" fill-opacity="0.06"/>
+    <path d="M10,52 H158 V239 Q158,242 155,242 H13 Q10,242 10,239 Z" fill="none" stroke="#0096d1" stroke-width="1.5"/>
+    <rect x="10" y="52" width="148" height="5" fill="#0096d1" opacity="0.8"/>
+    <!-- Status badge -->
+    <rect x="22" y="66" width="68" height="14" rx="3" fill="#1a8a4a" fill-opacity="0.15" stroke="#1a8a4a" stroke-width="0.8"/>
+    <text x="56" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#1a8a4a">ALWAYS ACTIVE</text>
+    <text x="22" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="fg-1">Base</text>
+    <text x="22" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Python 3.12</text>
+    <text x="22" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">NumPy, Pandas</text>
+    <text x="22" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Polars, SciPy</text>
+    <text x="22" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Scikit-learn</text>
+    <text x="22" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Matplotlib, Seaborn</text>
+    <text x="22" y="182" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">uv package manager</text>
+    <text x="22" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">JupyterLab core</text>
+    <text x="22" y="210" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Extensions + themes</text>
+    <text x="22" y="228" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Default kernel</text>
+  </g>
+
+  <!-- ==================== CARD 2: TensorFlow ==================== -->
+  <g id="tensorflow-card">
+    <path d="M168,52 H316 V239 Q316,242 313,242 H171 Q168,242 168,239 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M168,52 H316 V239 Q316,242 313,242 H171 Q168,242 168,239 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="168" y="52" width="148" height="5" fill="#da8230" opacity="0.6"/>
+    <!-- Status badge -->
+    <rect x="180" y="66" width="60" height="14" rx="3" fill="#da8230" fill-opacity="0.15" stroke="#da8230" stroke-width="0.8"/>
+    <text x="210" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#da8230">ON-DEMAND</text>
+    <text x="180" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="fg-1">TensorFlow</text>
+    <text x="180" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">TF 2.18+</text>
+    <text x="180" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">CUDA GPU accel</text>
+    <text x="180" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Keras 3</text>
+    <text x="180" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Deep learning</text>
+    <text x="180" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">NLP / CV / RL</text>
+    <text x="180" y="228" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Activate on first use</text>
+  </g>
+
+  <!-- ==================== CARD 3: PyTorch ==================== -->
+  <g id="pytorch-card">
+    <path d="M326,52 H474 V239 Q474,242 471,242 H329 Q326,242 326,239 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M326,52 H474 V239 Q474,242 471,242 H329 Q326,242 326,239 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="326" y="52" width="148" height="5" fill="#da8230" opacity="0.6"/>
+    <!-- Status badge -->
+    <rect x="338" y="66" width="60" height="14" rx="3" fill="#da8230" fill-opacity="0.15" stroke="#da8230" stroke-width="0.8"/>
+    <text x="368" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#da8230">ON-DEMAND</text>
+    <text x="338" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="fg-1">PyTorch</text>
+    <text x="338" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">PyTorch 2.4+</text>
+    <text x="338" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">CUDA GPU accel</text>
+    <text x="338" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">YOLO / Ultralytics</text>
+    <text x="338" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Computer vision</text>
+    <text x="338" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">HuggingFace</text>
+    <text x="338" y="228" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Activate on first use</text>
+  </g>
+
+  <!-- ==================== CARD 4: R ==================== -->
+  <g id="r-card">
+    <path d="M484,52 H632 V239 Q632,242 629,242 H487 Q484,242 484,239 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M484,52 H632 V239 Q632,242 629,242 H487 Q484,242 484,239 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="484" y="52" width="148" height="5" fill="#da8230" opacity="0.6"/>
+    <!-- Status badge -->
+    <rect x="496" y="66" width="60" height="14" rx="3" fill="#da8230" fill-opacity="0.15" stroke="#da8230" stroke-width="0.8"/>
+    <text x="526" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#da8230">ON-DEMAND</text>
+    <text x="496" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="fg-1">R Language</text>
+    <text x="496" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">R 4.x</text>
+    <text x="496" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">IRkernel</text>
+    <text x="496" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Statistical computing</text>
+    <text x="496" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">ggplot2, tidyverse</text>
+    <text x="496" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Data wrangling</text>
+    <text x="496" y="228" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Activate on first use</text>
+  </g>
+
+  <!-- ==================== CARD 5: Rust ==================== -->
+  <g id="rust-card">
+    <path d="M642,52 H790 V239 Q790,242 787,242 H645 Q642,242 642,239 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M642,52 H790 V239 Q790,242 787,242 H645 Q642,242 642,239 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="642" y="52" width="148" height="5" fill="#da8230" opacity="0.6"/>
+    <!-- Status badge -->
+    <rect x="654" y="66" width="60" height="14" rx="3" fill="#da8230" fill-opacity="0.15" stroke="#da8230" stroke-width="0.8"/>
+    <text x="684" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" fill="#da8230">ON-DEMAND</text>
+    <text x="654" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="fg-1">Rust</text>
+    <text x="654" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Rust compiler</text>
+    <text x="654" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">evcxr kernel</text>
+    <text x="654" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Systems programming</text>
+    <text x="654" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Polars native</text>
+    <text x="654" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Performance-critical</text>
+    <text x="654" y="228" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Activate on first use</text>
+  </g>
+
+  <!-- ==================== CONNECTOR LINES ==================== -->
+  <!-- Each card cx -> kernel bar top (y=268) -->
+  <line x1="84" y1="242" x2="84" y2="264" stroke="#0096d1" stroke-width="1" opacity="0.3"/>
+  <polygon points="81,264 84,268 87,264" fill="#0096d1" opacity="0.5"/>
+
+  <line x1="242" y1="242" x2="242" y2="264" stroke="#da8230" stroke-width="1" opacity="0.3"/>
+  <polygon points="239,264 242,268 245,264" fill="#da8230" opacity="0.5"/>
+
+  <line x1="400" y1="242" x2="400" y2="264" stroke="#da8230" stroke-width="1" opacity="0.3"/>
+  <polygon points="397,264 400,268 403,264" fill="#da8230" opacity="0.5"/>
+
+  <line x1="558" y1="242" x2="558" y2="264" stroke="#da8230" stroke-width="1" opacity="0.3"/>
+  <polygon points="555,264 558,268 561,264" fill="#da8230" opacity="0.5"/>
+
+  <line x1="716" y1="242" x2="716" y2="264" stroke="#da8230" stroke-width="1" opacity="0.3"/>
+  <polygon points="713,264 716,268 719,264" fill="#da8230" opacity="0.5"/>
+
+  <!-- ==================== KERNEL DISCOVERY BAR ==================== -->
+  <g id="kernel-bar">
+    <rect x="10" y="268" width="780" height="40" rx="4" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+    <rect x="10" y="268" width="780" height="4" fill="#0096d1" opacity="0.4"/>
+    <!-- Icon: search (Lucide, ISC license) -->
+    <g transform="translate(20, 280) scale(0.583)" fill="none" stroke="#0096d1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+    </g>
+    <text x="42" y="290" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">nb_venv_kernels</text>
+    <text x="42" y="302" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Auto-discovers all conda environments as Jupyter kernels - no manual kernel registration needed</text>
+  </g>
+
+  <!-- Footer -->
+  <text x="400" y="326" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Users select environments from JupyterLab kernel picker - each environment resolves independently</text>
+
+</svg>

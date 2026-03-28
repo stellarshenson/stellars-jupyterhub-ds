@@ -1,0 +1,181 @@
+<!--
+  09-vanilla-vs-stellars.svg - Vanilla vs Stellars JupyterLab comparison
+  Shows: Two side-by-side cards comparing stock JupyterLab 4 (left, minimal features
+  with X marks) against Stellars JupyterLab DS (right, rich features with checkmarks).
+  Intent: clear visual contrast between what vanilla provides vs what the platform adds.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 Stellars, #c43030 for X marks, #1a8a4a for checks.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 390">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 800x390
+    Margins: left=14, right=786, top=10, bottom=386
+
+    Title: y=22
+
+    Left card (Vanilla): x=14, y=40, w=380, h=320
+    Right card (Stellars): x=406, y=40, w=380, h=320
+
+    Gap between cards: 12px (394..406)
+
+    Card internal layout:
+      Accent bar: h=5, y=40
+      Title: y=40+5+12=57 (accent_bar_bottom + 12)
+      Subtitle: y=71
+      Feature list start: y=92
+      Feature row height: 18px
+      Feature text x: left_card=42, right_card=434 (12px pad + 16px for icon)
+      Check/X icon x: left_card=28, right_card=420
+
+    Features (14 rows): y=92, 110, 128, 146, 164, 182, 200, 218, 236, 254, 272, 290, 308, 326
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: vanilla-card, stellars-card (gap=12)
+    h-align: title (cx=400)
+    mirror: vanilla-card, stellars-card (same internal layout)
+  === -->
+
+  <g id="guide-grid" display="none">
+    <line x1="400" y1="0" x2="400" y2="390" stroke="red" stroke-width="0.5"/>
+  </g>
+
+  <!-- Title -->
+  <text x="400" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle" class="fg-1">What You Get vs What Ships</text>
+
+  <!-- ==================== LEFT CARD: Vanilla JupyterLab ==================== -->
+  <g id="vanilla-card">
+    <path d="M14,40 H394 V357 Q394,360 391,360 H17 Q14,360 14,357 Z" fill="#0096d1" fill-opacity="0.02"/>
+    <path d="M14,40 H394 V357 Q394,360 391,360 H17 Q14,360 14,357 Z" fill="none" stroke="#0096d1" stroke-width="0.8" opacity="0.4"/>
+    <rect x="14" y="40" width="380" height="5" fill="#0096d1" opacity="0.3"/>
+
+    <text x="204" y="62" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle" class="fg-2">Vanilla JupyterLab 4</text>
+    <text x="204" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" class="fg-4">Stock installation</text>
+
+    <!-- Feature rows with X marks -->
+    <!-- X mark colour: #c43030 -->
+    <text x="28" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#c43030">&#x2717;</text>
+    <text x="44" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">No integrated services (MLflow, TensorBoard)</text>
+
+    <text x="28" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#c43030">&#x2717;</text>
+    <text x="44" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">No GPU auto-configuration</text>
+
+    <text x="28" y="132" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#c43030">&#x2717;</text>
+    <text x="44" y="132" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">No conda environment management</text>
+
+    <text x="28" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#c43030">&#x2717;</text>
+    <text x="44" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">No resources monitor</text>
+
+    <text x="28" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#c43030">&#x2717;</text>
+    <text x="44" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">No custom themes or branding</text>
+
+    <text x="28" y="186" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#c43030">&#x2717;</text>
+    <text x="44" y="186" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">No startup script pipeline</text>
+
+    <text x="28" y="204" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#c43030">&#x2717;</text>
+    <text x="44" y="204" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">No experiment tracking</text>
+
+    <text x="28" y="222" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#c43030">&#x2717;</text>
+    <text x="44" y="222" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">No Fish shell / powerline prompt</text>
+
+    <text x="28" y="240" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#c43030">&#x2717;</text>
+    <text x="44" y="240" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">No automatic kernel discovery</text>
+
+    <text x="28" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#c43030">&#x2717;</text>
+    <text x="44" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">No autocompletion or formatter integration</text>
+
+    <text x="28" y="276" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#c43030">&#x2717;</text>
+    <text x="44" y="276" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">No project scaffolding tools</text>
+
+    <text x="28" y="294" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#c43030">&#x2717;</text>
+    <text x="44" y="294" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">No Lab Utilities menu system</text>
+
+    <text x="28" y="312" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#c43030">&#x2717;</text>
+    <text x="44" y="312" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">No notebook diff / merge (nbdime)</text>
+
+    <text x="28" y="330" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#c43030">&#x2717;</text>
+    <text x="44" y="330" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Manual environment setup required</text>
+
+    <!-- Summary -->
+    <text x="204" y="350" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Basic notebook interface - assembly required</text>
+  </g>
+
+  <!-- ==================== RIGHT CARD: Stellars JupyterLab DS ==================== -->
+  <g id="stellars-card">
+    <path d="M406,40 H786 V357 Q786,360 783,360 H409 Q406,360 406,357 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M406,40 H786 V357 Q786,360 783,360 H409 Q406,360 406,357 Z" fill="none" stroke="#0096d1" stroke-width="1.5"/>
+    <rect x="406" y="40" width="380" height="5" fill="#0096d1" opacity="0.6"/>
+
+    <text x="596" y="62" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle" class="fg-1">Stellars JupyterLab DS</text>
+    <text x="596" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" class="fg-3">40+ enhancement categories</text>
+
+    <!-- Feature rows with checkmarks -->
+    <!-- Checkmark colour: #1a8a4a -->
+    <text x="420" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#1a8a4a">&#x2713;</text>
+    <text x="436" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">MLflow + TensorBoard + Optuna Dashboard</text>
+
+    <text x="420" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#1a8a4a">&#x2713;</text>
+    <text x="436" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">CUDA 13 with auto-detection + on-demand envs</text>
+
+    <text x="420" y="132" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#1a8a4a">&#x2713;</text>
+    <text x="436" y="132" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">5 conda environments (Base + 4 on-demand)</text>
+
+    <text x="420" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#1a8a4a">&#x2713;</text>
+    <text x="436" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">btop resources monitor via ttyd</text>
+
+    <text x="420" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#1a8a4a">&#x2713;</text>
+    <text x="436" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">Custom themes (Stellars Dark / Night Owl)</text>
+
+    <text x="420" y="186" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#1a8a4a">&#x2713;</text>
+    <text x="436" y="186" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">12-stage numbered startup pipeline</text>
+
+    <text x="420" y="204" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#1a8a4a">&#x2713;</text>
+    <text x="436" y="204" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">MLflow experiment tracking + model registry</text>
+
+    <text x="420" y="222" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#1a8a4a">&#x2713;</text>
+    <text x="436" y="222" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">Fish shell + powerline + auto-suggestions</text>
+
+    <text x="420" y="240" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#1a8a4a">&#x2713;</text>
+    <text x="436" y="240" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">nb_venv_kernels auto-discovery</text>
+
+    <text x="420" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#1a8a4a">&#x2713;</text>
+    <text x="436" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">Autocompletion + Black formatter integrated</text>
+
+    <text x="420" y="276" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#1a8a4a">&#x2713;</text>
+    <text x="436" y="276" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">Cookiecutter project scaffolding</text>
+
+    <text x="420" y="294" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#1a8a4a">&#x2713;</text>
+    <text x="436" y="294" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">Lab Utilities menu (JSON-configurable)</text>
+
+    <text x="420" y="312" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#1a8a4a">&#x2713;</text>
+    <text x="436" y="312" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">nbdime notebook diff / merge + Git</text>
+
+    <text x="420" y="330" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#1a8a4a">&#x2713;</text>
+    <text x="436" y="330" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">Everything pre-configured and ready to use</text>
+
+    <!-- Summary -->
+    <text x="596" y="350" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Production-ready data science workspace</text>
+  </g>
+
+  <!-- Footer -->
+  <text x="400" y="380" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Users start working immediately - no setup, no configuration, no dependency hunting</text>
+
+</svg>

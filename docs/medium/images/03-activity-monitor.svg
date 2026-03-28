@@ -1,0 +1,170 @@
+<!--
+  03-activity-monitor.svg - Admin activity monitor dashboard mockup
+  Shows: Table with 4 users (alice, bob, charlie, dana) showing status dots,
+  CPU%, memory, time remaining, and activity bar visualization. Legend explains
+  exponential decay scoring with 72h half-life.
+  Intent: Show the admin monitoring dashboard with real-time resource tracking.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 primary, accent-2=#da8230 for warnings.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 800x300
+    Margins: left=20, right=780, top=10, bottom=296
+
+    Table header: y=10, h=28, bottom=38
+    Row height: 32px
+    Row 1 (alice):   y=38,  text baseline=58
+    Row 2 (bob):     y=70,  text baseline=90
+    Row 3 (charlie): y=102, text baseline=122
+    Row 4 (dana):    y=134, text baseline=154
+
+    Columns (x positions for text):
+      Status dot: cx=36
+      User:     x=52
+      CPU:      x=160
+      Memory:   x=250
+      Time:     x=350
+      Last:     x=460
+      Activity: x=580 (bar starts)
+
+    Activity bar: 5 blocks, each 16x10, gap 3px
+    Bar x-positions: 580, 599, 618, 637, 656
+
+    Legend section: y=182
+    Legend card: x=20, w=760, h=110, bottom=292
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    v-stack: table-header, row-1, row-2, row-3, row-4, legend
+    h-align: all rows share same column positions
+    contain: legend > status-dots, scoring-description
+  === -->
+
+  <g id="guide-grid" display="none">
+    <line x1="0" y1="38" x2="800" y2="38" stroke="red" stroke-width="0.5"/>
+    <line x1="160" y1="0" x2="160" y2="300" stroke="red" stroke-width="0.5"/>
+  </g>
+
+  <!-- === TABLE HEADER === -->
+  <rect x="20" y="10" width="760" height="28" rx="4" fill="#0096d1" fill-opacity="0.08"/>
+  <text x="52" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">USER</text>
+  <text x="160" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">CPU</text>
+  <text x="250" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">MEMORY</text>
+  <text x="350" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">TIME LEFT</text>
+  <text x="460" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">LAST ACTIVE</text>
+  <text x="580" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">ACTIVITY</text>
+
+  <line x1="20" y1="38" x2="780" y2="38" stroke="#0096d1" stroke-width="0.5" opacity="0.3"/>
+
+  <!-- === ROW 1: ALICE (active, high activity) === -->
+  <circle cx="36" cy="54" r="4" fill="#1a8a4a"/>
+  <text x="52" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">alice</text>
+  <text x="160" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-2">23%</text>
+  <text x="250" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-2">4.2 GB</text>
+  <text x="350" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-2">18h</text>
+  <text x="460" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-3">now</text>
+  <!-- Activity 5/5 -->
+  <rect x="580" y="49" width="16" height="10" rx="1.5" fill="#1a8a4a"/>
+  <rect x="599" y="49" width="16" height="10" rx="1.5" fill="#1a8a4a"/>
+  <rect x="618" y="49" width="16" height="10" rx="1.5" fill="#1a8a4a"/>
+  <rect x="637" y="49" width="16" height="10" rx="1.5" fill="#1a8a4a"/>
+  <rect x="656" y="49" width="16" height="10" rx="1.5" fill="#1a8a4a"/>
+
+  <line x1="20" y1="70" x2="780" y2="70" stroke="#0096d1" stroke-width="0.3" opacity="0.2"/>
+
+  <!-- === ROW 2: BOB (active, busy) === -->
+  <rect x="20" y="70" width="760" height="32" fill="#0096d1" fill-opacity="0.02"/>
+  <circle cx="36" cy="86" r="4" fill="#1a8a4a"/>
+  <text x="52" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">bob</text>
+  <text x="160" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-2">67%</text>
+  <text x="250" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-2">8.7 GB</text>
+  <text x="350" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-2">12h</text>
+  <text x="460" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-3">2 min ago</text>
+  <!-- Activity 4/5 -->
+  <rect x="580" y="81" width="16" height="10" rx="1.5" fill="#1a8a4a"/>
+  <rect x="599" y="81" width="16" height="10" rx="1.5" fill="#1a8a4a"/>
+  <rect x="618" y="81" width="16" height="10" rx="1.5" fill="#1a8a4a"/>
+  <rect x="637" y="81" width="16" height="10" rx="1.5" fill="#1a8a4a"/>
+  <rect x="656" y="81" width="16" height="10" rx="1.5" fill="none" stroke="#0096d1" stroke-width="0.5" opacity="0.3"/>
+
+  <line x1="20" y1="102" x2="780" y2="102" stroke="#0096d1" stroke-width="0.3" opacity="0.2"/>
+
+  <!-- === ROW 3: CHARLIE (idle, warning) === -->
+  <circle cx="36" cy="118" r="4" fill="#da8230"/>
+  <text x="52" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">charlie</text>
+  <text x="160" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-4">0.1%</text>
+  <text x="250" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-3">2.1 GB</text>
+  <text x="350" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#da8230">45m</text>
+  <text x="460" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-3">2 hours ago</text>
+  <!-- Activity 2/5 -->
+  <rect x="580" y="113" width="16" height="10" rx="1.5" fill="#da8230"/>
+  <rect x="599" y="113" width="16" height="10" rx="1.5" fill="#da8230"/>
+  <rect x="618" y="113" width="16" height="10" rx="1.5" fill="none" stroke="#0096d1" stroke-width="0.5" opacity="0.3"/>
+  <rect x="637" y="113" width="16" height="10" rx="1.5" fill="none" stroke="#0096d1" stroke-width="0.5" opacity="0.3"/>
+  <rect x="656" y="113" width="16" height="10" rx="1.5" fill="none" stroke="#0096d1" stroke-width="0.5" opacity="0.3"/>
+
+  <line x1="20" y1="134" x2="780" y2="134" stroke="#0096d1" stroke-width="0.3" opacity="0.2"/>
+
+  <!-- === ROW 4: DANA (offline) === -->
+  <rect x="20" y="134" width="760" height="32" fill="#0096d1" fill-opacity="0.02"/>
+  <circle cx="36" cy="150" r="4" fill="#c43030"/>
+  <text x="52" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-3">dana</text>
+  <text x="160" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-4">-</text>
+  <text x="250" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-4">-</text>
+  <text x="350" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-4">-</text>
+  <text x="460" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-4">3 days ago</text>
+  <!-- Activity 1/5 -->
+  <rect x="580" y="145" width="16" height="10" rx="1.5" fill="#c43030"/>
+  <rect x="599" y="145" width="16" height="10" rx="1.5" fill="none" stroke="#0096d1" stroke-width="0.5" opacity="0.3"/>
+  <rect x="618" y="145" width="16" height="10" rx="1.5" fill="none" stroke="#0096d1" stroke-width="0.5" opacity="0.3"/>
+  <rect x="637" y="145" width="16" height="10" rx="1.5" fill="none" stroke="#0096d1" stroke-width="0.5" opacity="0.3"/>
+  <rect x="656" y="145" width="16" height="10" rx="1.5" fill="none" stroke="#0096d1" stroke-width="0.5" opacity="0.3"/>
+
+  <!-- === LEGEND === -->
+  <g id="legend">
+    <path d="M20,182 H780 V289 Q780,292 777,292 H23 Q20,292 20,289 Z" fill="#0096d1" fill-opacity="0.03"/>
+    <path d="M20,182 H780 V289 Q780,292 777,292 H23 Q20,292 20,289 Z" fill="none" stroke="#0096d1" stroke-width="0.6" opacity="0.3"/>
+    <rect x="20" y="182" width="760" height="4" fill="#0096d1" opacity="0.15"/>
+
+    <text x="400" y="204" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-2">Exponential Decay Activity Scoring</text>
+
+    <!-- Status dots legend -->
+    <circle cx="60" cy="224" r="4" fill="#1a8a4a"/>
+    <text x="72" y="228" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Active - server running, recent activity</text>
+
+    <circle cx="320" cy="224" r="4" fill="#da8230"/>
+    <text x="332" y="228" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Idle - server running, no recent activity</text>
+
+    <circle cx="580" cy="224" r="4" fill="#c43030"/>
+    <text x="592" y="228" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Offline - server stopped</text>
+
+    <!-- Activity bar legend -->
+    <rect x="60" y="246" width="10" height="8" rx="1" fill="#1a8a4a"/>
+    <rect x="73" y="246" width="10" height="8" rx="1" fill="#1a8a4a"/>
+    <rect x="86" y="246" width="10" height="8" rx="1" fill="none" stroke="#0096d1" stroke-width="0.5" opacity="0.3"/>
+    <text x="104" y="254" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Activity bars: filled blocks = recent activity strength</text>
+
+    <text x="60" y="274" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Score uses 72-hour half-life: recent work weighs more, older activity gradually fades</text>
+    <text x="60" y="286" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Auto-refresh every 10 seconds - CPU and memory from Docker stats API</text>
+  </g>
+
+</svg>

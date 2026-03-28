@@ -1,0 +1,310 @@
+<!--
+  12-ecosystem-overview.svg - Full platform ecosystem bird's eye view
+  Shows: Central "Stellars DS Platform" hub with two major branches.
+  Left branch: stellars-jupyterhub-ds (Hub) with NativeAuthenticator, DockerSpawner,
+  Activity Monitor, Notifications, Session Extension, Groups, Branding.
+  Right branch: stellars-jupyterlab-ds (Lab) with MLflow, TensorBoard, Lab Utilities,
+  Custom Extensions, Conda Environments, Fish Shell, GPU/CUDA.
+  Bottom: Shared infrastructure (Docker, Traefik, Watchtower, CIFS/NAS, Volumes).
+  Top: Users (data scientists, ML engineers, researchers).
+  Intent: bird's eye view of the complete ecosystem - the hero diagram.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 hub/infra, accent-2=#da8230 lab/services.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 800x480
+    Margins: left=10, right=790, top=10, bottom=476
+
+    Users row: y=10..50, cx=400
+    User pills: 3 pills centered
+
+    Arrow: users(400,50) -> hub(400,80)
+
+    Central hub: x=280, y=80, w=240, h=56, cx=400
+    Hub accent bar: y=80, h=5
+
+    Branch arrows:
+      Hub left arm:  from (280,108) to (210,158) - chamfered L-route
+      Hub right arm: from (520,108) to (590,158) - chamfered L-route
+
+    Left branch (JupyterHub): x=10, y=158, w=370, h=236
+      Container top: y=158
+      Sub-cards (7 items, 2 columns):
+        Col 1 x=20 w=170: items at y=192, 232, 272, 312
+        Col 2 x=200 w=170: items at y=192, 232, 272
+
+    Right branch (JupyterLab): x=420, y=158, w=370, h=236
+      Container top: y=158
+      Sub-cards (7 items, 2 columns):
+        Col 1 x=430 w=170: items at y=192, 232, 272, 312
+        Col 2 x=610 w=170: items at y=192, 232, 272
+
+    Infrastructure bar: x=10, y=414, w=780, h=40
+
+    Vertical rhythm: 14px
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    v-stack: users-row, centre-hub, branch-row, infra-bar
+    h-stack: branch-row > hub-branch, lab-branch
+    h-align: users-row, centre-hub (cx=400)
+    flow: users -> centre-hub -> [hub-branch, lab-branch]
+    flow: hub-branch -> infra-bar, lab-branch -> infra-bar
+  === -->
+
+  <g id="guide-grid" display="none">
+    <line x1="400" y1="0" x2="400" y2="480" stroke="red" stroke-width="0.5"/>
+  </g>
+
+  <!-- ==================== USERS ROW ==================== -->
+  <g id="users-row">
+    <!-- Icon: users (Lucide, ISC license) -->
+    <g transform="translate(330, 14) scale(0.583)" fill="none" stroke="#0096d1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </g>
+    <text x="356" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Data Scientists</text>
+    <text x="440" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">ML Engineers</text>
+    <text x="530" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Researchers</text>
+    <text x="400" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" letter-spacing="1" class="fg-4">USERS</text>
+  </g>
+
+  <!-- Arrow: users -> hub -->
+  <line x1="400" y1="50" x2="400" y2="76" stroke="#0096d1" stroke-width="1.2" opacity="0.3"/>
+  <polygon points="397,76 400,80 403,76" fill="#0096d1" opacity="0.5"/>
+
+  <!-- ==================== CENTRAL HUB ==================== -->
+  <g id="centre-hub">
+    <path d="M280,80 H520 V133 Q520,136 517,136 H283 Q280,136 280,133 Z" fill="#0096d1" fill-opacity="0.06"/>
+    <path d="M280,80 H520 V133 Q520,136 517,136 H283 Q280,136 280,133 Z" fill="none" stroke="#0096d1" stroke-width="1.5"/>
+    <rect x="280" y="80" width="240" height="5" fill="#0096d1" opacity="0.7"/>
+    <text x="400" y="104" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle" class="fg-1">Stellars DS Platform</text>
+    <text x="400" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" class="fg-3">Self-hosted multi-user data science ecosystem</text>
+  </g>
+
+  <!-- Branch arrows -->
+  <!-- Hub left: (310,136) -> (200,158) chamfered L-route -->
+  <path d="M310,136 V144 L306,148 H204 L200,152 V154" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.3"/>
+  <polygon points="197,154 200,158 203,154" fill="#0096d1" opacity="0.5"/>
+
+  <!-- Hub right: (490,136) -> (600,158) chamfered L-route -->
+  <path d="M490,136 V144 L494,148 H596 L600,152 V154" fill="none" stroke="#da8230" stroke-width="1.2" opacity="0.3"/>
+  <polygon points="597,154 600,158 603,154" fill="#da8230" opacity="0.5"/>
+
+  <!-- ==================== LEFT BRANCH: JupyterHub ==================== -->
+  <g id="hub-branch">
+    <!-- Container -->
+    <path d="M10,158 H390 V397 Q390,400 387,400 H13 Q10,400 10,397 Z" fill="#0096d1" opacity="0.02"/>
+    <path d="M10,158 H390 V397 Q390,400 387,400 H13 Q10,400 10,397 Z" fill="none" stroke="#0096d1" stroke-width="0.8" opacity="0.2"/>
+    <rect x="10" y="158" width="380" height="4" fill="#0096d1" opacity="0.15"/>
+
+    <text x="200" y="176" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle" class="fg-1">stellars-jupyterhub-ds</text>
+    <text x="200" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Hub orchestration and user management</text>
+
+    <!-- Column 1 cards -->
+    <g id="hub-auth">
+      <path d="M20,202 H190 V233 Q190,236 187,236 H23 Q20,236 20,233 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M20,202 H190 V233 Q190,236 187,236 H23 Q20,236 20,233 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="20" y="202" width="170" height="4" fill="#0096d1" opacity="0.5"/>
+      <text x="32" y="220" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">NativeAuthenticator</text>
+      <text x="32" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Self-signup, admin approval, sync</text>
+    </g>
+
+    <g id="hub-spawner">
+      <path d="M20,244 H190 V275 Q190,278 187,278 H23 Q20,278 20,275 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M20,244 H190 V275 Q190,278 187,278 H23 Q20,278 20,275 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="20" y="244" width="170" height="4" fill="#0096d1" opacity="0.5"/>
+      <text x="32" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">DockerSpawner</text>
+      <text x="32" y="274" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Isolated containers per user</text>
+    </g>
+
+    <g id="hub-activity">
+      <path d="M20,286 H190 V317 Q190,320 187,320 H23 Q20,320 20,317 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M20,286 H190 V317 Q190,320 187,320 H23 Q20,320 20,317 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="20" y="286" width="170" height="4" fill="#0096d1" opacity="0.5"/>
+      <text x="32" y="304" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Activity Monitor</text>
+      <text x="32" y="316" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Session tracking, decay scoring</text>
+    </g>
+
+    <g id="hub-notifications">
+      <path d="M20,328 H190 V359 Q190,362 187,362 H23 Q20,362 20,359 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M20,328 H190 V359 Q190,362 187,362 H23 Q20,362 20,359 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="20" y="328" width="170" height="4" fill="#0096d1" opacity="0.5"/>
+      <text x="32" y="346" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Notifications</text>
+      <text x="32" y="358" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Broadcast to all active servers</text>
+    </g>
+
+    <!-- Column 2 cards -->
+    <g id="hub-session">
+      <path d="M200,202 H370 V233 Q370,236 367,236 H203 Q200,236 200,233 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M200,202 H370 V233 Q370,236 367,236 H203 Q200,236 200,233 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="200" y="202" width="170" height="4" fill="#0096d1" opacity="0.5"/>
+      <text x="212" y="220" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Session Extension</text>
+      <text x="212" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Idle detection, keep-alive</text>
+    </g>
+
+    <g id="hub-groups">
+      <path d="M200,244 H370 V275 Q370,278 367,278 H203 Q200,278 200,275 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M200,244 H370 V275 Q370,278 367,278 H203 Q200,278 200,275 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="200" y="244" width="170" height="4" fill="#0096d1" opacity="0.5"/>
+      <text x="212" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Access Groups</text>
+      <text x="212" y="274" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Docker sock, privileged mode</text>
+    </g>
+
+    <g id="hub-branding">
+      <path d="M200,286 H370 V317 Q370,320 367,320 H203 Q200,320 200,317 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M200,286 H370 V317 Q370,320 367,320 H203 Q200,320 200,317 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="200" y="286" width="170" height="4" fill="#0096d1" opacity="0.5"/>
+      <text x="212" y="304" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Custom Branding</text>
+      <text x="212" y="316" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Logo, favicon, splash icons</text>
+    </g>
+
+    <!-- Self-service summary -->
+    <text x="200" y="386" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Self-service: volume reset, server restart, manage profile</text>
+  </g>
+
+  <!-- ==================== RIGHT BRANCH: JupyterLab ==================== -->
+  <g id="lab-branch">
+    <!-- Container -->
+    <path d="M410,158 H790 V397 Q790,400 787,400 H413 Q410,400 410,397 Z" fill="#da8230" opacity="0.02"/>
+    <path d="M410,158 H790 V397 Q790,400 787,400 H413 Q410,400 410,397 Z" fill="none" stroke="#da8230" stroke-width="0.8" opacity="0.2"/>
+    <rect x="410" y="158" width="380" height="4" fill="#da8230" opacity="0.15"/>
+
+    <text x="600" y="176" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle" class="fg-1">stellars-jupyterlab-ds</text>
+    <text x="600" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Per-user workspace with data science stack</text>
+
+    <!-- Column 1 cards -->
+    <g id="lab-mlflow">
+      <path d="M420,202 H590 V233 Q590,236 587,236 H423 Q420,236 420,233 Z" fill="#da8230" fill-opacity="0.04"/>
+      <path d="M420,202 H590 V233 Q590,236 587,236 H423 Q420,236 420,233 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+      <rect x="420" y="202" width="170" height="4" fill="#da8230" opacity="0.5"/>
+      <text x="432" y="220" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">MLflow + TensorBoard</text>
+      <text x="432" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Experiment tracking, metrics viz</text>
+    </g>
+
+    <g id="lab-utils">
+      <path d="M420,244 H590 V275 Q590,278 587,278 H423 Q420,278 420,275 Z" fill="#da8230" fill-opacity="0.04"/>
+      <path d="M420,244 H590 V275 Q590,278 587,278 H423 Q420,278 420,275 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+      <rect x="420" y="244" width="170" height="4" fill="#da8230" opacity="0.5"/>
+      <text x="432" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Lab Utilities Menu</text>
+      <text x="432" y="274" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Admin-managed custom actions</text>
+    </g>
+
+    <g id="lab-extensions">
+      <path d="M420,286 H590 V317 Q590,320 587,320 H423 Q420,320 420,317 Z" fill="#da8230" fill-opacity="0.04"/>
+      <path d="M420,286 H590 V317 Q590,320 587,320 H423 Q420,320 420,317 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+      <rect x="420" y="286" width="170" height="4" fill="#da8230" opacity="0.5"/>
+      <text x="432" y="304" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Custom Extensions</text>
+      <text x="432" y="316" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Git, LSP, Black, nbdime, themes</text>
+    </g>
+
+    <g id="lab-optuna">
+      <path d="M420,328 H590 V359 Q590,362 587,362 H423 Q420,362 420,359 Z" fill="#da8230" fill-opacity="0.04"/>
+      <path d="M420,328 H590 V359 Q590,362 587,362 H423 Q420,362 420,359 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+      <rect x="420" y="328" width="170" height="4" fill="#da8230" opacity="0.5"/>
+      <text x="432" y="346" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Optuna + Resources</text>
+      <text x="432" y="358" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Hyperparams, btop monitor</text>
+    </g>
+
+    <!-- Column 2 cards -->
+    <g id="lab-conda">
+      <path d="M600,202 H780 V233 Q780,236 777,236 H603 Q600,236 600,233 Z" fill="#da8230" fill-opacity="0.04"/>
+      <path d="M600,202 H780 V233 Q780,236 777,236 H603 Q600,236 600,233 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+      <rect x="600" y="202" width="180" height="4" fill="#da8230" opacity="0.5"/>
+      <text x="612" y="220" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Conda Environments</text>
+      <text x="612" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Base + TF + PyTorch + R + Rust</text>
+    </g>
+
+    <g id="lab-shell">
+      <path d="M600,244 H780 V275 Q780,278 777,278 H603 Q600,278 600,275 Z" fill="#da8230" fill-opacity="0.04"/>
+      <path d="M600,244 H780 V275 Q780,278 777,278 H603 Q600,278 600,275 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+      <rect x="600" y="244" width="180" height="4" fill="#da8230" opacity="0.5"/>
+      <text x="612" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Fish Shell + Screen</text>
+      <text x="612" y="274" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Powerline, persistent sessions</text>
+    </g>
+
+    <g id="lab-gpu">
+      <path d="M600,286 H780 V317 Q780,320 777,320 H603 Q600,320 600,317 Z" fill="#da8230" fill-opacity="0.04"/>
+      <path d="M600,286 H780 V317 Q780,320 777,320 H603 Q600,320 600,317 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+      <rect x="600" y="286" width="180" height="4" fill="#da8230" opacity="0.5"/>
+      <text x="612" y="304" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">GPU / CUDA 13</text>
+      <text x="612" y="316" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Auto-detect, on-demand envs</text>
+    </g>
+
+    <!-- Lab summary -->
+    <text x="600" y="386" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">AI assistants: Claude Code, Cursor, MCP servers</text>
+  </g>
+
+  <!-- ==================== INFRASTRUCTURE BAR ==================== -->
+  <!-- Arrows from branches to infra -->
+  <line x1="200" y1="400" x2="200" y2="410" stroke="#0096d1" stroke-width="1" opacity="0.2"/>
+  <polygon points="197,410 200,414 203,410" fill="#0096d1" opacity="0.3"/>
+
+  <line x1="600" y1="400" x2="600" y2="410" stroke="#da8230" stroke-width="1" opacity="0.2"/>
+  <polygon points="597,410 600,414 603,410" fill="#da8230" opacity="0.3"/>
+
+  <g id="infra-bar">
+    <rect x="10" y="414" width="780" height="46" rx="4" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.8" opacity="0.4"/>
+    <rect x="10" y="414" width="780" height="4" fill="#0096d1" opacity="0.3"/>
+    <text x="400" y="430" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" letter-spacing="1" class="fg-4">SHARED INFRASTRUCTURE</text>
+
+    <!-- Infrastructure items -->
+    <text x="80" y="448" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">Docker</text>
+    <text x="80" y="458" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Compose</text>
+
+    <line x1="140" y1="440" x2="140" y2="460" stroke="#0096d1" stroke-width="0.5" opacity="0.2"/>
+
+    <text x="210" y="448" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">Traefik</text>
+    <text x="210" y="458" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">TLS + Proxy</text>
+
+    <line x1="280" y1="440" x2="280" y2="460" stroke="#0096d1" stroke-width="0.5" opacity="0.2"/>
+
+    <text x="350" y="448" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">Watchtower</text>
+    <text x="350" y="458" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Auto-update</text>
+
+    <line x1="420" y1="440" x2="420" y2="460" stroke="#0096d1" stroke-width="0.5" opacity="0.2"/>
+
+    <text x="490" y="448" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">CIFS / NAS</text>
+    <text x="490" y="458" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Shared storage</text>
+
+    <line x1="560" y1="440" x2="560" y2="460" stroke="#0096d1" stroke-width="0.5" opacity="0.2"/>
+
+    <text x="640" y="448" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">Volumes</text>
+    <text x="640" y="458" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Persistent</text>
+
+    <line x1="700" y1="440" x2="700" y2="460" stroke="#0096d1" stroke-width="0.5" opacity="0.2"/>
+
+    <text x="750" y="448" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">Network</text>
+    <text x="750" y="458" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Bridge</text>
+  </g>
+
+  <!-- Legend -->
+  <g id="legend">
+    <rect x="240" y="470" width="8" height="8" rx="1" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1"/>
+    <text x="252" y="478" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Hub (orchestration)</text>
+    <rect x="370" y="470" width="8" height="8" rx="1" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="1"/>
+    <text x="382" y="478" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Lab (user workspace)</text>
+    <text x="490" y="478" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Two repos, one platform</text>
+  </g>
+
+</svg>

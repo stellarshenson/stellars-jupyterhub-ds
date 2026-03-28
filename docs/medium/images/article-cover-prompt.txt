@@ -1,0 +1,5 @@
+Model: amazon.nova-canvas-v1:0 (Amazon Bedrock, us-east-1)
+Resolution: 1280x720, quality: premium
+
+Prompt:
+Abstract digital art, dark background (#0a1a24), cyan (#0096d1) and orange (#da8230) color scheme. A luminous hub of light at center radiating multiple glowing pathways outward like spokes, each ending in a distinct workspace pod - representing isolated user environments spawned from a central platform. Subtle grid mesh, flowing data streams, depth of field. Technical but artistic. No text, no UI elements, no charts. 16:9 aspect ratio. High quality, 4K.

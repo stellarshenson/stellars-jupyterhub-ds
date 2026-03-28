@@ -1,0 +1,167 @@
+<!--
+  02-user-self-service.svg - User self-service feature cards
+  Shows: Three feature cards side by side - Server Controls (start/stop/restart),
+  Session Extension (progress bar, extend button, max 24h), Volume Management
+  (checkboxes for home/workspace/cache, selective reset). Footer note.
+  Intent: Highlight the self-service capabilities available to every user.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 primary, accent-2=#da8230 for highlights.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 244">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 800x244
+    Margins: left=16, right=784, top=10, bottom=240
+
+    Card width: (784-16-2*12)/3 = 248, gap=12
+    Card 1: x=16,  w=248, right=264
+    Card 2: x=276, w=248, right=524
+    Card 3: x=536, w=248, right=784
+
+    Card top: y=10, accent bar h=5, card h=186, card bottom=196
+    Category label: y=28 (accent bar bottom 15 + 13)
+    Title: y=48
+    Description start: y=68, rhythm 14px
+
+    Footer note: y=218, cx=400
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: card-1, card-2, card-3
+    h-align: footer-note (cx=400)
+    contain: card-1 > server controls content
+    contain: card-2 > session extension content
+    contain: card-3 > volume management content
+  === -->
+
+  <g id="guide-grid" display="none">
+    <line x1="264" y1="0" x2="264" y2="244" stroke="red" stroke-width="0.5"/>
+    <line x1="276" y1="0" x2="276" y2="244" stroke="red" stroke-width="0.5"/>
+    <line x1="524" y1="0" x2="524" y2="244" stroke="red" stroke-width="0.5"/>
+    <line x1="536" y1="0" x2="536" y2="244" stroke="red" stroke-width="0.5"/>
+  </g>
+
+  <!-- === CARD 1: SERVER CONTROLS === -->
+  <g id="card-server-controls">
+    <path d="M16,10 H264 V193 Q264,196 261,196 H19 Q16,196 16,193 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M16,10 H264 V193 Q264,196 261,196 H19 Q16,196 16,193 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="16" y="10" width="248" height="5" fill="#0096d1" opacity="0.6"/>
+
+    <!-- Icon: power (Lucide, ISC license) -->
+    <g transform="translate(228, 22) scale(0.583)" fill="none" stroke="#0096d1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+      <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>
+    </g>
+
+    <text x="30" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#0096d1">SERVER CONTROLS</text>
+    <text x="30" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Start / Stop / Restart</text>
+    <text x="30" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">One-click container lifecycle</text>
+    <text x="30" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">management from the home page</text>
+
+    <!-- Button mockups -->
+    <rect x="30" y="98" width="56" height="20" rx="3" fill="#1a8a4a" opacity="0.7"/>
+    <text x="58" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="on-fill">Start</text>
+
+    <rect x="96" y="98" width="56" height="20" rx="3" fill="#c43030" opacity="0.7"/>
+    <text x="124" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="on-fill">Stop</text>
+
+    <rect x="162" y="98" width="66" height="20" rx="3" fill="#da8230" opacity="0.7"/>
+    <text x="195" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="on-fill">Restart</text>
+
+    <text x="30" y="138" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Restart preserves volumes and</text>
+    <text x="30" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">configuration (Docker native)</text>
+    <text x="30" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Admin can manage any user</text>
+    <text x="30" y="182" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">User manages own server</text>
+  </g>
+
+  <!-- === CARD 2: SESSION EXTENSION === -->
+  <g id="card-session-extension">
+    <path d="M276,10 H524 V193 Q524,196 521,196 H279 Q276,196 276,193 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M276,10 H524 V193 Q524,196 521,196 H279 Q276,196 276,193 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="276" y="10" width="248" height="5" fill="#0096d1" opacity="0.6"/>
+
+    <!-- Icon: timer (Lucide, ISC license) -->
+    <g transform="translate(488, 22) scale(0.583)" fill="none" stroke="#0096d1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+      <line x1="10" y1="2" x2="14" y2="2"/><line x1="12" y1="14" x2="12" y2="8"/>
+      <circle cx="12" cy="14" r="8"/>
+    </g>
+
+    <text x="290" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#0096d1">SESSION EXTENSION</text>
+    <text x="290" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Extend Session Timer</text>
+    <text x="290" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Idle culler shuts down inactive</text>
+    <text x="290" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">servers - users can self-extend</text>
+
+    <!-- Progress bar mockup -->
+    <text x="290" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Time remaining</text>
+    <rect x="290" y="108" width="200" height="10" rx="3" fill="#0096d1" fill-opacity="0.1"/>
+    <rect x="290" y="108" width="140" height="10" rx="3" fill="#0096d1" opacity="0.5"/>
+    <text x="360" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" class="on-fill">18h remaining</text>
+
+    <rect x="290" y="128" width="80" height="20" rx="3" fill="#0096d1" opacity="0.6"/>
+    <text x="330" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="on-fill">Extend +8h</text>
+
+    <text x="290" y="164" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Maximum session: 24 hours</text>
+    <text x="290" y="176" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Configurable per deployment</text>
+    <text x="290" y="188" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Bootstrap progress bar styling</text>
+  </g>
+
+  <!-- === CARD 3: VOLUME MANAGEMENT === -->
+  <g id="card-volume-management">
+    <path d="M536,10 H784 V193 Q784,196 781,196 H539 Q536,196 536,193 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M536,10 H784 V193 Q784,196 781,196 H539 Q536,196 536,193 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="536" y="10" width="248" height="5" fill="#0096d1" opacity="0.6"/>
+
+    <!-- Icon: hard-drive (Lucide, ISC license) -->
+    <g transform="translate(748, 22) scale(0.583)" fill="none" stroke="#0096d1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+      <line x1="22" y1="12" x2="2" y2="12"/>
+      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+      <line x1="6" y1="16" x2="6.01" y2="16"/><line x1="10" y1="16" x2="10.01" y2="16"/>
+    </g>
+
+    <text x="550" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#0096d1">VOLUME MANAGEMENT</text>
+    <text x="550" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Selective Volume Reset</text>
+    <text x="550" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Choose which volumes to delete</text>
+    <text x="550" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Server must be stopped first</text>
+
+    <!-- Checkbox mockups -->
+    <rect x="550" y="98" width="12" height="12" rx="2" fill="none" stroke="#0096d1" stroke-width="1" opacity="0.5"/>
+    <text x="568" y="109" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">home</text>
+    <text x="610" y="109" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">configurations, dotfiles</text>
+
+    <rect x="550" y="116" width="12" height="12" rx="2" fill="#0096d1" fill-opacity="0.3" stroke="#0096d1" stroke-width="1"/>
+    <path d="M553,122 L555,125 L559,119" fill="none" stroke="#0096d1" stroke-width="1.5"/>
+    <text x="568" y="127" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">workspace</text>
+    <text x="626" y="127" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">projects, notebooks</text>
+
+    <rect x="550" y="134" width="12" height="12" rx="2" fill="#0096d1" fill-opacity="0.3" stroke="#0096d1" stroke-width="1"/>
+    <path d="M553,140 L555,143 L559,137" fill="none" stroke="#0096d1" stroke-width="1.5"/>
+    <text x="568" y="145" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">cache</text>
+    <text x="600" y="145" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">pip, conda cache</text>
+
+    <rect x="550" y="160" width="90" height="20" rx="3" fill="#c43030" opacity="0.6"/>
+    <text x="595" y="174" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="on-fill">Delete Selected</text>
+
+    <text x="550" y="192" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Confirmation dialog required</text>
+  </g>
+
+  <!-- === FOOTER NOTE === -->
+  <text x="400" y="218" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-3">Zero admin involvement required</text>
+  <text x="400" y="234" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Users manage their own environment - admins retain override capability</text>
+
+</svg>

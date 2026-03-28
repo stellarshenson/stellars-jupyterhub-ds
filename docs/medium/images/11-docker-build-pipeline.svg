@@ -1,0 +1,218 @@
+<!--
+  11-docker-build-pipeline.svg - Multi-stage Docker build process
+  Shows: Two-stage build flow. Stage 1 (Builder) on left with nvidia/cuda base,
+  building llama-cpp-python, docker-mcp gateway, docker-buildx. Stage 2 (Target)
+  on right receiving builder artifacts, then adding miniforge, JupyterLab,
+  extensions, themes, startup scripts, and config. Arrow between stages shows
+  only binaries carried over.
+  Intent: illustrate the optimized multi-stage Docker build pipeline.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 target stage, accent-2=#da8230 builder stage.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 380">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 800x380
+    Margins: left=14, right=786, top=10, bottom=376
+
+    Title: y=22
+    Subtitle: y=36
+
+    Stage 1 container: x=14, y=50, w=290, h=290
+    Stage 2 container: x=380, y=50, w=406, h=290
+
+    Arrow between stages: from x=304 to x=380, y_center=195
+
+    Stage 1 internal:
+      Base image pill: x=24, y=58, w=270, h=28
+      Build items (vertical stack): y=100, 130, 160, 190
+      Discarded label: y=320
+
+    Stage 2 internal:
+      Base image pill: x=390, y=58, w=386, h=28
+      Copy artifacts pill: x=390, y=98, w=386, h=24
+      Build layers (vertical stack, 2 columns):
+        Left col x=390, Right col x=586
+        Row heights: y=132, 162, 192, 222, 252
+
+    Footer output: y=358
+
+    Vertical rhythm: 14px
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: builder-stage, transition-arrow, target-stage
+    v-stack: builder-stage > base-image, build-item-1, build-item-2, build-item-3
+    v-stack: target-stage > base-image, copy-artifacts, layer-grid
+    h-stack: layer-grid (2 columns)
+    flow: builder-stage -> target-stage (copy binaries)
+  === -->
+
+  <g id="guide-grid" display="none">
+    <line x1="400" y1="0" x2="400" y2="380" stroke="red" stroke-width="0.5"/>
+  </g>
+
+  <!-- Title -->
+  <text x="400" y="22" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle" class="fg-1">Multi-Stage Docker Build</text>
+  <text x="400" y="36" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" class="fg-3">Builder stage compiles, target stage assembles - only binaries carried over</text>
+
+  <!-- ==================== STAGE 1: Builder ==================== -->
+  <g id="builder-stage">
+    <!-- Container -->
+    <path d="M14,50 H304 V337 Q304,340 301,340 H17 Q14,340 14,337 Z" fill="#da8230" opacity="0.02"/>
+    <path d="M14,50 H304 V337 Q304,340 301,340 H17 Q14,340 14,337 Z" fill="none" stroke="#da8230" stroke-width="0.8" opacity="0.25"/>
+    <rect x="14" y="50" width="290" height="4" fill="#da8230" opacity="0.15"/>
+
+    <!-- Stage label -->
+    <text x="159" y="46" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" letter-spacing="1" class="accent-2">STAGE 1: BUILDER</text>
+
+    <!-- Base image -->
+    <rect x="24" y="62" width="270" height="28" rx="4" fill="#da8230" fill-opacity="0.08" stroke="#da8230" stroke-width="0.8"/>
+    <text x="159" y="78" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">nvidia/cuda:13.0.2-runtime-ubuntu24.04</text>
+    <text x="159" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Full CUDA runtime + build tools</text>
+
+    <!-- Build items -->
+    <g id="build-1">
+      <path d="M24,104 H294 V141 Q294,144 291,144 H27 Q24,144 24,141 Z" fill="#da8230" fill-opacity="0.04"/>
+      <path d="M24,104 H294 V141 Q294,144 291,144 H27 Q24,144 24,141 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+      <rect x="24" y="104" width="270" height="5" fill="#da8230" opacity="0.6"/>
+      <text x="36" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2">llama-cpp-python</text>
+      <text x="36" y="136" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">CUDA-accelerated LLM inference library</text>
+    </g>
+
+    <g id="build-2">
+      <path d="M24,154 H294 V191 Q294,194 291,194 H27 Q24,194 24,191 Z" fill="#da8230" fill-opacity="0.04"/>
+      <path d="M24,154 H294 V191 Q294,194 291,194 H27 Q24,194 24,191 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+      <rect x="24" y="154" width="270" height="5" fill="#da8230" opacity="0.6"/>
+      <text x="36" y="172" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2">docker-mcp gateway</text>
+      <text x="36" y="186" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Go binary for MCP server protocol</text>
+    </g>
+
+    <g id="build-3">
+      <path d="M24,204 H294 V241 Q294,244 291,244 H27 Q24,244 24,241 Z" fill="#da8230" fill-opacity="0.04"/>
+      <path d="M24,204 H294 V241 Q294,244 291,244 H27 Q24,244 24,241 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+      <rect x="24" y="204" width="270" height="5" fill="#da8230" opacity="0.6"/>
+      <text x="36" y="222" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2">docker-buildx plugin</text>
+      <text x="36" y="236" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Multi-platform build support</text>
+    </g>
+
+    <!-- Discarded indicator -->
+    <rect x="24" y="260" width="270" height="24" rx="3" fill="#c43030" fill-opacity="0.06" stroke="#c43030" stroke-width="0.6" stroke-dasharray="4,3"/>
+    <text x="159" y="276" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" fill="#c43030">Builder stage discarded after build</text>
+
+    <text x="159" y="306" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Build tools, headers, and temp files</text>
+    <text x="159" y="318" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">not included in final image</text>
+  </g>
+
+  <!-- ==================== TRANSITION ARROW ==================== -->
+  <line x1="304" y1="174" x2="372" y2="174" stroke="#0096d1" stroke-width="1.5" opacity="0.4"/>
+  <polygon points="372,170 380,174 372,178" fill="#0096d1" opacity="0.6"/>
+  <text x="342" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" class="fg-3">COPY</text>
+  <text x="342" y="186" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">binaries</text>
+  <text x="342" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">only</text>
+
+  <!-- ==================== STAGE 2: Target ==================== -->
+  <g id="target-stage">
+    <!-- Container -->
+    <path d="M380,50 H786 V337 Q786,340 783,340 H383 Q380,340 380,337 Z" fill="#0096d1" opacity="0.02"/>
+    <path d="M380,50 H786 V337 Q786,340 783,340 H383 Q380,340 380,337 Z" fill="none" stroke="#0096d1" stroke-width="0.8" opacity="0.25"/>
+    <rect x="380" y="50" width="406" height="4" fill="#0096d1" opacity="0.15"/>
+
+    <!-- Stage label -->
+    <text x="583" y="46" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" letter-spacing="1" class="accent-1">STAGE 2: TARGET (FINAL IMAGE)</text>
+
+    <!-- Base image -->
+    <rect x="390" y="62" width="386" height="28" rx="4" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="0.8"/>
+    <text x="583" y="78" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">nvidia/cuda:13.0.2-base-ubuntu24.04</text>
+    <text x="583" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Minimal CUDA base (smaller than runtime)</text>
+
+    <!-- Copy artifacts bar -->
+    <rect x="390" y="100" width="386" height="20" rx="3" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.8" stroke-dasharray="4,3"/>
+    <text x="583" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="accent-2">COPY from builder: llama-cpp, docker-mcp, buildx</text>
+
+    <!-- Layer cards - 2 columns -->
+    <!-- Column 1 (x=390, w=190) -->
+    <g id="layer-conda">
+      <path d="M390,130 H580 V167 Q580,170 577,170 H393 Q390,170 390,167 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M390,130 H580 V167 Q580,170 577,170 H393 Q390,170 390,167 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="390" y="130" width="190" height="5" fill="#0096d1" opacity="0.6"/>
+      <text x="402" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Miniforge Conda</text>
+      <text x="402" y="162" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">5 environments (base + 4 on-demand)</text>
+    </g>
+
+    <g id="layer-jupyterlab">
+      <path d="M390,180 H580 V217 Q580,220 577,220 H393 Q390,220 390,217 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M390,180 H580 V217 Q580,220 577,220 H393 Q390,220 390,217 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="390" y="180" width="190" height="5" fill="#0096d1" opacity="0.6"/>
+      <text x="402" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">JupyterLab 4.5.1</text>
+      <text x="402" y="212" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Core + LSP + Git + nbdime</text>
+    </g>
+
+    <g id="layer-extensions">
+      <path d="M390,230 H580 V267 Q580,270 577,270 H393 Q390,270 390,267 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M390,230 H580 V267 Q580,270 577,270 H393 Q390,270 390,267 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="390" y="230" width="190" height="5" fill="#0096d1" opacity="0.6"/>
+      <text x="402" y="250" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Extensions + Themes</text>
+      <text x="402" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">40+ curated extensions</text>
+    </g>
+
+    <!-- Column 2 (x=590, w=186) -->
+    <g id="layer-startup">
+      <path d="M590,130 H776 V167 Q776,170 773,170 H593 Q590,170 590,167 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M590,130 H776 V167 Q776,170 773,170 H593 Q590,170 590,167 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="590" y="130" width="186" height="5" fill="#0096d1" opacity="0.6"/>
+      <text x="602" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Startup Scripts</text>
+      <text x="602" y="162" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">12 numbered init scripts</text>
+    </g>
+
+    <g id="layer-services">
+      <path d="M590,180 H776 V217 Q776,220 773,220 H593 Q590,220 590,217 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M590,180 H776 V217 Q776,220 773,220 H593 Q590,220 590,217 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="590" y="180" width="186" height="5" fill="#0096d1" opacity="0.6"/>
+      <text x="602" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Services Config</text>
+      <text x="602" y="212" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">MLflow, TBoard, btop, Optuna</text>
+    </g>
+
+    <g id="layer-config">
+      <path d="M590,230 H776 V267 Q776,270 773,270 H593 Q590,270 590,267 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M590,230 H776 V267 Q776,270 773,270 H593 Q590,270 590,267 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="590" y="230" width="186" height="5" fill="#0096d1" opacity="0.6"/>
+      <text x="602" y="250" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Shell + Tools</text>
+      <text x="602" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Fish, Screen, uv, cookiecutter</text>
+    </g>
+
+    <!-- Output image label -->
+    <rect x="390" y="286" width="386" height="36" rx="4" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1"/>
+    <text x="583" y="304" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle" class="fg-1">stellars/stellars-jupyterlab-ds:latest</text>
+    <text x="583" y="318" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Published to Docker Hub - pulled by JupyterHub on user spawn</text>
+  </g>
+
+  <!-- Footer -->
+  <text x="400" y="360" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-4">Builder stage discarded after COPY - final image contains only runtime dependencies and compiled binaries</text>
+
+  <!-- Legend -->
+  <g id="legend">
+    <rect x="240" y="370" width="8" height="8" rx="1" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="1"/>
+    <text x="252" y="378" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Builder (temporary)</text>
+    <rect x="370" y="370" width="8" height="8" rx="1" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1"/>
+    <text x="382" y="378" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Target (final image)</text>
+  </g>
+
+</svg>
