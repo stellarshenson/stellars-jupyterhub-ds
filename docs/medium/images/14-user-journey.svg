@@ -1,0 +1,69 @@
+<!--
+  14-user-journey.svg - User journey as a flowing path
+  Shows: Winding path from login to productive work, with milestone bubbles
+  along the route. Organic flowing shape, not grid.
+  Theme: Stellars-Tech
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- The flowing path -->
+  <path d="M50,100 C120,40 180,40 250,80 C320,120 360,140 430,90 C500,40 540,50 600,100 C650,140 700,130 760,100"
+        fill="none" stroke="#0096d1" stroke-width="2.5" opacity="0.15"/>
+  <path d="M50,100 C120,40 180,40 250,80 C320,120 360,140 430,90 C500,40 540,50 600,100 C650,140 700,130 760,100"
+        fill="none" stroke="#0096d1" stroke-width="1" opacity="0.35" stroke-dasharray="4,6"/>
+
+  <!-- Milestone 1: Login -->
+  <circle cx="50" cy="100" r="16" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="1"/>
+  <circle cx="50" cy="100" r="4" fill="#0096d1" opacity="0.5"/>
+  <text x="50" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">Sign in</text>
+  <text x="50" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">NativeAuth</text>
+
+  <!-- Milestone 2: Server starts -->
+  <circle cx="200" cy="58" r="20" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1"/>
+  <circle cx="200" cy="58" r="5" fill="#0096d1" opacity="0.45"/>
+  <text x="200" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">Start server</text>
+  <text x="200" y="40" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Container spawns</text>
+
+  <!-- Milestone 3: Workspace ready -->
+  <circle cx="340" cy="120" r="22" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="1"/>
+  <circle cx="340" cy="120" r="5.5" fill="#da8230" opacity="0.45"/>
+  <text x="340" y="152" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">Workspace ready</text>
+  <text x="340" y="164" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">MLflow, TensorBoard</text>
+  <text x="340" y="174" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">running in tabs</text>
+
+  <!-- Milestone 4: Select kernel -->
+  <circle cx="480" cy="62" r="18" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1"/>
+  <circle cx="480" cy="62" r="4.5" fill="#0096d1" opacity="0.45"/>
+  <text x="480" y="32" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">Pick environment</text>
+  <text x="480" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Auto-discovered</text>
+
+  <!-- Milestone 5: Working -->
+  <circle cx="620" cy="108" r="20" fill="#1a8a4a" fill-opacity="0.06" stroke="#1a8a4a" stroke-width="1"/>
+  <circle cx="620" cy="108" r="5" fill="#1a8a4a" opacity="0.45"/>
+  <text x="620" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">Productive work</text>
+  <text x="620" y="152" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">GPU, extensions</text>
+  <text x="620" y="162" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">all pre-configured</text>
+
+  <!-- Milestone 6: Extend session -->
+  <circle cx="760" cy="100" r="14" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.8"/>
+  <circle cx="760" cy="100" r="3.5" fill="#da8230" opacity="0.45"/>
+  <text x="760" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" class="fg-2">Extend</text>
+  <text x="760" y="138" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Self-service</text>
+
+  <!-- Time arrow at bottom -->
+  <line x1="40" y1="190" x2="770" y2="190" stroke="#0096d1" stroke-width="0.4" opacity="0.15"/>
+  <polygon points="770,188 780,190 770,192" fill="#0096d1" opacity="0.2"/>
+  <text x="790" y="193" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">time</text>
+</svg>
