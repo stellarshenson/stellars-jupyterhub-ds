@@ -1,0 +1,100 @@
+<!--
+  28-services-orbit.svg - Per-user services orbiting around JupyterLab
+  Left: orbital paths with service moons. Right: how they appear as tabs.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- LEFT: Orbital system -->
+  <g id="orbits">
+    <!-- Planet: JupyterLab -->
+    <circle cx="190" cy="120" r="22" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+    <circle cx="190" cy="120" r="8" fill="#0096d1" opacity="0.25"/>
+    <text x="190" y="124" font-family="Segoe UI, Arial, sans-serif" font-size="6" font-weight="600" text-anchor="middle" class="fg-1">Lab</text>
+
+    <!-- Orbit 1: MLflow -->
+    <ellipse cx="190" cy="120" rx="62" ry="48" fill="none" stroke="#da8230" stroke-width="0.5" opacity="0.15"
+             transform="rotate(-15, 190, 120)"/>
+    <circle cx="248" cy="90" r="9" fill="#da8230" fill-opacity="0.08" stroke="#da8230" stroke-width="0.8" opacity="0.5"/>
+    <text x="248" y="93" font-family="Segoe UI, Arial, sans-serif" font-size="6" font-weight="600" text-anchor="middle" class="fg-2">MLflow</text>
+
+    <!-- Orbit 2: TensorBoard -->
+    <ellipse cx="190" cy="120" rx="82" ry="60" fill="none" stroke="#0096d1" stroke-width="0.4" opacity="0.12"
+             transform="rotate(10, 190, 120)"/>
+    <circle cx="110" cy="75" r="8" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.7" opacity="0.45"/>
+    <text x="110" y="78" font-family="Segoe UI, Arial, sans-serif" font-size="5.5" font-weight="600" text-anchor="middle" class="fg-3">TB</text>
+
+    <!-- Orbit 3: Resources Monitor -->
+    <ellipse cx="190" cy="120" rx="105" ry="72" fill="none" stroke="#da8230" stroke-width="0.3" opacity="0.1"
+             transform="rotate(-8, 190, 120)"/>
+    <circle cx="290" cy="155" r="7.5" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.6" opacity="0.4"/>
+    <text x="290" y="158" font-family="Segoe UI, Arial, sans-serif" font-size="5" font-weight="600" text-anchor="middle" class="fg-3">btop</text>
+
+    <!-- Orbit 4: Optuna -->
+    <ellipse cx="190" cy="120" rx="120" ry="82" fill="none" stroke="#0096d1" stroke-width="0.25" opacity="0.08"
+             transform="rotate(5, 190, 120)"/>
+    <circle cx="82" cy="158" r="6.5" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="0.5" opacity="0.3"/>
+    <text x="82" y="161" font-family="Segoe UI, Arial, sans-serif" font-size="5" text-anchor="middle" class="fg-4">Opt</text>
+
+    <!-- Orbital trails -->
+    <circle cx="140" cy="155" r="1" fill="#da8230" opacity="0.1"/>
+    <circle cx="235" cy="68" r="0.8" fill="#0096d1" opacity="0.08"/>
+    <circle cx="260" cy="170" r="0.8" fill="#da8230" opacity="0.08"/>
+    <circle cx="100" cy="100" r="1" fill="#0096d1" opacity="0.06"/>
+  </g>
+
+  <!-- Arrow to card -->
+  <path d="M315,120 L394,120" fill="none" stroke="#0096d1" stroke-width="0.6" opacity="0.2"/>
+  <polygon points="394,117 400,120 394,123" fill="#0096d1" opacity="0.3"/>
+  <text x="355" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">Traefik routes</text>
+  <text x="355" y="132" font-family="Segoe UI, Arial, sans-serif" font-size="6" text-anchor="middle" class="fg-4">to tabs</text>
+
+  <!-- RIGHT: Tab mockup card -->
+  <g id="tab-card">
+    <path d="M408,16 H780 V220 Q780,224 776,224 H412 Q408,224 408,220 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M408,16 H780 V220 Q780,224 776,224 H412 Q408,224 408,220 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="408" y="16" width="372" height="5" fill="#0096d1" opacity="0.6"/>
+
+    <text x="422" y="38" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#0096d1">JUPYTERLAB TABS</text>
+    <text x="422" y="54" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-1">Everything opens inside the notebook</text>
+
+    <!-- Tab bar mockup -->
+    <rect x="422" y="68" width="342" height="22" rx="0" fill="#0096d1" fill-opacity="0.03"/>
+    <!-- Active tab -->
+    <rect x="422" y="68" width="70" height="22" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="0.5"/>
+    <text x="457" y="83" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" text-anchor="middle" class="fg-2">notebook.ipynb</text>
+    <!-- Other tabs -->
+    <rect x="492" y="68" width="56" height="22" fill="none" stroke="#0096d1" stroke-width="0.3" opacity="0.2"/>
+    <text x="520" y="83" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">MLflow</text>
+    <rect x="548" y="68" width="70" height="22" fill="none" stroke="#0096d1" stroke-width="0.3" opacity="0.2"/>
+    <text x="583" y="83" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">TensorBoard</text>
+    <rect x="618" y="68" width="50" height="22" fill="none" stroke="#0096d1" stroke-width="0.3" opacity="0.2"/>
+    <text x="643" y="83" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">btop</text>
+    <rect x="668" y="68" width="50" height="22" fill="none" stroke="#0096d1" stroke-width="0.3" opacity="0.2"/>
+    <text x="693" y="83" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Terminal</text>
+
+    <!-- Content area -->
+    <rect x="422" y="90" width="342" height="100" fill="#0096d1" fill-opacity="0.02" stroke="#0096d1" stroke-width="0.3" opacity="0.15"/>
+
+    <!-- Fake notebook content -->
+    <rect x="432" y="100" width="200" height="6" rx="1" fill="#0096d1" opacity="0.06"/>
+    <rect x="432" y="112" width="280" height="6" rx="1" fill="#0096d1" opacity="0.04"/>
+    <rect x="432" y="124" width="160" height="6" rx="1" fill="#0096d1" opacity="0.06"/>
+    <rect x="432" y="140" width="322" height="30" rx="2" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.3" opacity="0.15"/>
+    <text x="442" y="158" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">model.fit(X_train, y_train, epochs=50)</text>
+
+    <text x="422" y="210" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Per-user instances - no shared state between users</text>
+    <text x="422" y="222" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">All services route through per-user Traefik at single HTTPS endpoint</text>
+  </g>
+</svg>

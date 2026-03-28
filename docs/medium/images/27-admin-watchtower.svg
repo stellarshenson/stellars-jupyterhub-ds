@@ -1,0 +1,86 @@
+<!--
+  27-admin-watchtower.svg - Watchtower update cycle as lighthouse beam
+  Left: lighthouse beam sweeping across containers. Right: update process card.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- LEFT: Lighthouse -->
+  <g id="lighthouse">
+    <!-- Tower -->
+    <path d="M150,190 L140,80 L160,80 Z" fill="#da8230" fill-opacity="0.08" stroke="#da8230" stroke-width="0.8" opacity="0.4"/>
+    <rect x="135" y="70" width="30" height="15" rx="2" fill="#da8230" fill-opacity="0.1" stroke="#da8230" stroke-width="0.8" opacity="0.5"/>
+    <!-- Light -->
+    <circle cx="150" cy="65" r="6" fill="#da8230" opacity="0.25"/>
+    <circle cx="150" cy="65" r="3" fill="#da8230" opacity="0.5"/>
+
+    <!-- Beam cone sweeping right -->
+    <path d="M156,63 L340,20 L340,110 Z" fill="#da8230" fill-opacity="0.03"/>
+    <line x1="156" y1="63" x2="340" y2="20" stroke="#da8230" stroke-width="0.4" opacity="0.15"/>
+    <line x1="156" y1="67" x2="340" y2="110" stroke="#da8230" stroke-width="0.4" opacity="0.15"/>
+
+    <!-- Containers in beam path -->
+    <rect x="220" y="40" width="24" height="20" rx="3" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.6" opacity="0.4"/>
+    <text x="232" y="54" font-family="Segoe UI, Arial, sans-serif" font-size="5" text-anchor="middle" class="fg-4">hub</text>
+
+    <rect x="260" y="55" width="24" height="20" rx="3" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.6" opacity="0.35"/>
+    <text x="272" y="69" font-family="Segoe UI, Arial, sans-serif" font-size="5" text-anchor="middle" class="fg-4">lab-1</text>
+
+    <rect x="290" y="72" width="24" height="20" rx="3" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.6" opacity="0.3"/>
+    <text x="302" y="86" font-family="Segoe UI, Arial, sans-serif" font-size="5" text-anchor="middle" class="fg-4">lab-2</text>
+
+    <!-- Below beam: containers not scanned yet -->
+    <rect x="200" y="130" width="24" height="20" rx="3" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.4" opacity="0.15"/>
+    <rect x="240" y="140" width="24" height="20" rx="3" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.4" opacity="0.15"/>
+    <rect x="280" y="135" width="24" height="20" rx="3" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.4" opacity="0.15"/>
+
+    <text x="150" y="208" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">Watchtower scans</text>
+    <text x="150" y="218" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-4">daily at midnight</text>
+  </g>
+
+  <!-- RIGHT: Update process card -->
+  <g id="update-card">
+    <path d="M380,16 H780 V200 Q780,204 776,204 H384 Q380,204 380,200 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M380,16 H780 V200 Q780,204 776,204 H384 Q380,204 380,200 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="380" y="16" width="400" height="5" fill="#da8230" opacity="0.6"/>
+
+    <text x="394" y="38" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" fill="#da8230">AUTOMATIC UPDATES</text>
+    <text x="394" y="56" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="fg-1">Zero-Downtime Image Refresh</text>
+
+    <!-- Process steps as flowing path with dots -->
+    <circle cx="410" cy="80" r="4" fill="#da8230" opacity="0.3"/>
+    <text x="422" y="84" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-2">Check DockerHub for new tags</text>
+
+    <path d="M410,84 L410,96" stroke="#da8230" stroke-width="0.5" opacity="0.15"/>
+    <circle cx="410" cy="102" r="4" fill="#da8230" opacity="0.3"/>
+    <text x="422" y="106" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-2">Pull updated images silently</text>
+
+    <path d="M410,106 L410,118" stroke="#da8230" stroke-width="0.5" opacity="0.15"/>
+    <circle cx="410" cy="124" r="4" fill="#da8230" opacity="0.3"/>
+    <text x="422" y="128" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-2">New containers use new image on next start</text>
+
+    <path d="M410,128 L410,140" stroke="#da8230" stroke-width="0.5" opacity="0.15"/>
+    <circle cx="410" cy="146" r="4" fill="#da8230" opacity="0.3"/>
+    <text x="422" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-2">Running containers unaffected</text>
+
+    <path d="M410,150 L410,162" stroke="#da8230" stroke-width="0.5" opacity="0.15"/>
+    <circle cx="410" cy="168" r="4" fill="#1a8a4a" opacity="0.35"/>
+    <text x="422" y="172" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">User volumes persist across refreshes</text>
+
+    <text x="394" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Semantic versioning - pin to specific release or track latest</text>
+  </g>
+
+  <!-- Connecting beam from lighthouse to card -->
+  <path d="M320,65 C340,55 360,42 380,38" fill="none" stroke="#da8230" stroke-width="0.5" opacity="0.15"/>
+</svg>

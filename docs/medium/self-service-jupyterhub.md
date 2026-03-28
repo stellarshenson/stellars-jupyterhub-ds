@@ -103,11 +103,15 @@ The glue that makes this seamless is `nb_venv_kernels` - a custom extension that
 
 All local environments persist in user volumes between server image refreshes. When the admin pushes a new image via Watchtower, user-created conda environments, uv venvs, and project directories survive because they live on persistent volumes. The base image gets updated, user customizations stay intact.
 
+![Kernel Discovery](images/26-env-discovery-web.svg)
+
 ![Environment Strategy](images/07-conda-environments.svg)
 
 ![Volume Strata](images/22-volume-strata.svg)
 
 **Integrated services.** Every user gets their own local instances of MLflow, TensorBoard, Resources Monitor, and Optuna Dashboard running inside their container. Not shared services - personal ones. This eliminates conflicts entirely. MLflow tracks experiments to a per-user SQLite database with local artifact storage. TensorBoard reads from the user's own log directory. The resources monitor shows that user's container stats. Each service opens as a tab inside JupyterLab through the launcher, so users never leave the notebook interface. All services route through a per-user Traefik instance at a single HTTPS endpoint with path-based routing. No port conflicts, no configuration, no shared state.
+
+![Services Orbit](images/28-services-orbit.svg)
 
 ![Integrated Services](images/10-integrated-services.svg)
 
@@ -146,6 +150,8 @@ The admin composes a short message (140-character limit, deliberately Twitter-br
 Each notification lands in the user's JupyterLab with a dismiss button and visual styling matching the type. Admins can target all active servers or select specific recipients from a checkbox list. After delivery, a status table shows exactly which users received the message and which failed, with per-server error details. One-line logging captures every broadcast for audit.
 
 The system requires the `jupyterlab_notifications_extension` on spawned servers - a companion JupyterLab extension that exposes an `/ingest` endpoint for receiving notifications. The full endpoint path accounts for JupyterHub's base URL and per-user routing: `http://jupyterlab-{username}:8888{base_url}jupyterlab-notifications-extension/ingest`.
+
+![GPU Radar](images/25-gpu-detect-spiral.svg)
 
 ![](images/section-divider-gpu.svg)
 
@@ -252,6 +258,8 @@ networks:
 Three services. A handful of environment variables. That's the entire infrastructure. For production, override the defaults in a `compose_override.yml` file - custom image name, GPU mode, idle culler settings, NAS mounts, branding. The override file is gitignored by design, so deployment-specific credentials never end up in version control.
 
 Updates happen automatically. Watchtower checks DockerHub daily for new images and rolls them out with zero downtime.
+
+![Watchtower](images/27-admin-watchtower.svg)
 
 ## What We Learned
 
