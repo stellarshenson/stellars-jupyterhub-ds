@@ -58,8 +58,8 @@ class ActivityDataHandler(BaseHandler):
         timeout_seconds = stellars_config['idle_culler_timeout']
         max_extension_hours = stellars_config['idle_culler_max_extension']
 
-        volume_sizes = await get_volume_sizes_with_refresh()
-        container_sizes = await get_container_sizes_with_refresh()
+        volume_sizes = get_volume_sizes_with_refresh()
+        container_sizes = get_container_sizes_with_refresh()
 
         users_data = []
         active_users = []
