@@ -1,6 +1,7 @@
 """Docker utility functions for container and volume operations."""
 
 import asyncio
+import os
 from concurrent.futures import ThreadPoolExecutor
 
 _docker_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="docker-ops")
@@ -16,8 +17,17 @@ def encode_username_for_docker(username):
     return escape(username, escape_char='-').lower()
 
 
+def _get_docker_timeout():
+    return int(os.environ.get('JUPYTERHUB_DOCKER_TIMEOUT', 360))
+
+
 def get_container_stats(username):
-    """Get CPU and memory stats for a user's container (blocking)."""
+    """Get CPU, memory stats and container size for a user's container (blocking).
+
+    Size fetch uses a separate Docker client with longer timeout since
+    inspect_container with size=True triggers slow disk usage calculation.
+    If size fetch fails, stats are still returned with size fields as None.
+    """
     try:
         import docker
         docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
@@ -41,18 +51,33 @@ def get_container_stats(username):
             memory_limit = stats['memory_stats'].get('limit', 1)
             memory_percent = (memory_usage / memory_limit) * 100 if memory_limit > 0 else 0
 
-            # Container size: writable layer + total (image + writable)
-            inspect = docker_client.api.inspect_container(container_name, size=True)
-            size_rw = inspect.get('SizeRw', 0) or 0
-            size_rootfs = inspect.get('SizeRootFs', 0) or 0
-
-            return {
+            result = {
                 'cpu_percent': round(cpu_percent, 1),
                 'memory_mb': round(memory_usage / (1024 * 1024), 1),
                 'memory_percent': round(memory_percent, 1),
-                'size_rw_mb': round(size_rw / (1024 * 1024), 1),
-                'size_rootfs_mb': round(size_rootfs / (1024 * 1024), 1),
+                'size_rw_mb': None,
+                'size_rootfs_mb': None,
             }
+
+            # Container size via separate client with longer timeout
+            # inspect with size=True triggers slow disk usage calc
+            try:
+                size_client = docker.APIClient(base_url='unix://var/run/docker.sock', timeout=_get_docker_timeout())
+                try:
+                    inspect = size_client._get(
+                        size_client._url('/containers/{0}/json', container_name),
+                        params={'size': True}
+                    ).json()
+                    size_rw = inspect.get('SizeRw', 0) or 0
+                    size_rootfs = inspect.get('SizeRootFs', 0) or 0
+                    result['size_rw_mb'] = round(size_rw / (1024 * 1024), 1)
+                    result['size_rootfs_mb'] = round(size_rootfs / (1024 * 1024), 1)
+                finally:
+                    size_client.close()
+            except Exception:
+                pass  # size unavailable, stats still returned
+
+            return result
         finally:
             docker_client.close()
     except Exception:

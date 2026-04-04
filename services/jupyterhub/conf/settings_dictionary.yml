@@ -37,11 +37,11 @@ Docker:
     description: Docker API timeout in seconds (for volume size fetch, etc.)
     default: "360"
 
-  - name: JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE
+  - name: JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB
     description: Max container writable layer in GB before warning (0=disabled)
     default: "10"
 
-  - name: JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE
+  - name: JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE_GB
     description: Max total volume size in GB before warning (0=disabled)
     default: "50"
 
