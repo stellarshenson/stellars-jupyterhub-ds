@@ -1567,7 +1567,7 @@ textarea.form-control {
 
 /* Quota exceeded warning style for Volumes and Container size */
 .size-warning {
-  color: #dc3545;
+  color: #e67e22;
   font-weight: 600;
 }
 
