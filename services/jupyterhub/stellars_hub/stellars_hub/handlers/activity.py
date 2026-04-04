@@ -100,6 +100,8 @@ class ActivityDataHandler(BaseHandler):
                 "last_activity": None,
                 "volume_size_mb": user_volume_size,
                 "volume_breakdown": user_volume_breakdown,
+                "container_size_rw_mb": None,
+                "container_size_rootfs_mb": None,
             }
 
             score, sample_count = calculate_activity_score(user.name)
@@ -142,11 +144,18 @@ class ActivityDataHandler(BaseHandler):
                     user_data["cpu_percent"] = stats["cpu_percent"]
                     user_data["memory_mb"] = stats["memory_mb"]
                     user_data["memory_percent"] = stats["memory_percent"]
+                    user_data["container_size_rw_mb"] = stats.get("size_rw_mb")
+                    user_data["container_size_rootfs_mb"] = stats.get("size_rootfs_mb")
 
         users_data.sort(key=lambda u: (not u["server_active"], -(u["activity_score"] or 0)))
 
+        container_max = stellars_config.get('container_max_extra_space_mb', 10240)
+        volume_max = stellars_config.get('volume_max_total_size_mb', 51200)
+
         response = {
             "users": users_data,
+            "container_max_extra_space_mb": container_max,
+            "volume_max_total_size_mb": volume_max,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "sampling_status": get_activity_sampling_status(),
             "inactive_after_seconds": get_inactive_after_seconds(),

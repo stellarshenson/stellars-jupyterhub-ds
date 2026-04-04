@@ -321,6 +321,7 @@
       var lastActive = formatLastActiveShort(user.last_activity);
       var mem = formatMemShort(user.memory_mb);
       var cpu = user.cpu_percent != null ? user.cpu_percent.toFixed(1) + '%' : '--';
+      var disk = user.container_size_rw_mb != null ? '+' + formatMemShort(user.container_size_rw_mb) : null;
 
       var card = document.createElement('div');
       card.className = 'mobile-activity-card';
@@ -335,6 +336,7 @@
         '<div class="mobile-activity-meta">' +
           '<span>CPU ' + cpu + '</span>' +
           '<span>Mem ' + mem + '</span>' +
+          (disk ? '<span>Disk ' + disk + '</span>' : '') +
           (timeLeft !== '--' ? '<span>TTL ' + timeLeft + '</span>' : '') +
           (lastActive !== '--' ? '<span>' + lastActive + '</span>' : '') +
         '</div>';
