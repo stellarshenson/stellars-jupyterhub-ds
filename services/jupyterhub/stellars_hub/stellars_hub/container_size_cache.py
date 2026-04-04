@@ -1,21 +1,22 @@
-"""Background container size cache with periodic refresh.
+"""Background container size cache with per-container parallel refresh.
 
-Container size (writable layer) requires inspect_container with size=True
-which triggers slow disk usage calculation. Cached and refreshed in background
-so the activity page loads instantly with CPU/memory from fast stats.
+Each container's writable layer size is fetched via inspect(size=True) in its
+own thread. Results trickle into the cache as each completes - no waiting for
+the slowest container to finish before showing any data.
 """
 
-import asyncio
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-
-from .docker_utils import encode_username_for_docker, get_executor
 
 log = logging.getLogger('jupyterhub.custom_handlers')
 
-# Cache: {'data': {encoded_username: {size_rw_mb, size_rootfs_mb}}, 'timestamp': datetime, 'refreshing': bool}
+# Cache: {encoded_username: {size_rw_mb, size_rootfs_mb}}
 _container_sizes_cache = {'data': {}, 'timestamp': None, 'refreshing': False}
+
+# Dedicated executor for size fetches (separate from stats executor)
+_size_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="docker-size")
 
 
 def _get_logger():
@@ -34,63 +35,75 @@ def _get_refresh_interval():
     return int(os.environ.get('JUPYTERHUB_ACTIVITYMON_CONTAINER_SIZE_INTERVAL', 300))
 
 
-def _fetch_all_container_sizes():
-    """Fetch writable layer sizes for all jupyterlab containers (blocking).
-
-    Uses a single Docker API call with size=True for all containers.
-    """
-    logger = _get_logger()
+def _fetch_single_container_size(container_name, timeout):
+    """Fetch size for one container (blocking). Returns (encoded_username, data) or None."""
     try:
         import docker
-        api_client = docker.APIClient(base_url='unix://var/run/docker.sock', timeout=_get_docker_timeout())
+        api = docker.APIClient(base_url='unix://var/run/docker.sock', timeout=timeout)
         try:
-            containers = api_client._get(
-                api_client._url('/containers/json'),
-                params={'all': True, 'size': True}
+            resp = api._get(
+                api._url('/containers/{0}/json', container_name),
+                params={'size': True}
             ).json()
-
-            user_data = {}
-            for ctr in containers:
-                # Container names are like ['/jupyterlab-username']
-                names = ctr.get('Names', [])
-                for name in names:
-                    name = name.lstrip('/')
-                    if name.startswith('jupyterlab-'):
-                        encoded_username = name[len('jupyterlab-'):]
-                        size_rw = ctr.get('SizeRw', 0) or 0
-                        size_rootfs = ctr.get('SizeRootFs', 0) or 0
-                        user_data[encoded_username] = {
-                            'size_rw_mb': round(size_rw / (1024 * 1024), 1),
-                            'size_rootfs_mb': round(size_rootfs / (1024 * 1024), 1),
-                        }
-
-            logger.info(f"[Container Sizes] Fetched: {len(user_data)} containers")
-            return user_data
+            size_rw = resp.get('SizeRw', 0) or 0
+            size_rootfs = resp.get('SizeRootFs', 0) or 0
+            encoded_username = container_name[len('jupyterlab-'):]
+            return encoded_username, {
+                'size_rw_mb': round(size_rw / (1024 * 1024), 1),
+                'size_rootfs_mb': round(size_rootfs / (1024 * 1024), 1),
+            }
         finally:
-            api_client.close()
-    except Exception as e:
-        logger.error(f"[Container Sizes] Error fetching: {e}")
-        return {}
+            api.close()
+    except Exception:
+        return None
 
 
-def _refresh_container_sizes_sync():
-    """Synchronous refresh of container sizes cache."""
+def _refresh_all_container_sizes():
+    """Fetch sizes for all jupyterlab containers in parallel. Updates cache incrementally."""
     global _container_sizes_cache
     logger = _get_logger()
 
     if _container_sizes_cache['refreshing']:
-        logger.info("[Container Sizes] Refresh already in progress, skipping")
         return
 
     _container_sizes_cache['refreshing'] = True
     try:
-        data = _fetch_all_container_sizes()
-        if data:
-            _container_sizes_cache['data'] = data
+        import docker
+        # Fast list (no size) to get container names
+        api = docker.APIClient(base_url='unix://var/run/docker.sock', timeout=30)
+        try:
+            containers = api._get(api._url('/containers/json'), params={'all': True}).json()
+        finally:
+            api.close()
+
+        names = []
+        for ctr in containers:
+            for name in ctr.get('Names', []):
+                name = name.lstrip('/')
+                if name.startswith('jupyterlab-'):
+                    names.append(name)
+
+        if not names:
+            logger.info("[Container Sizes] No jupyterlab containers found")
             _container_sizes_cache['timestamp'] = datetime.now(timezone.utc)
-            logger.info(f"[Container Sizes] Cache updated: {len(data)} containers")
-        else:
-            logger.warning("[Container Sizes] Refresh returned empty - keeping previous cache")
+            return
+
+        timeout = _get_docker_timeout()
+        futures = {_size_executor.submit(_fetch_single_container_size, n, timeout): n for n in names}
+
+        completed = 0
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                encoded_username, data = result
+                _container_sizes_cache['data'][encoded_username] = data
+                completed += 1
+
+        _container_sizes_cache['timestamp'] = datetime.now(timezone.utc)
+        logger.info(f"[Container Sizes] Refreshed: {completed}/{len(names)} containers")
+
+    except Exception as e:
+        logger.error(f"[Container Sizes] Error during refresh: {e}")
     finally:
         _container_sizes_cache['refreshing'] = False
 
@@ -113,7 +126,8 @@ def get_container_sizes_with_refresh():
     data, needs_refresh = get_cached_container_sizes()
     if needs_refresh and not _container_sizes_cache['refreshing']:
         _get_logger().info("[Container Sizes] Cache stale, triggering background refresh")
-        get_executor().submit(_refresh_container_sizes_sync)
+        from .docker_utils import get_executor
+        get_executor().submit(_refresh_all_container_sizes)
     return data
 
 
@@ -129,11 +143,13 @@ class ContainerSizeRefresher:
         return cls._instance
 
     def __init__(self):
+        import asyncio
         self.periodic_callback = None
         self.interval_seconds = _get_refresh_interval()
         _get_logger().info(f"[ContainerSizeRefresher] Initialized with interval={self.interval_seconds}s")
 
     def start(self):
+        import asyncio
         from tornado.ioloop import PeriodicCallback
         logger = _get_logger()
 
@@ -146,7 +162,9 @@ class ContainerSizeRefresher:
         self.periodic_callback.start()
         logger.info(f"[ContainerSizeRefresher] Started - refreshing every {self.interval_seconds}s")
 
-        asyncio.get_event_loop().call_soon(lambda: asyncio.ensure_future(self._refresh_tick_async()))
+        # First refresh immediately
+        from .docker_utils import get_executor
+        get_executor().submit(_refresh_all_container_sizes)
 
     def stop(self):
         if self.periodic_callback is not None:
@@ -155,12 +173,6 @@ class ContainerSizeRefresher:
             _get_logger().info("[ContainerSizeRefresher] Stopped")
 
     def _refresh_tick(self):
-        asyncio.ensure_future(self._refresh_tick_async())
-
-    async def _refresh_tick_async(self):
-        logger = _get_logger()
-        try:
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(get_executor(), _refresh_container_sizes_sync)
-        except Exception as e:
-            logger.error(f"[ContainerSizeRefresher] Error during refresh: {e}")
+        if not _container_sizes_cache['refreshing']:
+            from .docker_utils import get_executor
+            get_executor().submit(_refresh_all_container_sizes)
