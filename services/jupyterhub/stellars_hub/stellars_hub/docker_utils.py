@@ -41,10 +41,17 @@ def get_container_stats(username):
             memory_limit = stats['memory_stats'].get('limit', 1)
             memory_percent = (memory_usage / memory_limit) * 100 if memory_limit > 0 else 0
 
+            # Container size: writable layer + total (image + writable)
+            inspect = docker_client.api.inspect_container(container_name, size=True)
+            size_rw = inspect.get('SizeRw', 0) or 0
+            size_rootfs = inspect.get('SizeRootFs', 0) or 0
+
             return {
                 'cpu_percent': round(cpu_percent, 1),
                 'memory_mb': round(memory_usage / (1024 * 1024), 1),
                 'memory_percent': round(memory_percent, 1),
+                'size_rw_mb': round(size_rw / (1024 * 1024), 1),
+                'size_rootfs_mb': round(size_rootfs / (1024 * 1024), 1),
             }
         finally:
             docker_client.close()

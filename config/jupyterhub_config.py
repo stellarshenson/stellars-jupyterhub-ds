@@ -72,6 +72,11 @@ JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION = int(os.environ.get("JUPYTERHUB_IDLE_CULLE
 ACTIVITYMON_TARGET_HOURS = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_TARGET_HOURS', 8))        # scoring window in hours
 ACTIVITYMON_SAMPLE_INTERVAL = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL', 600))  # sampling interval in seconds (10min)
 
+# Docker
+JUPYTERHUB_DOCKER_TIMEOUT = int(os.environ.get("JUPYTERHUB_DOCKER_TIMEOUT", 360))               # Docker API timeout in seconds
+JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE = int(os.environ.get("JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE", 10))  # max writable layer in GB before warning
+JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE = int(os.environ.get("JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE", 50))        # max total volume size in GB before warning
+
 # Misc
 TF_CPP_MIN_LOG_LEVEL = int(os.environ.get("TF_CPP_MIN_LOG_LEVEL", 3))                          # suppress TensorFlow logging in spawned containers
 JUPYTERHUB_TIMEZONE = os.environ.get("JUPYTERHUB_TIMEZONE", "Etc/UTC")                          # IANA timezone (e.g. Europe/Warsaw), applied to hub + spawned containers
@@ -217,6 +222,8 @@ c.JupyterHub.template_vars = {
     'idle_culler_max_extension': JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION,  # max extension hours display
     'activitymon_target_hours': ACTIVITYMON_TARGET_HOURS,    # activity scoring window display
     'activitymon_sample_interval': ACTIVITYMON_SAMPLE_INTERVAL,  # sampling interval display
+    'container_max_extra_space_mb': JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE * 1024,  # threshold in MB for container size warning
+    'volume_max_total_size_mb': JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE * 1024,        # threshold in MB for volume size warning
     'favicon_uri': branding['favicon_uri'],                  # external favicon URL (empty = static_url default)
 }
 
@@ -229,6 +236,8 @@ c.JupyterHub.tornado_settings = {
         'idle_culler_enabled': JUPYTERHUB_IDLE_CULLER_ENABLED,  # for SessionInfoHandler, ActivityDataHandler
         'idle_culler_timeout': JUPYTERHUB_IDLE_CULLER_TIMEOUT,  # for SessionInfoHandler, ExtendSessionHandler
         'idle_culler_max_extension': JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION,  # for ExtendSessionHandler limits
+        'container_max_extra_space_mb': JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE * 1024,  # threshold in MB for container size warning
+        'volume_max_total_size_mb': JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE * 1024,        # threshold in MB for volume size warning
     }
 }
 

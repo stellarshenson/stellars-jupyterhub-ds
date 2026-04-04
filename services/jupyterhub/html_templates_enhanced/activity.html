@@ -47,6 +47,7 @@
           <th class="col-cpu text-center sortable" data-sort="cpu_percent" title="Current CPU usage of user container">CPU <span class="sort-icon"></span></th>
           <th class="col-memory text-center sortable" data-sort="memory_mb" title="Current memory usage of user container">Memory <span class="sort-icon"></span></th>
           <th class="col-volumes text-center sortable" data-sort="volume_size_mb" title="Total size of user volumes (hover for breakdown)">Volumes <span class="sort-icon"></span></th>
+          <th class="col-containersize text-center sortable" data-sort="container_size_rw_mb" title="Container writable layer - data beyond base image (hover for breakdown)">Container <span class="sort-icon"></span></th>
           <th class="col-timeleft text-center sortable" data-sort="time_remaining_seconds" title="Time until idle culler stops the server">Time Left <span class="sort-icon"></span></th>
           <th class="col-lastactive sortable" data-sort="last_activity" title="Time since last JupyterLab activity">Last Active <span class="sort-icon"></span></th>
           <th class="col-activity sortable" data-sort="activity_score" title="Activity score based on exponential decay (hover bar for %)">Activity <span class="sort-icon"></span></th>
@@ -74,6 +75,10 @@ require(["jquery"], function($) {
   // Minimum samples required for 24h of data
   var sampleInterval = {{ activitymon_sample_interval | default(600) }};  // seconds
   var minSamplesFor24h = Math.ceil(86400 / sampleInterval);  // e.g., 86400/600 = 144 samples
+
+  // Quota thresholds (populated from API response)
+  var containerMaxExtraSpaceMb = {{ container_max_extra_space_mb | default(10240) }};
+  var volumeMaxTotalSizeMb = {{ volume_max_total_size_mb | default(51200) }};
 
   var autoRefreshInterval = null;
   var currentUsersData = [];  // Store data for re-sorting
@@ -173,6 +178,10 @@ require(["jquery"], function($) {
 
   function renderActivityTable(data) {
     var users = data.users || [];
+
+    // Update thresholds from API if provided
+    if (data.container_max_extra_space_mb != null) containerMaxExtraSpaceMb = data.container_max_extra_space_mb;
+    if (data.volume_max_total_size_mb != null) volumeMaxTotalSizeMb = data.volume_max_total_size_mb;
 
     $('#loading-indicator').hide();
 
@@ -284,6 +293,7 @@ require(["jquery"], function($) {
         '<td class="text-center">' + formatCpu(user.cpu_percent) + '</td>' +
         '<td class="text-center">' + formatMemory(user.memory_mb, user.memory_percent) + '</td>' +
         '<td class="text-center">' + formatVolumeSize(user.volume_size_mb, user.volume_breakdown) + '</td>' +
+        '<td class="text-center">' + formatContainerSize(user.container_size_rw_mb, user.container_size_rootfs_mb) + '</td>' +
         '<td class="text-center">' + formatTimeRemaining(user.time_remaining_seconds) + '</td>' +
         '<td>' + formatLastActive(user.last_activity) + '</td>' +
         '<td>' + renderActivityBar(user.activity_score, user.sample_count) + '</td>' +
@@ -330,36 +340,57 @@ require(["jquery"], function($) {
     return memoryMb.toFixed(0) + ' MB';
   }
 
+  function formatSizeShort(mb) {
+    if (mb >= 1024) return (mb / 1024).toFixed(1) + ' GB';
+    return Math.round(mb) + ' MB';
+  }
+
   function formatVolumeSize(sizeMb, breakdown) {
     if (sizeMb === null || sizeMb === undefined || sizeMb === 0) {
       return '<span class="text-muted">--</span>';
     }
-    // Format total size
-    var displaySize;
-    if (sizeMb >= 1024) {
-      displaySize = (sizeMb / 1024).toFixed(1) + ' GB';
-    } else {
-      displaySize = Math.round(sizeMb) + ' MB';
-    }
+    var displaySize = formatSizeShort(sizeMb);
+    var overQuota = volumeMaxTotalSizeMb > 0 && sizeMb > volumeMaxTotalSizeMb;
+
     // Build tooltip with breakdown
+    var tooltip = '';
     if (breakdown && Object.keys(breakdown).length > 0) {
       var tooltipLines = [];
-      // Sort volumes by name for consistent display
       var sortedKeys = Object.keys(breakdown).sort();
       sortedKeys.forEach(function(suffix) {
-        var volSize = breakdown[suffix];
-        var volDisplay;
-        if (volSize >= 1024) {
-          volDisplay = (volSize / 1024).toFixed(1) + ' GB';
-        } else {
-          volDisplay = Math.round(volSize) + ' MB';
-        }
-        tooltipLines.push(suffix + ': ' + volDisplay);
+        tooltipLines.push(suffix + ': ' + formatSizeShort(breakdown[suffix]));
       });
-      var tooltip = tooltipLines.join('&#10;');
-      return '<span title="' + tooltip + '" style="cursor: help; border-bottom: 1px dotted currentColor;">' + displaySize + '</span>';
+      if (overQuota) tooltipLines.push('&#10;Exceeds ' + formatSizeShort(volumeMaxTotalSizeMb) + ' quota');
+      tooltip = tooltipLines.join('&#10;');
     }
-    return displaySize;
+
+    var warning = overQuota ? '<i class="fa fa-exclamation-triangle me-1" aria-hidden="true"></i>' : '';
+    var cls = overQuota ? 'size-warning' : '';
+    var style = 'cursor: help; border-bottom: 1px dotted currentColor;';
+    return '<span class="' + cls + '" title="' + tooltip + '" style="' + style + '">' + warning + displaySize + '</span>';
+  }
+
+  function formatContainerSize(sizeRwMb, sizeRootfsMb) {
+    if (sizeRwMb === null || sizeRwMb === undefined) {
+      return '<span class="text-muted">--</span>';
+    }
+    var displaySize = '+' + formatSizeShort(sizeRwMb);
+    var overQuota = containerMaxExtraSpaceMb > 0 && sizeRwMb > containerMaxExtraSpaceMb;
+
+    // Tooltip: base image, writable layer, total
+    var baseMb = Math.max(0, (sizeRootfsMb || 0) - sizeRwMb);
+    var tooltipLines = [
+      'Base image: ' + formatSizeShort(baseMb),
+      'Writable layer: ' + formatSizeShort(sizeRwMb),
+      'Total: ' + formatSizeShort(sizeRootfsMb || 0)
+    ];
+    if (overQuota) tooltipLines.push('&#10;Exceeds ' + formatSizeShort(containerMaxExtraSpaceMb) + ' quota');
+    var tooltip = tooltipLines.join('&#10;');
+
+    var warning = overQuota ? '<i class="fa fa-exclamation-triangle me-1" aria-hidden="true"></i>' : '';
+    var cls = overQuota ? 'size-warning' : '';
+    var style = 'cursor: help; border-bottom: 1px dotted currentColor;';
+    return '<span class="' + cls + '" title="' + tooltip + '" style="' + style + '">' + warning + displaySize + '</span>';
   }
 
   function formatTimeRemaining(seconds) {
