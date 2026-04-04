@@ -108,13 +108,12 @@ def get_cached_container_sizes():
     return _container_sizes_cache['data'], needs_refresh
 
 
-async def get_container_sizes_with_refresh():
-    """Get container sizes, triggering background refresh if needed."""
+def get_container_sizes_with_refresh():
+    """Get container sizes, triggering background refresh if stale. Non-blocking."""
     data, needs_refresh = get_cached_container_sizes()
-    if needs_refresh:
+    if needs_refresh and not _container_sizes_cache['refreshing']:
         _get_logger().info("[Container Sizes] Cache stale, triggering background refresh")
-        loop = asyncio.get_event_loop()
-        loop.run_in_executor(get_executor(), _refresh_container_sizes_sync)
+        get_executor().submit(_refresh_container_sizes_sync)
     return data
 
 
