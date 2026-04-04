@@ -32,6 +32,11 @@ JupyterHub Core:
     description: IANA timezone (e.g. Europe/Warsaw), empty = UTC
     default: ""
 
+Docker:
+  - name: JUPYTERHUB_DOCKER_TIMEOUT
+    description: Docker API timeout in seconds (for volume size fetch, etc.)
+    default: "360"
+
 Docker Spawner:
   - name: JUPYTERHUB_NOTEBOOK_IMAGE
     description: User container image

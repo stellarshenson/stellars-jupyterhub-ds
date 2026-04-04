@@ -25,11 +25,15 @@ def _get_volumes_update_interval():
     return int(os.environ.get('JUPYTERHUB_ACTIVITYMON_VOLUMES_UPDATE_INTERVAL', 3600))
 
 
+def _get_docker_timeout():
+    return int(os.environ.get('JUPYTERHUB_DOCKER_TIMEOUT', 360))
+
+
 def _fetch_volume_sizes():
     """Fetch sizes of all user volumes (blocking). Returns dict by encoded_username."""
     try:
         import docker
-        docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock', timeout=180)
+        docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock', timeout=_get_docker_timeout())
         try:
             df_data = docker_client.df()
             volumes_data = df_data.get('Volumes', []) or []
