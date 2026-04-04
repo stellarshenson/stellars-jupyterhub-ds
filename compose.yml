@@ -82,6 +82,10 @@ services:
       - JUPYTERHUB_IDLE_CULLER_INTERVAL=600 # check interval in seconds (default 10min)
       - JUPYTERHUB_IDLE_CULLER_MAX_AGE=0 # max server age in seconds (0=unlimited)
       - JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION=24 # max hours users can extend session
+      # Docker
+      - JUPYTERHUB_DOCKER_TIMEOUT=360 # Docker API timeout in seconds
+      - JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE=10 # max container writable layer in GB before warning
+      - JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE=50 # max total volume size in GB before warning
       # Misc
       - TF_CPP_MIN_LOG_LEVEL=3 # TensorFlow verbosity
       - CERTIFICATE_DOMAIN_NAME=localhost # self-signed certificate domain
