@@ -29,7 +29,7 @@ def _fetch_volume_sizes():
     """Fetch sizes of all user volumes (blocking). Returns dict by encoded_username."""
     try:
         import docker
-        docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock', timeout=180)
         try:
             df_data = docker_client.df()
             volumes_data = df_data.get('Volumes', []) or []
