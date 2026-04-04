@@ -126,6 +126,10 @@ Activity Monitor:
     description: Volume sizes refresh interval in seconds (background)
     default: "3600"
 
+  - name: JUPYTERHUB_ACTIVITYMON_CONTAINER_SIZE_INTERVAL
+    description: Container size refresh interval in seconds (background)
+    default: "300"
+
 User Environment:
   - name: JUPYTERLAB_AUX_SCRIPTS_PATH
     description: Admin-managed startup scripts executed in user containers on launch

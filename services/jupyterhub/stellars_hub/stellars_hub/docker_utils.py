@@ -22,12 +22,7 @@ def _get_docker_timeout():
 
 
 def get_container_stats(username):
-    """Get CPU, memory stats and container size for a user's container (blocking).
-
-    Size fetch uses a separate Docker client with longer timeout since
-    inspect_container with size=True triggers slow disk usage calculation.
-    If size fetch fails, stats are still returned with size fields as None.
-    """
+    """Get CPU and memory stats for a user's container (blocking, fast ~2s)."""
     try:
         import docker
         docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
@@ -51,33 +46,11 @@ def get_container_stats(username):
             memory_limit = stats['memory_stats'].get('limit', 1)
             memory_percent = (memory_usage / memory_limit) * 100 if memory_limit > 0 else 0
 
-            result = {
+            return {
                 'cpu_percent': round(cpu_percent, 1),
                 'memory_mb': round(memory_usage / (1024 * 1024), 1),
                 'memory_percent': round(memory_percent, 1),
-                'size_rw_mb': None,
-                'size_rootfs_mb': None,
             }
-
-            # Container size via separate client with longer timeout
-            # inspect with size=True triggers slow disk usage calc
-            try:
-                size_client = docker.APIClient(base_url='unix://var/run/docker.sock', timeout=_get_docker_timeout())
-                try:
-                    inspect = size_client._get(
-                        size_client._url('/containers/{0}/json', container_name),
-                        params={'size': True}
-                    ).json()
-                    size_rw = inspect.get('SizeRw', 0) or 0
-                    size_rootfs = inspect.get('SizeRootFs', 0) or 0
-                    result['size_rw_mb'] = round(size_rw / (1024 * 1024), 1)
-                    result['size_rootfs_mb'] = round(size_rootfs / (1024 * 1024), 1)
-                finally:
-                    size_client.close()
-            except Exception:
-                pass  # size unavailable, stats still returned
-
-            return result
         finally:
             docker_client.close()
     except Exception:
@@ -88,6 +61,8 @@ async def get_container_stats_async(username):
     """Async wrapper - runs in thread pool to avoid blocking."""
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(_docker_executor, get_container_stats, username)
+
+
 
 
 def get_executor():

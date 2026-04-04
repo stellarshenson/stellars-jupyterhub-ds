@@ -14,6 +14,7 @@ from ..activity.helpers import (
     reset_all_activity_data,
 )
 from ..docker_utils import encode_username_for_docker, get_container_stats_async
+from ..container_size_cache import get_container_sizes_with_refresh, ContainerSizeRefresher
 from ..volume_cache import VolumeSizeRefresher, get_volume_sizes_with_refresh
 
 
@@ -42,10 +43,13 @@ class ActivityDataHandler(BaseHandler):
         if not current_user.admin:
             raise web.HTTPError(403, "Only administrators can access this endpoint")
 
-        # Lazy start volume size refresher on first access
-        refresher = VolumeSizeRefresher.get_instance()
-        if refresher.periodic_callback is None:
-            refresher.start()
+        # Lazy start background refreshers on first access
+        vol_refresher = VolumeSizeRefresher.get_instance()
+        if vol_refresher.periodic_callback is None:
+            vol_refresher.start()
+        ctr_refresher = ContainerSizeRefresher.get_instance()
+        if ctr_refresher.periodic_callback is None:
+            ctr_refresher.start()
 
         self.log.info(f"[Activity Data] Admin {current_user.name} requested activity data")
 
@@ -55,6 +59,7 @@ class ActivityDataHandler(BaseHandler):
         max_extension_hours = stellars_config['idle_culler_max_extension']
 
         volume_sizes = await get_volume_sizes_with_refresh()
+        container_sizes = await get_container_sizes_with_refresh()
 
         users_data = []
         active_users = []
@@ -72,6 +77,7 @@ class ActivityDataHandler(BaseHandler):
             user_volume_data = volume_sizes.get(encoded_name, {"total": 0, "volumes": {}})
             user_volume_size = user_volume_data.get("total", 0)
             user_volume_breakdown = user_volume_data.get("volumes", {})
+            user_ctr_size = container_sizes.get(encoded_name, {})
 
             # Get authorization status from NativeAuthenticator
             is_authorized = False
@@ -100,8 +106,8 @@ class ActivityDataHandler(BaseHandler):
                 "last_activity": None,
                 "volume_size_mb": user_volume_size,
                 "volume_breakdown": user_volume_breakdown,
-                "container_size_rw_mb": None,
-                "container_size_rootfs_mb": None,
+                "container_size_rw_mb": user_ctr_size.get("size_rw_mb"),
+                "container_size_rootfs_mb": user_ctr_size.get("size_rootfs_mb"),
             }
 
             score, sample_count = calculate_activity_score(user.name)
@@ -144,8 +150,6 @@ class ActivityDataHandler(BaseHandler):
                     user_data["cpu_percent"] = stats["cpu_percent"]
                     user_data["memory_mb"] = stats["memory_mb"]
                     user_data["memory_percent"] = stats["memory_percent"]
-                    user_data["container_size_rw_mb"] = stats.get("size_rw_mb")
-                    user_data["container_size_rootfs_mb"] = stats.get("size_rootfs_mb")
 
         users_data.sort(key=lambda u: (not u["server_active"], -(u["activity_score"] or 0)))
 
