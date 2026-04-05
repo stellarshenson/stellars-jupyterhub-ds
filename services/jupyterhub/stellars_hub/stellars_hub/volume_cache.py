@@ -37,9 +37,10 @@ def _fetch_volume_sizes():
     """Fetch sizes of all user volumes via docker system df (blocking, slow)."""
     try:
         import docker
-        docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock', timeout=_get_docker_timeout())
+        api_client = docker.APIClient(base_url='unix://var/run/docker.sock', timeout=_get_docker_timeout())
         try:
-            df_data = docker_client.df()
+            # type=volume skips slow image/container calculations (~10s vs ~360s)
+            df_data = api_client._get(api_client._url('/system/df'), params={'type': 'volume'}).json()
             volumes_data = df_data.get('Volumes', []) or []
 
             user_data = {}
@@ -65,7 +66,7 @@ def _fetch_volume_sizes():
             _get_logger().info(f"[Volume Sizes] Fetched: {len(user_data)} users, {total_size:.1f} MB")
             return user_data
         finally:
-            docker_client.close()
+            api_client.close()
     except Exception as e:
         _get_logger().error(f"[Volume Sizes] Error fetching: {e}")
         return {}
