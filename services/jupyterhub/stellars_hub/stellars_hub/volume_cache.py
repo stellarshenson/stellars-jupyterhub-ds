@@ -1,8 +1,13 @@
-"""Background volume sizes cache with periodic refresh."""
+"""Background volume sizes cache with per-user parallel refresh.
 
-import asyncio
+Each user's volumes are measured by spawning a lightweight alpine container
+with all volumes mounted read-only and running du -sb. Results trickle into
+the cache as each user's measurement completes.
+"""
+
 import logging
 import os
+from concurrent.futures import as_completed
 from datetime import datetime, timezone
 
 from .docker_utils import get_executor
@@ -11,6 +16,9 @@ log = logging.getLogger('jupyterhub.custom_handlers')
 
 # Cache: {'data': {encoded_username: {total, volumes}}, 'timestamp': datetime, 'refreshing': bool}
 _volume_sizes_cache = {'data': {}, 'timestamp': None, 'refreshing': False}
+
+# Alpine image for du measurements
+_DU_IMAGE = 'alpine:latest'
 
 
 def _get_logger():
@@ -29,46 +37,58 @@ def _get_docker_timeout():
     return int(os.environ.get('JUPYTERHUB_DOCKER_TIMEOUT', 360))
 
 
-def _fetch_volume_sizes():
-    """Fetch sizes of all user volumes (blocking). Returns dict by encoded_username."""
+def _measure_user_volumes(encoded_username, volume_names):
+    """Measure all volumes for one user via alpine container (blocking).
+
+    Spawns a container with all volumes mounted read-only at /vols/<suffix>,
+    runs du -sb on each, returns {encoded_username: {total, volumes}}.
+    """
     try:
         import docker
-        docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock', timeout=_get_docker_timeout())
+        client = docker.DockerClient(base_url='unix://var/run/docker.sock', timeout=_get_docker_timeout())
         try:
-            df_data = docker_client.df()
-            volumes_data = df_data.get('Volumes', []) or []
+            # Build volume mounts: {volume_name: {'bind': '/vols/suffix', 'mode': 'ro'}}
+            mounts = {}
+            suffixes = []
+            for vol_name in volume_names:
+                suffix = vol_name.rsplit('_', 1)[-1]
+                suffixes.append(suffix)
+                mounts[vol_name] = {'bind': f'/vols/{suffix}', 'mode': 'ro'}
 
-            user_data = {}
-            for vol in volumes_data:
-                name = vol.get('Name', '')
-                if name.startswith('jupyterlab-') and '_' in name:
-                    parts = name[len('jupyterlab-'):].rsplit('_', 1)
-                    if len(parts) == 2:
-                        encoded_username, suffix = parts
-                        usage_data = vol.get('UsageData', {}) or {}
-                        size_bytes = usage_data.get('Size', 0) or 0
-                        size_mb = round(size_bytes / (1024 * 1024), 1)
+            # Run du in a single container with all volumes
+            result = client.containers.run(
+                _DU_IMAGE,
+                command='sh -c "for d in /vols/*; do du -sb \\"$d\\"; done"',
+                volumes=mounts,
+                remove=True,
+                network_mode='none',
+                mem_limit='32m',
+                stderr=True,
+            )
 
-                        if encoded_username not in user_data:
-                            user_data[encoded_username] = {"total": 0, "volumes": {}}
-                        user_data[encoded_username]["total"] += size_mb
-                        user_data[encoded_username]["volumes"][suffix] = size_mb
+            # Parse du output: "12345\t/vols/home\n67890\t/vols/workspace\n"
+            output = result.decode('utf-8', errors='replace').strip()
+            volumes = {}
+            total = 0
+            for line in output.split('\n'):
+                parts = line.strip().split('\t')
+                if len(parts) == 2:
+                    size_bytes = int(parts[0])
+                    suffix = parts[1].split('/')[-1]
+                    size_mb = round(size_bytes / (1024 * 1024), 1)
+                    volumes[suffix] = size_mb
+                    total += size_mb
 
-            for user in user_data:
-                user_data[user]["total"] = round(user_data[user]["total"], 1)
-
-            total_size = sum(u["total"] for u in user_data.values())
-            _get_logger().info(f"[Volume Sizes] Fetched: {len(user_data)} users, total {total_size:.1f} MB")
-            return user_data
+            return encoded_username, {"total": round(total, 1), "volumes": volumes}
         finally:
-            docker_client.close()
+            client.close()
     except Exception as e:
-        _get_logger().error(f"[Volume Sizes] Error fetching: {e}")
-        return {}
+        _get_logger().error(f"[Volume Sizes] Error measuring {encoded_username}: {e}")
+        return encoded_username, None
 
 
-def _refresh_volume_sizes_sync():
-    """Synchronous refresh of volume sizes cache."""
+def _refresh_volume_sizes():
+    """Fetch all user volume sizes in parallel (one thread per user)."""
     global _volume_sizes_cache
     logger = _get_logger()
 
@@ -78,21 +98,65 @@ def _refresh_volume_sizes_sync():
 
     _volume_sizes_cache['refreshing'] = True
     try:
-        data = _fetch_volume_sizes()
-        if data:
-            _volume_sizes_cache['data'] = data
+        import docker
+        client = docker.DockerClient(base_url='unix://var/run/docker.sock', timeout=30)
+        try:
+            all_volumes = [v.name for v in client.volumes.list()
+                          if v.name.startswith('jupyterlab-') and '_' in v.name]
+        finally:
+            client.close()
+
+        # Group volumes by encoded_username
+        user_volumes = {}
+        for vol_name in all_volumes:
+            prefix = vol_name[:vol_name.rsplit('_', 1)[0].__len__()]
+            encoded_username = vol_name[len('jupyterlab-'):].rsplit('_', 1)[0]
+            if encoded_username not in user_volumes:
+                user_volumes[encoded_username] = []
+            user_volumes[encoded_username].append(vol_name)
+
+        if not user_volumes:
+            logger.info("[Volume Sizes] No jupyterlab volumes found")
             _volume_sizes_cache['timestamp'] = datetime.now(timezone.utc)
-            logger.info(f"[Volume Sizes] Cache updated: {len(data)} users")
-        else:
-            logger.warning("[Volume Sizes] Refresh returned empty - keeping previous cache")
+            return
+
+        # Pull alpine once (fast if cached)
+        try:
+            import docker as docker_mod
+            c = docker_mod.DockerClient(base_url='unix://var/run/docker.sock', timeout=30)
+            try:
+                c.images.get(_DU_IMAGE)
+            except docker_mod.errors.ImageNotFound:
+                logger.info(f"[Volume Sizes] Pulling {_DU_IMAGE}...")
+                c.images.pull(_DU_IMAGE)
+            finally:
+                c.close()
+        except Exception:
+            pass
+
+        # Submit per-user measurements in parallel
+        from .docker_utils import get_executor as get_main_executor
+        executor = get_main_executor()
+        futures = {
+            executor.submit(_measure_user_volumes, user, vols): user
+            for user, vols in user_volumes.items()
+        }
+
+        completed = 0
+        for future in as_completed(futures):
+            encoded_username, data = future.result()
+            if data:
+                _volume_sizes_cache['data'][encoded_username] = data
+                completed += 1
+
+        _volume_sizes_cache['timestamp'] = datetime.now(timezone.utc)
+        total_size = sum(u.get("total", 0) for u in _volume_sizes_cache['data'].values())
+        logger.info(f"[Volume Sizes] Refreshed: {completed}/{len(user_volumes)} users, {total_size:.1f} MB total")
+
+    except Exception as e:
+        logger.error(f"[Volume Sizes] Error during refresh: {e}")
     finally:
         _volume_sizes_cache['refreshing'] = False
-
-
-async def _refresh_volume_sizes_background():
-    """Trigger background refresh (non-blocking, fire-and-forget)."""
-    loop = asyncio.get_event_loop()
-    loop.run_in_executor(get_executor(), _refresh_volume_sizes_sync)
 
 
 def get_cached_volume_sizes():
@@ -113,8 +177,8 @@ def get_volume_sizes_with_refresh():
     data, needs_refresh = get_cached_volume_sizes()
     if needs_refresh and not _volume_sizes_cache['refreshing']:
         _get_logger().info("[Volume Sizes] Cache stale, triggering background refresh")
-        from concurrent.futures import Future
-        get_executor().submit(_refresh_volume_sizes_sync)
+        from .docker_utils import get_executor
+        get_executor().submit(_refresh_volume_sizes)
     return data
 
 
@@ -147,7 +211,8 @@ class VolumeSizeRefresher:
         self.periodic_callback.start()
         logger.info(f"[VolumeSizeRefresher] Started - refreshing every {self.interval_seconds}s")
 
-        asyncio.get_event_loop().call_soon(lambda: asyncio.ensure_future(self._refresh_tick_async()))
+        from .docker_utils import get_executor
+        get_executor().submit(_refresh_volume_sizes)
 
     def stop(self):
         if self.periodic_callback is not None:
@@ -156,21 +221,6 @@ class VolumeSizeRefresher:
             _get_logger().info("[VolumeSizeRefresher] Stopped")
 
     def _refresh_tick(self):
-        asyncio.ensure_future(self._refresh_tick_async())
-
-    async def _refresh_tick_async(self):
-        logger = _get_logger()
-        try:
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(get_executor(), _refresh_volume_sizes_sync)
-            data = _volume_sizes_cache.get('data', {})
-            total_size = sum(u.get("total", 0) for u in data.values())
-            logger.info(f"[VolumeSizeRefresher] Tick complete: {len(data)} users, {total_size:.1f} MB total")
-        except Exception as e:
-            logger.error(f"[VolumeSizeRefresher] Error during refresh: {e}")
-
-
-def start_volume_size_refresher():
-    """Start the background volume size refresher."""
-    refresher = VolumeSizeRefresher.get_instance()
-    refresher.start()
+        if not _volume_sizes_cache['refreshing']:
+            from .docker_utils import get_executor
+            get_executor().submit(_refresh_volume_sizes)
