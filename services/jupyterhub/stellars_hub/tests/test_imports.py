@@ -95,7 +95,6 @@ def test_volume_cache():
     from stellars_hub.volume_cache import (
         VolumeSizeRefresher,
         get_cached_volume_sizes,
-        start_volume_size_refresher,
     )
     data, needs_refresh = get_cached_volume_sizes()
     assert isinstance(data, dict)
