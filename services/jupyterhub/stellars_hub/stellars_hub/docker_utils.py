@@ -1,7 +1,6 @@
 """Docker utility functions for container and volume operations."""
 
 import asyncio
-import os
 from concurrent.futures import ThreadPoolExecutor
 
 _docker_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="docker-ops")
@@ -15,10 +14,6 @@ def encode_username_for_docker(username):
     """
     from escapism import escape
     return escape(username, escape_char='-').lower()
-
-
-def _get_docker_timeout():
-    return int(os.environ.get('JUPYTERHUB_DOCKER_TIMEOUT', 360))
 
 
 def get_container_stats(username):

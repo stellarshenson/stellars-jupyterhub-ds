@@ -336,7 +336,7 @@
         '<div class="mobile-activity-meta">' +
           '<span>CPU ' + cpu + '</span>' +
           '<span>Mem ' + mem + '</span>' +
-          (disk ? '<span>Disk ' + disk + '</span>' : '') +
+          (disk ? '<span>Sys ' + disk + '</span>' : '') +
           (timeLeft !== '--' ? '<span>TTL ' + timeLeft + '</span>' : '') +
           (lastActive !== '--' ? '<span>' + lastActive + '</span>' : '') +
         '</div>';

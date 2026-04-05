@@ -1263,16 +1263,6 @@ textarea.form-control {
 }
 
 /* Server dashboard row list items (roles, groups) */
-.server-dashboard-row-list-item {
-  display: inline-block;
-  padding: 0.05rem 0.35rem;
-  margin: 0.05rem;
-  font-size: 0.7rem;
-  background-color: rgba(0, 0, 0, 0.04);
-  border-radius: 2px;
-  color: #6c757d;
-}
-
 /* Pagination footer */
 .server-dashboard-container .pagination-footer {
   font-size: 0.75rem;
@@ -1408,11 +1398,6 @@ textarea.form-control {
   box-shadow: none !important;
 }
 
-/* Dark mode - list items */
-[data-bs-theme="dark"] .server-dashboard-row-list-item {
-  background-color: rgba(255, 255, 255, 0.08);
-  color: #adb5bd;
-}
 
 /* ==========================================================================
    15. Groups Page Styling
@@ -1497,23 +1482,6 @@ textarea.form-control {
    16. Utility Classes
    ========================================================================== */
 
-.text-compact {
-  font-size: 0.875rem;
-  line-height: 1.3;
-}
-
-.spacing-compact {
-  margin: 0.4rem 0;
-}
-
-/* Icon opacity for subtle icons */
-.icon-muted {
-  opacity: 0.4;
-}
-
-.icon-muted:hover {
-  opacity: 0.8;
-}
 
 /* ==========================================================================
    17. Activity Monitor Table
