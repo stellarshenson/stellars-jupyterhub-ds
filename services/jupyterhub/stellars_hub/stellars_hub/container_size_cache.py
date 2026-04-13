@@ -69,22 +69,31 @@ def _refresh_all_container_sizes():
     _container_sizes_cache['refreshing'] = True
     try:
         import docker
-        # Fast list (no size) to get container names
+        # List only RUNNING containers (no all=True - excludes stopped)
         api = docker.APIClient(base_url='unix://var/run/docker.sock', timeout=30)
         try:
-            containers = api._get(api._url('/containers/json'), params={'all': True}).json()
+            containers = api._get(api._url('/containers/json')).json()
         finally:
             api.close()
 
         names = []
+        current_users = set()
         for ctr in containers:
             for name in ctr.get('Names', []):
                 name = name.lstrip('/')
                 if name.startswith('jupyterlab-'):
                     names.append(name)
+                    current_users.add(name[len('jupyterlab-'):])
+
+        # Remove stale entries for stopped containers
+        stale = [u for u in _container_sizes_cache['data'] if u not in current_users]
+        for u in stale:
+            del _container_sizes_cache['data'][u]
+        if stale:
+            logger.info(f"[Container Sizes] Cleared {len(stale)} stale entries")
 
         if not names:
-            logger.info("[Container Sizes] No jupyterlab containers found")
+            logger.info("[Container Sizes] No running jupyterlab containers found")
             _container_sizes_cache['timestamp'] = datetime.now(timezone.utc)
             return
 
@@ -100,7 +109,7 @@ def _refresh_all_container_sizes():
                 completed += 1
 
         _container_sizes_cache['timestamp'] = datetime.now(timezone.utc)
-        logger.info(f"[Container Sizes] Refreshed: {completed}/{len(names)} containers")
+        logger.info(f"[Container Sizes] Refreshed: {completed}/{len(names)} running containers")
 
     except Exception as e:
         logger.error(f"[Container Sizes] Error during refresh: {e}")
