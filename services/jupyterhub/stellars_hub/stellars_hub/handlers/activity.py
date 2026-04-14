@@ -155,11 +155,13 @@ class ActivityDataHandler(BaseHandler):
 
         container_max = stellars_config.get('container_max_extra_space_mb', 10240)
         volume_max = stellars_config.get('volume_max_total_size_mb', 51200)
+        memory_max = stellars_config.get('memory_max_usage_mb', 0)
 
         response = {
             "users": users_data,
             "container_max_extra_space_mb": container_max,
             "volume_max_total_size_mb": volume_max,
+            "memory_max_usage_mb": memory_max,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "sampling_status": get_activity_sampling_status(),
             "inactive_after_seconds": get_inactive_after_seconds(),

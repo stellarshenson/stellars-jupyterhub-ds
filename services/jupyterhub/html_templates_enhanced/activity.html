@@ -79,6 +79,7 @@ require(["jquery"], function($) {
   // Quota thresholds (populated from API response)
   var containerMaxExtraSpaceMb = {{ container_max_extra_space_mb | default(10240) }};
   var volumeMaxTotalSizeMb = {{ volume_max_total_size_mb | default(51200) }};
+  var memoryMaxUsageMb = {{ memory_max_usage_mb | default(0) }};
 
   var autoRefreshInterval = null;
   var currentUsersData = [];  // Store data for re-sorting
@@ -182,6 +183,7 @@ require(["jquery"], function($) {
     // Update thresholds from API if provided
     if (data.container_max_extra_space_mb != null) containerMaxExtraSpaceMb = data.container_max_extra_space_mb;
     if (data.volume_max_total_size_mb != null) volumeMaxTotalSizeMb = data.volume_max_total_size_mb;
+    if (data.memory_max_usage_mb != null) memoryMaxUsageMb = data.memory_max_usage_mb;
 
     $('#loading-indicator').hide();
 
@@ -334,10 +336,18 @@ require(["jquery"], function($) {
     if (memoryMb === null || memoryMb === undefined) {
       return '<span class="text-muted">--</span>';
     }
-    if (memoryMb >= 1024) {
-      return (memoryMb / 1024).toFixed(1) + ' GB';
-    }
-    return memoryMb.toFixed(0) + ' MB';
+    var displaySize = memoryMb >= 1024 ? (memoryMb / 1024).toFixed(1) + ' GB' : memoryMb.toFixed(0) + ' MB';
+    var overQuota = memoryMaxUsageMb > 0 && memoryMb > memoryMaxUsageMb;
+
+    var tooltipLines = [];
+    if (memoryPercent != null) tooltipLines.push('Container limit: ' + memoryPercent.toFixed(1) + '%');
+    if (overQuota) tooltipLines.push('&#10;Exceeds ' + formatSizeShort(memoryMaxUsageMb) + ' quota');
+    var tooltip = tooltipLines.join('&#10;');
+
+    var warning = overQuota ? '<i class="fa fa-exclamation-triangle me-1" aria-hidden="true"></i>' : '';
+    var cls = overQuota ? 'size-warning' : '';
+    var style = 'cursor: help; border-bottom: 1px dotted currentColor;';
+    return '<span class="' + cls + '" title="' + tooltip + '" style="' + style + '">' + warning + displaySize + '</span>';
   }
 
   function formatSizeShort(mb) {

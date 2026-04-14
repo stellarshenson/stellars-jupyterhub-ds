@@ -45,6 +45,10 @@ Docker:
     description: Max total volume size in GB before warning (0=disabled)
     default: "50"
 
+  - name: JUPYTERHUB_MEMORY_MAX_USAGE_FRACTION
+    description: Per-user memory warning threshold as fraction of host RAM (e.g. 0.25 = 25%)
+    default: "0.25"
+
 Docker Spawner:
   - name: JUPYTERHUB_NOTEBOOK_IMAGE
     description: User container image

@@ -76,6 +76,23 @@ ACTIVITYMON_SAMPLE_INTERVAL = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_SAMPLE_
 JUPYTERHUB_DOCKER_TIMEOUT = int(os.environ.get("JUPYTERHUB_DOCKER_TIMEOUT", 360))               # Docker API timeout in seconds
 JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB = int(os.environ.get("JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB", 10))  # max writable layer in GB before warning
 JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE_GB = int(os.environ.get("JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE_GB", 50))        # max total volume size in GB before warning
+JUPYTERHUB_MEMORY_MAX_USAGE_FRACTION = float(os.environ.get("JUPYTERHUB_MEMORY_MAX_USAGE_FRACTION", 0.25))  # per-user memory warning threshold as fraction of host RAM (default 25%)
+
+
+def _resolve_memory_quota_mb(fraction):
+    """Return per-user memory warning threshold in MB as a fraction of host total RAM."""
+    try:
+        with open('/proc/meminfo') as f:
+            for line in f:
+                if line.startswith('MemTotal:'):
+                    total_kb = int(line.split()[1])
+                    return int((total_kb / 1024) * fraction)
+    except Exception:
+        pass
+    return 4096  # fallback: 4 GB if /proc/meminfo unavailable
+
+
+JUPYTERHUB_MEMORY_MAX_USAGE_MB = _resolve_memory_quota_mb(JUPYTERHUB_MEMORY_MAX_USAGE_FRACTION)
 
 # Misc
 TF_CPP_MIN_LOG_LEVEL = int(os.environ.get("TF_CPP_MIN_LOG_LEVEL", 3))                          # suppress TensorFlow logging in spawned containers
@@ -224,6 +241,7 @@ c.JupyterHub.template_vars = {
     'activitymon_sample_interval': ACTIVITYMON_SAMPLE_INTERVAL,  # sampling interval display
     'container_max_extra_space_mb': JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB * 1024,  # threshold in MB for container size warning
     'volume_max_total_size_mb': JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE_GB * 1024,        # threshold in MB for volume size warning
+    'memory_max_usage_mb': JUPYTERHUB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning (0 GB -> 30% of host RAM)
     'favicon_uri': branding['favicon_uri'],                  # external favicon URL (empty = static_url default)
 }
 
@@ -238,6 +256,7 @@ c.JupyterHub.tornado_settings = {
         'idle_culler_max_extension': JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION,  # for ExtendSessionHandler limits
         'container_max_extra_space_mb': JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB * 1024,  # threshold in MB for container size warning
         'volume_max_total_size_mb': JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE_GB * 1024,        # threshold in MB for volume size warning
+        'memory_max_usage_mb': JUPYTERHUB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning
     }
 }
 

@@ -100,6 +100,9 @@ This Python configuration file controls all JupyterHub behavior:
 - `JUPYTERLAB_AUX_SCRIPTS_PATH`: Admin-managed startup scripts executed in user containers on launch, typically pointing to shared volume (default: empty)
 - `JUPYTERLAB_AUX_MENU_PATH`: Admin-managed custom menu definitions for JupyterLab UI, typically pointing to shared volume (default: empty)
 - `JUPYTERHUB_TIMEZONE`: IANA timezone (e.g. `Europe/Warsaw`), empty = UTC. Hub TZ set via `02_set_timezone.sh` startup script, spawned containers receive `JUPYTERLAB_TIMEZONE`
+- `JUPYTERHUB_MEMORY_MAX_USAGE_FRACTION`: Per-user memory warning threshold as fraction of host RAM (default: `0.25` = 25%)
+- `JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB`: Writable layer quota in GB before activity warning (default: `10`)
+- `JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE_GB`: Total per-user volume quota in GB before activity warning (default: `50`)
 
 **GPU Auto-Detection**: When `JUPYTERHUB_GPU_ENABLED=2`, the platform attempts to run `nvidia-smi` in a CUDA container. If successful, GPU support is enabled for all spawned user containers via `device_requests`.
 
