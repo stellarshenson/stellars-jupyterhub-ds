@@ -100,6 +100,7 @@ class ActivityDataHandler(BaseHandler):
                 "cpu_percent": None,
                 "memory_mb": None,
                 "memory_percent": None,
+                "memory_total_mb": None,
                 "time_remaining_seconds": None,
                 "activity_score": None,
                 "sample_count": 0,
@@ -150,6 +151,7 @@ class ActivityDataHandler(BaseHandler):
                     user_data["cpu_percent"] = stats["cpu_percent"]
                     user_data["memory_mb"] = stats["memory_mb"]
                     user_data["memory_percent"] = stats["memory_percent"]
+                    user_data["memory_total_mb"] = stats.get("memory_total_mb")
 
         users_data.sort(key=lambda u: (not u["server_active"], -(u["activity_score"] or 0)))
 
