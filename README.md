@@ -400,12 +400,16 @@ services:
       - JUPYTERHUB_ACTIVITYMON_HALF_LIFE=72                 # 72 hours / 3 days (default) - decay half-life for scoring
       - JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER=60            # 60 minutes (default) - threshold for inactive status
       - JUPYTERHUB_ACTIVITYMON_VOLUMES_UPDATE_INTERVAL=3600 # 1 hour (default) - how often to refresh volume sizes
+      - JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB=10          # 10 GB (default) - writable layer quota before warning (0=disabled)
+      - JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE_GB=50              # 50 GB (default) - total volume quota before warning (0=disabled)
+      - JUPYTERHUB_MEMORY_MAX_USAGE_FRACTION=0.25           # 25% (default) - memory quota as fraction of host RAM
 ```
 
 **Features**:
 - **3-state status**: Green (online + active within 60 min), Yellow (online + inactive), Red (offline)
 - **Resource metrics**: Real-time CPU and memory usage per container (fetched in parallel to avoid blocking)
 - **Volume sizes**: Total storage per user with hover tooltip showing per-volume breakdown (home/workspace/cache). Refreshed hourly in background
+- **Quota warnings**: Memory, container writable layer, and volume size columns display an orange warning icon with tooltip when a user exceeds the configured threshold
 - **Activity score**: Weighted average of historical activity using exponential decay (recent activity counts more)
 - **Reset button**: Clear all historical samples to start fresh
 
