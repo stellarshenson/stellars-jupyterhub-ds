@@ -293,7 +293,7 @@ require(["jquery"], function($) {
         '<td class="text-center">' + formatAuth(user.is_authorized) + '</td>' +
         '<td class="text-center">' + formatStatus(user.server_active, user.recently_active) + '</td>' +
         '<td class="text-center">' + formatCpu(user.cpu_percent) + '</td>' +
-        '<td class="text-center">' + formatMemory(user.memory_mb, user.memory_percent) + '</td>' +
+        '<td class="text-center">' + formatMemory(user.memory_mb, user.memory_percent, user.memory_total_mb) + '</td>' +
         '<td class="text-center">' + formatVolumeSize(user.volume_size_mb, user.volume_breakdown) + '</td>' +
         '<td class="text-center">' + formatContainerSize(user.container_size_rw_mb, user.container_size_rootfs_mb) + '</td>' +
         '<td class="text-center">' + formatTimeRemaining(user.time_remaining_seconds) + '</td>' +
@@ -332,15 +332,20 @@ require(["jquery"], function($) {
     return cpuPercent.toFixed(1) + '%';
   }
 
-  function formatMemory(memoryMb, memoryPercent) {
+  function formatMemory(memoryMb, memoryPercent, memoryTotalMb) {
     if (memoryMb === null || memoryMb === undefined) {
       return '<span class="text-muted">--</span>';
     }
     var displaySize = memoryMb >= 1024 ? (memoryMb / 1024).toFixed(1) + ' GB' : memoryMb.toFixed(0) + ' MB';
     var overQuota = memoryMaxUsageMb > 0 && memoryMb > memoryMaxUsageMb;
 
+    var usedGb = (memoryMb / 1024).toFixed(1);
+    var pct = memoryPercent != null ? memoryPercent.toFixed(1) : '--';
     var tooltipLines = [];
-    if (memoryPercent != null) tooltipLines.push('Container limit: ' + memoryPercent.toFixed(1) + '%');
+    if (memoryTotalMb != null) {
+      tooltipLines.push('Total memory: ' + (memoryTotalMb / 1024).toFixed(1) + ' GB');
+    }
+    tooltipLines.push('Used: ' + usedGb + ' GB (' + pct + '%)');
     if (overQuota) tooltipLines.push('&#10;Exceeds ' + formatSizeShort(memoryMaxUsageMb) + ' quota');
     var tooltip = tooltipLines.join('&#10;');
 

@@ -45,6 +45,7 @@ def get_container_stats(username):
                 'cpu_percent': round(cpu_percent, 1),
                 'memory_mb': round(memory_usage / (1024 * 1024), 1),
                 'memory_percent': round(memory_percent, 1),
+                'memory_total_mb': round(memory_limit / (1024 * 1024), 1),
             }
         finally:
             docker_client.close()
