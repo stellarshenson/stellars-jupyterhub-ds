@@ -33,11 +33,12 @@
     <table class="table table-sm table-striped table-hover">
       <thead class="table-dark">
         <tr>
-          <th title="Priority order - higher priority groups override lower ones">Priority</th>
-          <th title="Group name (used as identifier)">Name</th>
+          <th class="text-center" title="Priority order - higher priority groups override lower ones. Drag rows to reorder." style="width: 6em;">Priority</th>
+          <th title="Group name (used as identifier)" style="width: 14em;">Name</th>
           <th title="Optional group description">Description</th>
-          <th class="text-center" title="Number of users in this group">Members</th>
-          <th class="text-center" title="Group configuration and actions">Actions</th>
+          <th title="Enabled features for this group" style="width: 16em;">Features</th>
+          <th class="text-center" title="Number of users in this group" style="width: 6em;">Members</th>
+          <th class="text-center" title="Group configuration and actions" style="width: 14em;">Actions</th>
         </tr>
       </thead>
       <tbody id="groups-table-body">
@@ -88,9 +89,40 @@
   </div>
 </div>
 
+<style>
+  #groups-table-body tr[draggable="true"] { cursor: grab; }
+  #groups-table-body tr.dragging { opacity: 0.5; cursor: grabbing; }
+  #groups-table-body tr.drag-over-top { box-shadow: inset 0 2px 0 0 #0d6efd; }
+  #groups-table-body tr.drag-over-bottom { box-shadow: inset 0 -2px 0 0 #0d6efd; }
+  #groups-table-body .drag-handle { color: #6c757d; user-select: none; }
+  #config-group-modal .modal-dialog {
+    max-width: 90vw;
+    width: 90vw;
+    margin: 1.75rem auto;
+  }
+  #config-group-modal .modal-body {
+    font-size: 0.875rem;
+  }
+  #config-group-modal .modal-body h6 {
+    font-size: 0.8125rem;
+    letter-spacing: 0.02em;
+  }
+  #config-group-modal .form-text {
+    font-size: 0.8125rem;
+  }
+  #config-group-modal #env-vars-table th,
+  #config-group-modal #env-vars-table td {
+    font-size: 0.8125rem;
+    vertical-align: middle;
+  }
+  #config-group-modal #env-vars-table .form-control-sm {
+    font-size: 0.8125rem;
+  }
+</style>
+
 <!-- Configure Group Modal -->
 <div class="modal fade" id="config-group-modal" tabindex="-1" aria-labelledby="config-group-modal-label" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+  <div class="modal-dialog modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="config-group-modal-label">
@@ -154,7 +186,7 @@
         <!-- Docker Access -->
         <div class="mb-4">
           <h6 class="text-uppercase text-muted mb-2">
-            <i class="fa fa-docker" aria-hidden="true"></i> Docker Access
+            <i class="fab fa-docker" aria-hidden="true"></i> Docker Access
           </h6>
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" id="config-docker-access">
@@ -202,6 +234,12 @@ require(["jquery"], function($) {
   });
 
   $('#create-group-btn').on('click', createGroup);
+
+  // Group name: sanitize silently on blur (spaces -> _, strip invalid chars, enforce leading letter)
+  $('#new-group-name').on('blur', function() {
+    var sanitized = sanitizeGroupName($(this).val());
+    $(this).val(sanitized).removeClass('is-invalid');
+  });
 
   // Allow Enter in name field to create
   $('#new-group-name').on('keypress', function(e) {
@@ -265,39 +303,40 @@ require(["jquery"], function($) {
       var isFirst = idx === 0;
       var isLast = idx === currentGroups.length - 1;
 
-      var configSummary = [];
-      if (group.config.env_vars && group.config.env_vars.length > 0)
-        configSummary.push(group.config.env_vars.length + ' var' + (group.config.env_vars.length !== 1 ? 's' : ''));
-      if (group.config.gpu_access) configSummary.push('GPU');
-      if (group.config.docker_access) configSummary.push('Docker');
-      if (group.config.docker_privileged) configSummary.push('Privileged');
+      var features = [];
+      var envCount = (group.config.env_vars && group.config.env_vars.length) || 0;
+      if (envCount > 0) features.push(envCount + ' var' + (envCount !== 1 ? 's' : ''));
+      if (group.config.gpu_access) features.push('GPU');
+      if (group.config.docker_access) features.push('Docker');
+      if (group.config.docker_privileged) features.push('Privileged');
 
-      var badges = configSummary.map(function(s) {
-        return '<span class="badge bg-secondary me-1">' + escapeHtml(s) + '</span>';
-      }).join('');
+      var featureBadges = features.length
+        ? features.map(function(s) { return '<span class="badge bg-secondary me-1">' + escapeHtml(s) + '</span>'; }).join('')
+        : '<span class="text-muted small">--</span>';
 
-      var row = '<tr>' +
-        '<td class="text-center">' + (idx + 1) + '</td>' +
-        '<td><strong>' + escapeHtml(group.name) + '</strong>' +
-          (badges ? '<br><span class="small">' + badges + '</span>' : '') +
+      var row = '<tr draggable="true" data-name="' + escapeAttr(group.name) + '">' +
+        '<td class="text-center drag-handle" title="Drag to reorder">' +
+          '<i class="fa fa-grip-vertical text-muted me-1"></i>' + (idx + 1) +
         '</td>' +
+        '<td class="text-nowrap"><strong>' + escapeHtml(group.name) + '</strong></td>' +
         '<td class="text-muted small">' + escapeHtml(group.description || '') + '</td>' +
+        '<td class="small">' + featureBadges + '</td>' +
         '<td class="text-center">' +
-          '<span title="' + escapeHtml((group.members || []).join(', ')) + '">' + group.member_count + '</span>' +
+          '<span title="' + escapeAttr((group.members || []).join(', ')) + '">' + group.member_count + '</span>' +
         '</td>' +
         '<td class="text-center text-nowrap">' +
-          '<button class="btn btn-outline-primary btn-sm me-1 btn-config" data-name="' + escapeHtml(group.name) + '" title="Configure group">' +
+          '<button class="btn btn-outline-primary btn-sm me-1 btn-config" data-name="' + escapeAttr(group.name) + '" title="Configure group">' +
             '<i class="fa fa-cog"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-up" data-name="' + escapeHtml(group.name) + '" title="Move up (higher priority)"' +
+          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-up" data-name="' + escapeAttr(group.name) + '" title="Move up (higher priority)"' +
             (isFirst ? ' disabled' : '') + '>' +
             '<i class="fa fa-arrow-up"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-down" data-name="' + escapeHtml(group.name) + '" title="Move down (lower priority)"' +
+          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-down" data-name="' + escapeAttr(group.name) + '" title="Move down (lower priority)"' +
             (isLast ? ' disabled' : '') + '>' +
             '<i class="fa fa-arrow-down"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-danger btn-sm btn-delete" data-name="' + escapeHtml(group.name) + '" title="Delete group">' +
+          '<button class="btn btn-outline-danger btn-sm btn-delete" data-name="' + escapeAttr(group.name) + '" title="Delete group">' +
             '<i class="fa fa-trash"></i>' +
           '</button>' +
         '</td>' +
@@ -310,24 +349,93 @@ require(["jquery"], function($) {
     tbody.find('.btn-move-up').on('click', function() { moveGroup($(this).data('name'), -1); });
     tbody.find('.btn-move-down').on('click', function() { moveGroup($(this).data('name'), 1); });
     tbody.find('.btn-delete').on('click', function() { deleteGroup($(this).data('name')); });
+
+    // HTML5 drag-and-drop reordering
+    bindDragAndDrop(tbody);
+  }
+
+  // ── Drag and drop ──
+
+  var dragSrcName = null;
+
+  function bindDragAndDrop(tbody) {
+    tbody.find('tr[draggable="true"]').each(function() {
+      var row = this;
+
+      row.addEventListener('dragstart', function(e) {
+        dragSrcName = row.getAttribute('data-name');
+        row.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        try { e.dataTransfer.setData('text/plain', dragSrcName); } catch (err) {}
+      });
+
+      row.addEventListener('dragend', function() {
+        row.classList.remove('dragging');
+        tbody.find('tr').removeClass('drag-over-top drag-over-bottom');
+        dragSrcName = null;
+      });
+
+      row.addEventListener('dragover', function(e) {
+        if (!dragSrcName || dragSrcName === row.getAttribute('data-name')) return;
+        e.preventDefault();
+        var rect = row.getBoundingClientRect();
+        var mid = rect.top + rect.height / 2;
+        tbody.find('tr').removeClass('drag-over-top drag-over-bottom');
+        row.classList.add(e.clientY < mid ? 'drag-over-top' : 'drag-over-bottom');
+      });
+
+      row.addEventListener('dragleave', function() {
+        row.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+
+      row.addEventListener('drop', function(e) {
+        e.preventDefault();
+        var targetName = row.getAttribute('data-name');
+        if (!dragSrcName || dragSrcName === targetName) return;
+
+        var srcIdx = currentGroups.findIndex(function(g) { return g.name === dragSrcName; });
+        var tgtIdx = currentGroups.findIndex(function(g) { return g.name === targetName; });
+        if (srcIdx < 0 || tgtIdx < 0) return;
+
+        var rect = row.getBoundingClientRect();
+        var dropBelow = e.clientY >= rect.top + rect.height / 2;
+
+        var moved = currentGroups.splice(srcIdx, 1)[0];
+        var insertAt = currentGroups.findIndex(function(g) { return g.name === targetName; });
+        if (dropBelow) insertAt += 1;
+        currentGroups.splice(insertAt, 0, moved);
+
+        persistPriorityOrder();
+        renderTable();
+      });
+    });
+  }
+
+  function persistPriorityOrder() {
+    var priorities = currentGroups.map(function(g, i) {
+      return { name: g.name, priority: currentGroups.length - 1 - i };
+    });
+    $.ajax({
+      url: baseUrl + 'api/admin/groups/reorder',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ groups: priorities }),
+      headers: { 'X-XSRFToken': getCookie('_xsrf') },
+      error: function() { loadGroups(); }
+    });
   }
 
   // ── Create Group ──
 
   function createGroup() {
     var nameInput = $('#new-group-name');
-    var name = nameInput.val().trim();
+    var name = sanitizeGroupName(nameInput.val());
+    nameInput.val(name);
     var description = $('#new-group-description').val().trim();
 
-    // Client-side validation
     if (!name) {
       nameInput.addClass('is-invalid');
       $('#name-error').text('Group name is required');
-      return;
-    }
-    if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(name)) {
-      nameInput.addClass('is-invalid');
-      $('#name-error').text('Must start with a letter. Letters, digits, hyphens, and underscores only.');
       return;
     }
 
@@ -380,26 +488,12 @@ require(["jquery"], function($) {
     var targetIdx = idx + direction;
     if (targetIdx < 0 || targetIdx >= currentGroups.length) return;
 
-    // Swap in the array
     var temp = currentGroups[idx];
     currentGroups[idx] = currentGroups[targetIdx];
     currentGroups[targetIdx] = temp;
 
-    // Assign priorities (highest first: length-1, length-2, ...)
-    var priorities = currentGroups.map(function(g, i) {
-      return { name: g.name, priority: currentGroups.length - 1 - i };
-    });
-
     renderTable();
-
-    $.ajax({
-      url: baseUrl + 'api/admin/groups/reorder',
-      method: 'POST',
-      contentType: 'application/json',
-      data: JSON.stringify({ groups: priorities }),
-      headers: { 'X-XSRFToken': getCookie('_xsrf') },
-      error: function() { loadGroups(); }
-    });
+    persistPriorityOrder();
   }
 
   // ── Configure Group ──
@@ -446,19 +540,42 @@ require(["jquery"], function($) {
       '<td><input type="text" class="form-control form-control-sm env-desc" value="' + escapeAttr(description) + '" placeholder="description"></td>' +
       '<td><button type="button" class="btn btn-outline-danger btn-sm btn-remove-var" title="Remove"><i class="fa fa-times"></i></button></td>' +
     '</tr>');
-    row.find('.btn-remove-var').on('click', function() {
-      row.remove();
+    row.find('.btn-remove-var').on('click', function() { row.remove(); });
+    row.find('.env-name').on('blur', function() {
+      $(this).val(sanitizeEnvVarName($(this).val()));
     });
     $('#env-vars-body').append(row);
+  }
+
+  // ── Sanitizers (applied silently on blur) ──
+
+  function sanitizeGroupName(raw) {
+    if (!raw) return '';
+    // spaces -> underscore, drop anything not [A-Za-z0-9_-], collapse repeats
+    var s = raw.trim().replace(/\s+/g, '_').replace(/[^A-Za-z0-9_-]/g, '');
+    // must start with a letter
+    s = s.replace(/^[^A-Za-z]+/, '');
+    return s.slice(0, 255);
+  }
+
+  function sanitizeEnvVarName(raw) {
+    if (!raw) return '';
+    // POSIX-style: uppercase, [A-Z_][A-Z0-9_]*, spaces/hyphens -> underscore
+    var s = raw.trim().toUpperCase().replace(/[\s-]+/g, '_').replace(/[^A-Z0-9_]/g, '');
+    // must not start with a digit
+    s = s.replace(/^[0-9]+/, '');
+    return s;
   }
 
   function saveConfig() {
     if (!currentConfigGroup) return;
 
-    // Collect env vars (skip empty rows)
+    // Collect env vars (skip empty rows, sanitize names one last time)
     var envVars = [];
     $('#env-vars-body tr').each(function() {
-      var name = $(this).find('.env-name').val().trim();
+      var nameField = $(this).find('.env-name');
+      var name = sanitizeEnvVarName(nameField.val());
+      nameField.val(name);
       if (name) {
         envVars.push({
           name: name,
