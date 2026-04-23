@@ -1,5 +1,13 @@
 {% extends "page.html" %}
 
+{% block stylesheet %}
+  {{ super() }}
+  <!-- JupyterHub only loads fontawesome + solid by default; brands (fab fa-docker) needs this -->
+  <link rel="stylesheet"
+        href="{{ static_url('components/@fortawesome/fontawesome-free/css/brands.min.css') }}"
+        type="text/css" />
+{% endblock stylesheet %}
+
 {% block main %}
 <div class="container">
   <h1>Groups</h1>
