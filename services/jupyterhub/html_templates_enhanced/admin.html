@@ -67,6 +67,28 @@
     </div>
   </div>
 
+  <!-- Group Membership Changes Confirmation Modal -->
+  <div class="modal fade" id="group-changes-modal" tabindex="-1" role="dialog" aria-labelledby="groupChangesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="groupChangesModalLabel">
+            <i class="fa fa-check-circle text-success me-2"></i>Group Membership Updated
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="group-changes-body">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Manage Volumes Modal (Admin) -->
   <div class="modal fade" id="admin-manage-volumes-modal" tabindex="-1" role="dialog" aria-labelledby="adminManageVolumesModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -123,6 +145,55 @@
     // Store for tracking newly created users
     let pendingUsernames = [];
 
+    // Track pending group membership changes: { [groupName]: {added: Set, removed: Set} }
+    const pendingGroupChanges = {};
+    let groupChangesTimeout = null;
+
+    function escapeHtml(text) {
+        if (text == null) return '';
+        return String(text).replace(/[&<>"']/g, function(m) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m];
+        });
+    }
+
+    function showGroupChangesModal() {
+        const body = document.getElementById('group-changes-body');
+        const entries = Object.keys(pendingGroupChanges);
+        if (entries.length === 0) return;
+
+        let html = '';
+        entries.sort().forEach(function(groupName) {
+            const change = pendingGroupChanges[groupName];
+            const added = Array.from(change.added);
+            const removed = Array.from(change.removed);
+            html += '<div class="mb-3">';
+            html += '<h6 class="mb-2"><i class="fa fa-users me-1"></i>' + escapeHtml(groupName) + '</h6>';
+            if (added.length > 0) {
+                html += '<div class="small mb-1"><strong class="text-success">Added (' + added.length + '):</strong> ';
+                html += added.sort().map(escapeHtml).join(', ');
+                html += '</div>';
+            }
+            if (removed.length > 0) {
+                html += '<div class="small"><strong class="text-danger">Removed (' + removed.length + '):</strong> ';
+                html += removed.sort().map(escapeHtml).join(', ');
+                html += '</div>';
+            }
+            html += '</div>';
+        });
+        body.innerHTML = html;
+
+        // Clear pending state before showing
+        Object.keys(pendingGroupChanges).forEach(k => delete pendingGroupChanges[k]);
+
+        new bootstrap.Modal(document.getElementById('group-changes-modal')).show();
+    }
+
+    function scheduleGroupChangesModal() {
+        if (groupChangesTimeout) clearTimeout(groupChangesTimeout);
+        // Debounce so add + remove from the same Apply click collapse into one modal
+        groupChangesTimeout = setTimeout(showGroupChangesModal, 500);
+    }
+
     // Helper to get CSRF token
     function getCookie(name) {
         const value = `; ${document.cookie}`;
@@ -170,6 +241,22 @@
         // Check for user rename - PATCH to api/users/{username}
         const userPatchMatch = urlPath.match(/api\/users\/([^\/]+)$/);
         const isUserRename = method === 'PATCH' && userPatchMatch;
+
+        // Check for group membership changes: POST/DELETE to api/groups/{name}/users
+        const groupUsersMatch = urlPath.match(/api\/groups\/([^\/]+)\/users$/);
+        const isGroupAdd = method === 'POST' && groupUsersMatch;
+        const isGroupRemove = method === 'DELETE' && groupUsersMatch;
+
+        // Capture which users are being added/removed BEFORE the fetch
+        let groupChangeUsers = [];
+        if (isGroupAdd || isGroupRemove) {
+            try {
+                if (options && options.body) {
+                    const bodyData = JSON.parse(options.body);
+                    if (Array.isArray(bodyData.users)) groupChangeUsers = bodyData.users.slice();
+                }
+            } catch (e) { /* ignore */ }
+        }
 
         // Show spinner for deletion
         if (isUserDeletion) {
@@ -257,6 +344,18 @@
         // Hide spinner after user rename completes
         if (isUserRename) {
             hideLoadingSpinner();
+        }
+
+        // Record group membership changes on success; schedule a confirmation modal
+        if ((isGroupAdd || isGroupRemove) && response.ok && groupChangeUsers.length > 0) {
+            const groupName = decodeURIComponent(groupUsersMatch[1]);
+            if (!pendingGroupChanges[groupName]) {
+                pendingGroupChanges[groupName] = { added: new Set(), removed: new Set() };
+            }
+            const bucket = isGroupAdd ? pendingGroupChanges[groupName].added
+                                      : pendingGroupChanges[groupName].removed;
+            groupChangeUsers.forEach(u => bucket.add(u));
+            scheduleGroupChangesModal();
         }
 
         return response;
