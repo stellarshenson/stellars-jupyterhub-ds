@@ -2,33 +2,87 @@
 
 from urllib.parse import urlparse
 
+from .group_resolver import resolve_group_config
+from .groups_config import GroupsConfigManager
 
-def make_pre_spawn_hook(branding, favicon_uri=''):
-    """Create a pre_spawn_hook closure that captures branding state.
+
+def make_pre_spawn_hook(
+    branding,
+    favicon_uri='',
+    gpu_available=False,
+    reserved_env_var_names=frozenset(),
+    reserved_env_var_prefixes=(),
+):
+    """Create a pre_spawn_hook closure that captures branding + resolution context.
 
     Args:
         branding: dict from setup_branding() with icon static names and URLs
         favicon_uri: JUPYTERHUB_FAVICON_URI value (non-empty activates CHP routes)
+        gpu_available: True when host has GPU hardware (detected or forced) - a
+            prerequisite for any per-group GPU grant taking effect.
+        reserved_env_var_names: names that groups cannot override (platform env).
+        reserved_env_var_prefixes: tuple of prefixes reserved for JupyterHub
+            itself (e.g. JUPYTERHUB_, JPY_, MEM_, CPU_).
     """
 
     async def pre_spawn_hook(spawner):
-        """Grant docker access based on group membership, inject favicon + icon routes."""
+        """Resolve group config, apply docker/gpu/env, inject favicon + icon routes."""
         username = spawner.user.name
-        user_groups = [g.name for g in spawner.user.groups]
+        user_group_names = [g.name for g in spawner.user.groups]
 
-        # docker-sock: mount docker.sock for container orchestration
-        if 'docker-sock' in user_groups:
-            spawner.log.info(f"Granting docker.sock access to user: {username}")
+        # Resolve effective configuration by collapsing all user groups
+        try:
+            all_configs = GroupsConfigManager.get_instance().get_all_configs()
+        except Exception as e:
+            spawner.log.error(f"[Groups] Failed to load group configs: {e}")
+            all_configs = []
+
+        resolved = resolve_group_config(
+            user_group_names=user_group_names,
+            all_group_configs=all_configs,
+            gpu_available=gpu_available,
+            reserved_names=reserved_env_var_names,
+            reserved_prefixes=reserved_env_var_prefixes,
+        )
+
+        # Docker socket mount
+        if resolved['docker_access']:
             spawner.volumes['/var/run/docker.sock'] = '/var/run/docker.sock'
         else:
             spawner.volumes.pop('/var/run/docker.sock', None)
 
-        # docker-privileged: run container with --privileged flag
-        if 'docker-privileged' in user_groups:
-            spawner.log.info(f"Granting privileged container mode to user: {username}")
+        # Privileged container mode
+        if resolved['docker_privileged']:
             spawner.extra_host_config['privileged'] = True
         else:
             spawner.extra_host_config.pop('privileged', None)
+
+        # GPU device passthrough (per-user, replaces old global config)
+        if resolved['gpu_access']:
+            spawner.extra_host_config['device_requests'] = [
+                {'Driver': 'nvidia', 'Count': -1, 'Capabilities': [['gpu']]}
+            ]
+            spawner.environment['ENABLE_GPU_SUPPORT'] = '1'
+            spawner.environment['ENABLE_GPUSTAT'] = '1'
+        else:
+            spawner.extra_host_config.pop('device_requests', None)
+            spawner.environment['ENABLE_GPU_SUPPORT'] = '0'
+            spawner.environment['ENABLE_GPUSTAT'] = '0'
+
+        # Inject user-defined env vars from groups (reserved names already filtered)
+        if resolved['env_vars']:
+            spawner.environment.update(resolved['env_vars'])
+
+        spawner.log.info(
+            "[Groups] user=%s groups=%s docker=%s privileged=%s gpu=%s env_vars=%d skipped=%s",
+            username,
+            resolved['matched_groups'],
+            resolved['docker_access'],
+            resolved['docker_privileged'],
+            resolved['gpu_access'],
+            len(resolved['env_vars']),
+            resolved['skipped_env_vars'],
+        )
 
         # Favicon proxy route
         if favicon_uri:
