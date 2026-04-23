@@ -351,7 +351,7 @@ require(["jquery"], function($) {
       if (group.config.docker_access) features.push('Docker');
       if (group.config.docker_privileged) features.push('Privileged');
       if (group.config.mem_limit_enabled && group.config.mem_limit_gb > 0) {
-        features.push('Mem: ' + Number(group.config.mem_limit_gb).toFixed(1) + ' GB');
+        features.push('Mem');
       }
 
       var featureBadges = features.length
