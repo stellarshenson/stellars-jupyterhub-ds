@@ -1,0 +1,521 @@
+{% extends "page.html" %}
+
+{% block main %}
+<div class="container">
+  <h1>Groups</h1>
+  <p class="text-muted">Manage user groups and their configurations</p>
+
+  <hr>
+
+  <!-- Loading indicator -->
+  <div id="loading-indicator" class="text-center py-4">
+    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+    <span class="ms-2">Loading groups...</span>
+  </div>
+
+  <!-- Toolbar -->
+  <div id="groups-toolbar" class="d-flex justify-content-between align-items-center mb-3" style="display: none !important;">
+    <div>
+      <span class="badge bg-dark" id="group-count"></span>
+    </div>
+    <div>
+      <button class="btn btn-outline-primary btn-sm me-2" id="add-group-btn">
+        <i class="fa fa-plus" aria-hidden="true"></i> Add Group
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" id="refresh-btn">
+        <i class="fa fa-refresh" aria-hidden="true"></i> Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Groups table -->
+  <div id="groups-table-container" style="display: none;">
+    <table class="table table-sm table-striped table-hover">
+      <thead class="table-dark">
+        <tr>
+          <th title="Priority order - higher priority groups override lower ones">Priority</th>
+          <th title="Group name (used as identifier)">Name</th>
+          <th title="Optional group description">Description</th>
+          <th class="text-center" title="Number of users in this group">Members</th>
+          <th class="text-center" title="Group configuration and actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="groups-table-body">
+        <!-- Populated by JavaScript -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- No groups message -->
+  <div id="no-groups-message" style="display: none;">
+    <div class="alert alert-info">
+      <i class="fa fa-info-circle" aria-hidden="true"></i>
+      No groups found. Click "Add Group" to create one.
+    </div>
+  </div>
+</div>
+
+<!-- Add Group Modal -->
+<div class="modal fade" id="add-group-modal" tabindex="-1" aria-labelledby="add-group-modal-label" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="add-group-modal-label">Add Group</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="new-group-name" class="form-label">Group Name</label>
+          <input type="text" class="form-control form-control-sm" id="new-group-name"
+                 placeholder="e.g. data-science-team" maxlength="255"
+                 pattern="[a-zA-Z][a-zA-Z0-9_-]*">
+          <div class="form-text">Must start with a letter. Letters, digits, hyphens, and underscores only.</div>
+          <div class="invalid-feedback" id="name-error"></div>
+        </div>
+        <div class="mb-3">
+          <label for="new-group-description" class="form-label">Description <span class="text-muted">(optional)</span></label>
+          <textarea class="form-control form-control-sm" id="new-group-description" rows="2"
+                    placeholder="Brief description of this group's purpose"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" id="create-group-btn">
+          <i class="fa fa-plus" aria-hidden="true"></i> Create
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Configure Group Modal -->
+<div class="modal fade" id="config-group-modal" tabindex="-1" aria-labelledby="config-group-modal-label" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="config-group-modal-label">
+          Configure Group: <span class="badge bg-secondary" id="config-group-name-badge"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Description -->
+        <div class="mb-4">
+          <label for="config-description" class="form-label fw-bold">Description</label>
+          <textarea class="form-control form-control-sm" id="config-description" rows="2"
+                    placeholder="Brief description of this group's purpose"></textarea>
+        </div>
+
+        <hr>
+
+        <!-- Environment Variables -->
+        <div class="mb-4">
+          <h6 class="text-uppercase text-muted mb-2">
+            <i class="fa fa-code" aria-hidden="true"></i> Environment Variables
+          </h6>
+          <p class="text-muted small mb-2">Variables injected into containers for users in this group</p>
+          <table class="table table-sm table-bordered" id="env-vars-table">
+            <thead>
+              <tr>
+                <th title="Environment variable name (e.g. MY_VAR)" style="width: 30%;">Name</th>
+                <th title="Variable value (optional - can be set at container level)" style="width: 30%;">Value</th>
+                <th title="Human-readable description (optional, not injected)">Description</th>
+                <th style="width: 40px;"></th>
+              </tr>
+            </thead>
+            <tbody id="env-vars-body">
+              <!-- Populated by JavaScript -->
+            </tbody>
+          </table>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="add-env-var-btn">
+            <i class="fa fa-plus" aria-hidden="true"></i> Add Variable
+          </button>
+        </div>
+
+        <hr>
+
+        <!-- GPU Access -->
+        <div class="mb-4">
+          <h6 class="text-uppercase text-muted mb-2">
+            <i class="fa fa-microchip" aria-hidden="true"></i> GPU Access
+          </h6>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="config-gpu-access">
+            <label class="form-check-label" for="config-gpu-access">
+              Enable GPU access for this group
+            </label>
+            <div class="form-text">Passes GPU devices to spawned containers via device_requests</div>
+          </div>
+        </div>
+
+        <hr>
+
+        <!-- Docker Access -->
+        <div class="mb-4">
+          <h6 class="text-uppercase text-muted mb-2">
+            <i class="fa fa-docker" aria-hidden="true"></i> Docker Access
+          </h6>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="config-docker-access">
+            <label class="form-check-label" for="config-docker-access">
+              Docker engine access
+            </label>
+            <div class="form-text">Mounts /var/run/docker.sock into user containers</div>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="config-docker-privileged">
+            <label class="form-check-label" for="config-docker-privileged">
+              Privileged container mode
+            </label>
+            <div class="form-text">Runs user containers with --privileged flag (full host access)</div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" id="save-config-btn">
+          <i class="fa fa-save" aria-hidden="true"></i> Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+require(["jquery"], function($) {
+  "use strict";
+
+  var baseUrl = '{{ base_url }}';
+  var currentGroups = [];
+  var currentConfigGroup = null;
+
+  // Initial fetch
+  loadGroups();
+
+  // Button handlers
+  $('#add-group-btn').on('click', function() {
+    $('#new-group-name').val('').removeClass('is-invalid');
+    $('#new-group-description').val('');
+    new bootstrap.Modal(document.getElementById('add-group-modal')).show();
+  });
+
+  $('#create-group-btn').on('click', createGroup);
+
+  // Allow Enter in name field to create
+  $('#new-group-name').on('keypress', function(e) {
+    if (e.which === 13) { e.preventDefault(); createGroup(); }
+  });
+
+  $('#refresh-btn').on('click', function() {
+    var btn = $(this);
+    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+    loadGroups(function() {
+      btn.prop('disabled', false).html('<i class="fa fa-refresh"></i> Refresh');
+    });
+  });
+
+  $('#add-env-var-btn').on('click', function() {
+    addEnvVarRow('', '', '');
+  });
+
+  $('#save-config-btn').on('click', saveConfig);
+
+  // ── Data Loading ──
+
+  function loadGroups(callback) {
+    $.ajax({
+      url: baseUrl + 'api/groups',
+      method: 'GET',
+      headers: { 'X-XSRFToken': getCookie('_xsrf') },
+      success: function(data) {
+        currentGroups = data.groups || [];
+        renderTable();
+        if (callback) callback();
+      },
+      error: function(xhr) {
+        $('#loading-indicator').hide();
+        $('#no-groups-message').show().find('.alert')
+          .removeClass('alert-info').addClass('alert-danger')
+          .html('<i class="fa fa-exclamation-circle"></i> Failed to load groups');
+        if (callback) callback();
+      }
+    });
+  }
+
+  function renderTable() {
+    $('#loading-indicator').hide();
+
+    if (currentGroups.length === 0) {
+      $('#groups-toolbar').css('display', 'none').attr('style', 'display: none !important;');
+      $('#groups-table-container').hide();
+      $('#no-groups-message').show();
+      return;
+    }
+
+    $('#no-groups-message').hide();
+    $('#groups-toolbar').removeAttr('style').show();
+    $('#groups-table-container').show();
+    $('#group-count').text(currentGroups.length + ' group' + (currentGroups.length !== 1 ? 's' : ''));
+
+    var tbody = $('#groups-table-body');
+    tbody.empty();
+
+    currentGroups.forEach(function(group, idx) {
+      var isFirst = idx === 0;
+      var isLast = idx === currentGroups.length - 1;
+
+      var configSummary = [];
+      if (group.config.env_vars && group.config.env_vars.length > 0)
+        configSummary.push(group.config.env_vars.length + ' var' + (group.config.env_vars.length !== 1 ? 's' : ''));
+      if (group.config.gpu_access) configSummary.push('GPU');
+      if (group.config.docker_access) configSummary.push('Docker');
+      if (group.config.docker_privileged) configSummary.push('Privileged');
+
+      var badges = configSummary.map(function(s) {
+        return '<span class="badge bg-secondary me-1">' + escapeHtml(s) + '</span>';
+      }).join('');
+
+      var row = '<tr>' +
+        '<td class="text-center">' + (idx + 1) + '</td>' +
+        '<td><strong>' + escapeHtml(group.name) + '</strong>' +
+          (badges ? '<br><span class="small">' + badges + '</span>' : '') +
+        '</td>' +
+        '<td class="text-muted small">' + escapeHtml(group.description || '') + '</td>' +
+        '<td class="text-center">' +
+          '<span title="' + escapeHtml((group.members || []).join(', ')) + '">' + group.member_count + '</span>' +
+        '</td>' +
+        '<td class="text-center text-nowrap">' +
+          '<button class="btn btn-outline-primary btn-sm me-1 btn-config" data-name="' + escapeHtml(group.name) + '" title="Configure group">' +
+            '<i class="fa fa-cog"></i>' +
+          '</button>' +
+          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-up" data-name="' + escapeHtml(group.name) + '" title="Move up (higher priority)"' +
+            (isFirst ? ' disabled' : '') + '>' +
+            '<i class="fa fa-arrow-up"></i>' +
+          '</button>' +
+          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-down" data-name="' + escapeHtml(group.name) + '" title="Move down (lower priority)"' +
+            (isLast ? ' disabled' : '') + '>' +
+            '<i class="fa fa-arrow-down"></i>' +
+          '</button>' +
+          '<button class="btn btn-outline-danger btn-sm btn-delete" data-name="' + escapeHtml(group.name) + '" title="Delete group">' +
+            '<i class="fa fa-trash"></i>' +
+          '</button>' +
+        '</td>' +
+      '</tr>';
+      tbody.append(row);
+    });
+
+    // Bind action buttons
+    tbody.find('.btn-config').on('click', function() { openConfig($(this).data('name')); });
+    tbody.find('.btn-move-up').on('click', function() { moveGroup($(this).data('name'), -1); });
+    tbody.find('.btn-move-down').on('click', function() { moveGroup($(this).data('name'), 1); });
+    tbody.find('.btn-delete').on('click', function() { deleteGroup($(this).data('name')); });
+  }
+
+  // ── Create Group ──
+
+  function createGroup() {
+    var nameInput = $('#new-group-name');
+    var name = nameInput.val().trim();
+    var description = $('#new-group-description').val().trim();
+
+    // Client-side validation
+    if (!name) {
+      nameInput.addClass('is-invalid');
+      $('#name-error').text('Group name is required');
+      return;
+    }
+    if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(name)) {
+      nameInput.addClass('is-invalid');
+      $('#name-error').text('Must start with a letter. Letters, digits, hyphens, and underscores only.');
+      return;
+    }
+
+    nameInput.removeClass('is-invalid');
+    $('#create-group-btn').prop('disabled', true);
+
+    $.ajax({
+      url: baseUrl + 'api/groups/create',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ name: name, description: description }),
+      headers: { 'X-XSRFToken': getCookie('_xsrf') },
+      success: function() {
+        bootstrap.Modal.getInstance(document.getElementById('add-group-modal')).hide();
+        $('#create-group-btn').prop('disabled', false);
+        loadGroups();
+      },
+      error: function(xhr) {
+        $('#create-group-btn').prop('disabled', false);
+        var msg = 'Failed to create group';
+        try { msg = JSON.parse(xhr.responseText).message || msg; } catch(e) {}
+        nameInput.addClass('is-invalid');
+        $('#name-error').text(msg);
+      }
+    });
+  }
+
+  // ── Delete Group ──
+
+  function deleteGroup(name) {
+    if (!confirm('Delete group "' + name + '"? This will remove all users from this group.')) return;
+
+    $.ajax({
+      url: baseUrl + 'api/groups/' + encodeURIComponent(name) + '/delete',
+      method: 'DELETE',
+      headers: { 'X-XSRFToken': getCookie('_xsrf') },
+      success: function() { loadGroups(); },
+      error: function(xhr) {
+        alert('Failed to delete group: ' + (xhr.responseText || 'Unknown error'));
+      }
+    });
+  }
+
+  // ── Reorder Groups ──
+
+  function moveGroup(name, direction) {
+    var idx = currentGroups.findIndex(function(g) { return g.name === name; });
+    if (idx < 0) return;
+
+    var targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= currentGroups.length) return;
+
+    // Swap in the array
+    var temp = currentGroups[idx];
+    currentGroups[idx] = currentGroups[targetIdx];
+    currentGroups[targetIdx] = temp;
+
+    // Assign priorities (highest first: length-1, length-2, ...)
+    var priorities = currentGroups.map(function(g, i) {
+      return { name: g.name, priority: currentGroups.length - 1 - i };
+    });
+
+    renderTable();
+
+    $.ajax({
+      url: baseUrl + 'api/groups/reorder',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ groups: priorities }),
+      headers: { 'X-XSRFToken': getCookie('_xsrf') },
+      error: function() { loadGroups(); }
+    });
+  }
+
+  // ── Configure Group ──
+
+  function openConfig(name) {
+    currentConfigGroup = name;
+    $('#config-group-name-badge').text(name);
+
+    $.ajax({
+      url: baseUrl + 'api/groups/' + encodeURIComponent(name) + '/config',
+      method: 'GET',
+      headers: { 'X-XSRFToken': getCookie('_xsrf') },
+      success: function(data) {
+        var config = data.config || {};
+        $('#config-description').val(data.description || '');
+        $('#config-gpu-access').prop('checked', config.gpu_access || false);
+        $('#config-docker-access').prop('checked', config.docker_access || false);
+        $('#config-docker-privileged').prop('checked', config.docker_privileged || false);
+
+        // Populate env vars table
+        var tbody = $('#env-vars-body');
+        tbody.empty();
+        var envVars = config.env_vars || [];
+        if (envVars.length === 0) {
+          addEnvVarRow('', '', '');
+        } else {
+          envVars.forEach(function(v) {
+            addEnvVarRow(v.name || '', v.value || '', v.description || '');
+          });
+        }
+
+        new bootstrap.Modal(document.getElementById('config-group-modal')).show();
+      },
+      error: function() {
+        alert('Failed to load group configuration');
+      }
+    });
+  }
+
+  function addEnvVarRow(name, value, description) {
+    var row = $('<tr>' +
+      '<td><input type="text" class="form-control form-control-sm env-name" value="' + escapeAttr(name) + '" placeholder="VAR_NAME"></td>' +
+      '<td><input type="text" class="form-control form-control-sm env-value" value="' + escapeAttr(value) + '" placeholder="value"></td>' +
+      '<td><input type="text" class="form-control form-control-sm env-desc" value="' + escapeAttr(description) + '" placeholder="description"></td>' +
+      '<td><button type="button" class="btn btn-outline-danger btn-sm btn-remove-var" title="Remove"><i class="fa fa-times"></i></button></td>' +
+    '</tr>');
+    row.find('.btn-remove-var').on('click', function() {
+      row.remove();
+    });
+    $('#env-vars-body').append(row);
+  }
+
+  function saveConfig() {
+    if (!currentConfigGroup) return;
+
+    // Collect env vars (skip empty rows)
+    var envVars = [];
+    $('#env-vars-body tr').each(function() {
+      var name = $(this).find('.env-name').val().trim();
+      if (name) {
+        envVars.push({
+          name: name,
+          value: $(this).find('.env-value').val().trim(),
+          description: $(this).find('.env-desc').val().trim()
+        });
+      }
+    });
+
+    var payload = {
+      description: $('#config-description').val().trim(),
+      env_vars: envVars,
+      gpu_access: $('#config-gpu-access').is(':checked'),
+      docker_access: $('#config-docker-access').is(':checked'),
+      docker_privileged: $('#config-docker-privileged').is(':checked')
+    };
+
+    $('#save-config-btn').prop('disabled', true);
+
+    $.ajax({
+      url: baseUrl + 'api/groups/' + encodeURIComponent(currentConfigGroup) + '/config',
+      method: 'PUT',
+      contentType: 'application/json',
+      data: JSON.stringify(payload),
+      headers: { 'X-XSRFToken': getCookie('_xsrf') },
+      success: function() {
+        $('#save-config-btn').prop('disabled', false);
+        bootstrap.Modal.getInstance(document.getElementById('config-group-modal')).hide();
+        loadGroups();
+      },
+      error: function(xhr) {
+        $('#save-config-btn').prop('disabled', false);
+        alert('Failed to save configuration: ' + (xhr.responseText || 'Unknown error'));
+      }
+    });
+  }
+
+  // ── Utilities ──
+
+  function getCookie(name) {
+    var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    if (match) return match[2];
+  }
+
+  function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    var map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
+  }
+
+  function escapeAttr(text) {
+    if (text === null || text === undefined) return '';
+    return String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+});
+</script>
+
+{% endblock main %}
