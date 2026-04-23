@@ -71,19 +71,15 @@
   <div class="modal fade" id="group-changes-modal" tabindex="-1" role="dialog" aria-labelledby="groupChangesModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="groupChangesModalLabel">
-            <i class="fa fa-check-circle text-success me-2"></i>Group Membership Updated
-          </h5>
+        <div class="modal-header py-2">
+          <h5 class="modal-title" id="groupChangesModalLabel">Group updated</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div id="group-changes-body">
-            <!-- Populated dynamically -->
-          </div>
+          <div id="group-changes-body"></div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-primary" data-bs-dismiss="modal">OK</button>
         </div>
       </div>
     </div>
@@ -145,10 +141,6 @@
     // Store for tracking newly created users
     let pendingUsernames = [];
 
-    // Track pending group membership changes: { [groupName]: {added: Set, removed: Set} }
-    const pendingGroupChanges = {};
-    let groupChangesTimeout = null;
-
     function escapeHtml(text) {
         if (text == null) return '';
         return String(text).replace(/[&<>"']/g, function(m) {
@@ -156,43 +148,85 @@
         });
     }
 
-    function showGroupChangesModal() {
+    // Track committed group-membership snapshot on the /group-edit page.
+    // JupyterHub's own Apply logic compares against React Router location state
+    // which is frozen at navigation time and never refreshed after a successful
+    // Apply; that causes subsequent toggles to be computed as "no change" and no
+    // API call fires. We detect the user's intended change by diffing the DOM's
+    // yellow ("selected") tiles against our own snapshot, so the confirmation
+    // modal stays correct regardless.
+    const groupEditState = { groupName: null, snapshot: null };
+
+    function getEditingGroupName() {
+        const h1 = document.querySelector('h1');
+        if (!h1) return null;
+        const m = h1.textContent.match(/^\s*Editing Group\s+(.+?)\s*$/);
+        return m ? m[1] : null;
+    }
+
+    function readSelectedUsers() {
+        return new Set(Array.from(
+            document.querySelectorAll('.users-container .item.selected')
+        ).map(function(el){ return el.textContent.trim(); }).filter(Boolean));
+    }
+
+    function refreshGroupEditSnapshot() {
+        const name = getEditingGroupName();
+        if (name !== groupEditState.groupName) {
+            groupEditState.groupName = name;
+            groupEditState.snapshot = null;
+            if (name) {
+                // Defer to next frame so React has committed the tile DOM.
+                requestAnimationFrame(function() {
+                    if (getEditingGroupName() === name && groupEditState.snapshot === null) {
+                        groupEditState.snapshot = readSelectedUsers();
+                    }
+                });
+            }
+        }
+    }
+
+    function showGroupChangesModal(groupName, added, removed) {
         const body = document.getElementById('group-changes-body');
-        const entries = Object.keys(pendingGroupChanges);
-        if (entries.length === 0) return;
-
-        let html = '';
-        entries.sort().forEach(function(groupName) {
-            const change = pendingGroupChanges[groupName];
-            const added = Array.from(change.added);
-            const removed = Array.from(change.removed);
-            html += '<div class="mb-3">';
-            html += '<h6 class="mb-2"><i class="fa fa-users me-1"></i>' + escapeHtml(groupName) + '</h6>';
-            if (added.length > 0) {
-                html += '<div class="small mb-1"><strong class="text-success">Added (' + added.length + '):</strong> ';
-                html += added.sort().map(escapeHtml).join(', ');
-                html += '</div>';
-            }
-            if (removed.length > 0) {
-                html += '<div class="small"><strong class="text-danger">Removed (' + removed.length + '):</strong> ';
-                html += removed.sort().map(escapeHtml).join(', ');
-                html += '</div>';
-            }
-            html += '</div>';
-        });
+        let html = '<p class="small text-muted mb-2">Group: <strong>' + escapeHtml(groupName) + '</strong></p>';
+        if (added.length > 0) {
+            html += '<p class="mb-1"><strong>Added:</strong> ' + added.map(escapeHtml).join(', ') + '</p>';
+        }
+        if (removed.length > 0) {
+            html += '<p class="mb-0"><strong>Removed:</strong> ' + removed.map(escapeHtml).join(', ') + '</p>';
+        }
         body.innerHTML = html;
-
-        // Clear pending state before showing
-        Object.keys(pendingGroupChanges).forEach(k => delete pendingGroupChanges[k]);
-
         new bootstrap.Modal(document.getElementById('group-changes-modal')).show();
     }
 
-    function scheduleGroupChangesModal() {
-        if (groupChangesTimeout) clearTimeout(groupChangesTimeout);
-        // Debounce so add + remove from the same Apply click collapse into one modal
-        groupChangesTimeout = setTimeout(showGroupChangesModal, 500);
+    // Re-evaluate the snapshot whenever the admin SPA route changes (entering
+    // or leaving /group-edit). Observing the admin root is enough; this runs
+    // cheaply on each React re-render.
+    const adminRoot = document.getElementById('react-admin-hook');
+    if (adminRoot) {
+        new MutationObserver(refreshGroupEditSnapshot)
+            .observe(adminRoot, { childList: true, subtree: true });
     }
+
+    // Delegated click on the Apply button in the group-edit view.
+    document.addEventListener('click', function(e) {
+        const btn = e.target && e.target.closest && e.target.closest('#submit[data-testid="submit"]');
+        if (!btn) return;
+        const groupName = getEditingGroupName();
+        if (!groupName) return;
+        const before = groupEditState.snapshot || new Set();
+        // Defer just enough for any fetch to start / error banner to render.
+        setTimeout(function() {
+            const errEl = document.querySelector('.alert.alert-danger');
+            if (errEl && /failed to edit group/i.test(errEl.textContent || '')) return;
+            const now = readSelectedUsers();
+            const added = Array.from(now).filter(function(u){ return !before.has(u); }).sort();
+            const removed = Array.from(before).filter(function(u){ return !now.has(u); }).sort();
+            if (added.length === 0 && removed.length === 0) return;
+            showGroupChangesModal(groupName, added, removed);
+            groupEditState.snapshot = now;
+        }, 150);
+    }, true);
 
     // Helper to get CSRF token
     function getCookie(name) {
@@ -241,22 +275,6 @@
         // Check for user rename - PATCH to api/users/{username}
         const userPatchMatch = urlPath.match(/api\/users\/([^\/]+)$/);
         const isUserRename = method === 'PATCH' && userPatchMatch;
-
-        // Check for group membership changes: POST/DELETE to api/groups/{name}/users
-        const groupUsersMatch = urlPath.match(/api\/groups\/([^\/]+)\/users$/);
-        const isGroupAdd = method === 'POST' && groupUsersMatch;
-        const isGroupRemove = method === 'DELETE' && groupUsersMatch;
-
-        // Capture which users are being added/removed BEFORE the fetch
-        let groupChangeUsers = [];
-        if (isGroupAdd || isGroupRemove) {
-            try {
-                if (options && options.body) {
-                    const bodyData = JSON.parse(options.body);
-                    if (Array.isArray(bodyData.users)) groupChangeUsers = bodyData.users.slice();
-                }
-            } catch (e) { /* ignore */ }
-        }
 
         // Show spinner for deletion
         if (isUserDeletion) {
@@ -344,18 +362,6 @@
         // Hide spinner after user rename completes
         if (isUserRename) {
             hideLoadingSpinner();
-        }
-
-        // Record group membership changes on success; schedule a confirmation modal
-        if ((isGroupAdd || isGroupRemove) && response.ok && groupChangeUsers.length > 0) {
-            const groupName = decodeURIComponent(groupUsersMatch[1]);
-            if (!pendingGroupChanges[groupName]) {
-                pendingGroupChanges[groupName] = { added: new Set(), removed: new Set() };
-            }
-            const bucket = isGroupAdd ? pendingGroupChanges[groupName].added
-                                      : pendingGroupChanges[groupName].removed;
-            groupChangeUsers.forEach(u => bucket.add(u));
-            scheduleGroupChangesModal();
         }
 
         return response;
