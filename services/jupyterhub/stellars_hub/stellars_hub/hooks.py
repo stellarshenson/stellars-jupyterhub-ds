@@ -73,13 +73,20 @@ def make_pre_spawn_hook(
         if resolved['env_vars']:
             spawner.environment.update(resolved['env_vars'])
 
+        # Memory limit: resolved GB -> bytes for Docker HostConfig.Memory
+        if resolved.get('mem_limit_gb'):
+            spawner.mem_limit = int(float(resolved['mem_limit_gb']) * 1024 ** 3)
+        else:
+            spawner.mem_limit = None
+
         spawner.log.info(
-            "[Groups] user=%s groups=%s docker=%s privileged=%s gpu=%s env_vars=%d skipped=%s",
+            "[Groups] user=%s groups=%s docker=%s privileged=%s gpu=%s mem_limit_gb=%s env_vars=%d skipped=%s",
             username,
             resolved['matched_groups'],
             resolved['docker_access'],
             resolved['docker_privileged'],
             resolved['gpu_access'],
+            resolved.get('mem_limit_gb'),
             len(resolved['env_vars']),
             resolved['skipped_env_vars'],
         )

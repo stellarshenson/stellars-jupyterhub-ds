@@ -182,6 +182,14 @@ class GroupsConfigHandler(BaseHandler):
             config_dict['docker_access'] = bool(body['docker_access'])
         if 'docker_privileged' in body:
             config_dict['docker_privileged'] = bool(body['docker_privileged'])
+        if 'mem_limit_enabled' in body:
+            config_dict['mem_limit_enabled'] = bool(body['mem_limit_enabled'])
+        if 'mem_limit_gb' in body:
+            try:
+                gb = float(body['mem_limit_gb'])
+            except (TypeError, ValueError):
+                gb = 0.0
+            config_dict['mem_limit_gb'] = max(0.0, round(gb, 1))
 
         manager = GroupsConfigManager.get_instance()
 

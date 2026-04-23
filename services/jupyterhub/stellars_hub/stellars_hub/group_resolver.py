@@ -8,6 +8,8 @@ Resolution rules:
   availability.
 - ENV VARS: higher priority wins on name conflict. Groups are scanned in
   descending priority order and the first occurrence of each name is kept.
+- MEM_LIMIT_GB: biggest enabled value wins across all groups. A group with
+  mem_limit_enabled=False does NOT remove a cap granted by another group.
 - RESERVED NAMES: env vars with reserved names are stripped and reported in
   skipped_env_vars. The handler is expected to reject at save time; this is
   defence-in-depth.
@@ -50,6 +52,7 @@ def resolve_group_config(
           'gpu_access': bool,
           'docker_access': bool,
           'docker_privileged': bool,
+          'mem_limit_gb': float | None,  # biggest enabled value, None if no cap
           'matched_groups': list[str],   # ordered by priority desc
           'skipped_env_vars': list[str], # names stripped because reserved
         }
@@ -64,6 +67,7 @@ def resolve_group_config(
     gpu_requested = False
     docker_access = False
     docker_privileged = False
+    mem_limit_gb = None
 
     for cfg in matched:
         inner = cfg.get('config') or {}
@@ -73,6 +77,15 @@ def resolve_group_config(
             docker_access = True
         if inner.get('docker_privileged'):
             docker_privileged = True
+
+        # Memory limit: biggest enabled value wins; disabled groups do not un-cap
+        if inner.get('mem_limit_enabled'):
+            try:
+                val = float(inner.get('mem_limit_gb') or 0)
+            except (TypeError, ValueError):
+                val = 0.0
+            if val > 0:
+                mem_limit_gb = val if mem_limit_gb is None else max(mem_limit_gb, val)
 
         for entry in (inner.get('env_vars') or []):
             name = (entry.get('name') or '').strip()
@@ -93,6 +106,7 @@ def resolve_group_config(
         'gpu_access': bool(gpu_requested and gpu_available),
         'docker_access': docker_access,
         'docker_privileged': docker_privileged,
+        'mem_limit_gb': mem_limit_gb,
         'matched_groups': [c['group_name'] for c in matched],
         'skipped_env_vars': skipped,
     }

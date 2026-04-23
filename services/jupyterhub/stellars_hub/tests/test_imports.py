@@ -255,6 +255,24 @@ def test_group_resolver():
     assert r['gpu_access'] is False
     assert r['docker_privileged'] is True
 
+    # Memory limit resolution
+    mem_configs = [
+        {'group_name': 'small',   'priority': 10, 'config': {'mem_limit_enabled': True,  'mem_limit_gb': 4}},
+        {'group_name': 'big',     'priority': 5,  'config': {'mem_limit_enabled': True,  'mem_limit_gb': 8}},
+        {'group_name': 'off',     'priority': 3,  'config': {'mem_limit_enabled': False, 'mem_limit_gb': 16}},
+        {'group_name': 'enabled-zero', 'priority': 2, 'config': {'mem_limit_enabled': True, 'mem_limit_gb': 0}},
+    ]
+    # No group with memory -> None
+    assert resolve_group_config([], mem_configs, True, reserved_names, reserved_prefixes)['mem_limit_gb'] is None
+    # Single enabled group -> that value
+    assert resolve_group_config(['small'], mem_configs, True, reserved_names, reserved_prefixes)['mem_limit_gb'] == 4.0
+    # Two enabled groups -> biggest wins
+    assert resolve_group_config(['small', 'big'], mem_configs, True, reserved_names, reserved_prefixes)['mem_limit_gb'] == 8.0
+    # Disabled group does NOT un-cap - small (4 GB) stands even though 'off' has 16 GB but disabled
+    assert resolve_group_config(['small', 'off'], mem_configs, True, reserved_names, reserved_prefixes)['mem_limit_gb'] == 4.0
+    # enabled with value 0 -> ignored (no cap)
+    assert resolve_group_config(['enabled-zero'], mem_configs, True, reserved_names, reserved_prefixes)['mem_limit_gb'] is None
+
 
 def test_all_modules_importable():
     """Verify all package modules can be imported."""
