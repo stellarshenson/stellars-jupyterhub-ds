@@ -118,10 +118,16 @@ def test_handlers():
         ActivitySampleHandler,
         FaviconRedirectHandler,
         HealthCheckHandler,
+        GroupsPageHandler,
+        GroupsDataHandler,
+        GroupsCreateHandler,
+        GroupsDeleteHandler,
+        GroupsConfigHandler,
+        GroupsReorderHandler,
     )
     # Verify handler count matches expected
     from stellars_hub import handlers
-    assert len(handlers.__all__) == 15
+    assert len(handlers.__all__) == 21
 
 
 def test_auth():
@@ -174,6 +180,19 @@ def test_groups():
     assert callable(ensure_groups)
 
 
+def test_groups_config():
+    from stellars_hub.groups_config import GroupsConfigBase, GroupConfig, GroupsConfigManager, validate_group_name
+    assert GroupConfig.__tablename__ == 'groups_config'
+    valid, msg = validate_group_name("test-group_1")
+    assert valid
+    valid, msg = validate_group_name("bad name!")
+    assert not valid
+    valid, msg = validate_group_name("")
+    assert not valid
+    valid, msg = validate_group_name("1starts-with-digit")
+    assert not valid
+
+
 def test_all_modules_importable():
     """Verify all package modules can be imported."""
     modules = [
@@ -204,6 +223,8 @@ def test_all_modules_importable():
         'stellars_hub.handlers.session',
         'stellars_hub.handlers.settings',
         'stellars_hub.handlers.volumes',
+        'stellars_hub.handlers.groups',
+        'stellars_hub.groups_config',
     ]
     for mod_name in modules:
         mod = importlib.import_module(mod_name)

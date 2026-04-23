@@ -9,6 +9,10 @@ from .session import SessionInfoHandler, ExtendSessionHandler
 from .activity import ActivityPageHandler, ActivityDataHandler, ActivityResetHandler, ActivitySampleHandler
 from .favicon import FaviconRedirectHandler
 from .health import HealthCheckHandler
+from .groups import (
+    GroupsPageHandler, GroupsDataHandler, GroupsCreateHandler,
+    GroupsDeleteHandler, GroupsConfigHandler, GroupsReorderHandler,
+)
 
 __all__ = [
     "ManageVolumesHandler",
@@ -26,4 +30,10 @@ __all__ = [
     "ActivitySampleHandler",
     "FaviconRedirectHandler",
     "HealthCheckHandler",
+    "GroupsPageHandler",
+    "GroupsDataHandler",
+    "GroupsCreateHandler",
+    "GroupsDeleteHandler",
+    "GroupsConfigHandler",
+    "GroupsReorderHandler",
 ]

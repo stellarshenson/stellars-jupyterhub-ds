@@ -44,6 +44,12 @@ from stellars_hub.handlers import (
     RestartServerHandler,                   # POST /api/users/{user}/restart-server - Docker restart
     SessionInfoHandler,                     # GET  /api/users/{user}/session-info - idle culler status
     SettingsPageHandler,                    # GET  /settings - platform settings display
+    GroupsPageHandler,                      # GET  /groups - group management page
+    GroupsDataHandler,                      # GET  /api/groups - list groups with config
+    GroupsCreateHandler,                    # POST /api/groups/create - create new group
+    GroupsDeleteHandler,                    # DELETE /api/groups/{name}/delete - delete group
+    GroupsConfigHandler,                    # GET/PUT /api/groups/{name}/config - group config
+    GroupsReorderHandler,                   # POST /api/groups/reorder - update priorities
 )
 
 c = get_config()  # noqa: F821  - JupyterHub injects get_config() into config file namespace
@@ -315,9 +321,15 @@ c.JupyterHub.extra_handlers = [
     (r'/api/activity', ActivityDataHandler),                          # GET - activity data + Docker stats
     (r'/api/activity/reset', ActivityResetHandler),                   # POST - clear activity samples
     (r'/api/activity/sample', ActivitySampleHandler),                 # POST - trigger manual sampling
+    (r'/api/groups', GroupsDataHandler),                               # GET - list groups with config
+    (r'/api/groups/create', GroupsCreateHandler),                     # POST - create new group
+    (r'/api/groups/reorder', GroupsReorderHandler),                   # POST - update group priorities
+    (r'/api/groups/([^/]+)/delete', GroupsDeleteHandler),             # DELETE - delete group
+    (r'/api/groups/([^/]+)/config', GroupsConfigHandler),             # GET/PUT - group configuration
     (r'/notifications', NotificationsPageHandler),                    # GET - admin broadcast UI page
     (r'/settings', SettingsPageHandler),                              # GET - platform settings page
     (r'/activity', ActivityPageHandler),                              # GET - activity monitoring page
+    (r'/groups', GroupsPageHandler),                                  # GET - group management page
     (r'/health', HealthCheckHandler),                                 # GET - unauthenticated monitoring endpoint
 ]
 
