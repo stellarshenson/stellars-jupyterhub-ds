@@ -199,21 +199,22 @@ c.DockerSpawner.environment = {
     'ENABLE_SERVICE_MLFLOW': JUPYTERHUB_SERVICE_MLFLOW,      # toggle MLflow in container startup
     'ENABLE_SERVICE_RESOURCES_MONITOR': JUPYTERHUB_SERVICE_RESOURCES_MONITOR,  # toggle resource monitor widget
     'ENABLE_SERVICE_TENSORBOARD': JUPYTERHUB_SERVICE_TENSORBOARD,  # toggle TensorBoard in container startup
-    'ENABLE_GPU_SUPPORT': gpu_enabled,                       # GPU libraries initialization
-    'ENABLE_GPUSTAT': gpu_enabled,                           # gpustat monitoring widget
-    'NVIDIA_DETECTED': nvidia_detected,                      # GPU hardware availability flag
+    'NVIDIA_DETECTED': nvidia_detected,                      # GPU hardware availability flag (informational)
     'JUPYTERLAB_AUX_SCRIPTS_PATH': JUPYTERLAB_AUX_SCRIPTS_PATH,  # admin startup scripts path
     'JUPYTERLAB_AUX_MENU_PATH': JUPYTERLAB_AUX_MENU_PATH,      # admin-managed custom menu definitions
     'JUPYTERLAB_TIMEZONE': JUPYTERHUB_TIMEZONE,                  # IANA timezone for JupyterLab extensions
 }
 
-# GPU device passthrough - expose all GPUs to spawned containers
-if gpu_enabled == 1:
-    c.DockerSpawner.extra_host_config = {
-        'device_requests': [
-            {'Driver': 'nvidia', 'Count': -1, 'Capabilities': [['gpu']]}
-        ]
-    }
+# Reserved env var names groups cannot override - every key we inject globally
+# plus ENABLE_GPU_SUPPORT/ENABLE_GPUSTAT which the pre-spawn hook sets per-user.
+RESERVED_ENV_VAR_PREFIXES = ('JUPYTERHUB_', 'JPY_', 'MEM_', 'CPU_')
+RESERVED_ENV_VAR_NAMES = set(c.DockerSpawner.environment.keys()) | {
+    'ENABLE_GPU_SUPPORT', 'ENABLE_GPUSTAT',
+}
+
+# GPU device_requests is set per-user by the pre-spawn hook based on resolved
+# group config. Left empty here so a user who is not in a GPU-enabled group
+# does not receive the device.
 
 c.DockerSpawner.image = JUPYTERHUB_NOTEBOOK_IMAGE           # JupyterLab Docker image to spawn
 c.DockerSpawner.use_internal_ip = True                       # use container IP on Docker network (not host)
@@ -258,16 +259,22 @@ c.JupyterHub.tornado_settings = {
         'container_max_extra_space_mb': JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB * 1024,  # threshold in MB for container size warning
         'volume_max_total_size_mb': JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE_GB * 1024,        # threshold in MB for volume size warning
         'memory_max_usage_mb': JUPYTERHUB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning
+        'reserved_env_var_names': RESERVED_ENV_VAR_NAMES,                              # names groups cannot override
+        'reserved_env_var_prefixes': RESERVED_ENV_VAR_PREFIXES,                        # prefixes reserved for JupyterHub/platform
     }
 }
 
 # ── Pre-spawn hook ──
-# Factory returns async closure capturing branding state
-# Hook runs before each container spawn: enforces group permissions,
-# injects CHP favicon proxy routes, resolves JupyterLab icon URLs
+# Factory returns async closure capturing branding + group resolution state.
+# Hook runs before each container spawn: resolves all user's groups into one
+# effective config (docker/gpu/env vars), applies it to spawner, then injects
+# CHP favicon proxy routes and JupyterLab icon URLs.
 c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     branding,                                                # icon static names and URLs from setup_branding()
     favicon_uri=JUPYTERHUB_FAVICON_URI,                      # non-empty activates CHP favicon routing
+    gpu_available=bool(gpu_enabled),                         # hardware present - required for per-group GPU grant
+    reserved_env_var_names=RESERVED_ENV_VAR_NAMES,           # names groups cannot override
+    reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,     # prefixes reserved for JupyterHub/platform
 )
 
 # ── Spawner args ──

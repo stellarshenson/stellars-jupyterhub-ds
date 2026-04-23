@@ -157,7 +157,12 @@ def test_branding():
 def test_hooks():
     from stellars_hub.hooks import make_pre_spawn_hook, schedule_startup_favicon_callback
     branding = {'lab_main_icon_static': '', 'lab_main_icon_url': '', 'lab_splash_icon_static': '', 'lab_splash_icon_url': ''}
-    hook = make_pre_spawn_hook(branding)
+    hook = make_pre_spawn_hook(
+        branding,
+        gpu_available=False,
+        reserved_env_var_names=frozenset({'JUPYTERLAB_TIMEZONE'}),
+        reserved_env_var_prefixes=('JUPYTERHUB_',),
+    )
     assert callable(hook)
 
 
@@ -186,6 +191,69 @@ def test_groups_config():
     assert not valid
     valid, msg = validate_group_name("1starts-with-digit")
     assert not valid
+
+
+def test_group_resolver():
+    from stellars_hub.group_resolver import resolve_group_config, is_reserved_env_var
+
+    reserved_names = frozenset({'JUPYTERLAB_TIMEZONE', 'NVIDIA_DETECTED'})
+    reserved_prefixes = ('JUPYTERHUB_', 'JPY_')
+
+    # is_reserved_env_var: prefix, exact, and safe cases
+    assert is_reserved_env_var('JUPYTERHUB_API_TOKEN', reserved_names, reserved_prefixes)
+    assert is_reserved_env_var('JPY_API_TOKEN', reserved_names, reserved_prefixes)
+    assert is_reserved_env_var('JUPYTERLAB_TIMEZONE', reserved_names, reserved_prefixes)
+    assert not is_reserved_env_var('MY_VAR', reserved_names, reserved_prefixes)
+    assert is_reserved_env_var('', reserved_names, reserved_prefixes)
+
+    # All configs used below - sorted by priority desc as the manager returns them
+    all_configs = [
+        {
+            'group_name': 'high',
+            'priority': 10,
+            'config': {
+                'env_vars': [
+                    {'name': 'SHARED', 'value': 'high_wins'},
+                    {'name': 'JUPYTERHUB_SECRET', 'value': 'nope'},  # reserved
+                ],
+                'gpu_access': False,
+                'docker_access': True,
+                'docker_privileged': False,
+            },
+        },
+        {
+            'group_name': 'gpu-only',
+            'priority': 5,
+            'config': {
+                'env_vars': [{'name': 'SHARED', 'value': 'low_loses'}, {'name': 'EXTRA', 'value': 'ok'}],
+                'gpu_access': True,
+                'docker_access': False,
+                'docker_privileged': True,
+            },
+        },
+        {'group_name': 'unrelated', 'priority': 0, 'config': {'env_vars': [], 'gpu_access': True}},
+    ]
+
+    # User in no groups
+    r = resolve_group_config([], all_configs, True, reserved_names, reserved_prefixes)
+    assert r['env_vars'] == {}
+    assert r['gpu_access'] is False
+    assert r['docker_access'] is False
+    assert r['matched_groups'] == []
+
+    # User in both groups: grants OR-accumulate, env var from higher priority wins
+    r = resolve_group_config(['high', 'gpu-only'], all_configs, True, reserved_names, reserved_prefixes)
+    assert r['env_vars'] == {'SHARED': 'high_wins', 'EXTRA': 'ok'}
+    assert r['gpu_access'] is True
+    assert r['docker_access'] is True
+    assert r['docker_privileged'] is True
+    assert r['matched_groups'] == ['high', 'gpu-only']
+    assert r['skipped_env_vars'] == ['JUPYTERHUB_SECRET']
+
+    # GPU hardware unavailable blocks GPU grant even if a group has gpu_access
+    r = resolve_group_config(['gpu-only'], all_configs, False, reserved_names, reserved_prefixes)
+    assert r['gpu_access'] is False
+    assert r['docker_privileged'] is True
 
 
 def test_all_modules_importable():
@@ -219,6 +287,7 @@ def test_all_modules_importable():
         'stellars_hub.handlers.volumes',
         'stellars_hub.handlers.groups',
         'stellars_hub.groups_config',
+        'stellars_hub.group_resolver',
     ]
     for mod_name in modules:
         mod = importlib.import_module(mod_name)

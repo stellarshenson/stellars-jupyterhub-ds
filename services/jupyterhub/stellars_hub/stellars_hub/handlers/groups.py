@@ -5,6 +5,7 @@ import json
 from jupyterhub.handlers import BaseHandler
 from tornado import web
 
+from ..group_resolver import is_reserved_env_var
 from ..groups_config import GroupsConfigManager, validate_group_name
 
 
@@ -152,6 +153,27 @@ class GroupsConfigHandler(BaseHandler):
             for var in env_vars:
                 if not isinstance(var, dict) or 'name' not in var:
                     raise web.HTTPError(400, "Each env_var must have a 'name' field")
+
+            # Reject names reserved by JupyterHub or the platform config
+            stellars_config = self.settings.get('stellars_config', {})
+            reserved_names = stellars_config.get('reserved_env_var_names', frozenset())
+            reserved_prefixes = stellars_config.get('reserved_env_var_prefixes', ())
+            rejected = [
+                var['name'] for var in env_vars
+                if is_reserved_env_var(var['name'], reserved_names, reserved_prefixes)
+            ]
+            if rejected:
+                self.set_status(400)
+                self.finish({
+                    'error': 'reserved_env_var_names',
+                    'message': (
+                        "Reserved variable names cannot be set in group config: "
+                        + ", ".join(sorted(set(rejected)))
+                        + ". These are controlled by JupyterHub or the platform configuration."
+                    ),
+                    'rejected': sorted(set(rejected)),
+                })
+                return
             config_dict['env_vars'] = env_vars
 
         if 'gpu_access' in body:

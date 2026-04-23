@@ -132,6 +132,9 @@
       </div>
       <div class="modal-body">
 
+        <!-- Inline error banner (server validation failures) -->
+        <div id="config-error" class="alert alert-danger" style="display: none;" role="alert"></div>
+
         <!-- Description -->
         <div class="mb-4">
           <label for="config-description" class="form-label fw-bold">Description</label>
@@ -305,7 +308,7 @@ require(["jquery"], function($) {
 
       var features = [];
       var envCount = (group.config.env_vars && group.config.env_vars.length) || 0;
-      if (envCount > 0) features.push(envCount + ' var' + (envCount !== 1 ? 's' : ''));
+      if (envCount > 0) features.push(envCount + ' Var' + (envCount !== 1 ? 's' : ''));
       if (group.config.gpu_access) features.push('GPU');
       if (group.config.docker_access) features.push('Docker');
       if (group.config.docker_privileged) features.push('Privileged');
@@ -322,7 +325,7 @@ require(["jquery"], function($) {
         '<td class="text-muted small">' + escapeHtml(group.description || '') + '</td>' +
         '<td class="small">' + featureBadges + '</td>' +
         '<td class="text-center">' +
-          '<span title="' + escapeAttr((group.members || []).join(', ')) + '">' + group.member_count + '</span>' +
+          '<span title="' + formatMembersTooltip(group.members) + '">' + group.member_count + '</span>' +
         '</td>' +
         '<td class="text-center text-nowrap">' +
           '<button class="btn btn-outline-primary btn-sm me-1 btn-config" data-name="' + escapeAttr(group.name) + '" title="Configure group">' +
@@ -501,6 +504,7 @@ require(["jquery"], function($) {
   function openConfig(name) {
     currentConfigGroup = name;
     $('#config-group-name-badge').text(name);
+    $('#config-error').hide().text('');
 
     $.ajax({
       url: baseUrl + 'api/admin/groups/' + encodeURIComponent(name) + '/config',
@@ -594,6 +598,7 @@ require(["jquery"], function($) {
     };
 
     $('#save-config-btn').prop('disabled', true);
+    $('#config-error').hide().text('');
 
     $.ajax({
       url: baseUrl + 'api/admin/groups/' + encodeURIComponent(currentConfigGroup) + '/config',
@@ -608,7 +613,16 @@ require(["jquery"], function($) {
       },
       error: function(xhr) {
         $('#save-config-btn').prop('disabled', false);
-        alert('Failed to save configuration: ' + (xhr.responseText || 'Unknown error'));
+        var msg = 'Failed to save configuration.';
+        try {
+          var body = JSON.parse(xhr.responseText || '{}');
+          if (body.message) msg = body.message;
+        } catch (e) {
+          if (xhr.responseText) msg = xhr.responseText;
+        }
+        $('#config-error').text(msg).show();
+        // Scroll the error into view so admin sees it
+        $('#config-error')[0].scrollIntoView({behavior: 'smooth', block: 'center'});
       }
     });
   }
@@ -629,6 +643,16 @@ require(["jquery"], function($) {
   function escapeAttr(text) {
     if (text === null || text === undefined) return '';
     return String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function formatMembersTooltip(members) {
+    if (!members || !members.length) return '';
+    var pairs = [];
+    for (var i = 0; i < members.length; i += 2) {
+      pairs.push(members.slice(i, i + 2).map(escapeAttr).join(', '));
+    }
+    // &#10; produces a line break inside the native title attribute
+    return pairs.join(',&#10;');
   }
 
 });
