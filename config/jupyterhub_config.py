@@ -45,11 +45,11 @@ from stellars_hub.handlers import (
     SessionInfoHandler,                     # GET  /api/users/{user}/session-info - idle culler status
     SettingsPageHandler,                    # GET  /settings - platform settings display
     GroupsPageHandler,                      # GET  /groups - group management page
-    GroupsDataHandler,                      # GET  /api/groups - list groups with config
-    GroupsCreateHandler,                    # POST /api/groups/create - create new group
-    GroupsDeleteHandler,                    # DELETE /api/groups/{name}/delete - delete group
-    GroupsConfigHandler,                    # GET/PUT /api/groups/{name}/config - group config
-    GroupsReorderHandler,                   # POST /api/groups/reorder - update priorities
+    GroupsDataHandler,                      # GET  /api/admin/groups - list groups with config
+    GroupsCreateHandler,                    # POST /api/admin/groups/create - create new group
+    GroupsDeleteHandler,                    # DELETE /api/admin/groups/{name}/delete - delete group
+    GroupsConfigHandler,                    # GET/PUT /api/admin/groups/{name}/config - group config
+    GroupsReorderHandler,                   # POST /api/admin/groups/reorder - update priorities
 )
 
 c = get_config()  # noqa: F821  - JupyterHub injects get_config() into config file namespace
@@ -150,11 +150,6 @@ VOLUME_DESCRIPTIONS = {
     'workspace': 'Project files, notebooks, code',
     'cache': 'Temporary files, pip cache, conda cache',
 }
-
-# Groups auto-created at startup and before each spawn (protection against accidental deletion)
-# docker-sock: mounts /var/run/docker.sock into user container
-# docker-privileged: runs user container with --privileged flag
-BUILTIN_GROUPS = ['docker-sock', 'docker-privileged']
 
 # Derived: extract user-resettable volume suffixes ['home', 'workspace', 'cache'] from volumes dict
 user_volume_suffixes = get_user_volume_suffixes(DOCKER_SPAWNER_VOLUMES)
@@ -267,12 +262,11 @@ c.JupyterHub.tornado_settings = {
 }
 
 # ── Pre-spawn hook ──
-# Factory returns async closure capturing branding state + group list
+# Factory returns async closure capturing branding state
 # Hook runs before each container spawn: enforces group permissions,
 # injects CHP favicon proxy routes, resolves JupyterLab icon URLs
 c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     branding,                                                # icon static names and URLs from setup_branding()
-    builtin_groups=BUILTIN_GROUPS,                           # groups to auto-recreate if deleted
     favicon_uri=JUPYTERHUB_FAVICON_URI,                      # non-empty activates CHP favicon routing
 )
 
@@ -321,11 +315,11 @@ c.JupyterHub.extra_handlers = [
     (r'/api/activity', ActivityDataHandler),                          # GET - activity data + Docker stats
     (r'/api/activity/reset', ActivityResetHandler),                   # POST - clear activity samples
     (r'/api/activity/sample', ActivitySampleHandler),                 # POST - trigger manual sampling
-    (r'/api/groups', GroupsDataHandler),                               # GET - list groups with config
-    (r'/api/groups/create', GroupsCreateHandler),                     # POST - create new group
-    (r'/api/groups/reorder', GroupsReorderHandler),                   # POST - update group priorities
-    (r'/api/groups/([^/]+)/delete', GroupsDeleteHandler),             # DELETE - delete group
-    (r'/api/groups/([^/]+)/config', GroupsConfigHandler),             # GET/PUT - group configuration
+    (r'/api/admin/groups', GroupsDataHandler),                        # GET - list groups with config
+    (r'/api/admin/groups/create', GroupsCreateHandler),               # POST - create new group
+    (r'/api/admin/groups/reorder', GroupsReorderHandler),             # POST - update group priorities
+    (r'/api/admin/groups/([^/]+)/delete', GroupsDeleteHandler),       # DELETE - delete group
+    (r'/api/admin/groups/([^/]+)/config', GroupsConfigHandler),       # GET/PUT - group configuration
     (r'/notifications', NotificationsPageHandler),                    # GET - admin broadcast UI page
     (r'/settings', SettingsPageHandler),                              # GET - platform settings page
     (r'/activity', ActivityPageHandler),                              # GET - activity monitoring page

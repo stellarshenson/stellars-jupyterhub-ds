@@ -3,28 +3,16 @@
 from urllib.parse import urlparse
 
 
-def make_pre_spawn_hook(branding, builtin_groups, favicon_uri=''):
+def make_pre_spawn_hook(branding, favicon_uri=''):
     """Create a pre_spawn_hook closure that captures branding state.
 
     Args:
         branding: dict from setup_branding() with icon static names and URLs
-        builtin_groups: list of group names that cannot be deleted
         favicon_uri: JUPYTERHUB_FAVICON_URI value (non-empty activates CHP routes)
     """
 
     async def pre_spawn_hook(spawner):
         """Grant docker access based on group membership, inject favicon + icon routes."""
-        from jupyterhub.orm import Group
-
-        # Ensure built-in groups exist (protection against deletion)
-        for group_name in builtin_groups:
-            existing_group = spawner.db.query(Group).filter(Group.name == group_name).first()
-            if not existing_group:
-                spawner.log.warning(f"Built-in group '{group_name}' was missing - recreating")
-                new_group = Group(name=group_name)
-                spawner.db.add(new_group)
-                spawner.db.commit()
-
         username = spawner.user.name
         user_groups = [g.name for g in spawner.user.groups]
 

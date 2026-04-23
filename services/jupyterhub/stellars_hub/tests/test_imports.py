@@ -157,7 +157,7 @@ def test_branding():
 def test_hooks():
     from stellars_hub.hooks import make_pre_spawn_hook, schedule_startup_favicon_callback
     branding = {'lab_main_icon_static': '', 'lab_main_icon_url': '', 'lab_splash_icon_static': '', 'lab_splash_icon_url': ''}
-    hook = make_pre_spawn_hook(branding, builtin_groups=['docker-sock', 'docker-privileged'])
+    hook = make_pre_spawn_hook(branding)
     assert callable(hook)
 
 
@@ -173,11 +173,6 @@ def test_services():
     assert isinstance(services, list)
     assert isinstance(roles, list)
     assert len(services) >= 1  # At least activity-sampler
-
-
-def test_groups():
-    from stellars_hub.groups import ensure_groups
-    assert callable(ensure_groups)
 
 
 def test_groups_config():
@@ -202,7 +197,6 @@ def test_all_modules_importable():
         'stellars_hub.docker_utils',
         'stellars_hub.events',
         'stellars_hub.gpu',
-        'stellars_hub.groups',
         'stellars_hub.hooks',
         'stellars_hub.password_cache',
         'stellars_hub.services',
