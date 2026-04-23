@@ -13,8 +13,8 @@
     <span class="ms-2">Loading groups...</span>
   </div>
 
-  <!-- Toolbar -->
-  <div id="groups-toolbar" class="d-flex justify-content-between align-items-center mb-3" style="display: none !important;">
+  <!-- Toolbar (always visible so admins can add the first group) -->
+  <div id="groups-toolbar" class="d-flex justify-content-between align-items-center mb-3" style="display: none;">
     <div>
       <span class="badge bg-dark" id="group-count"></span>
     </div>
@@ -226,7 +226,7 @@ require(["jquery"], function($) {
 
   function loadGroups(callback) {
     $.ajax({
-      url: baseUrl + 'api/groups',
+      url: baseUrl + 'api/admin/groups',
       method: 'GET',
       headers: { 'X-XSRFToken': getCookie('_xsrf') },
       success: function(data) {
@@ -246,18 +246,17 @@ require(["jquery"], function($) {
 
   function renderTable() {
     $('#loading-indicator').hide();
+    $('#groups-toolbar').show();
+    $('#group-count').text(currentGroups.length + ' group' + (currentGroups.length !== 1 ? 's' : ''));
 
     if (currentGroups.length === 0) {
-      $('#groups-toolbar').css('display', 'none').attr('style', 'display: none !important;');
       $('#groups-table-container').hide();
       $('#no-groups-message').show();
       return;
     }
 
     $('#no-groups-message').hide();
-    $('#groups-toolbar').removeAttr('style').show();
     $('#groups-table-container').show();
-    $('#group-count').text(currentGroups.length + ' group' + (currentGroups.length !== 1 ? 's' : ''));
 
     var tbody = $('#groups-table-body');
     tbody.empty();
@@ -336,7 +335,7 @@ require(["jquery"], function($) {
     $('#create-group-btn').prop('disabled', true);
 
     $.ajax({
-      url: baseUrl + 'api/groups/create',
+      url: baseUrl + 'api/admin/groups/create',
       method: 'POST',
       contentType: 'application/json',
       data: JSON.stringify({ name: name, description: description }),
@@ -362,7 +361,7 @@ require(["jquery"], function($) {
     if (!confirm('Delete group "' + name + '"? This will remove all users from this group.')) return;
 
     $.ajax({
-      url: baseUrl + 'api/groups/' + encodeURIComponent(name) + '/delete',
+      url: baseUrl + 'api/admin/groups/' + encodeURIComponent(name) + '/delete',
       method: 'DELETE',
       headers: { 'X-XSRFToken': getCookie('_xsrf') },
       success: function() { loadGroups(); },
@@ -394,7 +393,7 @@ require(["jquery"], function($) {
     renderTable();
 
     $.ajax({
-      url: baseUrl + 'api/groups/reorder',
+      url: baseUrl + 'api/admin/groups/reorder',
       method: 'POST',
       contentType: 'application/json',
       data: JSON.stringify({ groups: priorities }),
@@ -410,7 +409,7 @@ require(["jquery"], function($) {
     $('#config-group-name-badge').text(name);
 
     $.ajax({
-      url: baseUrl + 'api/groups/' + encodeURIComponent(name) + '/config',
+      url: baseUrl + 'api/admin/groups/' + encodeURIComponent(name) + '/config',
       method: 'GET',
       headers: { 'X-XSRFToken': getCookie('_xsrf') },
       success: function(data) {
@@ -480,7 +479,7 @@ require(["jquery"], function($) {
     $('#save-config-btn').prop('disabled', true);
 
     $.ajax({
-      url: baseUrl + 'api/groups/' + encodeURIComponent(currentConfigGroup) + '/config',
+      url: baseUrl + 'api/admin/groups/' + encodeURIComponent(currentConfigGroup) + '/config',
       method: 'PUT',
       contentType: 'application/json',
       data: JSON.stringify(payload),

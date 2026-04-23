@@ -188,26 +188,18 @@ User containers will access this at `/mnt/shared`.
 
 ## Docker Access Control Groups
 
-**Purpose**: Group-based Docker access control for user containers.
+**Purpose**: Group-based Docker access control for user containers. Groups are managed via the Groups admin page (`/hub/groups`) - no groups are auto-created at startup.
 
 **Security Warning**: Both groups grant significant privileges. `docker-sock` provides Docker host control. `docker-privileged` provides full container privileges. Only grant to trusted users.
 
-**Built-in Groups**:
+**Recognised Group Names** (hardcoded checks in pre_spawn_hook until the group config system takes over):
 | Group | Effect | Use Case |
 |-------|--------|----------|
 | `docker-sock` | Mounts `/var/run/docker.sock` | Container orchestration, Docker builds |
 | `docker-privileged` | Runs container with `--privileged` flag | Hardware access, kernel modules |
 
 **Implementation**:
-- Single source of truth: `config/jupyterhub_config.py::BUILTIN_GROUPS`
-- Startup script: `services/jupyterhub/conf/bin/start-platform.d/01_ensure_groups.py`
-- Runtime hook: `config/jupyterhub_config.py::pre_spawn_hook`
-
-**Usage**: Admin Panel → Groups (`/hub/admin`) → Add users → Users restart server
-
-**Technical Details**:
-- Both groups auto-recreate if deleted (startup + pre-spawn hook)
-- Pre-spawn hook checks membership and sets `spawner.volumes` or `spawner.privileged`
+- Runtime hook: `services/jupyterhub/stellars_hub/stellars_hub/hooks.py::pre_spawn_hook` checks membership and sets `spawner.volumes` or `spawner.privileged`
 - Changes require server restart (stop/start cycle)
 
 ## Notification Broadcast System
