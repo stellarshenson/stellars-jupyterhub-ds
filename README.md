@@ -14,7 +14,8 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 - **Notification Broadcast**: Admin broadcast to all active servers via `/hub/notifications`. Supports six notification types, 140-character limit. Requires [jupyterlab_notifications_extension](https://github.com/stellarshenson/jupyterlab_notifications_extension)
 - **User Self-Service**: Users can restart their JupyterLab containers and selectively reset persistent volumes (home/workspace/cache) without admin intervention
 - **Admin Volume Management**: Admins can manage any user's volumes directly from the admin panel via database icon button in each user row
-- **Docker Access Control**: Group-based access via `docker-sock` (container orchestration) and `docker-privileged` (full container privileges)
+- **Group Configuration**: Dedicated `/hub/groups` admin page managing user groups with per-group configuration: custom environment variables, GPU access, Docker engine / privileged container access, and memory limit in GB. User access is resolved at spawn time by collapsing all of the user's groups - grants (GPU / Docker / privileged) OR-accumulate, env vars use highest-priority wins on conflict, memory limit uses biggest-value wins (disabled groups do not un-cap). Reserved env var names (`JUPYTERHUB_*` / `JPY_*` / `MEM_*` / `CPU_*` plus platform defaults) are rejected with an inline error message. Drag-and-drop row reorder plus move-up / move-down buttons set the priority. Group membership managed via the stock JupyterHub admin panel now shows a post-Apply confirmation modal listing added and removed users per group
+- **Docker Access Control**: Per-group Docker engine access (`/var/run/docker.sock` mount) and privileged container mode, configured via the Groups admin page
 - **Isolated Environments**: Each user gets dedicated JupyterLab container with persistent volumes via DockerSpawner
 - **Native Authentication**: Built-in user management with NativeAuthenticator supporting optional self-registration (`JUPYTERHUB_SIGNUP_ENABLED`) and admin approval. Authorization page protects existing users from accidental discard - only pending signup requests can be discarded
 - **Admin User Creation**: Batch user creation from admin panel with auto-generated mnemonic passwords (e.g., `storm-apple-ocean`). Credentials modal with copy/download options
@@ -493,25 +494,35 @@ c.DockerSpawner.volumes = {
 }
 ```
 
-#### Docker Access Control Groups
+#### Groups Admin Page
+
+Admin-only dashboard at `/hub/groups` for creating, deleting, prioritising, and configuring user groups. Unlike the stock JupyterHub admin page (which only manages group membership), this page also stores per-group configuration and makes it the single source of truth for everything the pre-spawn hook applies. Config persists in a separate SQLite database at `/data/groups_config.sqlite` - the stock admin panel keeps working and its group-membership changes are discovered automatically.
+
+**Per-group configuration**:
+
+- **Environment Variables**: Name / value / description rows. Reserved names (`JUPYTERHUB_*`, `JPY_*`, `MEM_*`, `CPU_*` prefixes plus every platform-managed variable) are rejected at save time with an inline error banner showing which names were refused
+- **GPU Access**: Single toggle. Grants nvidia `device_requests` on spawn. Only effective if GPU hardware is detected on the host
+- **Memory**: Optional limit in GB. Enforced by Docker via `HostConfig.Memory` and exposed to the container as `MEM_LIMIT`
+- **Docker Access**: Two toggles - mount `/var/run/docker.sock` and run container with `--privileged` flag
+
+**Resolution rules** (when a user belongs to multiple groups):
+
+- GPU / Docker / Privileged: **grants win** - OR across all groups. Once any group grants, no other group can revoke
+- Env vars: **highest priority wins on conflict** - groups scanned in descending priority order, first write of each name is kept
+- Memory limit: **biggest value wins** - among groups with the flag enabled. A group with the flag disabled does NOT un-cap
+
+**UI features**:
+
+- Priority order set via drag-and-drop rows or move-up / move-down buttons
+- Features column shows badges for configured features (`GPU`, `Docker`, `Privileged`, `Mem: N.N GB`, `N Vars`)
+- Members column lists users added to the group, max two names per line in tooltip
+- Group name is sanitised on blur to the `[A-Za-z][A-Za-z0-9_-]*` shape (spaces become underscores); env var names are sanitised to the POSIX `[A-Z_][A-Z0-9_]*` convention
+
+**Stock admin panel integration**:
+
+Adding / removing users via JupyterHub's built-in admin page (`/hub/admin`) now shows a post-Apply confirmation modal listing added (green) and removed (red) users per affected group. The Groups admin page auto-discovers groups created through the stock panel and auto-removes config entries for groups deleted there.
 
 > [!WARNING]
-> Both groups grant significant privileges. `docker-sock` provides Docker host control. `docker-privileged` provides full container privileges. Only grant to trusted users.
-
-Two built-in groups control Docker access levels:
-
-- **`docker-sock`**: Mounts `/var/run/docker.sock` into the user container. Enables Docker CLI, container orchestration, image builds, and Docker Compose operations
-- **`docker-privileged`**: Runs user container with `--privileged` flag. Enables hardware access, loading kernel modules, nested virtualization, and operations requiring elevated capabilities
-
-**How to Grant Access**:
-
-1. Admin Panel → Groups (`/hub/admin`)
-2. Click on `docker-sock` or `docker-privileged` group
-3. Add users to the group
-4. Users restart their server for changes to take effect
-
-**Technical Details**:
-
-Both groups are built-in protected groups (auto-recreated if deleted). Pre-spawn hook (`config/jupyterhub_config.py::pre_spawn_hook`) checks membership before spawning containers.
+> `Docker engine access` and `Privileged container mode` grant significant privileges. `Docker engine access` provides Docker host control via the mounted socket. `Privileged container mode` provides full container privileges including hardware access. Only grant these to trusted users.
 
 <!-- EOF -->

@@ -39,6 +39,8 @@ def default_config():
         'gpu_access': False,
         'docker_access': False,
         'docker_privileged': False,
+        'mem_limit_enabled': False,
+        'mem_limit_gb': 0,
     }
 
 

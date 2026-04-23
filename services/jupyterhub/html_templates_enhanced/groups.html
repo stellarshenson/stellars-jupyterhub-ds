@@ -41,10 +41,11 @@
     <table class="table table-sm table-striped table-hover">
       <thead class="table-dark">
         <tr>
-          <th class="text-center" title="Priority order - higher priority groups override lower ones. Drag rows to reorder." style="width: 6em;">Priority</th>
+          <th style="width: 2.5em;"></th>
+          <th class="text-center" title="Priority order - higher priority groups override lower ones. Drag rows to reorder." style="width: 5em;">Priority</th>
           <th title="Group name (used as identifier)" style="width: 14em;">Name</th>
           <th title="Optional group description">Description</th>
-          <th title="Enabled features for this group" style="width: 16em;">Features</th>
+          <th title="Enabled features for this group" style="width: 18em;">Features</th>
           <th class="text-center" title="Number of users in this group" style="width: 6em;">Members</th>
           <th class="text-center" title="Group configuration and actions" style="width: 14em;">Actions</th>
         </tr>
@@ -194,6 +195,30 @@
 
         <hr>
 
+        <!-- Memory Limit -->
+        <div class="mb-4">
+          <h6 class="text-uppercase text-muted mb-2">
+            <i class="fa fa-memory" aria-hidden="true"></i> Memory
+          </h6>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="config-mem-limit-enabled">
+            <label class="form-check-label" for="config-mem-limit-enabled">
+              Enable memory limit for this group
+            </label>
+            <div class="form-text">
+              When a user belongs to multiple groups, the largest limit wins.
+              Groups with this disabled do not remove an existing limit.
+            </div>
+          </div>
+          <div class="input-group input-group-sm" style="max-width: 15em;">
+            <input type="number" class="form-control" id="config-mem-limit-gb"
+                   min="0.1" step="0.1" placeholder="0.0" disabled>
+            <span class="input-group-text">GB</span>
+          </div>
+        </div>
+
+        <hr>
+
         <!-- Docker Access -->
         <div class="mb-4">
           <h6 class="text-uppercase text-muted mb-2">
@@ -271,6 +296,11 @@ require(["jquery"], function($) {
 
   $('#save-config-btn').on('click', saveConfig);
 
+  // Memory limit: disable the GB input whenever the enable checkbox is off
+  $('#config-mem-limit-enabled').on('change', function() {
+    $('#config-mem-limit-gb').prop('disabled', !this.checked);
+  });
+
   // ── Data Loading ──
 
   function loadGroups(callback) {
@@ -320,6 +350,9 @@ require(["jquery"], function($) {
       if (group.config.gpu_access) features.push('GPU');
       if (group.config.docker_access) features.push('Docker');
       if (group.config.docker_privileged) features.push('Privileged');
+      if (group.config.mem_limit_enabled && group.config.mem_limit_gb > 0) {
+        features.push('Mem: ' + Number(group.config.mem_limit_gb).toFixed(1) + ' GB');
+      }
 
       var featureBadges = features.length
         ? features.map(function(s) { return '<span class="badge bg-secondary me-1">' + escapeHtml(s) + '</span>'; }).join('')
@@ -327,8 +360,9 @@ require(["jquery"], function($) {
 
       var row = '<tr draggable="true" data-name="' + escapeAttr(group.name) + '">' +
         '<td class="text-center drag-handle" title="Drag to reorder">' +
-          '<i class="fa fa-grip-vertical text-muted me-1"></i>' + (idx + 1) +
+          '<i class="fa fa-grip-vertical text-muted"></i>' +
         '</td>' +
+        '<td class="text-center">' + (idx + 1) + '</td>' +
         '<td class="text-nowrap"><strong>' + escapeHtml(group.name) + '</strong></td>' +
         '<td class="text-muted small">' + escapeHtml(group.description || '') + '</td>' +
         '<td class="small">' + featureBadges + '</td>' +
@@ -524,6 +558,9 @@ require(["jquery"], function($) {
         $('#config-gpu-access').prop('checked', config.gpu_access || false);
         $('#config-docker-access').prop('checked', config.docker_access || false);
         $('#config-docker-privileged').prop('checked', config.docker_privileged || false);
+        var memEnabled = !!config.mem_limit_enabled;
+        $('#config-mem-limit-enabled').prop('checked', memEnabled);
+        $('#config-mem-limit-gb').val(config.mem_limit_gb || '').prop('disabled', !memEnabled);
 
         // Populate env vars table
         var tbody = $('#env-vars-body');
@@ -602,7 +639,9 @@ require(["jquery"], function($) {
       env_vars: envVars,
       gpu_access: $('#config-gpu-access').is(':checked'),
       docker_access: $('#config-docker-access').is(':checked'),
-      docker_privileged: $('#config-docker-privileged').is(':checked')
+      docker_privileged: $('#config-docker-privileged').is(':checked'),
+      mem_limit_enabled: $('#config-mem-limit-enabled').is(':checked'),
+      mem_limit_gb: parseFloat($('#config-mem-limit-gb').val()) || 0
     };
 
     $('#save-config-btn').prop('disabled', true);
