@@ -139,12 +139,14 @@ else:
     JUPYTERHUB_BASE_URL_PREFIX = JUPYTERHUB_BASE_URL
 
 # Per-user Docker volumes: {volume_name_template: mount_point}
-# <prefix>-{username}_* volumes are user-resettable via Manage Volumes UI
-# jupyterhub_shared is read-write shared storage (can be CIFS via compose_override.yml)
+# <prefix>_{username}_* volumes are user-resettable via Manage Volumes UI.
+# Underscore separator matches the compose-style container name template so the
+# whole user namespace ({prefix}_{user}, {prefix}_{user}_home, etc.) reads as one
+# unit. jupyterhub_shared is read-write shared storage (can be CIFS via override).
 DOCKER_SPAWNER_VOLUMES = {
-    f"{JUPYTERHUB_USER_CONTAINER_PREFIX}-{{username}}_home": "/home",
-    f"{JUPYTERHUB_USER_CONTAINER_PREFIX}-{{username}}_workspace": DOCKER_NOTEBOOK_DIR,
-    f"{JUPYTERHUB_USER_CONTAINER_PREFIX}-{{username}}_cache": "/home/lab/.cache",
+    f"{JUPYTERHUB_USER_CONTAINER_PREFIX}_{{username}}_home": "/home",
+    f"{JUPYTERHUB_USER_CONTAINER_PREFIX}_{{username}}_workspace": DOCKER_NOTEBOOK_DIR,
+    f"{JUPYTERHUB_USER_CONTAINER_PREFIX}_{{username}}_cache": "/home/lab/.cache",
     "jupyterhub_shared": "/mnt/shared",
 }
 
@@ -229,7 +231,7 @@ c.DockerSpawner.use_internal_ip = True                       # use container IP 
 c.DockerSpawner.network_name = JUPYTERHUB_NETWORK_NAME       # Docker network connecting hub and user containers
 c.JupyterHub.default_url = JUPYTERHUB_BASE_URL_PREFIX + '/hub/home'  # redirect after login
 # c.DockerSpawner.notebook_dir = DOCKER_NOTEBOOK_DIR         # redundant - stellars-jupyterlab-ds image defaults to /home/lab/workspace
-c.DockerSpawner.name_template = f"{JUPYTERHUB_USER_CONTAINER_PREFIX}-{{username}}"  # container name pattern (used in volume names too)
+c.DockerSpawner.name_template = f"{JUPYTERHUB_USER_CONTAINER_PREFIX}_{{username}}"  # compose-style <project>_<service> so docker compose ls groups them
 c.DockerSpawner.volumes = DOCKER_SPAWNER_VOLUMES             # per-user persistent volumes + shared storage
 
 # ── Branding: logo ──
@@ -283,6 +285,7 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     gpu_available=bool(gpu_enabled),                         # hardware present - required for per-group GPU grant
     reserved_env_var_names=RESERVED_ENV_VAR_NAMES,           # names groups cannot override
     reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,     # prefixes reserved for JupyterHub/platform
+    user_container_prefix=JUPYTERHUB_USER_CONTAINER_PREFIX,  # compose-project label so docker compose ls groups user containers
 )
 
 # ── Spawner args ──
