@@ -30,6 +30,55 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 - **Health Check Endpoint**: Unauthenticated `GET /hub/health` returning JSON with hub status, uptime, version, and active server count. Rate-limited to 1 req/s per IP. Designed for Zabbix, Prometheus, or other monitoring agents
 - **Production Ready**: Traefik reverse proxy with TLS termination, automatic container updates via Watchtower
 
+## Quickstart
+
+### Copier (recommended)
+
+Fastest way to spin up a working deployment - the [stellars-jupyterhub-ds-deployment-template](https://github.com/stellarshenson/stellars-jupyterhub-ds-deployment-template) repository is a [copier](https://copier.readthedocs.io/) template that asks a handful of questions (project name, hostname, admin user, branding, CIFS, ...) and generates a thin overlay directory containing `compose_override.yml`, `branding/`, `certs/`, `start.sh`, `stop.sh`, `cleanup.sh`, and `.env.default`. The upstream platform (this repo) is cloned read-only by `start.sh` on first run, so the generated deployment stays upgradeable: pull new upstream commits without touching your overlay.
+
+```bash
+pip install copier
+copier copy gh:stellarshenson/stellars-jupyterhub-ds-deployment-template ./my-jupyterhub
+cd my-jupyterhub
+./start.sh
+```
+
+Open `https://<your-hostname>/` and complete the admin bootstrap (see [First Admin Bootstrap](#first-admin-bootstrap)).
+
+### Docker Compose
+1. Download `compose.yml` and `config/jupyterhub_config.py` config file
+2. Run: `docker compose up --no-build`
+3. Open https://localhost/jupyterhub in your browser
+4. Sign up as the admin user (matches `JUPYTERHUB_ADMIN`, default `admin`) - on a fresh deployment the signup form is open and the admin name is auto-authorised; other usernames are rejected during this initial bootstrap window
+5. Log in as `admin` - admin role is granted automatically at first login
+
+### Start Scripts
+- `start.sh` or `start.bat` – standard startup for the environment
+- `scripts/build.sh` alternatively `make build` – builds required Docker containers
+
+### Authentication
+This stack uses [NativeAuthenticator](https://github.com/jupyterhub/nativeauthenticator) for user management. Admins can whitelist users or allow self-registration. Passwords are stored securely.
+
+### First Admin Bootstrap
+
+Two mutually-exclusive modes for creating the first admin user:
+
+**Bootstrap-by-signup (default)** - leave `JUPYTERHUB_ADMIN_PASSWORD` unset. On a fresh deployment with empty database, the signup form is silently re-opened scoped to the admin name only (`JUPYTERHUB_ADMIN`, default `admin`). Visit `/hub/signup`, register with a password you choose, and log in. NativeAuthenticator self-approves that signup and the admin role is granted at login. Any other username on the signup form is rejected. Once the admin exists in the database, the bootstrap window closes and signup falls back to whatever `JUPYTERHUB_SIGNUP_ENABLED` is set to.
+
+**Bootstrap-by-env** - set `JUPYTERHUB_ADMIN_PASSWORD` in your override:
+
+```yaml
+services:
+  jupyterhub:
+    environment:
+      - JUPYTERHUB_ADMIN_PASSWORD=<your-initial-password>
+```
+
+The hub seeds the admin record with that password on startup. The value is **initial only** - once the admin changes their password through the UI, the env value is permanently ignored on subsequent restarts (verified via `bcrypt.checkpw` against the stored hash). The variable is deliberately absent from `services/jupyterhub/conf/settings_dictionary.yml` so it never appears on the Settings page.
+
+To recover a lost admin password, manually `DELETE FROM users_info WHERE username = '<admin>'` against `/data/jupyterhub.sqlite` and restart - bootstrap-by-signup re-opens if the DB is otherwise empty, or bootstrap-by-env re-provisions from the env var.
+
+
 ## User Interface
 
 **User Control Panel**
@@ -311,55 +360,6 @@ volumes:
 
 > [!WARNING]
 > The JupyterHub container has full access to the Docker daemon. Only trusted administrators should have access to JupyterHub configuration.
-
-## Quickstart
-
-### Copier (recommended)
-
-Fastest way to spin up a working deployment - the [stellars-jupyterhub-ds-deployment-template](https://github.com/stellarshenson/stellars-jupyterhub-ds-deployment-template) repository is a [copier](https://copier.readthedocs.io/) template that asks a handful of questions (project name, hostname, admin user, branding, CIFS, ...) and generates a thin overlay directory containing `compose_override.yml`, `branding/`, `certs/`, `start.sh`, `stop.sh`, `cleanup.sh`, and `.env.default`. The upstream platform (this repo) is cloned read-only by `start.sh` on first run, so the generated deployment stays upgradeable: pull new upstream commits without touching your overlay.
-
-```bash
-pip install copier
-copier copy gh:stellarshenson/stellars-jupyterhub-ds-deployment-template ./my-jupyterhub
-cd my-jupyterhub
-./start.sh
-```
-
-Open `https://<your-hostname>/` and complete the admin bootstrap (see [First Admin Bootstrap](#first-admin-bootstrap)).
-
-### Docker Compose
-1. Download `compose.yml` and `config/jupyterhub_config.py` config file
-2. Run: `docker compose up --no-build`
-3. Open https://localhost/jupyterhub in your browser
-4. Sign up as the admin user (matches `JUPYTERHUB_ADMIN`, default `admin`) - on a fresh deployment the signup form is open and the admin name is auto-authorised; other usernames are rejected during this initial bootstrap window
-5. Log in as `admin` - admin role is granted automatically at first login
-
-### Start Scripts
-- `start.sh` or `start.bat` – standard startup for the environment
-- `scripts/build.sh` alternatively `make build` – builds required Docker containers
-
-### Authentication
-This stack uses [NativeAuthenticator](https://github.com/jupyterhub/nativeauthenticator) for user management. Admins can whitelist users or allow self-registration. Passwords are stored securely.
-
-### First Admin Bootstrap
-
-Two mutually-exclusive modes for creating the first admin user:
-
-**Bootstrap-by-signup (default)** - leave `JUPYTERHUB_ADMIN_PASSWORD` unset. On a fresh deployment with empty database, the signup form is silently re-opened scoped to the admin name only (`JUPYTERHUB_ADMIN`, default `admin`). Visit `/hub/signup`, register with a password you choose, and log in. NativeAuthenticator self-approves that signup and the admin role is granted at login. Any other username on the signup form is rejected. Once the admin exists in the database, the bootstrap window closes and signup falls back to whatever `JUPYTERHUB_SIGNUP_ENABLED` is set to.
-
-**Bootstrap-by-env** - set `JUPYTERHUB_ADMIN_PASSWORD` in your override:
-
-```yaml
-services:
-  jupyterhub:
-    environment:
-      - JUPYTERHUB_ADMIN_PASSWORD=<your-initial-password>
-```
-
-The hub seeds the admin record with that password on startup. The value is **initial only** - once the admin changes their password through the UI, the env value is permanently ignored on subsequent restarts (verified via `bcrypt.checkpw` against the stored hash). The variable is deliberately absent from `services/jupyterhub/conf/settings_dictionary.yml` so it never appears on the Settings page.
-
-To recover a lost admin password, manually `DELETE FROM users_info WHERE username = '<admin>'` against `/data/jupyterhub.sqlite` and restart - bootstrap-by-signup re-opens if the DB is otherwise empty, or bootstrap-by-env re-provisions from the env var.
-
 
 ## Deployment Notes
 
