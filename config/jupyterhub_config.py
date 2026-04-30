@@ -120,6 +120,8 @@ JUPYTERHUB_LAB_SPLASH_ICON_URI = os.environ.get("JUPYTERHUB_LAB_SPLASH_ICON_URI"
 # User environment customization - paths passed through to spawned containers
 JUPYTERLAB_AUX_SCRIPTS_PATH = os.environ.get("JUPYTERLAB_AUX_SCRIPTS_PATH", "")             # admin startup scripts executed on container launch
 JUPYTERLAB_AUX_MENU_PATH = os.environ.get("JUPYTERLAB_AUX_MENU_PATH", "")                   # admin-managed custom menu definitions for JupyterLab
+JUPYTERLAB_SYSTEM_NAME = os.environ.get("JUPYTERLAB_SYSTEM_NAME", "")                       # system / environment name for welcome files and branding
+JUPYTERLAB_SYSTEM_NAME_CAPITALIZE = os.environ.get("JUPYTERLAB_SYSTEM_NAME_CAPITALIZE", "1") # capitalize system name in toolbar (0/1)
 
 
 # ── Section 2: Data Literals ─────────────────────────────────────────────────
@@ -203,6 +205,8 @@ c.DockerSpawner.environment = {
     'JUPYTERLAB_AUX_SCRIPTS_PATH': JUPYTERLAB_AUX_SCRIPTS_PATH,  # admin startup scripts path
     'JUPYTERLAB_AUX_MENU_PATH': JUPYTERLAB_AUX_MENU_PATH,      # admin-managed custom menu definitions
     'JUPYTERLAB_TIMEZONE': JUPYTERHUB_TIMEZONE,                  # IANA timezone for JupyterLab extensions
+    'JUPYTERLAB_SYSTEM_NAME': JUPYTERLAB_SYSTEM_NAME,            # system / environment name for welcome files and branding
+    'JUPYTERLAB_SYSTEM_NAME_CAPITALIZE': JUPYTERLAB_SYSTEM_NAME_CAPITALIZE,  # capitalize system name in toolbar (0/1)
 }
 
 # Reserved env var names groups cannot override - every key we inject globally
