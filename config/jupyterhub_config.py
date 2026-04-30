@@ -280,23 +280,71 @@ if _ADMIN_PROVISIONING_REQUESTED:
     _provision_admin_userinfo(JUPYTERHUB_ADMIN, JUPYTERHUB_ADMIN_PASSWORD)
 
 
+from nativeauthenticator.handlers import SignUpHandler as _NativeSignUpHandler
+
+
+class BootstrapAdminSignUpHandler(_NativeSignUpHandler):
+    """Replace NativeAuth's misleading post-signup messages during the bootstrap window.
+
+    Two upstream branches need correcting:
+
+      * Success branch keys off `username in admin_users`, which we deliberately
+        leave empty (populating admin_users triggers the eager User insert and
+        the random-password trap in stellars_hub.events). With our create_user
+        override flagging is_authorized=True, the row is correct but the message
+        still drops to "Your information has been sent to the admin." Treat
+        is_authorized as the success signal here.
+
+      * Generic error branch on `not user` shows "Be sure your username does
+        not contain spaces, commas or slashes..." which is misleading when the
+        real reason create_user returned None is our bootstrap-window
+        validate_username block. Substitute a clearer message in that case.
+    """
+
+    def get_result_message(self, user, assume_user_is_human, username_already_taken,
+                           confirmation_matches, user_is_admin):
+        if user is not None and getattr(user, 'is_authorized', False):
+            user_is_admin = True
+        alert, message = super().get_result_message(
+            user, assume_user_is_human, username_already_taken,
+            confirmation_matches, user_is_admin,
+        )
+        if (
+            user is None
+            and _BOOTSTRAP_WINDOW_OPEN
+            and assume_user_is_human
+            and not username_already_taken
+            and confirmation_matches
+        ):
+            submitted = self.get_body_argument("username", "", strip=False)
+            if submitted and submitted != JUPYTERHUB_ADMIN:
+                alert = "alert-warning"
+                message = (
+                    f"Only the admin user '{JUPYTERHUB_ADMIN}' can sign up during "
+                    "the initial bootstrap window. Self-registration will be "
+                    "re-enabled once the admin completes signup (or the operator "
+                    "sets JUPYTERHUB_SIGNUP_ENABLED=1)."
+                )
+        return alert, message
+
+
 class BootstrapAdminAuthenticator(StellarsNativeAuthenticator):
     """During the bootstrap window, only the admin username is allowed to self-sign-up
     and that signup is auto-authorised on the spot.
 
     Outside the bootstrap window this class is a transparent passthrough to
     StellarsNativeAuthenticator. The window state is captured once at startup so the
-    class behaves stably for the lifetime of the hub process. NativeAuth's signup
-    handler calls validate_username before create_user; returning False short-circuits
-    the form with NativeAuth's standard "Invalid username" rejection, which is enough
-    to prevent the wrong user from completing signup. (For a longer custom message we
-    would need to override the SignupHandler in get_handlers.)
+    class behaves stably for the lifetime of the hub process.
 
     For auto-authorisation we override create_user instead of using NativeAuth's
     allow_self_approval_for: that path forces ask_email_on_signup=True, matches the
     regex against the email field (not the username), generates a signed approval URL
     and tries to send it via SMTP - which the hub container has no server for, so the
-    admin signup ends up pending without any way to confirm it.
+    admin signup ends up pending without any way to confirm it. Combined with the
+    BootstrapAdminSignUpHandler injected via get_handlers below, the admin signup
+    completes with a clean success message and any non-admin attempt during the
+    window gets a clear "only admin can sign up" rejection instead of NativeAuth's
+    generic spaces/commas/password message.
     """
 
     def validate_username(self, username):
@@ -305,6 +353,12 @@ class BootstrapAdminAuthenticator(StellarsNativeAuthenticator):
         if _BOOTSTRAP_WINDOW_OPEN and username and username != JUPYTERHUB_ADMIN:
             return False
         return True
+
+    def get_handlers(self, app):
+        return [
+            (path, BootstrapAdminSignUpHandler if path == r"/signup" else handler)
+            for path, handler in super().get_handlers(app)
+        ]
 
     def create_user(self, username, password, **kwargs):
         user_info = super().create_user(username, password, **kwargs)
