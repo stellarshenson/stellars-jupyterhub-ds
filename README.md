@@ -310,6 +310,19 @@ volumes:
 
 ## Quickstart
 
+### Copier (recommended)
+
+Fastest way to spin up a working deployment - the [stellars-jupyterhub-ds-deployment-template](https://github.com/stellarshenson/stellars-jupyterhub-ds-deployment-template) repository is a [copier](https://copier.readthedocs.io/) template that asks a handful of questions (project name, hostname, admin user, branding, CIFS, ...) and generates a thin overlay directory containing `compose_override.yml`, `branding/`, `certs/`, `start.sh`, `stop.sh`, `cleanup.sh`, and `.env.default`. The upstream platform (this repo) is cloned read-only by `start.sh` on first run, so the generated deployment stays upgradeable: pull new upstream commits without touching your overlay.
+
+```bash
+pip install copier
+copier copy gh:stellarshenson/stellars-jupyterhub-ds-deployment-template ./my-jupyterhub
+cd my-jupyterhub
+./start.sh
+```
+
+Open `https://<your-hostname>/` and complete the admin bootstrap (see [First Admin Bootstrap](#first-admin-bootstrap)).
+
 ### Docker Compose
 1. Download `compose.yml` and `config/jupyterhub_config.py` config file
 2. Run: `docker compose up --no-build`
