@@ -97,6 +97,10 @@ services:
       - JUPYTERHUB_FAVICON_URI= # custom favicon URI (file:// or http(s)://)
       - JUPYTERHUB_LAB_MAIN_ICON_URI= # JupyterLab main icon (file:// or URL)
       - JUPYTERHUB_LAB_SPLASH_ICON_URI= # JupyterLab splash icon (file:// or URL)
+      # - JUPYTERHUB_USER_CONTAINER_PREFIX=jupyterlab # prefix for spawned user containers and per-user volumes (default: jupyterlab)
+      # - JUPYTERLAB_SYSTEM_NAME= # rebrand stellars-jupyterlab-ds in welcome page, MOTD, toolbar header badge; empty = no rebrand
+      # - JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME=1 # uppercase the toolbar header badge (0/1)
+      # - JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR= # CSS color for toolbar header badge text; empty = --jp-ui-font-color2
     labels:
       # Enable proxy support from Traefik
       - "traefik.enable=true"

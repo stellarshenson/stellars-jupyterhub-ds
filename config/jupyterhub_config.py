@@ -108,6 +108,7 @@ JUPYTERHUB_TIMEZONE = os.environ.get("JUPYTERHUB_TIMEZONE", "Etc/UTC")          
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")                                     # URL prefix (e.g. /jupyterhub), None or / for root
 JUPYTERHUB_NETWORK_NAME = os.environ.get("JUPYTERHUB_NETWORK_NAME", "jupyterhub_network")       # Docker network for hub + spawned containers
 JUPYTERHUB_NOTEBOOK_IMAGE = os.environ.get("JUPYTERHUB_NOTEBOOK_IMAGE", "stellars/stellars-jupyterlab-ds:latest")  # JupyterLab image to spawn
+JUPYTERHUB_USER_CONTAINER_PREFIX = os.environ.get("JUPYTERHUB_USER_CONTAINER_PREFIX", "jupyterlab")  # prefix for spawned user containers and per-user volume names
 JUPYTERHUB_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_NVIDIA_IMAGE", "nvidia/cuda:13.0.2-base-ubuntu24.04")  # CUDA image for GPU auto-detection
 JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")                                          # admin username (auto-authorized on first signup)
 
@@ -120,8 +121,9 @@ JUPYTERHUB_LAB_SPLASH_ICON_URI = os.environ.get("JUPYTERHUB_LAB_SPLASH_ICON_URI"
 # User environment customization - paths passed through to spawned containers
 JUPYTERLAB_AUX_SCRIPTS_PATH = os.environ.get("JUPYTERLAB_AUX_SCRIPTS_PATH", "")             # admin startup scripts executed on container launch
 JUPYTERLAB_AUX_MENU_PATH = os.environ.get("JUPYTERLAB_AUX_MENU_PATH", "")                   # admin-managed custom menu definitions for JupyterLab
-JUPYTERLAB_SYSTEM_NAME = os.environ.get("JUPYTERLAB_SYSTEM_NAME", "")                       # system / environment name for welcome files and branding
-JUPYTERLAB_SYSTEM_NAME_CAPITALIZE = os.environ.get("JUPYTERLAB_SYSTEM_NAME_CAPITALIZE", "1") # capitalize system name in toolbar (0/1)
+JUPYTERLAB_SYSTEM_NAME = os.environ.get("JUPYTERLAB_SYSTEM_NAME", "")                       # rebrand stellars-jupyterlab-ds in welcome page, MOTD, toolbar header badge; empty = no rebrand
+JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME = os.environ.get("JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME", "1")  # uppercase the toolbar header badge (0/1)
+JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR = os.environ.get("JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR", "")            # CSS color for toolbar header badge text; empty = --jp-ui-font-color2
 
 
 # ── Section 2: Data Literals ─────────────────────────────────────────────────
@@ -137,12 +139,12 @@ else:
     JUPYTERHUB_BASE_URL_PREFIX = JUPYTERHUB_BASE_URL
 
 # Per-user Docker volumes: {volume_name_template: mount_point}
-# jupyterlab-{username}_* volumes are user-resettable via Manage Volumes UI
+# <prefix>-{username}_* volumes are user-resettable via Manage Volumes UI
 # jupyterhub_shared is read-write shared storage (can be CIFS via compose_override.yml)
 DOCKER_SPAWNER_VOLUMES = {
-    "jupyterlab-{username}_home": "/home",
-    "jupyterlab-{username}_workspace": DOCKER_NOTEBOOK_DIR,
-    "jupyterlab-{username}_cache": "/home/lab/.cache",
+    f"{JUPYTERHUB_USER_CONTAINER_PREFIX}-{{username}}_home": "/home",
+    f"{JUPYTERHUB_USER_CONTAINER_PREFIX}-{{username}}_workspace": DOCKER_NOTEBOOK_DIR,
+    f"{JUPYTERHUB_USER_CONTAINER_PREFIX}-{{username}}_cache": "/home/lab/.cache",
     "jupyterhub_shared": "/mnt/shared",
 }
 
@@ -154,7 +156,7 @@ VOLUME_DESCRIPTIONS = {
 }
 
 # Derived: extract user-resettable volume suffixes ['home', 'workspace', 'cache'] from volumes dict
-user_volume_suffixes = get_user_volume_suffixes(DOCKER_SPAWNER_VOLUMES)
+user_volume_suffixes = get_user_volume_suffixes(DOCKER_SPAWNER_VOLUMES, JUPYTERHUB_USER_CONTAINER_PREFIX)
 
 
 # ── Section 3: Logic Calls ───────────────────────────────────────────────────
@@ -205,8 +207,10 @@ c.DockerSpawner.environment = {
     'JUPYTERLAB_AUX_SCRIPTS_PATH': JUPYTERLAB_AUX_SCRIPTS_PATH,  # admin startup scripts path
     'JUPYTERLAB_AUX_MENU_PATH': JUPYTERLAB_AUX_MENU_PATH,      # admin-managed custom menu definitions
     'JUPYTERLAB_TIMEZONE': JUPYTERHUB_TIMEZONE,                  # IANA timezone for JupyterLab extensions
-    'JUPYTERLAB_SYSTEM_NAME': JUPYTERLAB_SYSTEM_NAME,            # system / environment name for welcome files and branding
-    'JUPYTERLAB_SYSTEM_NAME_CAPITALIZE': JUPYTERLAB_SYSTEM_NAME_CAPITALIZE,  # capitalize system name in toolbar (0/1)
+    'JUPYTERLAB_SYSTEM_NAME': JUPYTERLAB_SYSTEM_NAME,                                    # rebrand stellars-jupyterlab-ds in welcome page, MOTD, toolbar header badge
+    'JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME': JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME, # uppercase toolbar header badge (0/1)
+    'JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR': JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR,           # CSS color for toolbar header badge text
+    'JUPYTERHUB_USER_CONTAINER_PREFIX': JUPYTERHUB_USER_CONTAINER_PREFIX,                 # container/volume prefix for self-aware user containers
 }
 
 # Reserved env var names groups cannot override - every key we inject globally
@@ -225,7 +229,7 @@ c.DockerSpawner.use_internal_ip = True                       # use container IP 
 c.DockerSpawner.network_name = JUPYTERHUB_NETWORK_NAME       # Docker network connecting hub and user containers
 c.JupyterHub.default_url = JUPYTERHUB_BASE_URL_PREFIX + '/hub/home'  # redirect after login
 # c.DockerSpawner.notebook_dir = DOCKER_NOTEBOOK_DIR         # redundant - stellars-jupyterlab-ds image defaults to /home/lab/workspace
-c.DockerSpawner.name_template = "jupyterlab-{username}"      # container name pattern (used in volume names too)
+c.DockerSpawner.name_template = f"{JUPYTERHUB_USER_CONTAINER_PREFIX}-{{username}}"  # container name pattern (used in volume names too)
 c.DockerSpawner.volumes = DOCKER_SPAWNER_VOLUMES             # per-user persistent volumes + shared storage
 
 # ── Branding: logo ──
