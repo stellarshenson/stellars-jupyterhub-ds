@@ -148,6 +148,10 @@ Branding:
     description: System / environment name displayed in welcome files and branding
     default: ""
 
+  - name: JUPYTERLAB_SYSTEM_NAME_CAPITALIZE
+    description: Capitalize the system name in the JupyterLab toolbar (0/1)
+    default: "1"
+
   - name: JUPYTERHUB_LOGO_URI
     description: Custom logo URI (file:// or URL)
     default: ""
