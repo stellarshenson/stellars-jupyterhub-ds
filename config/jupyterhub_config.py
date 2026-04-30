@@ -12,17 +12,20 @@
 #   5. Services & Callbacks    - background services, startup hooks
 
 import os                       # env var reads
-import re                       # regex escaping for self-approval pattern
 
 import jupyterhub               # __version__, __file__ for template paths
 import nativeauthenticator      # __file__ for template path resolution
 
 # stellars_hub core functions - pure logic, no side effects on import
 from stellars_hub import (
-    StellarsNativeAuthenticator,            # NativeAuthenticator subclass with custom authorization UI
+    BootstrapAdminAuthenticator,            # NativeAuth subclass with bootstrap-window admin signup
+    compute_bootstrap_window_open,          # truth-table predicate for the bootstrap-by-signup window
     get_services_and_roles,                 # builds JupyterHub services list (activity sampler, idle culler)
     get_user_volume_suffixes,               # extracts ['home', 'workspace', 'cache'] from volumes dict
+    make_admin_post_auth_hook,              # async closure that flips authentication['admin']=True for JUPYTERHUB_ADMIN
     make_pre_spawn_hook,                    # factory returning async hook for group perms, favicon, icons
+    provision_admin_userinfo,               # bootstrap-by-env: seed admin UserInfo from JUPYTERHUB_ADMIN_PASSWORD
+    query_admin_state,                      # (db_empty, admin_present) inspection of users_info
     register_events,                        # attaches SQLAlchemy listeners for user rename/delete sync
     resolve_gpu_mode,                       # GPU detection: 0=off, 1=forced, 2=auto-detect via nvidia-smi
     schedule_startup_favicon_callback,      # registers CHP favicon routes for already-running servers
