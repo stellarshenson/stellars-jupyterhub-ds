@@ -12,7 +12,7 @@ def make_pre_spawn_hook(
     gpu_available=False,
     reserved_env_var_names=frozenset(),
     reserved_env_var_prefixes=(),
-    user_container_prefix='',
+    compose_project='',
 ):
     """Create a pre_spawn_hook closure that captures branding + resolution context.
 
@@ -24,9 +24,9 @@ def make_pre_spawn_hook(
         reserved_env_var_names: names that groups cannot override (platform env).
         reserved_env_var_prefixes: tuple of prefixes reserved for JupyterHub
             itself (e.g. JUPYTERHUB_, JPY_, MEM_, CPU_).
-        user_container_prefix: when set, attaches docker-compose project labels
-            so spawned containers are grouped under that project name in
-            `docker compose ls` and `docker compose -p <prefix> ps`.
+        compose_project: when set, attaches docker-compose project labels so
+            spawned containers are grouped under that project in `docker compose
+            ls` and `docker compose -p <project> ps` alongside the hub.
     """
 
     async def pre_spawn_hook(spawner):
@@ -84,14 +84,16 @@ def make_pre_spawn_hook(
             spawner.mem_limit = None
 
         # Docker Compose project labels: tag the container so `docker compose ls`
-        # / `docker compose -p <prefix> ps` group all spawned user containers
-        # under one project. Container name is set separately by name_template.
-        if user_container_prefix:
+        # / `docker compose -p <project> ps` group all spawned user containers
+        # under the same project as the hub. Container name stays literal
+        # (jupyterlab-{username}); the project label is what compose tooling
+        # filters on.
+        if compose_project:
             kwargs = dict(spawner.extra_create_kwargs or {})
             labels = dict(kwargs.get('labels') or {})
             labels.update({
-                'com.docker.compose.project': user_container_prefix,
-                'com.docker.compose.service': username,
+                'com.docker.compose.project': compose_project,
+                'com.docker.compose.service': f'jupyterlab_{username}',
                 'com.docker.compose.container-number': '1',
                 'com.docker.compose.oneoff': 'False',
             })
@@ -108,7 +110,7 @@ def make_pre_spawn_hook(
             resolved.get('mem_limit_gb'),
             len(resolved['env_vars']),
             resolved['skipped_env_vars'],
-            user_container_prefix or '-',
+            compose_project or '-',
         )
 
         # Favicon proxy route

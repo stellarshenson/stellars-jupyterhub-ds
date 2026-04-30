@@ -5,18 +5,28 @@ from stellars_hub.volumes import get_user_volume_suffixes
 
 class TestGetUserVolumeSuffixes:
     def test_standard_volumes(self):
-        """Standard volumes extract expected suffixes."""
+        """Standard volumes extract expected suffixes (default project = 'jupyterhub')."""
         volumes = {
-            "jupyterlab_{username}_home": "/home",
-            "jupyterlab_{username}_workspace": "/home/lab/workspace",
-            "jupyterlab_{username}_cache": "/home/lab/.cache",
+            "jupyterhub_jupyterlab_{username}_home": "/home",
+            "jupyterhub_jupyterlab_{username}_workspace": "/home/lab/workspace",
+            "jupyterhub_jupyterlab_{username}_cache": "/home/lab/.cache",
             "jupyterhub_shared": "/mnt/shared",
         }
         suffixes = sorted(get_user_volume_suffixes(volumes))
         assert suffixes == ["cache", "home", "workspace"]
 
+    def test_custom_project(self):
+        """A non-default compose project name flows through to the matcher."""
+        volumes = {
+            "actone-ds_jupyterlab_{username}_home": "/home",
+            "actone-ds_jupyterlab_{username}_workspace": "/home/lab/workspace",
+            "jupyterhub_shared": "/mnt/shared",
+        }
+        suffixes = sorted(get_user_volume_suffixes(volumes, "actone-ds"))
+        assert suffixes == ["home", "workspace"]
+
     def test_non_matching_keys_excluded(self):
-        """Keys not matching jupyterlab_{username}_ pattern are excluded."""
+        """Keys not matching <project>_jupyterlab_{username}_ pattern are excluded."""
         volumes = {
             "other_volume": "/data",
             "jupyterhub_data": "/srv/data",

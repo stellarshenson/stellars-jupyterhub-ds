@@ -8,6 +8,10 @@ JupyterHub Core:
     description: Admin username
     default: admin
 
+  - name: COMPOSE_PROJECT_NAME
+    description: Docker compose project name - groups hub and user containers in `docker compose ls`, prefixes per-user volume names
+    default: jupyterhub
+
   - name: JUPYTERHUB_BASE_URL
     description: Base URL path
     default: /jupyterhub
@@ -57,10 +61,6 @@ Docker Spawner:
   - name: JUPYTERHUB_NETWORK_NAME
     description: Docker network for containers
     default: jupyterhub_network
-
-  - name: JUPYTERHUB_USER_CONTAINER_PREFIX
-    description: Prefix for spawned user containers and per-user volumes (e.g. <prefix>-<username>)
-    default: jupyterlab
 
 GPU:
   - name: JUPYTERHUB_GPU_ENABLED

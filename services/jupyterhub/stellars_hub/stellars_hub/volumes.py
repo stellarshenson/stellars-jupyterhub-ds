@@ -1,9 +1,9 @@
 """Volume suffix extraction and user volume management."""
 
 
-def get_user_volume_suffixes(volumes_dict, container_prefix="jupyterlab"):
-    """Extract volume suffixes from volumes dict matching <prefix>_{username}_<suffix> pattern."""
-    pattern = f"{container_prefix}_{{username}}_"
+def get_user_volume_suffixes(volumes_dict, compose_project="jupyterhub"):
+    """Extract volume suffixes from volumes dict matching <project>_jupyterlab_{username}_<suffix> pattern."""
+    pattern = f"{compose_project}_jupyterlab_{{username}}_"
     suffixes = []
     for volume_name in volumes_dict.keys():
         if volume_name.startswith(pattern):

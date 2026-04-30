@@ -11,7 +11,7 @@
 volumes:
   jupyterhub_shared:
     driver: local
-    name: jupyterhub_shared
+    name: ${COMPOSE_PROJECT_NAME:-jupyterhub}_shared
     driver_opts:
       type: cifs
       device: //nas.example.com/shared
