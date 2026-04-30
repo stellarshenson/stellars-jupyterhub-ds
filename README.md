@@ -8,8 +8,12 @@
 
 Multi-user JupyterHub 4 deployment platform with data science stack, GPU support, and NativeAuthenticator. The platform spawns isolated JupyterLab environments per user using DockerSpawner, backed by the [stellars/stellars-jupyterlab-ds](https://hub.docker.com/r/stellars/stellars-jupyterlab-ds) image (from [stellars-jupyterlab-ds](https://github.com/stellarshenson/stellars-jupyterlab-ds) project).
 
+> [!TIP]
+> **Fastest way to spin up a deployment**: use the [Copier deployment template](https://github.com/stellarshenson/stellars-jupyterhub-ds-deployment-template). One `copier copy` command answers a handful of questions and renders a working overlay (branding, hostname / TLS, admin user, optional CIFS) that clones this platform read-only - so your deployment stays upgradeable. See [Quickstart -> Copier](#copier-recommended).
+
 ## Features
 
+- **One-command Deployment**: [Copier template](https://github.com/stellarshenson/stellars-jupyterhub-ds-deployment-template) scaffolds a thin overlay (branding, hostname, TLS, admin user, optional CIFS) that clones this platform read-only - upstream stays upgradeable, your customisations stay in your repo
 - **GPU Auto-Detection**: Automatic NVIDIA CUDA GPU detection and configuration for spawned user containers
 - **Notification Broadcast**: Admin broadcast to all active servers via `/hub/notifications`. Supports six notification types, 140-character limit. Requires [jupyterlab_notifications_extension](https://github.com/stellarshenson/jupyterlab_notifications_extension)
 - **User Self-Service**: Users can restart their JupyterLab containers and selectively reset persistent volumes (home/workspace/cache) without admin intervention
