@@ -144,6 +144,10 @@ User Environment:
     default: ""
 
 Branding:
+  - name: JUPYTERLAB_SYSTEM_NAME
+    description: System / environment name displayed in welcome files and branding
+    default: ""
+
   - name: JUPYTERHUB_LOGO_URI
     description: Custom logo URI (file:// or URL)
     default: ""
