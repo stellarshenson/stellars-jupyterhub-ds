@@ -12,6 +12,7 @@ def make_pre_spawn_hook(
     gpu_available=False,
     reserved_env_var_names=frozenset(),
     reserved_env_var_prefixes=(),
+    user_container_prefix='',
 ):
     """Create a pre_spawn_hook closure that captures branding + resolution context.
 
@@ -23,6 +24,9 @@ def make_pre_spawn_hook(
         reserved_env_var_names: names that groups cannot override (platform env).
         reserved_env_var_prefixes: tuple of prefixes reserved for JupyterHub
             itself (e.g. JUPYTERHUB_, JPY_, MEM_, CPU_).
+        user_container_prefix: when set, attaches docker-compose project labels
+            so spawned containers are grouped under that project name in
+            `docker compose ls` and `docker compose -p <prefix> ps`.
     """
 
     async def pre_spawn_hook(spawner):
@@ -79,8 +83,23 @@ def make_pre_spawn_hook(
         else:
             spawner.mem_limit = None
 
+        # Docker Compose project labels: tag the container so `docker compose ls`
+        # / `docker compose -p <prefix> ps` group all spawned user containers
+        # under one project. Container name is set separately by name_template.
+        if user_container_prefix:
+            kwargs = dict(spawner.extra_create_kwargs or {})
+            labels = dict(kwargs.get('labels') or {})
+            labels.update({
+                'com.docker.compose.project': user_container_prefix,
+                'com.docker.compose.service': username,
+                'com.docker.compose.container-number': '1',
+                'com.docker.compose.oneoff': 'False',
+            })
+            kwargs['labels'] = labels
+            spawner.extra_create_kwargs = kwargs
+
         spawner.log.info(
-            "[Groups] user=%s groups=%s docker=%s privileged=%s gpu=%s mem_limit_gb=%s env_vars=%d skipped=%s",
+            "[Groups] user=%s groups=%s docker=%s privileged=%s gpu=%s mem_limit_gb=%s env_vars=%d skipped=%s compose_project=%s",
             username,
             resolved['matched_groups'],
             resolved['docker_access'],
@@ -89,6 +108,7 @@ def make_pre_spawn_hook(
             resolved.get('mem_limit_gb'),
             len(resolved['env_vars']),
             resolved['skipped_env_vars'],
+            user_container_prefix or '-',
         )
 
         # Favicon proxy route

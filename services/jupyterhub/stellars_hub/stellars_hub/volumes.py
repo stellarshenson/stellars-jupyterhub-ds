@@ -2,8 +2,8 @@
 
 
 def get_user_volume_suffixes(volumes_dict, container_prefix="jupyterlab"):
-    """Extract volume suffixes from volumes dict matching <prefix>-{username}_<suffix> pattern."""
-    pattern = f"{container_prefix}-{{username}}_"
+    """Extract volume suffixes from volumes dict matching <prefix>_{username}_<suffix> pattern."""
+    pattern = f"{container_prefix}_{{username}}_"
     suffixes = []
     for volume_name in volumes_dict.keys():
         if volume_name.startswith(pattern):

@@ -28,9 +28,9 @@ def test_top_level_imports():
 def test_volumes():
     from stellars_hub.volumes import get_user_volume_suffixes
     volumes = {
-        "jupyterlab-{username}_home": "/home",
-        "jupyterlab-{username}_workspace": "/home/lab/workspace",
-        "jupyterlab-{username}_cache": "/home/lab/.cache",
+        "jupyterlab_{username}_home": "/home",
+        "jupyterlab_{username}_workspace": "/home/lab/workspace",
+        "jupyterlab_{username}_cache": "/home/lab/.cache",
         "jupyterhub_shared": "/mnt/shared",
     }
     suffixes = get_user_volume_suffixes(volumes)
@@ -155,6 +155,10 @@ def test_branding():
 
 
 def test_hooks():
+    import asyncio
+    import logging
+    import types
+
     from stellars_hub.hooks import make_pre_spawn_hook, schedule_startup_favicon_callback
     branding = {'lab_main_icon_static': '', 'lab_main_icon_url': '', 'lab_splash_icon_static': '', 'lab_splash_icon_url': ''}
     hook = make_pre_spawn_hook(
@@ -162,8 +166,49 @@ def test_hooks():
         gpu_available=False,
         reserved_env_var_names=frozenset({'JUPYTERLAB_TIMEZONE'}),
         reserved_env_var_prefixes=('JUPYTERHUB_',),
+        user_container_prefix='jupyterlab',
     )
     assert callable(hook)
+
+    # Drive the hook against a minimal dummy spawner to verify compose labels
+    # are written into extra_create_kwargs. GroupsConfigManager.get_instance()
+    # is wrapped in try/except inside the hook, so a missing DB falls through
+    # to an empty config list - safe in this environment.
+    spawner = types.SimpleNamespace(
+        user=types.SimpleNamespace(name='alice', groups=[]),
+        volumes={},
+        extra_host_config={},
+        environment={},
+        extra_create_kwargs={},
+        mem_limit=None,
+        log=logging.getLogger('test_hooks'),
+    )
+    asyncio.run(hook(spawner))
+    labels = spawner.extra_create_kwargs.get('labels') or {}
+    assert labels.get('com.docker.compose.project') == 'jupyterlab'
+    assert labels.get('com.docker.compose.service') == 'alice'
+    assert labels.get('com.docker.compose.container-number') == '1'
+    assert labels.get('com.docker.compose.oneoff') == 'False'
+
+    # When the prefix is empty the hook must NOT inject compose labels.
+    hook_no_prefix = make_pre_spawn_hook(
+        branding,
+        gpu_available=False,
+        reserved_env_var_names=frozenset(),
+        reserved_env_var_prefixes=(),
+        user_container_prefix='',
+    )
+    spawner2 = types.SimpleNamespace(
+        user=types.SimpleNamespace(name='bob', groups=[]),
+        volumes={},
+        extra_host_config={},
+        environment={},
+        extra_create_kwargs={},
+        mem_limit=None,
+        log=logging.getLogger('test_hooks'),
+    )
+    asyncio.run(hook_no_prefix(spawner2))
+    assert 'labels' not in spawner2.extra_create_kwargs
 
 
 def test_services():
