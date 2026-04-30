@@ -321,8 +321,7 @@ class BootstrapAdminSignUpHandler(_NativeSignUpHandler):
                 alert = "alert-warning"
                 message = (
                     "Only the admin user can sign up during the initial "
-                    "bootstrap window. Self-registration will be re-enabled "
-                    "once the admin completes signup."
+                    "bootstrap window."
                 )
         return alert, message
 
