@@ -175,9 +175,10 @@ register_events()
 #   1. Bootstrap-by-signup (default): operator sets only JUPYTERHUB_ADMIN. On a
 #      fresh deployment the signup form is silently re-opened just for the admin
 #      name (BootstrapAdminAuthenticator below rejects every other username with a
-#      clear message). The admin signs up with their own password, NativeAuth
-#      self-approves them (allow_self_approval_for), they log in, the post auth
-#      hook promotes them to admin role. Once their UserInfo is in the DB the
+#      clear message). The admin signs up with their own password and our
+#      create_user override flips is_authorized=True directly on the new UserInfo
+#      row (no email, no SMTP, no approval URL). They log in, the post auth hook
+#      promotes them to admin role. Once their UserInfo is in the DB the
 #      bootstrap window closes and signup falls back to the operator's setting.
 #
 #   2. Bootstrap-by-env: operator also sets JUPYTERHUB_ADMIN_PASSWORD. The hub
@@ -280,7 +281,8 @@ if _ADMIN_PROVISIONING_REQUESTED:
 
 
 class BootstrapAdminAuthenticator(StellarsNativeAuthenticator):
-    """During the bootstrap window, only the admin username is allowed to self-sign-up.
+    """During the bootstrap window, only the admin username is allowed to self-sign-up
+    and that signup is auto-authorised on the spot.
 
     Outside the bootstrap window this class is a transparent passthrough to
     StellarsNativeAuthenticator. The window state is captured once at startup so the
@@ -289,6 +291,12 @@ class BootstrapAdminAuthenticator(StellarsNativeAuthenticator):
     the form with NativeAuth's standard "Invalid username" rejection, which is enough
     to prevent the wrong user from completing signup. (For a longer custom message we
     would need to override the SignupHandler in get_handlers.)
+
+    For auto-authorisation we override create_user instead of using NativeAuth's
+    allow_self_approval_for: that path forces ask_email_on_signup=True, matches the
+    regex against the email field (not the username), generates a signed approval URL
+    and tries to send it via SMTP - which the hub container has no server for, so the
+    admin signup ends up pending without any way to confirm it.
     """
 
     def validate_username(self, username):
@@ -297,6 +305,18 @@ class BootstrapAdminAuthenticator(StellarsNativeAuthenticator):
         if _BOOTSTRAP_WINDOW_OPEN and username and username != JUPYTERHUB_ADMIN:
             return False
         return True
+
+    def create_user(self, username, password, **kwargs):
+        user_info = super().create_user(username, password, **kwargs)
+        if (
+            user_info is not None
+            and _BOOTSTRAP_WINDOW_OPEN
+            and JUPYTERHUB_ADMIN
+            and self.normalize_username(username) == self.normalize_username(JUPYTERHUB_ADMIN)
+        ):
+            user_info.is_authorized = True
+            self.db.commit()
+        return user_info
 
 
 async def _admin_post_auth_hook(authenticator, handler, authentication):
@@ -453,22 +473,11 @@ c.JupyterHub.template_paths = [
 ]
 c.NativeAuthenticator.open_signup = False                            # other users still require admin authorization
 c.NativeAuthenticator.enable_signup = bool(JUPYTERHUB_SIGNUP_ENABLED) or _BOOTSTRAP_WINDOW_OPEN  # operator setting, plus the temporary admin-only window on a fresh deployment
-if JUPYTERHUB_ADMIN:
-    c.NativeAuthenticator.allow_self_approval_for = re.escape(JUPYTERHUB_ADMIN)  # only the admin name auto-authorises on signup
-    # NativeAuthenticator requires a >8-char secret_key to sign self-approval tokens.
-    # Persist to /data so it survives restarts; first boot generates and writes it once.
-    _native_auth_secret_path = '/data/native_auth_secret_key'
-    if os.path.exists(_native_auth_secret_path):
-        with open(_native_auth_secret_path) as _f:
-            c.NativeAuthenticator.secret_key = _f.read().strip()
-    else:
-        import secrets
-        _secret = secrets.token_hex(32)
-        os.makedirs('/data', exist_ok=True)
-        with open(_native_auth_secret_path, 'w') as _f:
-            _f.write(_secret)
-        os.chmod(_native_auth_secret_path, 0o600)
-        c.NativeAuthenticator.secret_key = _secret
+# Bootstrap admin auto-authorisation is implemented inside BootstrapAdminAuthenticator.create_user.
+# We deliberately do NOT use NativeAuthenticator.allow_self_approval_for: it forces
+# ask_email_on_signup=True, matches the regex against the email field rather than the
+# username, generates a signed approval URL, and tries to dispatch it via SMTP - none
+# of which fits a hub container without an MTA.
 c.Authenticator.allow_all = True                                     # all authorized users may login
 c.Authenticator.post_auth_hook = _admin_post_auth_hook               # grant admin role at login (replaces the old eager admin_users that auto-created the User and triggered the random-password trap)
 c.JupyterHub.admin_access = True                                     # admins can access user servers
