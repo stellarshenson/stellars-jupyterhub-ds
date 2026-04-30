@@ -19,6 +19,7 @@ import nativeauthenticator      # __file__ for template path resolution
 # stellars_hub core functions - pure logic, no side effects on import
 from stellars_hub import (
     BootstrapAdminAuthenticator,            # NativeAuth subclass with bootstrap-window admin signup
+    StellarsNativeAuthenticator,            # parent class for the inline BootstrapAdminAuthenticator (refactor in progress)
     compute_bootstrap_window_open,          # truth-table predicate for the bootstrap-by-signup window
     get_services_and_roles,                 # builds JupyterHub services list (activity sampler, idle culler)
     get_user_volume_suffixes,               # extracts ['home', 'workspace', 'cache'] from volumes dict
