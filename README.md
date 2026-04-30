@@ -38,12 +38,12 @@ Fastest way to spin up a working deployment - the [stellars-jupyterhub-ds-deploy
 
 ```bash
 pip install copier
-copier copy gh:stellarshenson/stellars-jupyterhub-ds-deployment-template ./my-jupyterhub
+copier copy --trust gh:stellarshenson/stellars-jupyterhub-ds-deployment-template ./my-jupyterhub
 cd my-jupyterhub
 ./start.sh
 ```
 
-Open `https://<your-hostname>/` and complete the admin bootstrap (see [First Admin Bootstrap](#first-admin-bootstrap)).
+`--trust` lets copier run the template's `_tasks` (chmod on the generated `start.sh` / `stop.sh` / `cleanup.sh`); without it copier refuses to execute post-copy commands. Open `https://<your-hostname>/` and complete the admin bootstrap (see [First Admin Bootstrap](#first-admin-bootstrap)).
 
 ### Docker Compose
 1. Download `compose.yml` and `config/jupyterhub_config.py` config file
