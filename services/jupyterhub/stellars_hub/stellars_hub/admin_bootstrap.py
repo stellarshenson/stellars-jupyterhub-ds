@@ -218,6 +218,33 @@ class BootstrapAdminAuthenticator(StellarsNativeAuthenticator):
         config=True,
         help="Username scoped during the bootstrap window (typically JUPYTERHUB_ADMIN).",
     )
+    operator_signup_enabled = Bool(
+        False,
+        config=True,
+        help=(
+            "The operator-facing JUPYTERHUB_SIGNUP_ENABLED setting. Combined with "
+            "the dynamic bootstrap-admin-pending check to drive ``enable_signup`` "
+            "at request time."
+        ),
+    )
+
+    @property
+    def enable_signup(self):
+        """Dynamic - re-evaluated on every access so the Sign Up link and the
+        ``/hub/signup`` form disappear the moment the bootstrap admin row
+        appears in the database, even though the hub process started with the
+        window open. The ``operator_signup_enabled`` trait still wins if it is
+        ``True``. Overrides the inherited NativeAuthenticator ``Bool`` trait;
+        the no-op setter keeps any ``c.NativeAuthenticator.enable_signup = ...``
+        config assignment from raising.
+        """
+        if self.operator_signup_enabled:
+            return True
+        return self._bootstrap_admin_pending()
+
+    @enable_signup.setter
+    def enable_signup(self, value):
+        pass
 
     def _bootstrap_admin_pending(self):
         """True only while the window was open at startup AND the admin row is

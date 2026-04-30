@@ -359,6 +359,24 @@ class BootstrapAdminAuthenticator(StellarsNativeAuthenticator):
             return False
         return self.get_user(JUPYTERHUB_ADMIN) is None
 
+    @property
+    def enable_signup(self):
+        """Dynamic so the Sign Up link and /hub/signup form disappear the moment
+        the bootstrap admin row appears, even though the hub process started
+        with the window open. Operator's JUPYTERHUB_SIGNUP_ENABLED still wins
+        if it is True. Overrides the inherited Bool trait with a property; the
+        no-op setter keeps traitlets' config assignment (`c.NativeAuthenticator.
+        enable_signup = ...`) from raising.
+        """
+        if JUPYTERHUB_SIGNUP_ENABLED:
+            return True
+        return self._bootstrap_admin_pending()
+
+    @enable_signup.setter
+    def enable_signup(self, value):
+        # Computed dynamically; ignore static assignments from config.
+        pass
+
     def validate_username(self, username):
         if not super().validate_username(username):
             return False
@@ -538,7 +556,11 @@ c.JupyterHub.template_paths = [
     f"{os.path.dirname(jupyterhub.__file__)}/templates",             # JupyterHub default templates (fallback)
 ]
 c.NativeAuthenticator.open_signup = False                            # other users still require admin authorization
-c.NativeAuthenticator.enable_signup = bool(JUPYTERHUB_SIGNUP_ENABLED) or _BOOTSTRAP_WINDOW_OPEN  # operator setting, plus the temporary admin-only window on a fresh deployment
+# enable_signup is a dynamic Python property on BootstrapAdminAuthenticator that
+# re-evaluates JUPYTERHUB_SIGNUP_ENABLED + the bootstrap-pending state on every
+# access, so the Sign Up link and /hub/signup form disappear the moment the
+# admin row appears in the DB - no static `c.NativeAuthenticator.enable_signup`
+# assignment here, that would be frozen at config-load time.
 # Bootstrap admin auto-authorisation is implemented inside BootstrapAdminAuthenticator.create_user.
 # We deliberately do NOT use NativeAuthenticator.allow_self_approval_for: it forces
 # ask_email_on_signup=True, matches the regex against the email field rather than the
