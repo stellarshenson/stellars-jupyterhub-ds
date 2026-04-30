@@ -98,6 +98,7 @@ services:
       - JUPYTERHUB_LAB_MAIN_ICON_URI= # JupyterLab main icon (file:// or URL)
       - JUPYTERHUB_LAB_SPLASH_ICON_URI= # JupyterLab splash icon (file:// or URL)
       - COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-jupyterhub} # propagated so user containers carry the same compose project label and volume namespace as the hub
+      # - JUPYTERHUB_ADMIN_PASSWORD= # optional INITIAL admin password; pre-creates admin UserInfo on startup. Once admin changes their password, env is permanently ignored (verified via bcrypt.checkpw). Not listed in settings_dictionary.yml so it stays off the Settings page.
       # - JUPYTERLAB_SYSTEM_NAME= # rebrand stellars-jupyterlab-ds in welcome page, MOTD, toolbar header badge; empty = no rebrand
       # - JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME=1 # uppercase the toolbar header badge (0/1)
       # - JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR= # CSS color for toolbar header badge text; empty = --jp-ui-font-color2

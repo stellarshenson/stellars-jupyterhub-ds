@@ -12,6 +12,7 @@
 #   5. Services & Callbacks    - background services, startup hooks
 
 import os                       # env var reads
+import re                       # regex escaping for self-approval pattern
 
 import jupyterhub               # __version__, __file__ for template paths
 import nativeauthenticator      # __file__ for template path resolution
@@ -167,6 +168,143 @@ user_volume_suffixes = get_user_volume_suffixes(DOCKER_SPAWNER_VOLUMES, COMPOSE_
 # Attach SQLAlchemy event listeners for user rename/delete sync (activity data, NativeAuthenticator)
 register_events()
 
+
+# ── Admin bootstrap ──────────────────────────────────────────────────────────
+# Two operating modes share this code:
+#
+#   1. Bootstrap-by-signup (default): operator sets only JUPYTERHUB_ADMIN. On a
+#      fresh deployment the signup form is silently re-opened just for the admin
+#      name (BootstrapAdminAuthenticator below rejects every other username with a
+#      clear message). The admin signs up with their own password, NativeAuth
+#      self-approves them (allow_self_approval_for), they log in, the post auth
+#      hook promotes them to admin role. Once their UserInfo is in the DB the
+#      bootstrap window closes and signup falls back to the operator's setting.
+#
+#   2. Bootstrap-by-env: operator also sets JUPYTERHUB_ADMIN_PASSWORD. The hub
+#      pre-creates the admin UserInfo with that password on startup. The env value
+#      is INITIAL ONLY: bcrypt.checkpw determines whether the stored hash was
+#      generated from the env value; the moment the admin changes their password
+#      verification fails and env is permanently ignored. JUPYTERHUB_ADMIN_PASSWORD
+#      is intentionally absent from settings_dictionary.yml and so is not exposed
+#      on the Settings page.
+#
+# c.Authenticator.admin_users is intentionally NOT set: setting it makes JupyterHub
+# eagerly insert a User row at startup, which fires stellars_hub.events' after_insert
+# listener and creates a UserInfo with a random xkcd password the operator cannot
+# retrieve. Admin role is granted purely at login time via post_auth_hook below.
+
+JUPYTERHUB_ADMIN_PASSWORD = os.environ.get("JUPYTERHUB_ADMIN_PASSWORD", "").strip()
+
+_DB_PATH = '/data/jupyterhub.sqlite'
+
+
+def _query_admin_state(admin_username, db_path=_DB_PATH):
+    """Return (db_empty, admin_present) at startup.
+
+    db_empty is True iff users_info has zero rows (or doesn't exist yet).
+    admin_present is True iff a UserInfo row for admin_username exists.
+    First-ever boot (no DB file) reports (True, False) so the bootstrap window opens.
+    """
+    import sqlite3
+    if not admin_username or not os.path.exists(db_path):
+        return True, False
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users_info'")
+        if not cur.fetchone():
+            return True, False
+        cur.execute("SELECT COUNT(*) FROM users_info")
+        empty = cur.fetchone()[0] == 0
+        cur.execute("SELECT 1 FROM users_info WHERE username = ?", (admin_username,))
+        present = cur.fetchone() is not None
+        return empty, present
+    finally:
+        conn.close()
+
+
+def _provision_admin_userinfo(admin_username, admin_password, db_path=_DB_PATH):
+    """Bootstrap-by-env: seed admin UserInfo from JUPYTERHUB_ADMIN_PASSWORD.
+
+    Initial-only semantics:
+      - missing UserInfo                        -> INSERT bcrypt(env), is_authorized=1
+      - exists, env still verifies against hash -> no-op (already initial)
+      - exists, env does NOT verify             -> leave alone (admin has changed it)
+    """
+    import sqlite3
+    import bcrypt
+    if not admin_username or not admin_password or not os.path.exists(db_path):
+        return
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users_info'")
+        if not cur.fetchone():
+            return
+        cur.execute("SELECT password FROM users_info WHERE username = ?", (admin_username,))
+        row = cur.fetchone()
+        if row is None:
+            hashed = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt())
+            cur.execute(
+                "INSERT INTO users_info (username, password, is_authorized) VALUES (?, ?, 1)",
+                (admin_username, hashed),
+            )
+            conn.commit()
+            print(f"[Admin Bootstrap] Provisioned '{admin_username}' from JUPYTERHUB_ADMIN_PASSWORD", flush=True)
+            return
+        stored = row[0].encode('utf-8') if isinstance(row[0], str) else row[0]
+        try:
+            still_initial = bcrypt.checkpw(admin_password.encode('utf-8'), stored)
+        except Exception:
+            still_initial = False
+        if not still_initial:
+            print(f"[Admin Bootstrap] '{admin_username}' has changed their password; JUPYTERHUB_ADMIN_PASSWORD ignored", flush=True)
+    finally:
+        conn.close()
+
+
+_DB_EMPTY_AT_STARTUP, _ADMIN_PRESENT_AT_STARTUP = _query_admin_state(JUPYTERHUB_ADMIN)
+_ADMIN_PROVISIONING_REQUESTED = bool(JUPYTERHUB_ADMIN and JUPYTERHUB_ADMIN_PASSWORD)
+
+# Bootstrap window: signup off, no env password, no users yet, no admin yet.
+# In this exact state the upstream silently re-opens signup, scoped to the admin name.
+_BOOTSTRAP_WINDOW_OPEN = (
+    JUPYTERHUB_SIGNUP_ENABLED == 0
+    and not _ADMIN_PROVISIONING_REQUESTED
+    and _DB_EMPTY_AT_STARTUP
+    and not _ADMIN_PRESENT_AT_STARTUP
+)
+
+if _ADMIN_PROVISIONING_REQUESTED:
+    _provision_admin_userinfo(JUPYTERHUB_ADMIN, JUPYTERHUB_ADMIN_PASSWORD)
+
+
+class BootstrapAdminAuthenticator(StellarsNativeAuthenticator):
+    """During the bootstrap window, only the admin username is allowed to self-sign-up.
+
+    Outside the bootstrap window this class is a transparent passthrough to
+    StellarsNativeAuthenticator. The window state is captured once at startup so the
+    class behaves stably for the lifetime of the hub process. NativeAuth's signup
+    handler calls validate_username before create_user; returning False short-circuits
+    the form with NativeAuth's standard "Invalid username" rejection, which is enough
+    to prevent the wrong user from completing signup. (For a longer custom message we
+    would need to override the SignupHandler in get_handlers.)
+    """
+
+    def validate_username(self, username):
+        if not super().validate_username(username):
+            return False
+        if _BOOTSTRAP_WINDOW_OPEN and username and username != JUPYTERHUB_ADMIN:
+            return False
+        return True
+
+
+async def _admin_post_auth_hook(authenticator, handler, authentication):
+    """Promote JUPYTERHUB_ADMIN to admin role on every successful authentication."""
+    if authentication and authentication.get('name') == JUPYTERHUB_ADMIN:
+        authentication['admin'] = True
+    return authentication
+
 # Detect GPU availability: mode 2 runs nvidia-smi in a CUDA container to auto-detect
 # Returns (gpu_enabled: 0|1, nvidia_detected: 0|1)
 gpu_enabled, nvidia_detected = resolve_gpu_mode(JUPYTERHUB_GPU_ENABLED, JUPYTERHUB_NVIDIA_IMAGE)
@@ -307,16 +445,32 @@ c.JupyterHub.cookie_secret_file = "/data/jupyterhub_cookie_secret"  # cookie sig
 c.JupyterHub.db_url = "sqlite:////data/jupyterhub.sqlite"           # user database (persisted in jupyterhub_data volume)
 
 # ── Authentication ──
-c.JupyterHub.authenticator_class = StellarsNativeAuthenticator       # NativeAuthenticator with admin rename sync
+c.JupyterHub.authenticator_class = BootstrapAdminAuthenticator       # bootstrap-window admin-only signup + admin rename sync
 c.JupyterHub.template_paths = [
     "/srv/jupyterhub/templates/",                                    # custom Stellars templates (override priority)
     f"{os.path.dirname(nativeauthenticator.__file__)}/templates/",   # NativeAuthenticator signup/authorize templates
     f"{os.path.dirname(jupyterhub.__file__)}/templates",             # JupyterHub default templates (fallback)
 ]
-c.NativeAuthenticator.open_signup = False                            # require admin authorization for new users
-c.NativeAuthenticator.enable_signup = bool(JUPYTERHUB_SIGNUP_ENABLED)  # self-registration form (0=admin creates users)
+c.NativeAuthenticator.open_signup = False                            # other users still require admin authorization
+c.NativeAuthenticator.enable_signup = bool(JUPYTERHUB_SIGNUP_ENABLED) or _BOOTSTRAP_WINDOW_OPEN  # operator setting, plus the temporary admin-only window on a fresh deployment
+if JUPYTERHUB_ADMIN:
+    c.NativeAuthenticator.allow_self_approval_for = re.escape(JUPYTERHUB_ADMIN)  # only the admin name auto-authorises on signup
+    # NativeAuthenticator requires a >8-char secret_key to sign self-approval tokens.
+    # Persist to /data so it survives restarts; first boot generates and writes it once.
+    _native_auth_secret_path = '/data/native_auth_secret_key'
+    if os.path.exists(_native_auth_secret_path):
+        with open(_native_auth_secret_path) as _f:
+            c.NativeAuthenticator.secret_key = _f.read().strip()
+    else:
+        import secrets
+        _secret = secrets.token_hex(32)
+        os.makedirs('/data', exist_ok=True)
+        with open(_native_auth_secret_path, 'w') as _f:
+            _f.write(_secret)
+        os.chmod(_native_auth_secret_path, 0o600)
+        c.NativeAuthenticator.secret_key = _secret
 c.Authenticator.allow_all = True                                     # all authorized users may login
-c.Authenticator.admin_users = [JUPYTERHUB_ADMIN]                     # admin username list
+c.Authenticator.post_auth_hook = _admin_post_auth_hook               # grant admin role at login (replaces the old eager admin_users that auto-created the User and triggered the random-password trap)
 c.JupyterHub.admin_access = True                                     # admins can access user servers
 
 # ── Extra handlers ──

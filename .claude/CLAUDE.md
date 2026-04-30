@@ -152,11 +152,23 @@ Build stages:
 ## Authentication
 
 **NativeAuthenticator** configuration in `jupyterhub_config.py`:
-- Self-registration enabled (`c.NativeAuthenticator.enable_signup = True`)
-- Open signup disabled (`c.NativeAuthenticator.open_signup = False`)
+- Signup form gated by `JUPYTERHUB_SIGNUP_ENABLED` (operator setting), with a one-shot bootstrap window that re-opens signup when the database is empty and no admin password env is provided
+- Open signup disabled (`c.NativeAuthenticator.open_signup = False`) - other users still need admin authorization
 - All registered users allowed to login (`c.Authenticator.allow_all = True`)
-- Admin users defined by `JUPYTERHUB_ADMIN` environment variable
+- Admin role is granted at login via `post_auth_hook` matching `JUPYTERHUB_ADMIN` (no `c.Authenticator.admin_users` declaration; that would eagerly create the admin User row at startup and trigger random-password auto-creation in `events.py`)
+- `c.NativeAuthenticator.allow_self_approval_for = re.escape(JUPYTERHUB_ADMIN)` so the admin's signup self-authorises
+- `c.NativeAuthenticator.secret_key` persisted to `/data/native_auth_secret_key` on first boot (NativeAuthenticator requires a >8-char key when self-approval is on)
 - Admin panel access: `https://localhost/jupyterhub/hub/home`
+
+### First Admin Bootstrap
+
+Two mutually-exclusive modes for creating the first admin user:
+
+**Bootstrap-by-signup (default, no env password)**: a `BootstrapAdminAuthenticator` subclass overrides `validate_username` to reject every username except `JUPYTERHUB_ADMIN` while the bootstrap window is open. Window is open iff signup is off (`JUPYTERHUB_SIGNUP_ENABLED=0`), no env password is set, the `users_info` table is empty, and no admin row exists. Admin signs up at `/hub/signup` with their chosen password; NativeAuth self-approves via `allow_self_approval_for`; first login fires `post_auth_hook` which sets `authentication['admin']=True`. Once the admin row appears the window closes permanently and `enable_signup` falls back to the operator's `JUPYTERHUB_SIGNUP_ENABLED` setting.
+
+**Bootstrap-by-env (`JUPYTERHUB_ADMIN_PASSWORD` set)**: `_provision_admin_userinfo()` in `config/jupyterhub_config.py` seeds the admin UserInfo with `bcrypt(JUPYTERHUB_ADMIN_PASSWORD)` and `is_authorized=1` on startup. Initial-only semantics enforced via `bcrypt.checkpw`: if the env value still verifies against the stored hash, do nothing on subsequent boots; if verification fails (admin changed password through the UI), env is permanently ignored. `JUPYTERHUB_ADMIN_PASSWORD` is intentionally absent from `services/jupyterhub/conf/settings_dictionary.yml` so it is not exposed on the Settings page.
+
+**Recovery**: to reset a lost admin password in either mode, manually `DELETE FROM users_info WHERE username = '<admin>'` against `/data/jupyterhub.sqlite` and restart - bootstrap-by-signup will re-open the window if the DB is otherwise empty, or bootstrap-by-env will re-provision from the env var.
 
 ## Networking and Volumes
 
