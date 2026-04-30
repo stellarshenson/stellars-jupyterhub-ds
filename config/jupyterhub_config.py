@@ -311,7 +311,7 @@ class BootstrapAdminSignUpHandler(_NativeSignUpHandler):
         )
         if (
             user is None
-            and _BOOTSTRAP_WINDOW_OPEN
+            and self.authenticator._bootstrap_admin_pending()
             and assume_user_is_human
             and not username_already_taken
             and confirmation_matches
@@ -345,10 +345,20 @@ class BootstrapAdminAuthenticator(StellarsNativeAuthenticator):
     generic spaces/commas/password message.
     """
 
+    def _bootstrap_admin_pending(self):
+        """The bootstrap window only takes effect while it was open at startup
+        AND the admin row has not yet been inserted in the DB. Checked at
+        request time so admin user creation works as soon as the admin signs up
+        (rather than requiring a hub restart to recapture the flag).
+        """
+        if not _BOOTSTRAP_WINDOW_OPEN or not JUPYTERHUB_ADMIN:
+            return False
+        return self.get_user(JUPYTERHUB_ADMIN) is None
+
     def validate_username(self, username):
         if not super().validate_username(username):
             return False
-        if _BOOTSTRAP_WINDOW_OPEN and username and username != JUPYTERHUB_ADMIN:
+        if self._bootstrap_admin_pending() and username and username != JUPYTERHUB_ADMIN:
             return False
         return True
 
@@ -359,11 +369,11 @@ class BootstrapAdminAuthenticator(StellarsNativeAuthenticator):
         ]
 
     def create_user(self, username, password, **kwargs):
+        pending = self._bootstrap_admin_pending()
         user_info = super().create_user(username, password, **kwargs)
         if (
             user_info is not None
-            and _BOOTSTRAP_WINDOW_OPEN
-            and JUPYTERHUB_ADMIN
+            and pending
             and self.normalize_username(username) == self.normalize_username(JUPYTERHUB_ADMIN)
         ):
             user_info.is_authorized = True
