@@ -1,3 +1,0 @@
-[submodule "extra/deployment-template"]
-	path = extra/deployment-template
-	url = https://github.com/stellarshenson/stellars-jupyterhub-ds-deployment-template.git
