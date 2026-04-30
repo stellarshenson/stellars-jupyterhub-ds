@@ -58,6 +58,10 @@ Docker Spawner:
     description: Docker network for containers
     default: jupyterhub_network
 
+  - name: JUPYTERHUB_USER_CONTAINER_PREFIX
+    description: Prefix for spawned user containers and per-user volumes (e.g. <prefix>-<username>)
+    default: jupyterlab
+
 GPU:
   - name: JUPYTERHUB_GPU_ENABLED
     description: GPU support (0=disabled, 1=enabled, 2=auto-detect)
@@ -145,12 +149,16 @@ User Environment:
 
 Branding:
   - name: JUPYTERLAB_SYSTEM_NAME
-    description: System / environment name displayed in welcome files and branding
+    description: Rebrand stellars-jupyterlab-ds mentions in welcome page, MOTD and toolbar header badge; empty = no rebrand
     default: ""
 
-  - name: JUPYTERLAB_SYSTEM_NAME_CAPITALIZE
-    description: Capitalize the system name in the JupyterLab toolbar (0/1)
+  - name: JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME
+    description: Uppercase the toolbar header badge (0/1)
     default: "1"
+
+  - name: JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR
+    description: CSS color for the toolbar header badge text; empty = --jp-ui-font-color2
+    default: ""
 
   - name: JUPYTERHUB_LOGO_URI
     description: Custom logo URI (file:// or URL)

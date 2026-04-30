@@ -449,6 +449,24 @@ services:
 
 See [docs/custom-branding.md](docs/custom-branding.md) for technical details on favicon CHP proxy routing and icon resolution.
 
+Three additional variables are forwarded into every spawned JupyterLab container so the user environment can rebrand itself in welcome page, MOTD and toolbar header badge:
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `JUPYTERLAB_SYSTEM_NAME` | Rebrand `stellars-jupyterlab-ds` mentions in welcome page, MOTD and toolbar header badge; empty = no rebrand | `""` |
+| `JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME` | Uppercase the toolbar header badge (`0`/`1`) | `1` |
+| `JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR` | CSS color for the toolbar header badge text; empty = `--jp-ui-font-color2` | `""` |
+
+#### User Container Naming
+
+Spawned user containers and their per-user volumes use a configurable prefix - `<prefix>-<username>` for the container, `<prefix>-<username>_<suffix>` for volumes (`home`, `workspace`, `cache`).
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `JUPYTERHUB_USER_CONTAINER_PREFIX` | Prefix for spawned user containers and per-user volume names | `jupyterlab` |
+
+Changing this after users have spawned will leave their existing volumes orphaned under the old prefix - admins should reset volumes before switching prefixes.
+
 #### Admin Startup Scripts
 
 Run custom shell scripts in every user container at launch. Place scripts in a shared volume directory accessible to all containers. Scripts execute sequentially during container startup, before JupyterLab starts.
