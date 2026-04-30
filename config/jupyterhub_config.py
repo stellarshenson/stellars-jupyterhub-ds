@@ -108,7 +108,7 @@ JUPYTERHUB_TIMEZONE = os.environ.get("JUPYTERHUB_TIMEZONE", "Etc/UTC")          
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")                                     # URL prefix (e.g. /jupyterhub), None or / for root
 JUPYTERHUB_NETWORK_NAME = os.environ.get("JUPYTERHUB_NETWORK_NAME", "jupyterhub_network")       # Docker network for hub + spawned containers
 JUPYTERHUB_NOTEBOOK_IMAGE = os.environ.get("JUPYTERHUB_NOTEBOOK_IMAGE", "stellars/stellars-jupyterlab-ds:latest")  # JupyterLab image to spawn
-JUPYTERHUB_USER_CONTAINER_PREFIX = os.environ.get("JUPYTERHUB_USER_CONTAINER_PREFIX", "jupyterlab")  # prefix for spawned user containers and per-user volume names
+COMPOSE_PROJECT_NAME = os.environ.get("COMPOSE_PROJECT_NAME", "jupyterhub")                    # passed through by compose - drives docker compose project label and volume namespace; defaults to "jupyterhub" when running outside compose
 JUPYTERHUB_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_NVIDIA_IMAGE", "nvidia/cuda:13.0.2-base-ubuntu24.04")  # CUDA image for GPU auto-detection
 JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")                                          # admin username (auto-authorized on first signup)
 
@@ -139,15 +139,15 @@ else:
     JUPYTERHUB_BASE_URL_PREFIX = JUPYTERHUB_BASE_URL
 
 # Per-user Docker volumes: {volume_name_template: mount_point}
-# <prefix>_{username}_* volumes are user-resettable via Manage Volumes UI.
-# Underscore separator matches the compose-style container name template so the
-# whole user namespace ({prefix}_{user}, {prefix}_{user}_home, etc.) reads as one
-# unit. jupyterhub_shared is read-write shared storage (can be CIFS via override).
+# Volumes are namespaced by the compose project so distinct deployments do not
+# collide on per-user data. Container names stay literal (jupyterlab-{username})
+# - the compose project label provides the grouping in `docker compose ls`.
+# <project>_shared is read-write shared storage (can be CIFS via override).
 DOCKER_SPAWNER_VOLUMES = {
-    f"{JUPYTERHUB_USER_CONTAINER_PREFIX}_{{username}}_home": "/home",
-    f"{JUPYTERHUB_USER_CONTAINER_PREFIX}_{{username}}_workspace": DOCKER_NOTEBOOK_DIR,
-    f"{JUPYTERHUB_USER_CONTAINER_PREFIX}_{{username}}_cache": "/home/lab/.cache",
-    "jupyterhub_shared": "/mnt/shared",
+    f"{COMPOSE_PROJECT_NAME}_jupyterlab_{{username}}_home": "/home",
+    f"{COMPOSE_PROJECT_NAME}_jupyterlab_{{username}}_workspace": DOCKER_NOTEBOOK_DIR,
+    f"{COMPOSE_PROJECT_NAME}_jupyterlab_{{username}}_cache": "/home/lab/.cache",
+    f"{COMPOSE_PROJECT_NAME}_shared": "/mnt/shared",
 }
 
 # Human-readable descriptions shown in the volume reset UI
@@ -158,7 +158,7 @@ VOLUME_DESCRIPTIONS = {
 }
 
 # Derived: extract user-resettable volume suffixes ['home', 'workspace', 'cache'] from volumes dict
-user_volume_suffixes = get_user_volume_suffixes(DOCKER_SPAWNER_VOLUMES, JUPYTERHUB_USER_CONTAINER_PREFIX)
+user_volume_suffixes = get_user_volume_suffixes(DOCKER_SPAWNER_VOLUMES, COMPOSE_PROJECT_NAME)
 
 
 # ── Section 3: Logic Calls ───────────────────────────────────────────────────
@@ -212,7 +212,6 @@ c.DockerSpawner.environment = {
     'JUPYTERLAB_SYSTEM_NAME': JUPYTERLAB_SYSTEM_NAME,                                    # rebrand stellars-jupyterlab-ds in welcome page, MOTD, toolbar header badge
     'JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME': JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME, # uppercase toolbar header badge (0/1)
     'JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR': JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR,           # CSS color for toolbar header badge text
-    'JUPYTERHUB_USER_CONTAINER_PREFIX': JUPYTERHUB_USER_CONTAINER_PREFIX,                 # container/volume prefix for self-aware user containers
 }
 
 # Reserved env var names groups cannot override - every key we inject globally
@@ -231,7 +230,7 @@ c.DockerSpawner.use_internal_ip = True                       # use container IP 
 c.DockerSpawner.network_name = JUPYTERHUB_NETWORK_NAME       # Docker network connecting hub and user containers
 c.JupyterHub.default_url = JUPYTERHUB_BASE_URL_PREFIX + '/hub/home'  # redirect after login
 # c.DockerSpawner.notebook_dir = DOCKER_NOTEBOOK_DIR         # redundant - stellars-jupyterlab-ds image defaults to /home/lab/workspace
-c.DockerSpawner.name_template = f"{JUPYTERHUB_USER_CONTAINER_PREFIX}_{{username}}"  # compose-style <project>_<service> so docker compose ls groups them
+c.DockerSpawner.name_template = "jupyterlab-{username}"  # literal - compose project label (set in pre_spawn_hook) provides the grouping namespace
 c.DockerSpawner.volumes = DOCKER_SPAWNER_VOLUMES             # per-user persistent volumes + shared storage
 
 # ── Branding: logo ──
@@ -285,7 +284,7 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     gpu_available=bool(gpu_enabled),                         # hardware present - required for per-group GPU grant
     reserved_env_var_names=RESERVED_ENV_VAR_NAMES,           # names groups cannot override
     reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,     # prefixes reserved for JupyterHub/platform
-    user_container_prefix=JUPYTERHUB_USER_CONTAINER_PREFIX,  # compose-project label so docker compose ls groups user containers
+    compose_project=COMPOSE_PROJECT_NAME,                    # docker compose project label so user containers group with the hub in `docker compose ls`
 )
 
 # ── Spawner args ──

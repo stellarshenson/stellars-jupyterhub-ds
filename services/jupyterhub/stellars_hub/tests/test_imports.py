@@ -28,9 +28,9 @@ def test_top_level_imports():
 def test_volumes():
     from stellars_hub.volumes import get_user_volume_suffixes
     volumes = {
-        "jupyterlab_{username}_home": "/home",
-        "jupyterlab_{username}_workspace": "/home/lab/workspace",
-        "jupyterlab_{username}_cache": "/home/lab/.cache",
+        "jupyterhub_jupyterlab_{username}_home": "/home",
+        "jupyterhub_jupyterlab_{username}_workspace": "/home/lab/workspace",
+        "jupyterhub_jupyterlab_{username}_cache": "/home/lab/.cache",
         "jupyterhub_shared": "/mnt/shared",
     }
     suffixes = get_user_volume_suffixes(volumes)
@@ -166,7 +166,7 @@ def test_hooks():
         gpu_available=False,
         reserved_env_var_names=frozenset({'JUPYTERLAB_TIMEZONE'}),
         reserved_env_var_prefixes=('JUPYTERHUB_',),
-        user_container_prefix='jupyterlab',
+        compose_project='actone-ds',
     )
     assert callable(hook)
 
@@ -185,18 +185,18 @@ def test_hooks():
     )
     asyncio.run(hook(spawner))
     labels = spawner.extra_create_kwargs.get('labels') or {}
-    assert labels.get('com.docker.compose.project') == 'jupyterlab'
-    assert labels.get('com.docker.compose.service') == 'alice'
+    assert labels.get('com.docker.compose.project') == 'actone-ds'
+    assert labels.get('com.docker.compose.service') == 'jupyterlab_alice'
     assert labels.get('com.docker.compose.container-number') == '1'
     assert labels.get('com.docker.compose.oneoff') == 'False'
 
-    # When the prefix is empty the hook must NOT inject compose labels.
-    hook_no_prefix = make_pre_spawn_hook(
+    # When compose_project is empty the hook must NOT inject compose labels.
+    hook_no_project = make_pre_spawn_hook(
         branding,
         gpu_available=False,
         reserved_env_var_names=frozenset(),
         reserved_env_var_prefixes=(),
-        user_container_prefix='',
+        compose_project='',
     )
     spawner2 = types.SimpleNamespace(
         user=types.SimpleNamespace(name='bob', groups=[]),
@@ -207,7 +207,7 @@ def test_hooks():
         mem_limit=None,
         log=logging.getLogger('test_hooks'),
     )
-    asyncio.run(hook_no_prefix(spawner2))
+    asyncio.run(hook_no_project(spawner2))
     assert 'labels' not in spawner2.extra_create_kwargs
 
 

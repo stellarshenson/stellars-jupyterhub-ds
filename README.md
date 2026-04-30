@@ -457,15 +457,20 @@ Three additional variables are forwarded into every spawned JupyterLab container
 | `JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME` | Uppercase the toolbar header badge (`0`/`1`) | `1` |
 | `JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR` | CSS color for the toolbar header badge text; empty = `--jp-ui-font-color2` | `""` |
 
-#### User Container Naming
+#### Compose Project Grouping
 
-Spawned user containers and their per-user volumes use a configurable prefix - `<prefix>-<username>` for the container, `<prefix>-<username>_<suffix>` for volumes (`home`, `workspace`, `cache`).
+Spawned user containers are tagged with the same Docker Compose project label as the hub, so `docker compose ls` shows hub + all user containers as one project, and `docker compose -p <project> ps` lists every spawned user. The project name is set with the standard `COMPOSE_PROJECT_NAME` env var (which compose itself reads from `.env` to derive its project) - it is propagated into the hub via `compose.yml` and used to name per-user volumes.
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `JUPYTERHUB_USER_CONTAINER_PREFIX` | Prefix for spawned user containers and per-user volume names | `jupyterlab` |
+| `COMPOSE_PROJECT_NAME` | Compose project label and per-user volume namespace | `jupyterhub` |
 
-Changing this after users have spawned will leave their existing volumes orphaned under the old prefix - admins should reset volumes before switching prefixes.
+Naming applied at spawn time:
+- Container: `jupyterlab-<username>` (literal, unchanged)
+- Volumes: `<project>_jupyterlab_<username>_{home,workspace,cache}` - project name prefixes the volume so distinct deployments do not share user data
+- Compose labels: `com.docker.compose.project=<project>`, `com.docker.compose.service=jupyterlab_<username>`
+
+Changing the project name after users have spawned leaves their existing volumes orphaned under the old name. Migrate per-user data with `docker run --rm -v <old>:/from -v <new>:/to alpine cp -a /from/. /to/` before users restart their servers.
 
 #### Admin Startup Scripts
 
