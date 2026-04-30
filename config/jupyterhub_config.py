@@ -320,10 +320,9 @@ class BootstrapAdminSignUpHandler(_NativeSignUpHandler):
             if submitted and submitted != JUPYTERHUB_ADMIN:
                 alert = "alert-warning"
                 message = (
-                    f"Only the admin user '{JUPYTERHUB_ADMIN}' can sign up during "
-                    "the initial bootstrap window. Self-registration will be "
-                    "re-enabled once the admin completes signup (or the operator "
-                    "sets JUPYTERHUB_SIGNUP_ENABLED=1)."
+                    "Only the admin user can sign up during the initial "
+                    "bootstrap window. Self-registration will be re-enabled "
+                    "once the admin completes signup."
                 )
         return alert, message
 
