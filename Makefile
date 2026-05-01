@@ -4,7 +4,7 @@
 # GLOBALS                                                                       #
 #################################################################################
 .DEFAULT_GOAL := help
-.PHONY: help build rebuild push start stop clean increment_version maybe_increment_version tag logs
+.PHONY: help build rebuild rebuild_no_version_increment push start stop clean increment_version maybe_increment_version tag logs
 
 # Include project configuration
 include project.env
@@ -69,6 +69,10 @@ rebuild: maybe_increment_version
 		--tag stellars/stellars-jupyterhub-ds:latest \
 		-f services/jupyterhub/Dockerfile.jupyterhub \
 		.
+
+## rebuild without bumping the patch version (alias: make rebuild BUILD_OPTS='--no-version-increment')
+rebuild_no_version_increment:
+	@$(MAKE) rebuild BUILD_OPTS='--no-version-increment $(BUILD_OPTS)'
 
 ## pull docker image from dockerhub
 pull:

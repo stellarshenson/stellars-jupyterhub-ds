@@ -1,5 +1,96 @@
 {% extends "page.html" %}
 {% block main %}
+  <style id="stellars-group-editor-styles">
+    .stellars-chip-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      padding: 8px;
+      border: 1px solid #ced4da;
+      border-radius: 6px;
+      min-height: 44px;
+      background: #fff;
+      position: relative;
+    }
+    .stellars-chip-wrap:focus-within {
+      border-color: #2196f3;
+      box-shadow: 0 0 0 0.2rem rgba(33,150,243,0.15);
+    }
+    .stellars-chips { display: contents; }
+    .stellars-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 4px 3px 10px;
+      background: #e3f2fd;
+      border: 1px solid #90caf9;
+      border-radius: 999px;
+      font-size: 13px;
+      white-space: nowrap;
+      line-height: 1.4;
+    }
+    .stellars-chip-remove {
+      cursor: pointer;
+      color: #555;
+      margin-left: 6px;
+      padding: 0 6px;
+      font-weight: bold;
+      line-height: 1;
+      border-radius: 999px;
+      user-select: none;
+    }
+    .stellars-chip-remove:hover { color: #fff; background: #c62828; }
+    .stellars-chip-input {
+      flex: 1 1 120px;
+      min-width: 80px;
+      border: 0;
+      outline: 0;
+      font-size: 14px;
+      padding: 4px 6px;
+      background: transparent;
+    }
+    .stellars-chip-dropdown {
+      position: absolute;
+      top: calc(100% + 2px);
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 1050;
+      display: none;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+    }
+    .stellars-chip-dropdown.is-open { display: block; }
+    .stellars-chip-suggest {
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .stellars-chip-suggest:hover,
+    .stellars-chip-suggest[aria-selected="true"] {
+      background: #e3f2fd;
+    }
+    .stellars-chip-empty {
+      padding: 6px 12px;
+      color: #999;
+      font-size: 13px;
+      font-style: italic;
+    }
+    body.stellars-group-editor-active .users-container {
+      display: none !important;
+    }
+    .stellars-chip-error {
+      margin-top: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      display: none;
+    }
+    .stellars-chip-error.is-visible { display: block; }
+    #stellars-chip-editor { margin-bottom: 12px; }
+  </style>
   <div id="react-admin-hook">
     <script id="jupyterhub-admin-config">
       window.api_page_limit = parseInt("{{ api_page_limit|safe }}")
@@ -148,42 +239,29 @@
         });
     }
 
-    // Track committed group-membership snapshot on the /group-edit page.
-    // JupyterHub's own Apply logic compares against React Router location state
-    // which is frozen at navigation time and never refreshed after a successful
-    // Apply; that causes subsequent toggles to be computed as "no change" and no
-    // API call fires. We detect the user's intended change by diffing the DOM's
-    // yellow ("selected") tiles against our own snapshot, so the confirmation
-    // modal stays correct regardless.
-    const groupEditState = { groupName: null, snapshot: null };
+    // ───────────────────────────────────────────────────────────────────
+    // Group editor: chip-input replacement for the stock React tile UI.
+    //
+    // Stock JupyterHub renders a flat tile grid at /admin/groups/<name>
+    // with click-to-toggle and an Apply button. That UI doesn't scale,
+    // doesn't show "intent" before Apply, and forces one-at-a-time
+    // toggling. We hide the tile grid (.users-container, via a body
+    // class) and inject our own chip-input above it: type a username,
+    // autocomplete suggests from the live user list, Tab to accept,
+    // click × to remove. Apply diffs the chip set against the seeded
+    // baseline and fires bulk POST/DELETE against the stock JupyterHub
+    // group-users endpoints, then triggers the existing post-Apply
+    // confirmation modal.
+    //
+    // We can't inject into the React tree, so we sit beside it and
+    // hijack the Apply button's click via a capture-phase preventDefault.
+    // ───────────────────────────────────────────────────────────────────
 
     function getEditingGroupName() {
         const h1 = document.querySelector('h1');
         if (!h1) return null;
         const m = h1.textContent.match(/^\s*Editing Group\s+(.+?)\s*$/);
         return m ? m[1] : null;
-    }
-
-    function readSelectedUsers() {
-        return new Set(Array.from(
-            document.querySelectorAll('.users-container .item.selected')
-        ).map(function(el){ return el.textContent.trim(); }).filter(Boolean));
-    }
-
-    function refreshGroupEditSnapshot() {
-        const name = getEditingGroupName();
-        if (name !== groupEditState.groupName) {
-            groupEditState.groupName = name;
-            groupEditState.snapshot = null;
-            if (name) {
-                // Defer to next frame so React has committed the tile DOM.
-                requestAnimationFrame(function() {
-                    if (getEditingGroupName() === name && groupEditState.snapshot === null) {
-                        groupEditState.snapshot = readSelectedUsers();
-                    }
-                });
-            }
-        }
     }
 
     function showGroupChangesModal(groupName, added, removed) {
@@ -199,33 +277,314 @@
         new bootstrap.Modal(document.getElementById('group-changes-modal')).show();
     }
 
-    // Re-evaluate the snapshot whenever the admin SPA route changes (entering
-    // or leaving /group-edit). Observing the admin root is enough; this runs
-    // cheaply on each React re-render.
-    const adminRoot = document.getElementById('react-admin-hook');
-    if (adminRoot) {
-        new MutationObserver(refreshGroupEditSnapshot)
-            .observe(adminRoot, { childList: true, subtree: true });
+    const editor = {
+        groupName: null,
+        chipState: new Set(),
+        baselineState: new Set(),
+        userCorpus: [],
+        suggestionsCache: [],
+        highlightedIdx: -1,
+        wrapEl: null,
+        inputEl: null,
+        chipsEl: null,
+        dropdownEl: null,
+        errorEl: null,
+    };
+
+    async function fetchUserCorpus() {
+        const resp = await fetch(baseUrl + 'api/users?offset=0&limit=500', {
+            credentials: 'same-origin',
+            headers: { 'Accept': 'application/json' },
+        });
+        if (!resp.ok) throw new Error('users fetch failed: HTTP ' + resp.status);
+        const data = await resp.json();
+        return Array.isArray(data) ? data.map(function(u){ return u.name; }).filter(Boolean).sort() : [];
     }
 
-    // Delegated click on the Apply button in the group-edit view.
+    async function fetchGroupMembers(name) {
+        const resp = await fetch(baseUrl + 'api/groups/' + encodeURIComponent(name), {
+            credentials: 'same-origin',
+            headers: { 'Accept': 'application/json' },
+        });
+        if (!resp.ok) throw new Error('group fetch failed: HTTP ' + resp.status);
+        const data = await resp.json();
+        return (data && Array.isArray(data.users)) ? data.users.slice() : [];
+    }
+
+    function buildChipUI(anchor) {
+        const wrap = document.createElement('div');
+        wrap.id = 'stellars-chip-editor';
+        wrap.innerHTML =
+            '<label class="form-label small text-muted mb-1">' +
+              'Members <span class="text-muted">(type to add, click × to remove, Tab to accept)</span>' +
+            '</label>' +
+            '<div class="stellars-chip-wrap" id="stellars-chip-wrap">' +
+              '<span class="stellars-chips" id="stellars-chips"></span>' +
+              '<input type="text" class="stellars-chip-input" id="stellars-chip-input"' +
+                    ' autocomplete="off" placeholder="Add user…" aria-label="Add user to group"' +
+                    ' aria-controls="stellars-chip-dropdown">' +
+              '<div class="stellars-chip-dropdown" id="stellars-chip-dropdown" role="listbox"></div>' +
+            '</div>' +
+            '<div class="alert alert-danger stellars-chip-error" id="stellars-chip-error" role="alert"></div>';
+        anchor.parentNode.insertBefore(wrap, anchor);
+
+        editor.wrapEl = wrap;
+        editor.inputEl = wrap.querySelector('#stellars-chip-input');
+        editor.chipsEl = wrap.querySelector('#stellars-chips');
+        editor.dropdownEl = wrap.querySelector('#stellars-chip-dropdown');
+        editor.errorEl = wrap.querySelector('#stellars-chip-error');
+
+        editor.inputEl.addEventListener('input', onInput);
+        editor.inputEl.addEventListener('keydown', onInputKeydown);
+        editor.inputEl.addEventListener('blur', function() { setTimeout(closeDropdown, 150); });
+        editor.dropdownEl.addEventListener('mousedown', onDropdownMousedown);
+        editor.chipsEl.addEventListener('click', onChipsClick);
+        // Clicking anywhere in the wrap (but not the input) focuses the input
+        wrap.querySelector('.stellars-chip-wrap').addEventListener('click', function(e) {
+            if (e.target === e.currentTarget || e.target === editor.chipsEl) {
+                editor.inputEl.focus();
+            }
+        });
+    }
+
+    function renderChips() {
+        if (!editor.chipsEl) return;
+        const sorted = Array.from(editor.chipState).sort();
+        editor.chipsEl.innerHTML = sorted.map(function(u) {
+            const safe = escapeHtml(u);
+            return '<span class="stellars-chip" data-username="' + safe + '">' +
+                     '<span class="stellars-chip-name">' + safe + '</span>' +
+                     '<span class="stellars-chip-remove" data-username="' + safe +
+                       '" role="button" aria-label="Remove ' + safe + '" tabindex="0">×</span>' +
+                   '</span>';
+        }).join('');
+    }
+
+    function onChipsClick(e) {
+        const x = e.target.closest && e.target.closest('.stellars-chip-remove');
+        if (!x) return;
+        const u = x.getAttribute('data-username');
+        if (!u) return;
+        editor.chipState.delete(u);
+        renderChips();
+        if (editor.inputEl) editor.inputEl.focus();
+    }
+
+    function onInput() {
+        const q = (editor.inputEl.value || '').trim().toLowerCase();
+        if (!q) { closeDropdown(); return; }
+        const matches = editor.userCorpus
+            .filter(function(u){ return !editor.chipState.has(u) && u.toLowerCase().indexOf(q) === 0; })
+            .slice(0, 50);
+        editor.suggestionsCache = matches;
+        editor.highlightedIdx = matches.length ? 0 : -1;
+        renderDropdown();
+    }
+
+    function renderDropdown() {
+        if (!editor.dropdownEl) return;
+        const matches = editor.suggestionsCache;
+        if (!matches.length) {
+            editor.dropdownEl.innerHTML = '<div class="stellars-chip-empty">No matching user</div>';
+        } else {
+            editor.dropdownEl.innerHTML = matches.map(function(u, i) {
+                const safe = escapeHtml(u);
+                return '<div class="stellars-chip-suggest" role="option" data-username="' + safe +
+                       '" aria-selected="' + (i === editor.highlightedIdx) + '">' + safe + '</div>';
+            }).join('');
+        }
+        editor.dropdownEl.classList.add('is-open');
+    }
+
+    function closeDropdown() {
+        if (editor.dropdownEl) editor.dropdownEl.classList.remove('is-open');
+        editor.suggestionsCache = [];
+        editor.highlightedIdx = -1;
+    }
+
+    function onInputKeydown(e) {
+        if (e.key === 'Tab' || e.key === 'Enter') {
+            if (editor.suggestionsCache.length && editor.highlightedIdx >= 0) {
+                e.preventDefault();
+                acceptSuggestion(editor.suggestionsCache[editor.highlightedIdx]);
+            } else if (e.key === 'Enter') {
+                // never let Enter submit a stale form when there's nothing to accept
+                e.preventDefault();
+            }
+        } else if (e.key === 'ArrowDown') {
+            if (editor.suggestionsCache.length) {
+                e.preventDefault();
+                editor.highlightedIdx = (editor.highlightedIdx + 1) % editor.suggestionsCache.length;
+                renderDropdown();
+            }
+        } else if (e.key === 'ArrowUp') {
+            if (editor.suggestionsCache.length) {
+                e.preventDefault();
+                editor.highlightedIdx = (editor.highlightedIdx - 1 + editor.suggestionsCache.length) %
+                                        editor.suggestionsCache.length;
+                renderDropdown();
+            }
+        } else if (e.key === 'Escape') {
+            closeDropdown();
+        } else if (e.key === 'Backspace' && !editor.inputEl.value) {
+            const sorted = Array.from(editor.chipState).sort();
+            const last = sorted[sorted.length - 1];
+            if (last) {
+                editor.chipState.delete(last);
+                renderChips();
+            }
+        }
+    }
+
+    function onDropdownMousedown(e) {
+        const item = e.target.closest && e.target.closest('.stellars-chip-suggest');
+        if (!item) return;
+        e.preventDefault();
+        const u = item.getAttribute('data-username');
+        if (u) acceptSuggestion(u);
+    }
+
+    function acceptSuggestion(u) {
+        editor.chipState.add(u);
+        editor.inputEl.value = '';
+        closeDropdown();
+        renderChips();
+        editor.inputEl.focus();
+    }
+
+    function showChipError(msg) {
+        if (!editor.errorEl) return;
+        editor.errorEl.textContent = msg || 'Failed to edit group';
+        editor.errorEl.classList.add('is-visible');
+    }
+
+    function clearChipError() {
+        if (!editor.errorEl) return;
+        editor.errorEl.classList.remove('is-visible');
+        editor.errorEl.textContent = '';
+    }
+
+    async function applyDiff() {
+        clearChipError();
+        const groupName = editor.groupName;
+        if (!groupName) return;
+        const added = Array.from(editor.chipState).filter(function(u){ return !editor.baselineState.has(u); }).sort();
+        const removed = Array.from(editor.baselineState).filter(function(u){ return !editor.chipState.has(u); }).sort();
+        if (added.length === 0 && removed.length === 0) return;
+        const url = baseUrl + 'api/groups/' + encodeURIComponent(groupName) + '/users';
+        try {
+            if (added.length) {
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-XSRFToken': getCookie('_xsrf'),
+                    },
+                    body: JSON.stringify({ users: added }),
+                });
+                if (!resp.ok) {
+                    let detail = 'HTTP ' + resp.status;
+                    try { const j = await resp.json(); if (j && j.message) detail = j.message; } catch (_) {}
+                    throw new Error('Add failed: ' + detail);
+                }
+            }
+            if (removed.length) {
+                const resp = await fetch(url, {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-XSRFToken': getCookie('_xsrf'),
+                    },
+                    body: JSON.stringify({ users: removed }),
+                });
+                if (!resp.ok) {
+                    let detail = 'HTTP ' + resp.status;
+                    try { const j = await resp.json(); if (j && j.message) detail = j.message; } catch (_) {}
+                    throw new Error('Remove failed: ' + detail);
+                }
+            }
+            editor.baselineState = new Set(editor.chipState);
+            showGroupChangesModal(groupName, added, removed);
+        } catch (err) {
+            showChipError('Failed to edit group: ' + (err && err.message ? err.message : String(err)));
+        }
+    }
+
+    function teardownEditor() {
+        if (editor.wrapEl && editor.wrapEl.parentNode) {
+            editor.wrapEl.parentNode.removeChild(editor.wrapEl);
+        }
+        document.body.classList.remove('stellars-group-editor-active');
+        editor.wrapEl = editor.inputEl = editor.chipsEl = editor.dropdownEl = editor.errorEl = null;
+        editor.groupName = null;
+        editor.chipState = new Set();
+        editor.baselineState = new Set();
+        editor.suggestionsCache = [];
+        editor.highlightedIdx = -1;
+    }
+
+    async function bootstrapGroupEditor() {
+        const groupName = getEditingGroupName();
+        if (!groupName) {
+            if (editor.wrapEl) teardownEditor();
+            return;
+        }
+        if (groupName === editor.groupName && editor.wrapEl && document.body.contains(editor.wrapEl)) {
+            // Idempotent: already bootstrapped for this group, React just re-rendered around us
+            return;
+        }
+        const anchor = document.querySelector('.users-container');
+        if (!anchor || !anchor.parentNode) {
+            // React not yet rendered the tile container; observer will fire again
+            return;
+        }
+        // Bootstrap fresh: tear down any leftover from a previous group
+        if (editor.wrapEl) teardownEditor();
+        editor.groupName = groupName;
+        editor.chipState = new Set();
+        editor.baselineState = new Set();
+        document.body.classList.add('stellars-group-editor-active');
+        buildChipUI(anchor);
+        renderChips();
+
+        // Fetch corpus + members in parallel; UI is interactive immediately
+        try {
+            const [corpus, members] = await Promise.all([
+                fetchUserCorpus().catch(function(){ return []; }),
+                fetchGroupMembers(groupName),
+            ]);
+            // Bail if user navigated away mid-fetch
+            if (editor.groupName !== groupName) return;
+            editor.userCorpus = corpus;
+            members.forEach(function(u){ editor.chipState.add(u); });
+            editor.baselineState = new Set(editor.chipState);
+            renderChips();
+        } catch (err) {
+            if (editor.groupName === groupName) {
+                showChipError('Failed to load current group members; chips reflect manual entries only');
+            }
+        }
+    }
+
+    // MutationObserver wakes bootstrap whenever the admin SPA re-renders.
+    const adminRoot = document.getElementById('react-admin-hook');
+    if (adminRoot) {
+        new MutationObserver(bootstrapGroupEditor).observe(adminRoot, { childList: true, subtree: true });
+    }
+
+    // Capture-phase Apply hijack: prevent React from running its own apply
+    // (which only knows about the hidden tile grid) and run our own diff.
     document.addEventListener('click', function(e) {
         const btn = e.target && e.target.closest && e.target.closest('#submit[data-testid="submit"]');
         if (!btn) return;
-        const groupName = getEditingGroupName();
-        if (!groupName) return;
-        const before = groupEditState.snapshot || new Set();
-        // Defer just enough for any fetch to start / error banner to render.
-        setTimeout(function() {
-            const errEl = document.querySelector('.alert.alert-danger');
-            if (errEl && /failed to edit group/i.test(errEl.textContent || '')) return;
-            const now = readSelectedUsers();
-            const added = Array.from(now).filter(function(u){ return !before.has(u); }).sort();
-            const removed = Array.from(before).filter(function(u){ return !now.has(u); }).sort();
-            if (added.length === 0 && removed.length === 0) return;
-            showGroupChangesModal(groupName, added, removed);
-            groupEditState.snapshot = now;
-        }, 150);
+        if (!getEditingGroupName()) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        applyDiff();
     }, true);
 
     // Helper to get CSRF token
