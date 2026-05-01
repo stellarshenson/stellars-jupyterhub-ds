@@ -33,6 +33,13 @@
       white-space: nowrap;
       line-height: 1.4;
     }
+    /* "Pending add" chip: same hue, slight brightness lift so newly-typed
+       names stand out from members already on the server. After Apply +
+       reload, the baseline grows to include them and they render normal. */
+    .stellars-chip.stellars-chip--new {
+      background: var(--bs-success-bg-subtle, var(--bs-primary-bg-subtle));
+      border-color: var(--bs-success-border-subtle, var(--bs-primary-border-subtle));
+    }
     .stellars-chip-remove {
       cursor: pointer;
       color: var(--bs-secondary-color, var(--bs-body-color));
@@ -93,7 +100,11 @@
       font-size: 13px;
       font-style: italic;
     }
-    body.stellars-group-editor-active .users-container {
+    /* Hide every stock React-rendered sibling of our chip wrap (the
+       "Add by username" form, the .users-container tile grid, etc.) so
+       the operator only sees ONE add-input, not two. h1 stays, the
+       Apply button (#submit) stays, our own #stellars-chip-editor stays. */
+    body.stellars-group-editor-active .stellars-hide-stock {
       display: none !important;
     }
     .stellars-chip-error {
@@ -305,10 +316,16 @@
         errorEl: null,
     };
 
+    // JupyterHub 5.x requires X-XSRFToken on cookie-authenticated API calls,
+    // including GETs. Stock admin React reads window.jhdata.xsrf_token; we
+    // mirror that by reading the _xsrf cookie (same source).
     async function fetchUserCorpus() {
-        const resp = await fetch(baseUrl + 'hub/api/users?offset=0&limit=500', {
+        const resp = await fetch(baseUrl + 'api/users?offset=0&limit=500', {
             credentials: 'same-origin',
-            headers: { 'Accept': 'application/json' },
+            headers: {
+                'Accept': 'application/json',
+                'X-XSRFToken': getCookie('_xsrf') || '',
+            },
         });
         if (!resp.ok) throw new Error('users fetch failed: HTTP ' + resp.status);
         const data = await resp.json();
@@ -316,9 +333,12 @@
     }
 
     async function fetchGroupMembers(name) {
-        const resp = await fetch(baseUrl + 'hub/api/groups/' + encodeURIComponent(name), {
+        const resp = await fetch(baseUrl + 'api/groups/' + encodeURIComponent(name), {
             credentials: 'same-origin',
-            headers: { 'Accept': 'application/json' },
+            headers: {
+                'Accept': 'application/json',
+                'X-XSRFToken': getCookie('_xsrf') || '',
+            },
         });
         if (!resp.ok) throw new Error('group fetch failed: HTTP ' + resp.status);
         const data = await resp.json();
@@ -361,12 +381,24 @@
         });
     }
 
+    // Chip render order: existing baseline members first, alphabetically;
+    // newly-added (this-session) members appended in insertion order.
+    // Set iteration order in JS preserves insertion order, so chipState
+    // already holds the right tail; we just split + sort the head.
+    function orderedChips() {
+        const all = Array.from(editor.chipState);
+        const existing = all.filter(function(u){ return editor.baselineState.has(u); }).sort();
+        const fresh = all.filter(function(u){ return !editor.baselineState.has(u); });
+        return { existing: existing, fresh: fresh, all: existing.concat(fresh) };
+    }
+
     function renderChips() {
         if (!editor.chipsEl) return;
-        const sorted = Array.from(editor.chipState).sort();
-        editor.chipsEl.innerHTML = sorted.map(function(u) {
+        const order = orderedChips();
+        editor.chipsEl.innerHTML = order.all.map(function(u) {
             const safe = escapeHtml(u);
-            return '<span class="stellars-chip" data-username="' + safe + '">' +
+            const cls = editor.baselineState.has(u) ? 'stellars-chip' : 'stellars-chip stellars-chip--new';
+            return '<span class="' + cls + '" data-username="' + safe + '">' +
                      '<span class="stellars-chip-name">' + safe + '</span>' +
                      '<span class="stellars-chip-remove" data-username="' + safe +
                        '" role="button" aria-label="Remove ' + safe + '" tabindex="0">×</span>' +
@@ -441,8 +473,10 @@
         } else if (e.key === 'Escape') {
             closeDropdown();
         } else if (e.key === 'Backspace' && !editor.inputEl.value) {
-            const sorted = Array.from(editor.chipState).sort();
-            const last = sorted[sorted.length - 1];
+            // Pop the visually-rightmost chip — last new-this-session if any,
+            // otherwise the alphabetically-last existing member.
+            const order = orderedChips();
+            const last = order.all[order.all.length - 1];
             if (last) {
                 editor.chipState.delete(last);
                 renderChips();
@@ -485,7 +519,7 @@
         const added = Array.from(editor.chipState).filter(function(u){ return !editor.baselineState.has(u); }).sort();
         const removed = Array.from(editor.baselineState).filter(function(u){ return !editor.chipState.has(u); }).sort();
         if (added.length === 0 && removed.length === 0) return;
-        const url = baseUrl + 'hub/api/groups/' + encodeURIComponent(groupName) + '/users';
+        const url = baseUrl + 'api/groups/' + encodeURIComponent(groupName) + '/users';
         try {
             if (added.length) {
                 const resp = await fetch(url, {
@@ -541,19 +575,36 @@
         editor.highlightedIdx = -1;
     }
 
+    function hideStockSiblings(parent) {
+        // Any React-rendered direct child of the group-editor container that
+        // isn't the heading, the Apply button (or its wrapper), or our chip
+        // wrap gets the 'stellars-hide-stock' class. Re-applied on every
+        // observer fire because React may add fresh nodes on re-render.
+        Array.from(parent.children).forEach(function(child) {
+            if (child.id === 'stellars-chip-editor') return;
+            if (child.tagName === 'H1') return;
+            if (child.id === 'submit') return;
+            if (child.querySelector && child.querySelector('#submit[data-testid="submit"]')) return;
+            child.classList.add('stellars-hide-stock');
+        });
+    }
+
     async function bootstrapGroupEditor() {
         const groupName = getEditingGroupName();
         if (!groupName) {
             if (editor.wrapEl) teardownEditor();
             return;
         }
-        if (groupName === editor.groupName && editor.wrapEl && document.body.contains(editor.wrapEl)) {
-            // Idempotent: already bootstrapped for this group, React just re-rendered around us
-            return;
-        }
         const anchor = document.querySelector('.users-container');
         if (!anchor || !anchor.parentNode) {
             // React not yet rendered the tile container; observer will fire again
+            return;
+        }
+        // Always-on: re-apply sibling-hiding so any newly-rendered React
+        // children (the 'Add by username' form etc.) get hidden too.
+        hideStockSiblings(anchor.parentNode);
+        if (groupName === editor.groupName && editor.wrapEl && document.body.contains(editor.wrapEl)) {
+            // Idempotent: already bootstrapped for this group
             return;
         }
         // Bootstrap fresh: tear down any leftover from a previous group
