@@ -1,29 +1,33 @@
 {% extends "page.html" %}
 {% block main %}
   <style id="stellars-group-editor-styles">
+    /* Bootstrap-theme-aware: every color goes through --bs-* CSS vars so the
+       editor follows the active data-bs-theme (light/dark) automatically. */
     .stellars-chip-wrap {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 6px;
-      padding: 8px;
-      border: 1px solid #ced4da;
-      border-radius: 6px;
+      padding: 6px 8px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius, 6px);
       min-height: 44px;
-      background: #fff;
+      background: var(--bs-body-bg);
+      color: var(--bs-body-color);
       position: relative;
     }
     .stellars-chip-wrap:focus-within {
-      border-color: #2196f3;
-      box-shadow: 0 0 0 0.2rem rgba(33,150,243,0.15);
+      border-color: var(--bs-primary, #0d6efd);
+      box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb, 13,110,253), 0.18);
     }
     .stellars-chips { display: contents; }
     .stellars-chip {
       display: inline-flex;
       align-items: center;
       padding: 3px 4px 3px 10px;
-      background: #e3f2fd;
-      border: 1px solid #90caf9;
+      background: var(--bs-primary-bg-subtle, var(--bs-secondary-bg));
+      color: var(--bs-emphasis-color, var(--bs-body-color));
+      border: 1px solid var(--bs-primary-border-subtle, var(--bs-border-color));
       border-radius: 999px;
       font-size: 13px;
       white-space: nowrap;
@@ -31,7 +35,7 @@
     }
     .stellars-chip-remove {
       cursor: pointer;
-      color: #555;
+      color: var(--bs-secondary-color, var(--bs-body-color));
       margin-left: 6px;
       padding: 0 6px;
       font-weight: bold;
@@ -39,7 +43,10 @@
       border-radius: 999px;
       user-select: none;
     }
-    .stellars-chip-remove:hover { color: #fff; background: #c62828; }
+    .stellars-chip-remove:hover {
+      color: var(--bs-danger-text-emphasis, #fff);
+      background: var(--bs-danger-bg-subtle, var(--bs-danger, #dc3545));
+    }
     .stellars-chip-input {
       flex: 1 1 120px;
       min-width: 80px;
@@ -48,20 +55,26 @@
       font-size: 14px;
       padding: 4px 6px;
       background: transparent;
+      color: inherit;
+    }
+    .stellars-chip-input::placeholder {
+      color: var(--bs-secondary-color, rgba(108,117,125,0.7));
+      opacity: 0.75;
     }
     .stellars-chip-dropdown {
       position: absolute;
       top: calc(100% + 2px);
       left: 0;
       right: 0;
-      background: #fff;
-      border: 1px solid #ced4da;
-      border-radius: 4px;
+      background: var(--bs-body-bg);
+      color: var(--bs-body-color);
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius, 4px);
       max-height: 220px;
       overflow-y: auto;
       z-index: 1050;
       display: none;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
     }
     .stellars-chip-dropdown.is-open { display: block; }
     .stellars-chip-suggest {
@@ -71,11 +84,12 @@
     }
     .stellars-chip-suggest:hover,
     .stellars-chip-suggest[aria-selected="true"] {
-      background: #e3f2fd;
+      background: var(--bs-tertiary-bg, var(--bs-secondary-bg));
+      color: var(--bs-emphasis-color, var(--bs-body-color));
     }
     .stellars-chip-empty {
       padding: 6px 12px;
-      color: #999;
+      color: var(--bs-secondary-color);
       font-size: 13px;
       font-style: italic;
     }
@@ -292,7 +306,7 @@
     };
 
     async function fetchUserCorpus() {
-        const resp = await fetch(baseUrl + 'api/users?offset=0&limit=500', {
+        const resp = await fetch(baseUrl + 'hub/api/users?offset=0&limit=500', {
             credentials: 'same-origin',
             headers: { 'Accept': 'application/json' },
         });
@@ -302,7 +316,7 @@
     }
 
     async function fetchGroupMembers(name) {
-        const resp = await fetch(baseUrl + 'api/groups/' + encodeURIComponent(name), {
+        const resp = await fetch(baseUrl + 'hub/api/groups/' + encodeURIComponent(name), {
             credentials: 'same-origin',
             headers: { 'Accept': 'application/json' },
         });
@@ -471,7 +485,7 @@
         const added = Array.from(editor.chipState).filter(function(u){ return !editor.baselineState.has(u); }).sort();
         const removed = Array.from(editor.baselineState).filter(function(u){ return !editor.chipState.has(u); }).sort();
         if (added.length === 0 && removed.length === 0) return;
-        const url = baseUrl + 'api/groups/' + encodeURIComponent(groupName) + '/users';
+        const url = baseUrl + 'hub/api/groups/' + encodeURIComponent(groupName) + '/users';
         try {
             if (added.length) {
                 const resp = await fetch(url, {
