@@ -9,11 +9,11 @@
 Multi-user JupyterHub 4 deployment platform with data science stack, GPU support, and NativeAuthenticator. The platform spawns isolated JupyterLab environments per user using DockerSpawner, backed by the [stellars/stellars-jupyterlab-ds](https://hub.docker.com/r/stellars/stellars-jupyterlab-ds) image (from [stellars-jupyterlab-ds](https://github.com/stellarshenson/stellars-jupyterlab-ds) project).
 
 > [!TIP]
-> **Fastest way to spin up a deployment**: use the [Copier deployment template](https://github.com/stellarshenson/stellars-jupyterhub-ds-deployment-template). One `copier copy` command answers a handful of questions and renders a working overlay (branding, hostname / TLS, admin user, optional CIFS) that clones this platform read-only - so your deployment stays upgradeable. See [Quickstart -> Copier](#copier-recommended).
+> **Fastest way to spin up a deployment**: use the [Copier deployment template](https://github.com/stellarshenson/copier-stellars-jupyterhub-ds). One `copier copy` command answers a handful of questions and renders a working overlay (branding, hostname / TLS, admin user, optional CIFS) that clones this platform read-only - so your deployment stays upgradeable. See [Quickstart -> Copier](#copier-recommended).
 
 ## Features
 
-- **One-command Deployment**: [Copier template](https://github.com/stellarshenson/stellars-jupyterhub-ds-deployment-template) scaffolds a thin overlay (branding, hostname, TLS, admin user, optional CIFS) that clones this platform read-only - upstream stays upgradeable, your customisations stay in your repo
+- **One-command Deployment**: [Copier template](https://github.com/stellarshenson/copier-stellars-jupyterhub-ds) scaffolds a thin overlay (branding, hostname, TLS, admin user, optional CIFS) that clones this platform read-only - upstream stays upgradeable, your customisations stay in your repo
 - **GPU Auto-Detection**: Automatic NVIDIA CUDA GPU detection and configuration for spawned user containers
 - **Notification Broadcast**: Admin broadcast to all active servers via `/hub/notifications`. Supports six notification types, 140-character limit. Requires [jupyterlab_notifications_extension](https://github.com/stellarshenson/jupyterlab_notifications_extension)
 - **User Self-Service**: Users can restart their JupyterLab containers and selectively reset persistent volumes (home/workspace/cache) without admin intervention
@@ -34,11 +34,11 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 
 ### Copier (recommended)
 
-Fastest way to spin up a working deployment - the [stellars-jupyterhub-ds-deployment-template](https://github.com/stellarshenson/stellars-jupyterhub-ds-deployment-template) repository is a [copier](https://copier.readthedocs.io/) template that asks a handful of questions (project name, hostname, admin user, branding, CIFS, ...) and generates a thin overlay directory containing `compose_override.yml`, `branding/`, `certs/`, `start.sh`, `stop.sh`, `cleanup.sh`, and `.env.default`. The upstream platform (this repo) is cloned read-only by `start.sh` on first run, so the generated deployment stays upgradeable: pull new upstream commits without touching your overlay.
+Fastest way to spin up a working deployment - the [copier-stellars-jupyterhub-ds](https://github.com/stellarshenson/copier-stellars-jupyterhub-ds) repository is a [copier](https://copier.readthedocs.io/) template that asks a handful of questions (project name, hostname, admin user, branding, CIFS, ...) and generates a thin overlay directory containing `compose_override.yml`, `branding/`, `certs/`, `start.sh`, `stop.sh`, `cleanup.sh`, and `.env.default`. The upstream platform (this repo) is cloned read-only by `start.sh` on first run, so the generated deployment stays upgradeable: pull new upstream commits without touching your overlay.
 
 ```bash
 pip install copier
-copier copy --trust gh:stellarshenson/stellars-jupyterhub-ds-deployment-template ./my-jupyterhub
+copier copy --trust gh:stellarshenson/copier-stellars-jupyterhub-ds ./my-jupyterhub
 cd my-jupyterhub
 ./start.sh
 ```
