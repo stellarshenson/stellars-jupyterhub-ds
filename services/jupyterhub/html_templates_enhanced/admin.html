@@ -33,12 +33,14 @@
       white-space: nowrap;
       line-height: 1.4;
     }
-    /* "Pending add" chip: same hue, slight brightness lift so newly-typed
-       names stand out from members already on the server. After Apply +
-       reload, the baseline grows to include them and they render normal. */
+    /* "Pending add" chip: same hue family, but the SOLID brand color
+       instead of the subtle/faded variant. Reads as the brighter version
+       of the same color and works in both light and dark themes regardless
+       of how the deployment has aliased --bs-success. */
     .stellars-chip.stellars-chip--new {
-      background: var(--bs-success-bg-subtle, var(--bs-primary-bg-subtle));
-      border-color: var(--bs-success-border-subtle, var(--bs-primary-border-subtle));
+      background: var(--bs-primary);
+      border-color: var(--bs-primary);
+      color: #fff;
     }
     .stellars-chip-remove {
       cursor: pointer;

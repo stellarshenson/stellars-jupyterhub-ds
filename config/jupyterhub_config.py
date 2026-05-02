@@ -454,6 +454,7 @@ c.DockerSpawner.environment = {
     'JUPYTERLAB_SYSTEM_NAME': JUPYTERLAB_SYSTEM_NAME,                                    # rebrand stellars-jupyterlab-ds in welcome page, MOTD, toolbar header badge
     'JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME': JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME, # uppercase toolbar header badge (0/1)
     'JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR': JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR,           # CSS color for toolbar header badge text
+    'JUPYTERHUB_NETWORK_NAME': JUPYTERHUB_NETWORK_NAME,                                   # Docker network connecting hub + user containers; needed by in-container scripts that attach sidecars to the same net
 }
 
 # Reserved env var names groups cannot override - every key we inject globally
