@@ -144,23 +144,33 @@ if JUPYTERHUB_BASE_URL in ['/', '', None]:
 else:
     JUPYTERHUB_BASE_URL_PREFIX = JUPYTERHUB_BASE_URL
 
-# Per-user Docker volumes: {volume_name_template: mount_point}
-# Volumes are namespaced by the compose project so distinct deployments do not
-# collide on per-user data. Container names stay literal (jupyterlab-{username})
-# - the compose project label provides the grouping in `docker compose ls`.
-# <project>_shared is read-write shared storage (can be CIFS via override).
-DOCKER_SPAWNER_VOLUMES = {
-    f"{COMPOSE_PROJECT_NAME}_jupyterlab_{{username}}_home": "/home",
-    f"{COMPOSE_PROJECT_NAME}_jupyterlab_{{username}}_workspace": DOCKER_NOTEBOOK_DIR,
-    f"{COMPOSE_PROJECT_NAME}_jupyterlab_{{username}}_cache": "/home/lab/.cache",
-    f"{COMPOSE_PROJECT_NAME}_shared": "/mnt/shared",
+# Per-user Docker volumes - master config keyed by volume-name pattern.
+# Each entry carries the mount point AND the human-readable description shown
+# in the volume reset UI; same pattern as the env-variable dictionary so all
+# volume metadata lives in one place. Volumes are namespaced by the compose
+# project so distinct deployments do not collide on per-user data. Container
+# names stay literal (jupyterlab-{username}); the compose project label
+# provides the grouping in `docker compose ls`.
+USER_VOLUMES = {
+    f"{COMPOSE_PROJECT_NAME}_jupyterlab_{{username}}_home": {
+        'mount': '/home',
+        'description': 'User home directory files, configurations',
+    },
+    f"{COMPOSE_PROJECT_NAME}_jupyterlab_{{username}}_workspace": {
+        'mount': DOCKER_NOTEBOOK_DIR,
+        'description': 'Project files, notebooks, code',
+    },
+    f"{COMPOSE_PROJECT_NAME}_jupyterlab_{{username}}_cache": {
+        'mount': '/home/lab/.cache',
+        'description': 'Temporary files, pip cache, conda cache',
+    },
 }
 
-# Human-readable descriptions shown in the volume reset UI
-VOLUME_DESCRIPTIONS = {
-    'home': 'User home directory files, configurations',
-    'workspace': 'Project files, notebooks, code',
-    'cache': 'Temporary files, pip cache, conda cache',
+# DockerSpawner needs the flat {name: mount} shape. Built from USER_VOLUMES
+# plus the shared volume (read-write across all users; can be CIFS via override).
+DOCKER_SPAWNER_VOLUMES = {
+    **{pattern: data['mount'] for pattern, data in USER_VOLUMES.items()},
+    f"{COMPOSE_PROJECT_NAME}_shared": "/mnt/shared",
 }
 
 # Derived: extract user-resettable volume suffixes ['home', 'workspace', 'cache'] from volumes dict
@@ -169,6 +179,19 @@ user_volume_suffixes = get_user_volume_suffixes(DOCKER_SPAWNER_VOLUMES, COMPOSE_
 # Single source of truth for what the volumes are actually called on disk -
 # UI labels, deletion handler, and DockerSpawner all read from this map.
 user_volume_name_templates = get_user_volume_name_templates(DOCKER_SPAWNER_VOLUMES, COMPOSE_PROJECT_NAME)
+# Derived: ordered list of per-user volume records for the reset UI -
+# {suffix, name_template, description} per row. Templates iterate this single
+# list instead of cross-referencing a suffix list against a separate
+# descriptions dict.
+_user_volume_prefix = f"{COMPOSE_PROJECT_NAME}_jupyterlab_{{username}}_"
+user_volumes_for_ui = [
+    {
+        'suffix': pattern[len(_user_volume_prefix):],
+        'name_template': pattern,
+        'description': data.get('description', ''),
+    }
+    for pattern, data in USER_VOLUMES.items()
+]
 
 
 # ── Section 3: Logic Calls ───────────────────────────────────────────────────
@@ -489,9 +512,9 @@ if branding['logo_file']:
 # ── Template variables ──
 # Passed to Jinja2 templates for UI rendering
 c.JupyterHub.template_vars = {
-    'user_volume_suffixes': user_volume_suffixes,            # ['home', 'workspace', 'cache'] for volume reset UI
+    'user_volume_suffixes': user_volume_suffixes,            # ['home', 'workspace', 'cache'] for volume reset UI (kept for any existing consumers)
     'user_volume_name_templates': user_volume_name_templates, # suffix -> volume-name template (with {username}) for UI labels
-    'volume_descriptions': VOLUME_DESCRIPTIONS,              # human-readable volume labels
+    'user_volumes': user_volumes_for_ui,                     # ordered list of {suffix, name_template, description} for the reset UI loop
     'stellars_version': os.environ.get('STELLARS_JUPYTERHUB_VERSION', 'dev'),  # platform version shown in UI
     'server_version': jupyterhub.__version__,                # JupyterHub version shown in UI
     'idle_culler_enabled': JUPYTERHUB_IDLE_CULLER_ENABLED,   # toggle culler UI elements

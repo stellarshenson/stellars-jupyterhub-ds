@@ -220,16 +220,16 @@
           </div>
           <p>Select which volumes to reset. All files in selected volumes will be permanently deleted:</p>
 
-          {% for volume_suffix in user_volume_suffixes %}
+          {% for v in user_volumes %}
           <div class="form-check mb-2">
-            <input class="form-check-input volume-checkbox" type="checkbox" id="volume-{{ volume_suffix }}" value="{{ volume_suffix }}">
-            <label class="form-check-label" for="volume-{{ volume_suffix }}">
-              <strong>{{ volume_suffix }}</strong>
+            <input class="form-check-input volume-checkbox" type="checkbox" id="volume-{{ v.suffix }}" value="{{ v.suffix }}">
+            <label class="form-check-label" for="volume-{{ v.suffix }}">
+              <strong>{{ v.suffix }}</strong>
               <br>
-              <code class="text-muted">{{ user_volume_name_templates[volume_suffix].replace('{username}', user.name) }}</code>
-              {% if volume_descriptions and volume_suffix in volume_descriptions %}
+              <code class="text-muted">{{ v.name_template.replace('{username}', user.name) }}</code>
+              {% if v.description %}
               <br>
-              <small class="text-muted">{{ volume_descriptions[volume_suffix] }}</small>
+              <small class="text-muted">{{ v.description }}</small>
               {% endif %}
             </label>
           </div>
