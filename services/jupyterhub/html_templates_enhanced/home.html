@@ -215,31 +215,25 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div class="alert alert-danger">
+          <div class="alert alert-warning">
             <strong>Warning:</strong> This action cannot be undone!
           </div>
-          <p>Select which volumes to reset. All files in selected volumes will be permanently deleted:</p>
+          <p id="volumes-prompt">Select which volumes to reset. All files in selected volumes will be permanently deleted:</p>
 
-          {% for v in user_volumes %}
-          <div class="form-check mb-2">
-            <input class="form-check-input volume-checkbox" type="checkbox" id="volume-{{ v.suffix }}" value="{{ v.suffix }}">
-            <label class="form-check-label" for="volume-{{ v.suffix }}">
-              <strong>{{ v.suffix }}</strong>
-              <br>
-              <code class="text-muted">{{ v.name_template.replace('{username}', user.name) }}</code>
-              {% if v.description %}
-              <br>
-              <small class="text-muted">{{ v.description }}</small>
-              {% endif %}
-            </label>
+          <div id="volumes-list">
+            <!-- populated dynamically when the modal opens with the volumes
+                 that actually exist on disk for this user -->
           </div>
-          {% endfor %}
+
+          <div id="volumes-empty" class="text-muted" style="display: none;">
+            No volumes exist yet (your server has never been started).
+          </div>
 
           <div id="volume-warning" class="alert alert-warning d-none">
             <strong>Notice:</strong> <span id="volume-count">0</span> volume(s) selected for deletion.
           </div>
 
-          <p class="mt-3"><strong>Are you sure you want to continue?</strong></p>
+          <p id="volumes-confirm" class="mt-3"><strong>Are you sure you want to continue?</strong></p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -345,6 +339,102 @@
               if (parts.length === 2) return parts.pop().split(';').shift();
           }
 
+          // Port of escapism.escape(name, escape_char='-').lower() — must match
+          // stellars_hub.docker_utils.encode_username_for_docker so the displayed
+          // volume name matches what's on disk and what the deletion handler
+          // looks up.
+          function encodeUsernameForDocker(name) {
+              const bytes = new TextEncoder().encode(name);
+              let out = '';
+              for (let i = 0; i < bytes.length; i++) {
+                  const b = bytes[i];
+                  const safe =
+                      (b >= 0x30 && b <= 0x39) ||
+                      (b >= 0x41 && b <= 0x5a) ||
+                      (b >= 0x61 && b <= 0x7a) ||
+                      b === 0x5f;
+                  out += safe ? String.fromCharCode(b) : ('-' + b.toString(16).padStart(2, '0'));
+              }
+              return out.toLowerCase();
+          }
+
+          // Volume modal: dynamic render of only the volumes that exist on disk
+          const encodedUsername = encodeUsernameForDocker(username);
+
+          function escapeHtml(t) {
+              if (t == null) return '';
+              return String(t).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+          }
+
+          function updateVolumeSelection() {
+              const checkedCount = $('.volume-checkbox:checked').length;
+              $('#confirm-reset-btn').prop('disabled', checkedCount === 0);
+              if (checkedCount > 0) {
+                  $('#volume-warning').removeClass('d-none');
+                  $('#volume-count').text(checkedCount);
+              } else {
+                  $('#volume-warning').addClass('d-none');
+              }
+          }
+
+          async function loadVolumesList() {
+              const $list = $('#volumes-list');
+              const $empty = $('#volumes-empty');
+              const $prompt = $('#volumes-prompt');
+              const $confirm = $('#volumes-confirm');
+              $list.html('<div class="text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Loading volumes...</div>');
+              $empty.hide();
+              $('#volume-warning').addClass('d-none');
+              $('#confirm-reset-btn').prop('disabled', true);
+
+              let volumes = [];
+              try {
+                  const resp = await fetch(`{{ base_url }}api/users/${encodeURIComponent(username)}/manage-volumes`, {
+                      method: 'GET',
+                      credentials: 'same-origin',
+                      headers: { 'Accept': 'application/json', 'X-XSRFToken': getCookie('_xsrf') || '' },
+                  });
+                  if (!resp.ok) {
+                      $list.html(`<div class="text-danger">Failed to load volumes (HTTP ${resp.status}).</div>`);
+                      return;
+                  }
+                  const data = await resp.json();
+                  volumes = data.volumes || [];
+              } catch (err) {
+                  $list.html(`<div class="text-danger">Failed to load volumes: ${escapeHtml(String(err))}</div>`);
+                  return;
+              }
+
+              if (volumes.length === 0) {
+                  $list.empty();
+                  $prompt.hide();
+                  $confirm.hide();
+                  $empty.show();
+                  return;
+              }
+              $prompt.show();
+              $confirm.show();
+
+              const html = volumes.map(v => {
+                  const safeSuffix = escapeHtml(v.suffix);
+                  const safeName = escapeHtml(v.name);
+                  const safeDesc = v.description ? `<br><small class="text-muted">${escapeHtml(v.description)}</small>` : '';
+                  return `
+                    <div class="form-check mb-2">
+                      <input class="form-check-input volume-checkbox" type="checkbox"
+                             id="volume-${safeSuffix}" value="${safeSuffix}">
+                      <label class="form-check-label" for="volume-${safeSuffix}">
+                        <strong>${safeSuffix}</strong>
+                        <br><code class="text-muted">${safeName}</code>
+                        ${safeDesc}
+                      </label>
+                    </div>`;
+              }).join('');
+              $list.html(html);
+              $('.volume-checkbox').on('change', updateVolumeSelection);
+              updateVolumeSelection();
+          }
+
           // Log when modals are triggered
           $('#manage-volumes-btn').on('click', function() {
               console.log('[Manage Volumes] Modal button clicked, opening confirmation dialog');
@@ -354,40 +444,18 @@
               console.log('[Restart Server] Modal button clicked, opening confirmation dialog');
           });
 
-          // Get modal instances
           const manageVolumesModalEl = document.getElementById('manage-volumes-modal');
           const restartServerModalEl = document.getElementById('restart-server-modal');
 
-          // Log when modals are shown/hidden
           if (manageVolumesModalEl) {
               manageVolumesModalEl.addEventListener('show.bs.modal', function() {
                   console.log('[Manage Volumes] Modal dialog opened');
+                  loadVolumesList();
               });
               manageVolumesModalEl.addEventListener('hide.bs.modal', function() {
                   console.log('[Manage Volumes] Modal dialog closed');
               });
           }
-
-          // Handle volume checkbox changes
-          $('.volume-checkbox').on('change', function() {
-              const checkedCount = $('.volume-checkbox:checked').length;
-              const $confirmBtn = $('#confirm-reset-btn');
-              const $warning = $('#volume-warning');
-              const $count = $('#volume-count');
-
-              console.log('[Manage Volumes] Checkbox changed, selected count:', checkedCount);
-
-              // Enable/disable confirm button
-              $confirmBtn.prop('disabled', checkedCount === 0);
-
-              // Show/hide warning and update count
-              if (checkedCount > 0) {
-                  $warning.removeClass('d-none');
-                  $count.text(checkedCount);
-              } else {
-                  $warning.addClass('d-none');
-              }
-          });
 
           if (restartServerModalEl) {
               restartServerModalEl.addEventListener('show.bs.modal', function() {
