@@ -210,25 +210,20 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div class="alert alert-danger">
+          <div class="alert alert-warning">
             <strong>Warning:</strong> This action cannot be undone!
           </div>
           <p>Manage volumes for user: <strong id="admin-volume-username"></strong></p>
-          <p>Select which volumes to reset. All files in selected volumes will be permanently deleted:</p>
+          <p id="admin-volumes-prompt">Select which volumes to reset. All files in selected volumes will be permanently deleted:</p>
 
-          {% for v in user_volumes %}
-          <div class="form-check mb-2">
-            <input class="form-check-input admin-volume-checkbox" type="checkbox" id="admin-volume-{{ v.suffix }}" value="{{ v.suffix }}">
-            <label class="form-check-label" for="admin-volume-{{ v.suffix }}">
-              <strong>{{ v.suffix }}</strong>
-              <br>
-              <code class="text-muted admin-volume-fullname" data-suffix="{{ v.suffix }}" data-template="{{ v.name_template }}"></code>
-              {% if v.description %}
-              <br><small class="text-muted">{{ v.description }}</small>
-              {% endif %}
-            </label>
+          <div id="admin-volumes-list">
+            <!-- populated dynamically by openVolumeModal() with the volumes
+                 that actually exist on disk for the target user -->
           </div>
-          {% endfor %}
+
+          <div id="admin-volumes-empty" class="text-muted" style="display: none;">
+            No volumes exist for this user yet.
+          </div>
 
           <div id="admin-volume-warning" class="alert alert-warning mt-3" style="display: none;">
             <i class="fa fa-exclamation-triangle me-1"></i>
@@ -993,30 +988,105 @@
             });
         }
 
-        // Open volume modal for a specific user
-        function openVolumeModal(username) {
+        // Port of escapism.escape(name, escape_char='-').lower() — must match
+        // stellars_hub.docker_utils.encode_username_for_docker so the UI shows
+        // the same volume name the deletion handler will look up on disk.
+        // Safe set is escapism's default: ASCII alnum + underscore. Anything
+        // else gets escaped as `-XX` (lowercase hex of the UTF-8 byte).
+        function encodeUsernameForDocker(name) {
+            const bytes = new TextEncoder().encode(name);
+            let out = '';
+            for (let i = 0; i < bytes.length; i++) {
+                const b = bytes[i];
+                const safe =
+                    (b >= 0x30 && b <= 0x39) ||  // 0-9
+                    (b >= 0x41 && b <= 0x5a) ||  // A-Z
+                    (b >= 0x61 && b <= 0x7a) ||  // a-z
+                    b === 0x5f;                   // _
+                out += safe ? String.fromCharCode(b) : ('-' + b.toString(16).padStart(2, '0'));
+            }
+            return out.toLowerCase();
+        }
+
+        // Open volume modal for a specific user. Fetches the list of volumes
+        // that actually exist on disk and renders only those - DockerSpawner
+        // creates per-user volumes lazily on first spawn, so users who have
+        // never started a server have no volumes to reset.
+        async function openVolumeModal(username) {
             currentVolumeUsername = username;
             document.getElementById('admin-volume-username').textContent = username;
 
-            // Substitute {username} in each volume-name template (per-user since
-            // admin opens the modal for any user, not just self).
-            document.querySelectorAll('.admin-volume-fullname').forEach(el => {
-                const tpl = el.getAttribute('data-template') || '';
-                el.textContent = tpl.replace('{username}', username);
-            });
+            const listEl = document.getElementById('admin-volumes-list');
+            const emptyEl = document.getElementById('admin-volumes-empty');
+            const promptEl = document.getElementById('admin-volumes-prompt');
+            const warnEl = document.getElementById('admin-volume-warning');
+            const confirmBtn = document.getElementById('admin-confirm-reset-btn');
 
-            // Reset checkboxes
-            document.querySelectorAll('.admin-volume-checkbox').forEach(cb => {
-                cb.checked = false;
-            });
-            updateVolumeSelection();
+            listEl.innerHTML = '<div class="text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Loading volumes...</div>';
+            emptyEl.style.display = 'none';
+            warnEl.style.display = 'none';
+            confirmBtn.disabled = true;
 
-            // Show modal
+            // Show modal immediately (better UX than waiting for fetch)
             const modalEl = document.getElementById('admin-manage-volumes-modal');
             if (!volumeModal) {
                 volumeModal = new bootstrap.Modal(modalEl);
             }
             volumeModal.show();
+
+            // Fetch volumes that exist for this user
+            let volumes = [];
+            try {
+                const resp = await originalFetch(`${baseUrl}api/users/${encodeURIComponent(username)}/manage-volumes`, {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-XSRFToken': getCookie('_xsrf') || '',
+                    },
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    volumes = data.volumes || [];
+                } else {
+                    listEl.innerHTML = `<div class="text-danger">Failed to load volumes (HTTP ${resp.status}).</div>`;
+                    return;
+                }
+            } catch (err) {
+                listEl.innerHTML = `<div class="text-danger">Failed to load volumes: ${escapeHtml(String(err))}</div>`;
+                return;
+            }
+
+            if (volumes.length === 0) {
+                listEl.innerHTML = '';
+                promptEl.style.display = 'none';
+                emptyEl.style.display = 'block';
+                return;
+            }
+            promptEl.style.display = '';
+
+            // Render checkboxes for the existing volumes
+            listEl.innerHTML = volumes.map(v => {
+                const safeSuffix = escapeHtml(v.suffix);
+                const safeName = escapeHtml(v.name);
+                const safeDesc = v.description ? `<br><small class="text-muted">${escapeHtml(v.description)}</small>` : '';
+                return `
+                  <div class="form-check mb-2">
+                    <input class="form-check-input admin-volume-checkbox" type="checkbox"
+                           id="admin-volume-${safeSuffix}" value="${safeSuffix}">
+                    <label class="form-check-label" for="admin-volume-${safeSuffix}">
+                      <strong>${safeSuffix}</strong>
+                      <br><code class="text-muted">${safeName}</code>
+                      ${safeDesc}
+                    </label>
+                  </div>`;
+            }).join('');
+
+            // Re-attach change listeners (DOM was just replaced)
+            listEl.querySelectorAll('.admin-volume-checkbox').forEach(cb => {
+                cb.addEventListener('change', updateVolumeSelection);
+            });
+            updateVolumeSelection();
         }
 
         // Update selection UI
@@ -1065,8 +1135,18 @@
                 if (response.ok) {
                     const data = await response.json();
                     volumeModal.hide();
-                    const resetCount = data.reset_volumes ? data.reset_volumes.length : selectedVolumes.length;
-                    alert(`Successfully reset ${resetCount} volume(s) for ${currentVolumeUsername}.`);
+                    const reset = data.reset_volumes || [];
+                    const failed = data.failed_volumes || [];
+                    let msg;
+                    if (reset.length === 0 && failed.length > 0 && failed.every(f => (f.reason || '').toLowerCase() === 'not found')) {
+                        msg = `No volumes existed for ${currentVolumeUsername} (user has never spawned a server). Nothing to reset.`;
+                    } else if (failed.length === 0) {
+                        msg = `Successfully reset ${reset.length} volume(s) for ${currentVolumeUsername}: ${reset.join(', ')}.`;
+                    } else {
+                        const failedSummary = failed.map(f => `  ${f.volume}: ${f.reason}`).join('\n');
+                        msg = `Reset ${reset.length}/${reset.length + failed.length} volume(s) for ${currentVolumeUsername}.\n\nFailed:\n${failedSummary}`;
+                    }
+                    alert(msg);
                 } else {
                     const errorData = await response.json().catch(() => ({}));
                     alert(`Error: ${errorData.message || response.statusText || 'Failed to reset volumes'}`);
