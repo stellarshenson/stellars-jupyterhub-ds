@@ -67,7 +67,12 @@ RUN <<-EOF
     apt install -y ${PKGS}
     echo "Verifying critical packages installed:"
     for pkg in mc vim curl; do
-        dpkg -s "$pkg" >/dev/null 2>&1 && echo "  OK: $pkg" || { echo "  MISSING: $pkg"; exit 1; }
+        if dpkg -s "$pkg" >/dev/null 2>&1; then
+            echo "  OK: $pkg"
+        else
+            echo "  MISSING: $pkg"
+            exit 1
+        fi
     done
     apt update && apt upgrade -y
 EOF
