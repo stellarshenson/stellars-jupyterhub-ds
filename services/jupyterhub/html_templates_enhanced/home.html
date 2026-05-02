@@ -208,7 +208,7 @@
 
   <!-- Manage Volumes Modal -->
   <div class="modal fade" id="manage-volumes-modal" tabindex="-1" role="dialog" aria-labelledby="manageVolumesModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog modal-lg" role="document">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="manageVolumesModalLabel">Manage Volumes</h5>
@@ -226,7 +226,7 @@
             <label class="form-check-label" for="volume-{{ volume_suffix }}">
               <strong>{{ volume_suffix }}</strong>
               <br>
-              <code class="text-muted">jupyterlab-{{ user.name }}_{{ volume_suffix }}</code>
+              <code class="text-muted">{{ user_volume_name_templates[volume_suffix].replace('{username}', user.name) }}</code>
               {% if volume_descriptions and volume_suffix in volume_descriptions %}
               <br>
               <small class="text-muted">{{ volume_descriptions[volume_suffix] }}</small>
