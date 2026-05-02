@@ -294,8 +294,8 @@
         const fmt = function(verb, list) {
             const n = list.length;
             const noun = n === 1 ? 'user' : 'users';
-            return '<p class="mb-1"><strong>' + verb + ':</strong> ' + n + ' ' + noun
-                 + ' <span class="text-muted">(' + list.map(escapeHtml).join(', ') + ')</span></p>';
+            return '<p class="mb-1"><strong>' + verb + ' ' + n + ' ' + noun + ':</strong> '
+                 + list.map(escapeHtml).join(', ') + '</p>';
         };
         let html = '<p class="small text-muted mb-2">Group: <strong>' + escapeHtml(groupName) + '</strong></p>';
         if (added.length > 0)   html += fmt('Added', added);
