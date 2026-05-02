@@ -91,6 +91,7 @@ COPY --chmod=644  services/jupyterhub/html_templates_enhanced/static/session-tim
 COPY --chmod=644  services/jupyterhub/html_templates_enhanced/static/mobile.js /tmp/mobile.js
 COPY --chmod=644  config/jupyterhub_config.py /srv/jupyterhub/jupyterhub_config.py
 COPY --chmod=644  services/jupyterhub/conf/settings_dictionary.yml /srv/jupyterhub/settings_dictionary.yml
+COPY --chmod=644  services/jupyterhub/conf/volumes_dictionary.yml /srv/jupyterhub/volumes_dictionary.yml
 
 ## copy custom assets to JupyterHub's static directory
 RUN <<-EOF
@@ -142,6 +143,7 @@ ENV JUPYTERHUB_MEMORY_MAX_USAGE_FRACTION=0.25
 ENV JUPYTERLAB_AUX_SCRIPTS_PATH=
 ENV JUPYTERLAB_AUX_MENU_PATH=
 ENV JUPYTERHUB_TIMEZONE=
+ENV JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE=
 # Misc
 ENV TF_CPP_MIN_LOG_LEVEL=3
 ENV STELLARS_JUPYTERHUB_VERSION=${VERSION}

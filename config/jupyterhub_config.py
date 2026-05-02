@@ -24,6 +24,7 @@ from stellars_hub import (
     get_services_and_roles,                 # builds JupyterHub services list (activity sampler, idle culler)
     get_user_volume_name_templates,         # maps suffix -> full volume-name template (with {username} placeholder)
     get_user_volume_suffixes,               # extracts ['home', 'workspace', 'cache'] from volumes dict
+    load_merged_user_volumes,               # loads + merges platform-defaults YAML with operator overrides
     make_admin_post_auth_hook,              # async closure that flips authentication['admin']=True for JUPYTERHUB_ADMIN
     make_pre_spawn_hook,                    # factory returning async hook for group perms, favicon, icons
     provision_admin_userinfo,               # bootstrap-by-env: seed admin UserInfo from JUPYTERHUB_ADMIN_PASSWORD
@@ -144,27 +145,26 @@ if JUPYTERHUB_BASE_URL in ['/', '', None]:
 else:
     JUPYTERHUB_BASE_URL_PREFIX = JUPYTERHUB_BASE_URL
 
-# Per-user Docker volumes - master config keyed by volume-name pattern.
-# Each entry carries the mount point AND the human-readable description shown
-# in the volume reset UI; same pattern as the env-variable dictionary so all
+# Per-user Docker volumes - master config keyed by volume-name pattern, each
+# entry carrying the mount point and the human-readable description shown in
+# the volume reset UI. Same pattern as the env-variable dictionary so all
 # volume metadata lives in one place. Volumes are namespaced by the compose
 # project so distinct deployments do not collide on per-user data. Container
 # names stay literal (jupyterlab-{username}); the compose project label
 # provides the grouping in `docker compose ls`.
-USER_VOLUMES = {
-    f"{COMPOSE_PROJECT_NAME}_jupyterlab_{{username}}_home": {
-        'mount': '/home',
-        'description': 'User home directory files, configurations',
-    },
-    f"{COMPOSE_PROJECT_NAME}_jupyterlab_{{username}}_workspace": {
-        'mount': DOCKER_NOTEBOOK_DIR,
-        'description': 'Project files, notebooks, code',
-    },
-    f"{COMPOSE_PROJECT_NAME}_jupyterlab_{{username}}_cache": {
-        'mount': '/home/lab/.cache',
-        'description': 'Temporary files, pip cache, conda cache',
-    },
-}
+#
+# Loaded from:
+#   /srv/jupyterhub/volumes_dictionary.yml          - platform defaults (image-baked)
+#   $JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE (if set + exists) - operator overrides
+# Per-suffix, per-field merge: operator wins on conflict, missing fields fall
+# back to the platform default, operator-only suffixes are added verbatim.
+VOLUMES_DICTIONARY_PATH = '/srv/jupyterhub/volumes_dictionary.yml'
+JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE = os.environ.get('JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE', '')
+USER_VOLUMES = load_merged_user_volumes(
+    VOLUMES_DICTIONARY_PATH,
+    JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE,
+    COMPOSE_PROJECT_NAME,
+)
 
 # DockerSpawner needs the flat {name: mount} shape. Built from USER_VOLUMES
 # plus the shared volume (read-write across all users; can be CIFS via override).
