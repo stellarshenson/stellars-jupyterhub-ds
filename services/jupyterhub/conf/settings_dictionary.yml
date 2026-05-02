@@ -147,6 +147,10 @@ User Environment:
     description: Admin-managed custom menu definitions for JupyterLab UI
     default: ""
 
+  - name: JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE
+    description: Path inside the hub container to an operator user-volume descriptions overlay YAML (suffix-keyed, with mount/description); merges over /srv/jupyterhub/volumes_dictionary.yml, operator fields win
+    default: ""
+
 Branding:
   - name: JUPYTERLAB_SYSTEM_NAME
     description: Rebrand stellars-jupyterlab-ds mentions in welcome page, MOTD and toolbar header badge; empty = no rebrand

@@ -1,0 +1,24 @@
+# Per-user volume defaults shipped with the platform image.
+#
+# The runtime composes each Docker volume name as
+#   {COMPOSE_PROJECT_NAME}_jupyterlab_{username}_{suffix}
+# so this file only needs the suffix and its metadata.
+#
+# Operators can extend or override these defaults by mounting their own YAML
+# file (same shape) at the path indicated by JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE.
+# Per-key, per-field merge: if the operator's file omits 'description' for
+# `home` they keep the platform default description; if they redefine `mount`
+# their value wins. Operator-only suffixes (e.g. `models`) get added to the
+# merged set verbatim.
+
+home:
+  mount: /home
+  description: User home directory files, configurations
+
+workspace:
+  mount: /home/lab/workspace
+  description: Project files, notebooks, code
+
+cache:
+  mount: /home/lab/.cache
+  description: Temporary files, pip cache, conda cache
