@@ -44,6 +44,7 @@ COPY services/jupyterhub/conf/apt-packages.yml /apt-packages.yml
 # manifest packages never get installed. Pull the mikefarah binary directly.
 ENV DEBIAN_FRONTEND=noninteractive
 RUN <<-EOF
+    echo "installing yq YAML parser (mikefarah binary, direct download)"
     set -e
     apt update
     apt install -y curl ca-certificates
@@ -63,8 +64,8 @@ EOF
 # variable; xargs `--no-run-if-empty` is a second guard against silent
 # no-op installs).
 RUN <<-EOF
-    set -e
     echo "installing OS packages from manifest"
+    set -e
     yq eval '.packages[]' /apt-packages.yml > /tmp/pkglist
     echo "Packages to install:"
     cat /tmp/pkglist
