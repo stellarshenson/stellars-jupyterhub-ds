@@ -58,13 +58,18 @@ EOF
 ## install required packages, list will be taken from apt-packages.yml
 # `set -e` + dpkg verification ensures a silent no-op (e.g. yq breakage,
 # empty manifest) fails the build loudly rather than producing an image
-# missing manifest packages.
+# missing manifest packages. Pipe yq output via xargs so the package list
+# is split into argv by xargs (avoids SC2086 on an unquoted-on-purpose
+# variable; xargs `--no-run-if-empty` is a second guard against silent
+# no-op installs).
 RUN <<-EOF
     set -e
     echo "installing OS packages from manifest"
-    PKGS=$(yq eval '.packages[]' /apt-packages.yml | tr '\n' ' ')
-    echo "Packages to install: ${PKGS}"
-    apt install -y ${PKGS}
+    yq eval '.packages[]' /apt-packages.yml > /tmp/pkglist
+    echo "Packages to install:"
+    cat /tmp/pkglist
+    xargs --no-run-if-empty apt install -y < /tmp/pkglist
+    rm -f /tmp/pkglist
     echo "Verifying critical packages installed:"
     for pkg in mc vim curl; do
         if dpkg -s "$pkg" >/dev/null 2>&1; then
