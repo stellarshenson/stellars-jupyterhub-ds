@@ -33,14 +33,12 @@
       white-space: nowrap;
       line-height: 1.4;
     }
-    /* "Pending add" chip: same hue family, but the SOLID brand color
-       instead of the subtle/faded variant. Reads as the brighter version
-       of the same color and works in both light and dark themes regardless
-       of how the deployment has aliased --bs-success. */
+    /* "Pending add" chip: same hue, mid-way between the subtle background
+       and the solid brand color. Distinguishable but not jarring; theme-
+       aware via Bootstrap CSS custom properties. */
     .stellars-chip.stellars-chip--new {
-      background: var(--bs-primary);
+      background: color-mix(in srgb, var(--bs-primary-bg-subtle) 60%, var(--bs-primary) 40%);
       border-color: var(--bs-primary);
-      color: #fff;
     }
     .stellars-chip-remove {
       cursor: pointer;
@@ -293,13 +291,15 @@
 
     function showGroupChangesModal(groupName, added, removed) {
         const body = document.getElementById('group-changes-body');
+        const fmt = function(verb, list) {
+            const n = list.length;
+            const noun = n === 1 ? 'user' : 'users';
+            return '<p class="mb-1"><strong>' + verb + ':</strong> ' + n + ' ' + noun
+                 + ' <span class="text-muted">(' + list.map(escapeHtml).join(', ') + ')</span></p>';
+        };
         let html = '<p class="small text-muted mb-2">Group: <strong>' + escapeHtml(groupName) + '</strong></p>';
-        if (added.length > 0) {
-            html += '<p class="mb-1"><strong>Added:</strong> ' + added.map(escapeHtml).join(', ') + '</p>';
-        }
-        if (removed.length > 0) {
-            html += '<p class="mb-0"><strong>Removed:</strong> ' + removed.map(escapeHtml).join(', ') + '</p>';
-        }
+        if (added.length > 0)   html += fmt('Added', added);
+        if (removed.length > 0) html += fmt('Removed', removed);
         body.innerHTML = html;
         new bootstrap.Modal(document.getElementById('group-changes-modal')).show();
     }

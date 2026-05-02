@@ -36,14 +36,39 @@ LABEL version="${VERSION}"
 COPY services/jupyterhub/conf/apt /etc/apt
 COPY services/jupyterhub/conf/apt-packages.yml /apt-packages.yml
 
-## install yaml parser repository and yq tool, in the parent system you need
+## install yq YAML parser
+# `apt install yq` resolves to kislyuk/yq (Python wrapper around jq with
+# incompatible CLI) since the rmescandon PPA hosting mikefarah/yq is dead.
+# That silently produces empty output for `yq eval '.packages[]' ...`,
+# letting the subsequent apt install run with zero arguments and the
+# manifest packages never get installed. Pull the mikefarah binary directly.
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update && apt install yq -y
+RUN <<-EOF
+    set -e
+    apt update
+    apt install -y curl ca-certificates
+    YQ_VERSION=v4.44.3
+    curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors \
+        -o /usr/local/bin/yq \
+        "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+    chmod 0755 /usr/local/bin/yq
+    yq --version
+EOF
 
 ## install required packages, list will be taken from apt-packages.yml
+# `set -e` + dpkg verification ensures a silent no-op (e.g. yq breakage,
+# empty manifest) fails the build loudly rather than producing an image
+# missing manifest packages.
 RUN <<-EOF
+    set -e
     echo "installing OS packages from manifest"
-    apt install -y `yq eval '.packages[]' /apt-packages.yml | sed 's/$/ /' | tr -d '\r\n'`
+    PKGS=$(yq eval '.packages[]' /apt-packages.yml | tr '\n' ' ')
+    echo "Packages to install: ${PKGS}"
+    apt install -y ${PKGS}
+    echo "Verifying critical packages installed:"
+    for pkg in mc vim curl; do
+        dpkg -s "$pkg" >/dev/null 2>&1 && echo "  OK: $pkg" || { echo "  MISSING: $pkg"; exit 1; }
+    done
     apt update && apt upgrade -y
 EOF
 
