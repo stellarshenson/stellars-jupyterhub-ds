@@ -203,7 +203,7 @@
 
   <!-- Manage Volumes Modal (Admin) -->
   <div class="modal fade" id="admin-manage-volumes-modal" tabindex="-1" role="dialog" aria-labelledby="adminManageVolumesModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog modal-lg" role="document">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="adminManageVolumesModalLabel">Manage Volumes</h5>
@@ -221,6 +221,8 @@
             <input class="form-check-input admin-volume-checkbox" type="checkbox" id="admin-volume-{{ volume_suffix }}" value="{{ volume_suffix }}">
             <label class="form-check-label" for="admin-volume-{{ volume_suffix }}">
               <strong>{{ volume_suffix }}</strong>
+              <br>
+              <code class="text-muted admin-volume-fullname" data-suffix="{{ volume_suffix }}" data-template="{{ user_volume_name_templates[volume_suffix] }}"></code>
               {% if volume_descriptions and volume_suffix in volume_descriptions %}
               <br><small class="text-muted">{{ volume_descriptions[volume_suffix] }}</small>
               {% endif %}
@@ -995,6 +997,13 @@
         function openVolumeModal(username) {
             currentVolumeUsername = username;
             document.getElementById('admin-volume-username').textContent = username;
+
+            // Substitute {username} in each volume-name template (per-user since
+            // admin opens the modal for any user, not just self).
+            document.querySelectorAll('.admin-volume-fullname').forEach(el => {
+                const tpl = el.getAttribute('data-template') || '';
+                el.textContent = tpl.replace('{username}', username);
+            });
 
             // Reset checkboxes
             document.querySelectorAll('.admin-volume-checkbox').forEach(cb => {

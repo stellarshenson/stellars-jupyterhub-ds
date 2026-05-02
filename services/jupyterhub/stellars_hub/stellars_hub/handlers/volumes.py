@@ -46,6 +46,10 @@ class ManageVolumesHandler(BaseHandler):
             return self.send_error(400, "No volumes specified")
 
         user_volume_suffixes = self.settings['stellars_config']['user_volume_suffixes']
+        # Source-of-truth name templates (still carry the {username} placeholder),
+        # built once from DOCKER_SPAWNER_VOLUMES at config-load time. Avoids
+        # the handler re-deriving the name pattern and drifting from spawner.
+        user_volume_name_templates = self.settings['stellars_config']['user_volume_name_templates']
         valid_volumes = set(user_volume_suffixes)
         invalid_volumes = set(requested_volumes) - valid_volumes
         if invalid_volumes:
@@ -71,8 +75,9 @@ class ManageVolumesHandler(BaseHandler):
         reset_volumes = []
         failed_volumes = []
 
+        encoded_username = encode_username_for_docker(username)
         for volume_type in requested_volumes:
-            volume_name = f'jupyterlab-{encode_username_for_docker(username)}_{volume_type}'
+            volume_name = user_volume_name_templates[volume_type].replace('{username}', encoded_username)
             self.log.info(f"[Manage Volumes] Processing volume: {volume_name}")
 
             try:

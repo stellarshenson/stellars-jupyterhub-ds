@@ -22,6 +22,7 @@ from stellars_hub import (
     StellarsNativeAuthenticator,            # parent class for the inline BootstrapAdminAuthenticator (refactor in progress)
     compute_bootstrap_window_open,          # truth-table predicate for the bootstrap-by-signup window
     get_services_and_roles,                 # builds JupyterHub services list (activity sampler, idle culler)
+    get_user_volume_name_templates,         # maps suffix -> full volume-name template (with {username} placeholder)
     get_user_volume_suffixes,               # extracts ['home', 'workspace', 'cache'] from volumes dict
     make_admin_post_auth_hook,              # async closure that flips authentication['admin']=True for JUPYTERHUB_ADMIN
     make_pre_spawn_hook,                    # factory returning async hook for group perms, favicon, icons
@@ -164,6 +165,10 @@ VOLUME_DESCRIPTIONS = {
 
 # Derived: extract user-resettable volume suffixes ['home', 'workspace', 'cache'] from volumes dict
 user_volume_suffixes = get_user_volume_suffixes(DOCKER_SPAWNER_VOLUMES, COMPOSE_PROJECT_NAME)
+# Derived: per-suffix volume-name template (still has {username} placeholder).
+# Single source of truth for what the volumes are actually called on disk -
+# UI labels, deletion handler, and DockerSpawner all read from this map.
+user_volume_name_templates = get_user_volume_name_templates(DOCKER_SPAWNER_VOLUMES, COMPOSE_PROJECT_NAME)
 
 
 # ── Section 3: Logic Calls ───────────────────────────────────────────────────
@@ -485,6 +490,7 @@ if branding['logo_file']:
 # Passed to Jinja2 templates for UI rendering
 c.JupyterHub.template_vars = {
     'user_volume_suffixes': user_volume_suffixes,            # ['home', 'workspace', 'cache'] for volume reset UI
+    'user_volume_name_templates': user_volume_name_templates, # suffix -> volume-name template (with {username}) for UI labels
     'volume_descriptions': VOLUME_DESCRIPTIONS,              # human-readable volume labels
     'stellars_version': os.environ.get('STELLARS_JUPYTERHUB_VERSION', 'dev'),  # platform version shown in UI
     'server_version': jupyterhub.__version__,                # JupyterHub version shown in UI
@@ -505,6 +511,7 @@ c.JupyterHub.template_vars = {
 c.JupyterHub.tornado_settings = {
     'stellars_config': {
         'user_volume_suffixes': user_volume_suffixes,        # for ManageVolumesHandler validation
+        'user_volume_name_templates': user_volume_name_templates,  # for ManageVolumesHandler to construct correct on-disk volume names
         'idle_culler_enabled': JUPYTERHUB_IDLE_CULLER_ENABLED,  # for SessionInfoHandler, ActivityDataHandler
         'idle_culler_timeout': JUPYTERHUB_IDLE_CULLER_TIMEOUT,  # for SessionInfoHandler, ExtendSessionHandler
         'idle_culler_max_extension': JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION,  # for ExtendSessionHandler limits
