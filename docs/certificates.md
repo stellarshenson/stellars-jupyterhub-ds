@@ -4,7 +4,7 @@ Two cert directories inside the hub container:
 
 | Path | Role |
 |---|---|
-| `/mnt/user_certs` | Operator-supplied yml + cert/key (optional). Bind-mount your own dir here via `compose_override.yml`. |
+| `./certs/` (host) -> `/mnt/user_certs` (container, ro) | Operator-supplied yml + cert/key. Bind-mount is wired into `compose.yml` by default; populate `./certs/` next to the compose file to override. |
 | `/mnt/certs` | Runtime dir Traefik scans (`--providers.file.directory=/mnt/certs --providers.file.watch=true`). Hub writes here. |
 
 On startup, `00_provision_certificates.sh` decides which set Traefik will load:
@@ -22,7 +22,7 @@ Operator-supplied path is all-or-nothing: any one yml with a missing reference r
 
 ## Supplying your own certs
 
-In your deployment overlay's `compose_override.yml`:
+Put your yml + cert/key in `./certs/` next to `compose.yml`. No compose changes needed - the bind-mount is wired into `compose.yml` by default. To point at a different host folder, override the volume in `compose_override.yml`:
 
 ```yaml
 services:
@@ -31,7 +31,7 @@ services:
       - ../certs:/mnt/user_certs:ro
 ```
 
-The local `certs/` directory must contain at least one yml file plus the cert/key it references. Example layout:
+The folder must contain at least one yml file plus the cert/key it references. Example layout:
 
 ```
 certs/

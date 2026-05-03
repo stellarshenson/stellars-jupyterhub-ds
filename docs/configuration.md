@@ -1,10 +1,10 @@
 # JupyterHub Configuration
 
-The hub container ships a working built-in `jupyterhub_config.py`. Operators can override it without rebuilding the image by dropping their own file(s) into a host directory and bind-mounting it at `/mnt/user_config`.
+The hub container ships a working built-in `jupyterhub_config.py`. Operators override it by dropping their own file(s) into the host's `./config/` folder, which `compose.yml` bind-mounts at `/mnt/user_config:ro`. An empty or missing `./config/` falls through to the built-in.
 
 | Path | Role |
 |---|---|
-| `/mnt/user_config` | Operator-supplied python files (optional bind-mount, ro). The root file's name defaults to `jupyterhub_config.py` (overridable via `JUPYTERHUB_USER_CONFIG_FILE`). |
+| `./config/` (host) -> `/mnt/user_config` (container, ro) | Operator-supplied python files. The root file's name defaults to `jupyterhub_config.py` (overridable via `JUPYTERHUB_USER_CONFIG_FILE`). |
 | `/srv/jupyterhub/jupyterhub_config.py` | Built-in default baked into the image. Untouched at runtime. |
 | `/srv/config/` | Runtime location JupyterHub actually loads. Repopulated every boot from one of the two sources above. |
 
@@ -21,22 +21,22 @@ Re-runs every boot so operator edits to files under `/mnt/user_config` take effe
 
 ## Supplying your own config
 
-In your deployment overlay's `compose_override.yml`:
+Put your file(s) in `./config/` next to `compose.yml`:
+
+```
+config/
+  jupyterhub_config.py   # required: the root file
+  helpers.py             # optional: any sibling .py is copied alongside
+  custom_auth.py         # optional: ditto
+```
+
+No compose changes needed - the bind-mount is wired into `compose.yml` by default. To point at a different host folder, override the volume in `compose_override.yml`:
 
 ```yaml
 services:
   jupyterhub:
     volumes:
       - ./my_config:/mnt/user_config:ro
-```
-
-Inside `./my_config/` on the host:
-
-```
-my_config/
-  jupyterhub_config.py   # required: the root file
-  helpers.py             # optional: any sibling .py is copied alongside
-  custom_auth.py         # optional: ditto
 ```
 
 The root file is loaded by JupyterHub directly. Sibling files are copied to `/srv/config/` and are importable from the root — `PYTHONPATH=/srv/config` is set in the image so `from helpers import foo` works without further setup.

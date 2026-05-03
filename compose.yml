@@ -54,8 +54,8 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-jupyterhub
     volumes:
       - jupyterhub_certs:/mnt/certs # runtime cert dir Traefik watches
-      - jupyterhub_user_certs:/mnt/user_certs:ro # operator-supplied certs (optional; bind-mount via compose_override.yml: `- ../certs:/mnt/user_certs:ro`)
-      - jupyterhub_user_config:/mnt/user_config:ro # operator-supplied config overlay (optional; bind-mount via compose_override.yml: `- ./config:/mnt/user_config:ro`)
+      - ./certs:/mnt/user_certs:ro # operator cert overlay (host folder; missing/empty -> auto-generate; populate ./certs to override)
+      - ./config:/mnt/user_config:ro # operator config overlay (host folder; missing/empty -> built-in; populate ./config to override)
       - /var/run/docker.sock:/var/run/docker.sock:rw # docker socket to use spawner
       - jupyterhub_data:/data # database and cookie secrets
       - jupyterhub_shared:/mnt/shared # shared volume across environments
@@ -158,10 +158,6 @@ volumes:
     name: ${COMPOSE_PROJECT_NAME:-jupyterhub}_data  # actual Docker volume name namespaced by compose project
   jupyterhub_certs:
     name: ${COMPOSE_PROJECT_NAME:-jupyterhub}_certs  # actual Docker volume name namespaced by compose project
-  jupyterhub_user_certs:
-    name: ${COMPOSE_PROJECT_NAME:-jupyterhub}_user_certs  # operator-supplied cert overlay (optional; default empty)
-  jupyterhub_user_config:
-    name: ${COMPOSE_PROJECT_NAME:-jupyterhub}_user_config  # operator-supplied config overlay (optional; default empty)
   jupyterhub_shared:
     name: ${COMPOSE_PROJECT_NAME:-jupyterhub}_shared  # actual Docker volume name namespaced by compose project
 
