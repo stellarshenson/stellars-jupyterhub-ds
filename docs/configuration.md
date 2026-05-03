@@ -1,74 +1,89 @@
-# JupyterHub Configuration
+# Config
 
-The hub container ships a working built-in `jupyterhub_config.py`. Operators override it by dropping their own file(s) into the host's `./config/` folder, which `compose.yml` bind-mounts at `/mnt/user_config:ro`. An empty or missing `./config/` falls through to the built-in.
+Image has built-in `jupyterhub_config.py`. Want different one? Put it in `./config/`. Done.
 
-| Path | Role |
+## Paths
+
+| Where | What |
 |---|---|
-| `./config/` (host) -> `/mnt/user_config` (container, ro) | Operator-supplied python files. The root file's name defaults to `jupyterhub_config.py` (overridable via `JUPYTERHUB_USER_CONFIG_FILE`). |
-| `/srv/jupyterhub/jupyterhub_config.py` | Built-in default baked into the image. Untouched at runtime. |
-| `/srv/config/` | Runtime location JupyterHub actually loads. Repopulated every boot from one of the two sources above. |
+| `./config/` (host) | Your stuff. Optional. |
+| `/mnt/user_config` (container) | Same dir. Read-only bind. |
+| `/srv/jupyterhub/jupyterhub_config.py` | Built-in. Baked in. Never overwritten. |
+| `/srv/config/` | Live config. Rebuilt every boot. |
 
-On startup, `01_provision_config.sh` decides what JupyterHub will load:
+## Rules
 
-| `/mnt/user_config/<root>` | Action | Source |
-|---|---|---|
-| missing (or `/mnt/user_config` absent / empty) | copy `/srv/jupyterhub/jupyterhub_config.py` -> `/srv/config/jupyterhub_config.py` | built-in |
-| present, non-empty, `py_compile` passes | wipe `/srv/config/`, `cp -a /mnt/user_config/. /srv/config/` | operator-supplied |
-| present but **empty** | log error, **exit 1** (boot fails) | — |
-| present but **syntax error** | log error with `py_compile` output, **exit 1** | — |
+| `./config/jupyterhub_config.py` | Result |
+|---|---|
+| Missing | Built-in used. |
+| Present, valid | Yours used. Helpers come along. |
+| Present, empty | Boot fails. Exit 1. |
+| Present, syntax broken | Boot fails. Exit 1. Stack trace logged. |
 
-Re-runs every boot so operator edits to files under `/mnt/user_config` take effect on the next container restart, and a previous overlay does not linger after the operator removes the bind-mount. Server files in `/srv/jupyterhub/` (built-in config, dictionaries, templates) are never written to.
+No silent fallback on broken file. Operator typo, boot dies. Loud.
 
-## Supplying your own config
-
-Put your file(s) in `./config/` next to `compose.yml`:
+## Helpers
 
 ```
-config/
-  jupyterhub_config.py   # required: the root file
-  helpers.py             # optional: any sibling .py is copied alongside
-  custom_auth.py         # optional: ditto
+./config/
+  jupyterhub_config.py   ← required
+  helpers.py             ← optional
+  auth.py                ← optional
 ```
 
-No compose changes needed - the bind-mount is wired into `compose.yml` by default. To point at a different host folder, override the volume in `compose_override.yml`:
+Siblings copied. Importable. `PYTHONPATH=/srv/config` baked in.
 
-```yaml
-services:
-  jupyterhub:
-    volumes:
-      - ./my_config:/mnt/user_config:ro
-```
+## Rename root
 
-The root file is loaded by JupyterHub directly. Sibling files are copied to `/srv/config/` and are importable from the root — `PYTHONPATH=/srv/config` is set in the image so `from helpers import foo` works without further setup.
-
-## Renaming the root file
-
-If you want a name other than `jupyterhub_config.py`, set `JUPYTERHUB_USER_CONFIG_FILE` in the hub environment:
+Set env. Default name is `jupyterhub_config.py`.
 
 ```yaml
 services:
   jupyterhub:
     environment:
       - JUPYTERHUB_USER_CONFIG_FILE=my_hub_config.py
-    volumes:
-      - ./my_config:/mnt/user_config:ro
 ```
 
-The provisioning script reads the override, validates `/mnt/user_config/my_hub_config.py`, copies all overlay files to `/srv/config/`, and additionally writes a same-content copy as `/srv/config/jupyterhub_config.py` so the JupyterHub launch command stays uniform.
+## Different host folder
 
-## What does NOT get overridden
+Override the bind:
 
-The overlay only steers which `jupyterhub_config.py` JupyterHub loads. It does **not** override server-side files in `/srv/jupyterhub/`:
+```yaml
+services:
+  jupyterhub:
+    volumes:
+      - ../config:/mnt/user_config:ro
+```
 
-- `settings_dictionary.yml` (Settings page schema)
-- `volumes_dictionary.yml` (user-volume defaults — use `JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE` for that overlay; see `docs/user-volumes.md`)
-- HTML templates under `/srv/jupyterhub/templates/`
+## What is not overridden
 
-Dropping any of those filenames into `/mnt/user_config/` copies them to `/srv/config/` (no harm, no effect) — JupyterHub only reads them from `/srv/jupyterhub/`.
+Server files. Stay at `/srv/jupyterhub/`. Hub reads them from there.
 
-## Failure modes
+- `settings_dictionary.yml`
+- `volumes_dictionary.yml` (use `JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE` overlay; see [user-volumes.md](user-volumes.md))
+- HTML templates
 
-- **Empty file**: `/mnt/user_config/jupyterhub_config.py` is 0 bytes. Boot fails with `[Config] ERROR: /mnt/user_config/jupyterhub_config.py is empty`.
-- **Syntax error**: `python3 -m py_compile` rejects the file. Boot fails with the compile output followed by `[Config] ERROR: ... failed py_compile`.
+Drop those filenames into `./config/`? Copied to `/srv/config/`. Ignored. Hub reads from `/srv/jupyterhub/`.
 
-Both cases are intentional — silently falling back to the built-in would mask operator typos and cause confusing behavior changes on restart. Fix the file (or remove it to opt out of the overlay) and restart.
+## Edits and restarts
+
+Every boot wipes `/srv/config/` and re-copies. Edit a file in `./config/`. Restart container. Picked up.
+
+Remove `./config/`. Restart. Built-in used. No leftovers.
+
+## Failures
+
+Empty file:
+
+```
+[Config] ERROR: /mnt/user_config/jupyterhub_config.py is empty
+```
+
+Syntax broken:
+
+```
+SyntaxError: ...
+[Config] ERROR: /mnt/user_config/jupyterhub_config.py failed syntax check (see above)
+```
+
+Fix file. Restart. Or remove file to use built-in.
