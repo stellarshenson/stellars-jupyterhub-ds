@@ -21,6 +21,7 @@ from stellars_hub import (
     BootstrapAdminAuthenticator,            # NativeAuth subclass with bootstrap-window admin signup
     StellarsNativeAuthenticator,            # parent class for the inline BootstrapAdminAuthenticator (refactor in progress)
     compute_bootstrap_window_open,          # truth-table predicate for the bootstrap-by-signup window
+    configure_volume_cache,                 # one-time init: feeds canonical volume-name templates to the activity-monitor sizes cache
     get_services_and_roles,                 # builds JupyterHub services list (activity sampler, idle culler)
     get_user_volume_name_templates,         # maps suffix -> full volume-name template (with {username} placeholder)
     get_user_volume_suffixes,               # extracts ['home', 'workspace', 'cache'] from volumes dict
@@ -177,8 +178,14 @@ DOCKER_SPAWNER_VOLUMES = {
 user_volume_suffixes = get_user_volume_suffixes(DOCKER_SPAWNER_VOLUMES, COMPOSE_PROJECT_NAME)
 # Derived: per-suffix volume-name template (still has {username} placeholder).
 # Single source of truth for what the volumes are actually called on disk -
-# UI labels, deletion handler, and DockerSpawner all read from this map.
+# UI labels, deletion handler, DockerSpawner, and the activity-monitor sizes
+# cache all read from this map.
 user_volume_name_templates = get_user_volume_name_templates(DOCKER_SPAWNER_VOLUMES, COMPOSE_PROJECT_NAME)
+# Wire the templates into the volume-sizes cache so its background `docker
+# system df` parser knows how to recognise per-user volumes after the
+# COMPOSE_PROJECT_NAME-driven namespace refactor (stale match would leave the
+# activity monitor's volume-size column empty for every user).
+configure_volume_cache(user_volume_name_templates)
 # Derived: ordered list of per-user volume records for the reset UI -
 # {suffix, name_template, description} per row. Templates iterate this single
 # list instead of cross-referencing a suffix list against a separate

@@ -16,6 +16,7 @@ from .events import register_events
 from .gpu import resolve_gpu_mode
 from .hooks import make_pre_spawn_hook, schedule_startup_favicon_callback
 from .services import get_services_and_roles
+from .volume_cache import configure_volume_cache
 from .volumes import (
     get_user_volume_name_templates,
     get_user_volume_suffixes,
@@ -27,6 +28,7 @@ __all__ = [
     "BootstrapAdminSignUpHandler",
     "StellarsNativeAuthenticator",
     "compute_bootstrap_window_open",
+    "configure_volume_cache",
     "get_services_and_roles",
     "get_user_volume_name_templates",
     "get_user_volume_suffixes",

@@ -3,10 +3,18 @@
 Uses docker system df to get volume usage data. This is a slow API call
 (can take minutes) but runs in a background thread - the activity page
 returns cached data immediately and never blocks on this.
+
+Volume-name parsing is driven by templates configured at hub startup via
+set_volume_name_templates() - the same map used by ManageVolumesHandler so
+both code paths agree on what an on-disk volume is called. Each template
+(e.g. "stellars-tech-ai-lab_jupyterlab_{username}_home") is compiled to a
+regex with a capturing username group; disk volumes are matched against
+all templates and the first hit wins.
 """
 
 import logging
 import os
+import re
 from datetime import datetime, timezone
 
 from .docker_utils import get_executor
@@ -15,6 +23,12 @@ log = logging.getLogger('jupyterhub.custom_handlers')
 
 # Cache: {'data': {encoded_username: {total, volumes}}, 'timestamp': datetime, 'refreshing': bool}
 _volume_sizes_cache = {'data': {}, 'timestamp': None, 'refreshing': False}
+
+# Volume-name template config (set by configure_volume_cache at hub startup).
+# _volume_name_templates: {suffix: template_string_with_{username}_placeholder}
+# _template_regexes:      [(suffix, compiled_regex_with_username_group), ...]
+_volume_name_templates = {}
+_template_regexes = []
 
 
 def _get_logger():
@@ -33,8 +47,42 @@ def _get_docker_timeout():
     return int(os.environ.get('JUPYTERHUB_DOCKER_TIMEOUT', 360))
 
 
+def configure_volume_cache(templates):
+    """Set the canonical volume-name templates the cache uses to match disk volumes.
+
+    `templates` maps suffix -> template string with literal "{username}" placeholder
+    (e.g. {"home": "stellars-tech-ai-lab_jupyterlab_{username}_home", ...}). Same
+    map produced by `get_user_volume_name_templates(DOCKER_SPAWNER_VOLUMES,
+    COMPOSE_PROJECT_NAME)` and consumed by ManageVolumesHandler - keeps both code
+    paths reading from one source of truth so e.g. a COMPOSE_PROJECT_NAME refactor
+    only needs touching the templates helper, not this module.
+
+    Each template is compiled to a regex that anchors the full volume name and
+    captures the encoded username; _fetch_volume_sizes tries every regex per disk
+    volume, first match wins.
+    """
+    global _volume_name_templates, _template_regexes
+    _volume_name_templates = dict(templates)
+    _template_regexes = []
+    placeholder = re.escape('{username}')
+    for suffix, template in _volume_name_templates.items():
+        pattern = '^' + re.escape(template).replace(placeholder, '(.+)') + '$'
+        _template_regexes.append((suffix, re.compile(pattern)))
+    _get_logger().info(
+        f"[Volume Sizes] Configured {len(_volume_name_templates)} name template(s): "
+        f"{list(_volume_name_templates.keys())}"
+    )
+
+
 def _fetch_volume_sizes():
     """Fetch sizes of all user volumes via docker system df (blocking, slow)."""
+    if not _template_regexes:
+        _get_logger().warning(
+            "[Volume Sizes] No volume-name templates configured; cache will be empty. "
+            "Call configure_volume_cache(user_volume_name_templates) at hub startup."
+        )
+        return {}
+
     try:
         import docker
         api_client = docker.APIClient(base_url='unix://var/run/docker.sock', timeout=_get_docker_timeout())
@@ -46,18 +94,20 @@ def _fetch_volume_sizes():
             user_data = {}
             for vol in volumes_data:
                 name = vol.get('Name', '')
-                if name.startswith('jupyterlab-') and '_' in name:
-                    parts = name[len('jupyterlab-'):].rsplit('_', 1)
-                    if len(parts) == 2:
-                        encoded_username, suffix = parts
-                        usage_data = vol.get('UsageData', {}) or {}
-                        size_bytes = usage_data.get('Size', 0) or 0
-                        size_mb = round(size_bytes / (1024 * 1024), 1)
+                for suffix, regex in _template_regexes:
+                    m = regex.match(name)
+                    if not m:
+                        continue
+                    encoded_username = m.group(1)
+                    usage_data = vol.get('UsageData', {}) or {}
+                    size_bytes = usage_data.get('Size', 0) or 0
+                    size_mb = round(size_bytes / (1024 * 1024), 1)
 
-                        if encoded_username not in user_data:
-                            user_data[encoded_username] = {"total": 0, "volumes": {}}
-                        user_data[encoded_username]["total"] += size_mb
-                        user_data[encoded_username]["volumes"][suffix] = size_mb
+                    if encoded_username not in user_data:
+                        user_data[encoded_username] = {"total": 0, "volumes": {}}
+                    user_data[encoded_username]["total"] += size_mb
+                    user_data[encoded_username]["volumes"][suffix] = size_mb
+                    break  # first matching template wins
 
             for user in user_data:
                 user_data[user]["total"] = round(user_data[user]["total"], 1)
