@@ -68,22 +68,28 @@ preflight:
 	done; \
 	echo; \
 	if [ $$rc -eq 0 ]; then \
-		echo "Preflight passed - all required tools, services, and files are available."; \
+		printf '%s%sPreflight passed%s - all required tools, services, and files are available.\n\n' "$(GREEN)" "$(BOLD)" "$(RESET)"; \
 	else \
-		echo "Preflight FAILED - install / start the missing items above."; \
+		printf '%s%sPreflight FAILED%s - install / start the missing items above.\n\n' "$(RED)" "$(BOLD)" "$(RESET)"; \
 	fi; \
 	exit $$rc
 
 # ── Terminal colours (used for status banners; degrade to empty on `dumb` TERM) ──
 CYAN  := $(shell tput setaf 6 2>/dev/null)
 GREEN := $(shell tput setaf 2 2>/dev/null)
+RED   := $(shell tput setaf 1 2>/dev/null)
 BOLD  := $(shell tput bold   2>/dev/null)
 RESET := $(shell tput sgr0   2>/dev/null)
 
-# Reusable success banner: reads pyproject.toml at recipe-shell time so the
-# post-bump version is reflected, then prints a green/bold "Build successful"
-# line. Used by build / build_verbose / _rebuild_impl.
-PRINT_BUILD_SUCCESS = @V=$$(python3 -c 'import tomllib;d=tomllib.load(open("pyproject.toml","rb"));print(d["project"]["version"]+"_cuda-"+d["tool"]["stellars"]["cuda"]+"_jh-"+d["tool"]["stellars"]["jupyterhub"])'); printf '%s%sBuild successful: stellars/stellars-jupyterhub-ds:%s%s\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
+# Reads pyproject.toml at recipe-shell time so the printed tag reflects the
+# file as-of right now (post-bump if maybe_increment_version ran in this
+# invocation). Shared by the build/push success banners below.
+RUNTIME_TAG_PYTHON_CMD := python3 -c 'import tomllib;d=tomllib.load(open("pyproject.toml","rb"));print(d["project"]["version"]+"_cuda-"+d["tool"]["stellars"]["cuda"]+"_jh-"+d["tool"]["stellars"]["jupyterhub"])'
+
+# Reusable green/bold success banners. Trailing blank line separates the
+# banner from any subsequent shell output for visual breathing room.
+PRINT_BUILD_SUCCESS = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sBuild successful: stellars/stellars-jupyterhub-ds:%s%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
+PRINT_PUSH_SUCCESS  = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sPush successful:  stellars/stellars-jupyterhub-ds:%s (also :latest)%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
 
 # Build options (e.g., BUILD_OPTS='--no-cache' or BUILD_OPTS='--no-version-increment')
 BUILD_OPTS ?=
@@ -155,6 +161,7 @@ pull: preflight
 push: preflight tag
 	docker push stellars/stellars-jupyterhub-ds:latest
 	docker push stellars/stellars-jupyterhub-ds:$(TAG)
+	$(PRINT_PUSH_SUCCESS)
 
 tag: preflight
 	@if git tag -l | grep -q "^$(TAG)$$"; then \
