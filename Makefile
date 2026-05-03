@@ -4,7 +4,7 @@
 # GLOBALS                                                                       #
 #################################################################################
 .DEFAULT_GOAL := help
-.PHONY: help preflight build build_verbose rebuild rebuild_no_increment _rebuild_impl push pull start stop clean increment_version maybe_increment_version tag logs
+.PHONY: help preflight build build_verbose rebuild rebuild_increment_version _rebuild_impl push pull start stop clean increment_version maybe_increment_version tag logs
 
 # ── Preflight: tools, services, and files required end-to-end ──
 # Covers versioning (python3 + tomllib + awk + sed), build (docker), push (git),
@@ -114,11 +114,11 @@ build_verbose: preflight maybe_increment_version
 rebuild: preflight _rebuild_impl
 
 ## rebuild 'target' stage and bump patch version
-rebuild_no_increment: preflight maybe_increment_version _rebuild_impl
+rebuild_increment_version: preflight maybe_increment_version _rebuild_impl
 
 # Internal: actual `target` stage rebuild. Reads CURRENT_VERSION at recipe time
 # so a preceding maybe_increment_version bump (when invoked via
-# rebuild_no_increment) is reflected in the docker tag.
+# rebuild_increment_version) is reflected in the docker tag.
 _rebuild_impl:
 	$(eval CURRENT_VERSION := $(shell python3 -c 'import tomllib;d=tomllib.load(open("pyproject.toml","rb"));print(d["project"]["version"]+"_cuda-"+d["tool"]["stellars"]["cuda"]+"_jh-"+d["tool"]["stellars"]["jupyterhub"])'))
 	@echo "Rebuilding 'target' stage (version: $(CURRENT_VERSION))..."
