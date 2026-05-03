@@ -14,7 +14,7 @@ Consult workspace CLAUDE.md and the .claude directory to discover all applicable
 The following workspace rules are STRICTLY ENFORCED for this project:
 
 - **No automatic git tags** - only create tags when user explicitly requests
-- **No automatic version changes** - only modify version in project.env when user explicitly requests
+- **No automatic version changes** - only modify version in pyproject.toml when user explicitly requests
 - **No automatic publishing** - never run `make publish`, `make push`, or similar without explicit user request
 - **No manual package installs if Makefile exists** - use `make install` or equivalent Makefile targets, not direct `pip install`/`uv install`/`npm install`
 - **No automatic git commits or pushes** - only when user explicitly requests
