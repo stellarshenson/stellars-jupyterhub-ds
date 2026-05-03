@@ -74,6 +74,17 @@ preflight:
 	fi; \
 	exit $$rc
 
+# ── Terminal colours (used for status banners; degrade to empty on `dumb` TERM) ──
+CYAN  := $(shell tput setaf 6 2>/dev/null)
+GREEN := $(shell tput setaf 2 2>/dev/null)
+BOLD  := $(shell tput bold   2>/dev/null)
+RESET := $(shell tput sgr0   2>/dev/null)
+
+# Reusable success banner: reads pyproject.toml at recipe-shell time so the
+# post-bump version is reflected, then prints a green/bold "Build successful"
+# line. Used by build / build_verbose / _rebuild_impl.
+PRINT_BUILD_SUCCESS = @V=$$(python3 -c 'import tomllib;d=tomllib.load(open("pyproject.toml","rb"));print(d["project"]["version"]+"_cuda-"+d["tool"]["stellars"]["cuda"]+"_jh-"+d["tool"]["stellars"]["jupyterhub"])'); printf '%s%sBuild successful: stellars/stellars-jupyterhub-ds:%s%s\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
+
 # Build options (e.g., BUILD_OPTS='--no-cache' or BUILD_OPTS='--no-version-increment')
 BUILD_OPTS ?=
 
@@ -88,7 +99,7 @@ maybe_increment_version: preflight
 ifeq ($(NO_VERSION_INCREMENT),)
 	@$(MAKE) increment_version
 else
-	@echo "Skipping version increment (--no-version-increment)"
+	@printf '%s%sVersion unchanged: %s (--no-version-increment)%s\n' "$(CYAN)" "$(BOLD)" "$(PROJECT_VERSION)" "$(RESET)"
 endif
 
 #################################################################################
@@ -99,16 +110,18 @@ endif
 increment_version: preflight
 	@CURRENT='$(PROJECT_VERSION)'; \
 	NEW=$$(echo "$$CURRENT" | awk 'BEGIN{FS=OFS="."} {$$NF += 1; print}'); \
-	echo "Version: $$CURRENT -> $$NEW"; \
+	printf '%s%sVersion bumped: %s -> %s%s\n' "$(CYAN)" "$(BOLD)" "$$CURRENT" "$$NEW" "$(RESET)"; \
 	sed -i 's/^version = "'"$$CURRENT"'"$$/version = "'"$$NEW"'"/' pyproject.toml
 
 ## build docker containers (BUILD_OPTS='--no-version-increment --no-cache')
 build: preflight maybe_increment_version
 	@cd ./scripts && ./build.sh $(DOCKER_BUILD_OPTS)
+	$(PRINT_BUILD_SUCCESS)
 
 ## build with verbose output (BUILD_OPTS='--no-version-increment --no-cache')
 build_verbose: preflight maybe_increment_version
 	@cd ./scripts && ./build_verbose.sh $(DOCKER_BUILD_OPTS)
+	$(PRINT_BUILD_SUCCESS)
 
 ## rebuild 'target' stage without bumping version (default; safe for dev iteration)
 rebuild: preflight _rebuild_impl
@@ -132,6 +145,7 @@ _rebuild_impl:
 		--tag stellars/stellars-jupyterhub-ds:latest \
 		-f services/jupyterhub/Dockerfile.jupyterhub \
 		.
+	$(PRINT_BUILD_SUCCESS)
 
 ## pull docker image from dockerhub
 pull: preflight
