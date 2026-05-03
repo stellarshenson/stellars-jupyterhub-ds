@@ -1,7 +1,11 @@
 [project]
 name = "stellars-jupyterhub-ds"
 version = "3.10.8"
-description = "Configurable groups: custom env vars, GPU control, Docker control per group"
+description = """\
+Multi-user JupyterHub 4 deployment platform with a data science stack, GPU auto-detection, NativeAuthenticator, and per-user JupyterLab environments spawned via DockerSpawner.
+
+The current version ships configurable user groups (custom env vars, GPU/Docker access per group), a chip-input editor for group membership, two-stage TLS cert provisioning (operator overlay + persisted/auto fallback), and YAML-driven user-volume defaults with operator override.\
+"""
 authors = [{name = "Konrad Jelen", email = "konrad.jelen+github@gmail.com"}]
 
 [tool.stellars]
