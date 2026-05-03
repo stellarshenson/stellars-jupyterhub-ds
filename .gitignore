@@ -125,3 +125,7 @@ dmypy.json
 
 # Yarn cache
 .yarn/
+
+# uv lockfile - the root pyproject.toml is purely a project descriptor (no
+# dependencies, no build-system), so a uv.lock here is never needed
+/uv.lock
