@@ -46,7 +46,7 @@ cd my-jupyterhub
 `--trust` lets copier run the template's `_tasks` (chmod on the generated `start.sh` / `stop.sh` / `cleanup.sh`); without it copier refuses to execute post-copy commands. Open `https://<your-hostname>/` and complete the admin bootstrap (see [First Admin Bootstrap](#first-admin-bootstrap)).
 
 ### Docker Compose
-1. Download `compose.yml` and `config/jupyterhub_config.py` config file
+1. Download `compose.yml` (standalone - the image ships a working built-in `jupyterhub_config.py`; drop your own into `./config/` next to the compose file to override; see [docs/configuration.md](docs/configuration.md))
 2. Run: `docker compose up --no-build`
 3. Open https://localhost/jupyterhub in your browser
 4. Sign up as the admin user (matches `JUPYTERHUB_ADMIN`, default `admin`) - on a fresh deployment the signup form is open and the admin name is auto-authorised; other usernames are rejected during this initial bootstrap window
@@ -363,22 +363,41 @@ volumes:
 
 ## Deployment Notes
 
-- Ensure `config/jupyterhub_config.py` is correctly set for your environment (e.g., TLS, admin list).
-- Optional volume mounts and configuration can be modified in `jupyterhub_config.py` for shared storage.
+- The image ships a working built-in `jupyterhub_config.py`. Drop a replacement into `./config/` next to `compose.yml` to override; missing/empty falls back to the built-in. See [docs/configuration.md](docs/configuration.md).
+- TLS certs work the same way: drop yml + cert/key into `./certs/` next to `compose.yml`; missing/empty auto-generates a self-signed cert. See [docs/certificates.md](docs/certificates.md).
 
 ## Customisation
 
-You should customise the deployment by creating a `compose_override.yml` file.  
+Most knobs are env vars set in `compose.yml`; deployment-specific values go in a `compose_override.yml` next to the upstream `compose.yml`.
 
 #### Custom configuration file
-Example below introduces custom config file `jupyterhub_config_override.py` to use for your deployment:
+The image's bind-mount at `./config/:/mnt/user_config:ro` is the operator overlay. Put `jupyterhub_config.py` (plus any helper modules) there:
+
+```
+./config/
+  jupyterhub_config.py   # required: the root file
+  helpers.py             # optional: any sibling .py is imported via PYTHONPATH=/srv/config
+```
+
+To point at a different host folder (e.g. parent-level `../config`), override the volume in `compose_override.yml`:
 
 ```yaml
 services:
   jupyterhub:
     volumes:
-      - ./config/jupyterhub_config_override.py:/srv/jupyterhub/jupyterhub_config.py:ro # config file (read only)
+      - ../config:/mnt/user_config:ro
 ```
+
+To rename the root file:
+
+```yaml
+services:
+  jupyterhub:
+    environment:
+      - JUPYTERHUB_USER_CONFIG_FILE=my_hub_config.py
+```
+
+Empty or syntactically broken root config fails boot loudly (`exit 1`) - no silent fallback. See [docs/configuration.md](docs/configuration.md) for the full scenario matrix.
 
 #### Enable GPU
 
@@ -529,9 +548,8 @@ Changes in your `compose_override.yml`:
 ```yaml
   jupyterhub:
     volumes:
-      - ./config/jupyterhub_config_override.py:/srv/jupyterhub/jupyterhub_config.py:ro # config file (read only)
       - jupyterhub_shared_nas:/mnt/shared # cifs share
-    
+
 volumes:
   # remote drive for large datasets
   jupyterhub_shared_nas:
@@ -543,7 +561,7 @@ volumes:
       o: username=xxxx,password=yyyy,uid=1000,gid=1000
 ```
 
-in the config file you will refer to this volume by its name `jupyterhub_shared_nas`:
+If you also need to override the volume map in your own config file, drop a `jupyterhub_config.py` into `./config/` (see [docs/configuration.md](docs/configuration.md)) and refer to the CIFS volume by its name `jupyterhub_shared_nas`:
 
 ```python
 # User mounts in the spawned container
