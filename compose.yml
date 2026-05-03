@@ -155,11 +155,8 @@ services:
 
 volumes:
   jupyterhub_data:
-    name: ${COMPOSE_PROJECT_NAME:-jupyterhub}_data  # actual Docker volume name namespaced by compose project
   jupyterhub_certs:
-    name: ${COMPOSE_PROJECT_NAME:-jupyterhub}_certs  # actual Docker volume name namespaced by compose project
   jupyterhub_shared:
-    name: ${COMPOSE_PROJECT_NAME:-jupyterhub}_shared  # actual Docker volume name namespaced by compose project
 
 networks:
   jupyterhub_network:
