@@ -4,12 +4,15 @@
 # GLOBALS                                                                       #
 #################################################################################
 .DEFAULT_GOAL := help
-.PHONY: help build rebuild rebuild_no_version_increment push start stop clean increment_version maybe_increment_version check_versioning_deps tag logs
+.PHONY: help preflight build build_verbose rebuild rebuild_no_increment _rebuild_impl push pull start stop clean increment_version maybe_increment_version tag logs
 
-# ── Required tools (versioning + extraction) ──
-# python3 (>=3.11 for stdlib tomllib) reads pyproject.toml; awk + sed handle
-# the inline version bump. Both are POSIX-standard except for python3 + tomllib.
-REQUIRED_TOOLS := python3 awk sed
+# ── Preflight: tools, services, and files required end-to-end ──
+# Covers versioning (python3 + tomllib + awk + sed), build (docker), push (git),
+# start/stop/logs (docker compose plugin + reachable daemon), and the project
+# files those targets read. Run `make preflight` before build/push to catch
+# missing prerequisites early; failures print OK / MISSING per item and exit 1.
+PREFLIGHT_TOOLS := python3 awk sed bash docker git
+PREFLIGHT_FILES := pyproject.toml compose.yml services/jupyterhub/Dockerfile.jupyterhub
 
 # ── Project metadata extracted from pyproject.toml ──
 # Parse-time extraction: the empty-string + $(error) idiom fails loud if any
@@ -26,13 +29,50 @@ JH_VERSION      := $(word 4,$(PROJECT_META))
 VERSION         := $(PROJECT_VERSION)_cuda-$(CUDA_VERSION)_jh-$(JH_VERSION)
 TAG             := $(VERSION)
 
-# Recipe-time check: any rule that mutates state (increment, push, tag) depends
-# on this so missing tools fail with a clear message before anything runs.
-check_versioning_deps:
-	@for tool in $(REQUIRED_TOOLS); do \
-		command -v $$tool >/dev/null 2>&1 || { echo "ERROR: '$$tool' not in PATH; required by the Makefile's versioning targets"; exit 1; }; \
-	done
-	@python3 -c 'import tomllib' 2>/dev/null || { echo "ERROR: python3 is too old (need >=3.11 for stdlib tomllib)"; exit 1; }
+## verify tools, python tomllib, docker compose, docker daemon, and key project files
+preflight:
+	@rc=0; \
+	printf "%-28s %s\n" "Tool" "Status"; \
+	printf "%-28s %s\n" "----" "------"; \
+	for t in $(PREFLIGHT_TOOLS); do \
+		if p=$$(command -v $$t 2>/dev/null); then \
+			printf "  %-26s OK   %s\n" "$$t" "$$p"; \
+		else \
+			printf "  %-26s MISSING\n" "$$t"; rc=1; \
+		fi; \
+	done; \
+	if python3 -c 'import tomllib' 2>/dev/null; then \
+		printf "  %-26s OK   %s\n" "python3 stdlib tomllib" "$$(python3 --version)"; \
+	else \
+		printf "  %-26s MISSING (need python3 >=3.11)\n" "python3 stdlib tomllib"; rc=1; \
+	fi; \
+	if v=$$(docker compose version --short 2>/dev/null); then \
+		printf "  %-26s OK   v%s\n" "docker compose plugin" "$$v"; \
+	else \
+		printf "  %-26s MISSING (install docker-compose-plugin)\n" "docker compose plugin"; rc=1; \
+	fi; \
+	if docker info >/dev/null 2>&1; then \
+		printf "  %-26s OK   reachable\n" "docker daemon"; \
+	else \
+		printf "  %-26s MISSING (daemon not reachable)\n" "docker daemon"; rc=1; \
+	fi; \
+	echo; \
+	printf "%-28s %s\n" "File" "Status"; \
+	printf "%-28s %s\n" "----" "------"; \
+	for f in $(PREFLIGHT_FILES); do \
+		if [ -f "$$f" ]; then \
+			printf "  %-26s OK\n" "$$f"; \
+		else \
+			printf "  %-26s MISSING\n" "$$f"; rc=1; \
+		fi; \
+	done; \
+	echo; \
+	if [ $$rc -eq 0 ]; then \
+		echo "Preflight passed - all required tools, services, and files are available."; \
+	else \
+		echo "Preflight FAILED - install / start the missing items above."; \
+	fi; \
+	exit $$rc
 
 # Build options (e.g., BUILD_OPTS='--no-cache' or BUILD_OPTS='--no-version-increment')
 BUILD_OPTS ?=
@@ -44,7 +84,7 @@ NO_VERSION_INCREMENT := $(findstring --no-version-increment,$(BUILD_OPTS))
 DOCKER_BUILD_OPTS := $(filter-out --no-version-increment,$(BUILD_OPTS))
 
 # Conditional version increment target
-maybe_increment_version:
+maybe_increment_version: preflight
 ifeq ($(NO_VERSION_INCREMENT),)
 	@$(MAKE) increment_version
 else
@@ -56,22 +96,30 @@ endif
 #################################################################################
 
 ## increment patch version in pyproject.toml
-increment_version: check_versioning_deps
+increment_version: preflight
 	@CURRENT='$(PROJECT_VERSION)'; \
-	NEW=$$(echo "$$CURRENT" | awk -F. '{$$NF += 1; OFS="."; print}'); \
+	NEW=$$(echo "$$CURRENT" | awk 'BEGIN{FS=OFS="."} {$$NF += 1; print}'); \
 	echo "Version: $$CURRENT -> $$NEW"; \
 	sed -i 's/^version = "'"$$CURRENT"'"$$/version = "'"$$NEW"'"/' pyproject.toml
 
 ## build docker containers (BUILD_OPTS='--no-version-increment --no-cache')
-build: maybe_increment_version
+build: preflight maybe_increment_version
 	@cd ./scripts && ./build.sh $(DOCKER_BUILD_OPTS)
 
 ## build with verbose output (BUILD_OPTS='--no-version-increment --no-cache')
-build_verbose: maybe_increment_version
+build_verbose: preflight maybe_increment_version
 	@cd ./scripts && ./build_verbose.sh $(DOCKER_BUILD_OPTS)
 
-## rebuild 'target' stage only (uses cached 'builder' stage, no stop/clean)
-rebuild: maybe_increment_version
+## rebuild 'target' stage without bumping version (default; safe for dev iteration)
+rebuild: preflight _rebuild_impl
+
+## rebuild 'target' stage and bump patch version
+rebuild_no_increment: preflight maybe_increment_version _rebuild_impl
+
+# Internal: actual `target` stage rebuild. Reads CURRENT_VERSION at recipe time
+# so a preceding maybe_increment_version bump (when invoked via
+# rebuild_no_increment) is reflected in the docker tag.
+_rebuild_impl:
 	$(eval CURRENT_VERSION := $(shell python3 -c 'import tomllib;d=tomllib.load(open("pyproject.toml","rb"));print(d["project"]["version"]+"_cuda-"+d["tool"]["stellars"]["cuda"]+"_jh-"+d["tool"]["stellars"]["jupyterhub"])'))
 	@echo "Rebuilding 'target' stage (version: $(CURRENT_VERSION))..."
 	@docker build \
@@ -85,20 +133,16 @@ rebuild: maybe_increment_version
 		-f services/jupyterhub/Dockerfile.jupyterhub \
 		.
 
-## rebuild without bumping the patch version (alias: make rebuild BUILD_OPTS='--no-version-increment')
-rebuild_no_version_increment:
-	@$(MAKE) rebuild BUILD_OPTS='--no-version-increment $(BUILD_OPTS)'
-
 ## pull docker image from dockerhub
-pull:
+pull: preflight
 	docker pull stellars/stellars-jupyterhub-ds:latest
 
 ## push docker containers to repo
-push: tag
+push: preflight tag
 	docker push stellars/stellars-jupyterhub-ds:latest
 	docker push stellars/stellars-jupyterhub-ds:$(TAG)
 
-tag:
+tag: preflight
 	@if git tag -l | grep -q "^$(TAG)$$"; then \
 		echo "Git tag $(TAG) already exists, skipping tagging"; \
 	else \
@@ -109,11 +153,11 @@ tag:
 	@docker tag stellars/stellars-jupyterhub-ds:latest stellars/stellars-jupyterhub-ds:$(TAG)
 
 ## start jupyterhub (fg)
-start:
+start: preflight
 	@./start.sh
 
 ## stop and remove containers
-stop:
+stop: preflight
 	@echo 'stopping and removing containers'
 	@if [ -f './compose_override.yml' ]; then \
 		docker compose --env-file .env -f compose.yml -f compose_override.yml down; \
@@ -122,7 +166,7 @@ stop:
 	fi
 
 ## follow container logs to docker.log
-logs:
+logs: preflight
 	@echo 'following container logs to docker.log (press Ctrl+C to stop)'
 	@if [ -f './compose_override.yml' ]; then \
 		docker compose --env-file .env -f compose.yml -f compose_override.yml logs -f 2>&1 | tee docker.log; \
@@ -131,7 +175,7 @@ logs:
 	fi
 
 ## clean orphaned containers
-clean:
+clean: preflight
 	@echo 'removing dangling and unused images, containers, nets and volumes'
 	@docker compose --env-file .env -f compose.yml down --remove-orphans
 	@yes | docker image prune
