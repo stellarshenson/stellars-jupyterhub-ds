@@ -8,8 +8,10 @@ for file in $START_PLATFORM_DIR/*; do
     fi
 done
 
-# run jupyterhub, env params are configured in Dockerfile and docker-compose yml 
-jupyterhub -f /srv/jupyterhub/jupyterhub_config.py $@
+# run jupyterhub, env params are configured in Dockerfile and docker-compose yml
+# config path is /srv/config/jupyterhub_config.py - populated every boot by
+# 01_provision_config.sh from /mnt/user_config (operator) or /srv/jupyterhub (built-in)
+jupyterhub -f /srv/config/jupyterhub_config.py $@
 
 # EOF
 

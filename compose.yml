@@ -53,9 +53,9 @@ services:
     pull_policy: build
     container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-jupyterhub
     volumes:
-      - ./config/jupyterhub_config.py:/srv/jupyterhub/jupyterhub_config.py:ro # config file (read only)
       - jupyterhub_certs:/mnt/certs # runtime cert dir Traefik watches
       - jupyterhub_user_certs:/mnt/user_certs:ro # operator-supplied certs (optional; bind-mount via compose_override.yml: `- ../certs:/mnt/user_certs:ro`)
+      - jupyterhub_user_config:/mnt/user_config:ro # operator-supplied config overlay (optional; bind-mount via compose_override.yml: `- ./config:/mnt/user_config:ro`)
       - /var/run/docker.sock:/var/run/docker.sock:rw # docker socket to use spawner
       - jupyterhub_data:/data # database and cookie secrets
       - jupyterhub_shared:/mnt/shared # shared volume across environments
@@ -96,6 +96,7 @@ services:
       - JUPYTERLAB_AUX_MENU_PATH=/mnt/shared/lab-utils.d # admin-managed custom menu definitions for JupyterLab
       - JUPYTERHUB_TIMEZONE= # IANA timezone (e.g. Europe/Warsaw), empty = UTC
       - JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE= # optional path inside the container to an operator user-volume descriptions overlay YAML; merges with /srv/jupyterhub/volumes_dictionary.yml (operator wins per-field). Mount the overlay via compose_override.yml volumes:
+      - JUPYTERHUB_USER_CONFIG_FILE=jupyterhub_config.py # name of the root config file under /mnt/user_config (default jupyterhub_config.py); siblings copied alongside as importable helpers
       - JUPYTERHUB_LOGO_URI= # custom logo URI (file:// or http(s)://)
       - JUPYTERHUB_FAVICON_URI= # custom favicon URI (file:// or http(s)://)
       - JUPYTERHUB_LAB_MAIN_ICON_URI= # JupyterLab main icon (file:// or URL)
@@ -159,6 +160,8 @@ volumes:
     name: ${COMPOSE_PROJECT_NAME:-jupyterhub}_certs  # actual Docker volume name namespaced by compose project
   jupyterhub_user_certs:
     name: ${COMPOSE_PROJECT_NAME:-jupyterhub}_user_certs  # operator-supplied cert overlay (optional; default empty)
+  jupyterhub_user_config:
+    name: ${COMPOSE_PROJECT_NAME:-jupyterhub}_user_config  # operator-supplied config overlay (optional; default empty)
   jupyterhub_shared:
     name: ${COMPOSE_PROJECT_NAME:-jupyterhub}_shared  # actual Docker volume name namespaced by compose project
 

@@ -104,6 +104,10 @@ COPY --chmod=644  config/jupyterhub_config.py /srv/jupyterhub/jupyterhub_config.
 COPY --chmod=644  services/jupyterhub/conf/settings_dictionary.yml /srv/jupyterhub/settings_dictionary.yml
 COPY --chmod=644  services/jupyterhub/conf/volumes_dictionary.yml /srv/jupyterhub/volumes_dictionary.yml
 
+## runtime config dir (populated every boot by 01_provision_config.sh
+## from /mnt/user_config or /srv/jupyterhub/jupyterhub_config.py)
+RUN mkdir -p /srv/config
+
 ## copy custom assets to JupyterHub's static directory
 RUN <<-EOF
     echo "installing custom assets to JupyterHub static directory"
@@ -156,6 +160,9 @@ ENV JUPYTERLAB_AUX_MENU_PATH=
 ENV JUPYTERHUB_TIMEZONE=
 ENV JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE=
 ENV CERTIFICATE_USER_CERTS_DIR=/mnt/user_certs
+ENV JUPYTERHUB_USER_CONFIG_DIR=/mnt/user_config
+ENV JUPYTERHUB_USER_CONFIG_FILE=jupyterhub_config.py
+ENV PYTHONPATH=/srv/config
 # Misc
 ENV TF_CPP_MIN_LOG_LEVEL=3
 ENV STELLARS_JUPYTERHUB_VERSION=${VERSION}
