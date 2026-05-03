@@ -4,13 +4,35 @@
 # GLOBALS                                                                       #
 #################################################################################
 .DEFAULT_GOAL := help
-.PHONY: help build rebuild rebuild_no_version_increment push start stop clean increment_version maybe_increment_version tag logs
+.PHONY: help build rebuild rebuild_no_version_increment push start stop clean increment_version maybe_increment_version check_versioning_deps tag logs
 
-# Include project configuration
-include project.env
+# ── Required tools (versioning + extraction) ──
+# python3 (>=3.11 for stdlib tomllib) reads pyproject.toml; awk + sed handle
+# the inline version bump. Both are POSIX-standard except for python3 + tomllib.
+REQUIRED_TOOLS := python3 awk sed
 
-# Use VERSION from project.env as TAG (strip quotes)
-TAG := $(subst ",,$(VERSION))
+# ── Project metadata extracted from pyproject.toml ──
+# Parse-time extraction: the empty-string + $(error) idiom fails loud if any
+# of the required tools or pyproject.toml are missing, instead of silently
+# producing an empty VERSION/TAG that would show up later as a broken docker tag.
+PROJECT_META := $(shell python3 -c 'import tomllib;d=tomllib.load(open("pyproject.toml","rb"));print(d["project"]["name"], d["project"]["version"], d["tool"]["stellars"]["cuda"], d["tool"]["stellars"]["jupyterhub"])' 2>/dev/null)
+ifeq ($(PROJECT_META),)
+$(error pyproject.toml read failed - need python3 >=3.11 with stdlib tomllib, plus a valid pyproject.toml at repo root)
+endif
+PROJECT_NAME    := $(word 1,$(PROJECT_META))
+PROJECT_VERSION := $(word 2,$(PROJECT_META))
+CUDA_VERSION    := $(word 3,$(PROJECT_META))
+JH_VERSION      := $(word 4,$(PROJECT_META))
+VERSION         := $(PROJECT_VERSION)_cuda-$(CUDA_VERSION)_jh-$(JH_VERSION)
+TAG             := $(VERSION)
+
+# Recipe-time check: any rule that mutates state (increment, push, tag) depends
+# on this so missing tools fail with a clear message before anything runs.
+check_versioning_deps:
+	@for tool in $(REQUIRED_TOOLS); do \
+		command -v $$tool >/dev/null 2>&1 || { echo "ERROR: '$$tool' not in PATH; required by the Makefile's versioning targets"; exit 1; }; \
+	done
+	@python3 -c 'import tomllib' 2>/dev/null || { echo "ERROR: python3 is too old (need >=3.11 for stdlib tomllib)"; exit 1; }
 
 # Build options (e.g., BUILD_OPTS='--no-cache' or BUILD_OPTS='--no-version-increment')
 BUILD_OPTS ?=
@@ -33,19 +55,12 @@ endif
 # COMMANDS                                                                      #
 #################################################################################
 
-## increment patch version in project.env
-increment_version:
-	@awk -F= '/^VERSION=/ { \
-		gsub(/"/, "", $$2); \
-		match($$2, /^([0-9]+\.[0-9]+\.)([0-9]+)(_.*$$)/, parts); \
-		new_patch = parts[2] + 1; \
-		new_version = parts[1] new_patch parts[3]; \
-		print "VERSION=\"" new_version "\""; \
-		print "Current version: " $$2 > "/dev/stderr"; \
-		print "New version: " new_version > "/dev/stderr"; \
-		next; \
-	} \
-	{ print }' project.env > project.env.tmp && mv project.env.tmp project.env
+## increment patch version in pyproject.toml
+increment_version: check_versioning_deps
+	@CURRENT='$(PROJECT_VERSION)'; \
+	NEW=$$(echo "$$CURRENT" | awk -F. '{$$NF += 1; OFS="."; print}'); \
+	echo "Version: $$CURRENT -> $$NEW"; \
+	sed -i 's/^version = "'"$$CURRENT"'"$$/version = "'"$$NEW"'"/' pyproject.toml
 
 ## build docker containers (BUILD_OPTS='--no-version-increment --no-cache')
 build: maybe_increment_version
@@ -57,7 +72,7 @@ build_verbose: maybe_increment_version
 
 ## rebuild 'target' stage only (uses cached 'builder' stage, no stop/clean)
 rebuild: maybe_increment_version
-	$(eval CURRENT_VERSION := $(shell grep '^VERSION=' project.env | sed 's/VERSION=//;s/"//g'))
+	$(eval CURRENT_VERSION := $(shell python3 -c 'import tomllib;d=tomllib.load(open("pyproject.toml","rb"));print(d["project"]["version"]+"_cuda-"+d["tool"]["stellars"]["cuda"]+"_jh-"+d["tool"]["stellars"]["jupyterhub"])'))
 	@echo "Rebuilding 'target' stage (version: $(CURRENT_VERSION))..."
 	@docker build \
 		--network=host \

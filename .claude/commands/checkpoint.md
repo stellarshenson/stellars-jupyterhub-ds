@@ -6,12 +6,12 @@ Create a checkpoint tag to mark a stable point before implementing major changes
 
 **Tag format**: `CHECKPOINT_<NAME>_<version>`
 - Name should be uppercase with underscores (e.g., `BEFORE_ACTIVITY_TRACKER`, `AFTER_SESSION_EXTENSION`)
-- Suffix is the shortened version (major.minor.patch) extracted from project.env
+- Suffix is the shortened version (major.minor.patch) extracted from pyproject.toml
 
 **Step 1: Get current version**
-Use the Bash tool to extract the shortened version:
+Use the Bash tool to extract the bare semver from `[project].version`:
 ```bash
-grep "^VERSION=" project.env | sed 's/VERSION="//;s/_.*//'
+python3 -c 'import tomllib;print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])'
 ```
 
 **Step 2: Determine checkpoint name**
