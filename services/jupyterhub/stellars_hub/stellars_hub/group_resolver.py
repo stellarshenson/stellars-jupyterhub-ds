@@ -10,6 +10,8 @@ Resolution rules:
   descending priority order and the first occurrence of each name is kept.
 - MEM_LIMIT_GB: biggest enabled value wins across all groups. A group with
   mem_limit_enabled=False does NOT remove a cap granted by another group.
+  The swap policy (mem_swap_disabled) travels with the winning limit: the
+  group that owns the largest cap also decides whether swap is allowed.
 - CPU_LIMIT_CORES: biggest enabled value wins across all groups, same rule as
   memory. The spawn-time application ceils to whole cores so a container is
   never assigned a sub-core (or zero-core) quota.
@@ -56,6 +58,7 @@ def resolve_group_config(
           'docker_access': bool,
           'docker_privileged': bool,
           'mem_limit_gb': float | None,  # biggest enabled value, None if no cap
+          'mem_swap_disabled': bool,     # swap policy of the winning mem-limit group
           'cpu_limit_cores': float | None,  # biggest enabled value, None if no cap
           'matched_groups': list[str],   # ordered by priority desc
           'skipped_env_vars': list[str], # names stripped because reserved
@@ -72,6 +75,7 @@ def resolve_group_config(
     docker_access = False
     docker_privileged = False
     mem_limit_gb = None
+    mem_swap_disabled = False
     cpu_limit_cores = None
 
     for cfg in matched:
@@ -83,14 +87,18 @@ def resolve_group_config(
         if inner.get('docker_privileged'):
             docker_privileged = True
 
-        # Memory limit: biggest enabled value wins; disabled groups do not un-cap
+        # Memory limit: biggest enabled value wins; disabled groups do not un-cap.
+        # The swap policy follows the winning limit - the group that owns the
+        # largest cap also decides whether swap is allowed. Strict > so ties keep
+        # the higher-priority group (matched is priority-descending).
         if inner.get('mem_limit_enabled'):
             try:
                 val = float(inner.get('mem_limit_gb') or 0)
             except (TypeError, ValueError):
                 val = 0.0
-            if val > 0:
-                mem_limit_gb = val if mem_limit_gb is None else max(mem_limit_gb, val)
+            if val > 0 and (mem_limit_gb is None or val > mem_limit_gb):
+                mem_limit_gb = val
+                mem_swap_disabled = bool(inner.get('mem_swap_disabled'))
 
         # CPU limit: biggest enabled value wins; disabled groups do not un-cap
         if inner.get('cpu_limit_enabled'):
@@ -121,6 +129,7 @@ def resolve_group_config(
         'docker_access': docker_access,
         'docker_privileged': docker_privileged,
         'mem_limit_gb': mem_limit_gb,
+        'mem_swap_disabled': mem_swap_disabled,
         'cpu_limit_cores': cpu_limit_cores,
         'matched_groups': [c['group_name'] for c in matched],
         'skipped_env_vars': skipped,

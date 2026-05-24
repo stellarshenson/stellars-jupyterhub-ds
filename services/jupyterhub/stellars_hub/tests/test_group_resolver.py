@@ -67,6 +67,42 @@ class TestCpuLimit:
         assert _resolve(["mine"], cfgs)["cpu_limit_cores"] == 2
 
 
+class TestMemSwapDisabled:
+    def test_default_swap_allowed(self):
+        cfgs = [_grp("a", mem_limit_enabled=True, mem_limit_gb=16)]
+        assert _resolve(["a"], cfgs)["mem_swap_disabled"] is False
+
+    def test_swap_disabled_flag(self):
+        cfgs = [_grp("a", mem_limit_enabled=True, mem_limit_gb=16, mem_swap_disabled=True)]
+        assert _resolve(["a"], cfgs)["mem_swap_disabled"] is True
+
+    def test_no_mem_limit_swap_flag_false(self):
+        cfgs = [_grp("a", mem_limit_enabled=False, mem_swap_disabled=True)]
+        result = _resolve(["a"], cfgs)
+        assert result["mem_limit_gb"] is None
+        assert result["mem_swap_disabled"] is False
+
+    def test_swap_policy_follows_bigger_limit_disabled(self):
+        # bigger cap disables swap -> swap disabled
+        cfgs = [
+            _grp("big", mem_limit_enabled=True, mem_limit_gb=128, mem_swap_disabled=True),
+            _grp("small", mem_limit_enabled=True, mem_limit_gb=64, mem_swap_disabled=False),
+        ]
+        result = _resolve(["big", "small"], cfgs)
+        assert result["mem_limit_gb"] == 128
+        assert result["mem_swap_disabled"] is True
+
+    def test_swap_policy_follows_bigger_limit_allowed(self):
+        # bigger cap allows swap -> a smaller group's swap-disable is ignored
+        cfgs = [
+            _grp("big", mem_limit_enabled=True, mem_limit_gb=128, mem_swap_disabled=False),
+            _grp("small", mem_limit_enabled=True, mem_limit_gb=64, mem_swap_disabled=True),
+        ]
+        result = _resolve(["big", "small"], cfgs)
+        assert result["mem_limit_gb"] == 128
+        assert result["mem_swap_disabled"] is False
+
+
 class TestCpuAndMemoryIndependent:
     def test_cpu_and_memory_resolve_separately(self):
         cfgs = [

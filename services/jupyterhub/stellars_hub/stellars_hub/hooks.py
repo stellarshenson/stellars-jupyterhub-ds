@@ -84,11 +84,22 @@ def make_pre_spawn_hook(
         if resolved['env_vars']:
             spawner.environment.update(resolved['env_vars'])
 
-        # Memory limit: resolved GB -> bytes for Docker HostConfig.Memory
+        # Memory limit: resolved GB -> bytes for Docker HostConfig.Memory.
+        # Swap policy: when the winning group disables swap, pin memswap_limit to
+        # the memory limit so total (RAM+swap) == RAM, i.e. zero swap allowance
+        # (cgroup v2: memory.swap.max=0) - a hard cap that OOMs at the limit
+        # instead of spilling to disk. Otherwise leave swap at Docker's default
+        # (memory-swap = 2x memory).
         if resolved.get('mem_limit_gb'):
-            spawner.mem_limit = int(float(resolved['mem_limit_gb']) * 1024 ** 3)
+            mem_bytes = int(float(resolved['mem_limit_gb']) * 1024 ** 3)
+            spawner.mem_limit = mem_bytes
+            if resolved.get('mem_swap_disabled'):
+                spawner.extra_host_config['memswap_limit'] = mem_bytes
+            else:
+                spawner.extra_host_config.pop('memswap_limit', None)
         else:
             spawner.mem_limit = None
+            spawner.extra_host_config.pop('memswap_limit', None)
 
         # CPU limit: resolved cores -> spawner.cpu_limit (DockerSpawner maps it
         # to cpu_quota = cpu_limit * cpu_period). Ceil to whole cores so a
@@ -117,13 +128,14 @@ def make_pre_spawn_hook(
             spawner.extra_create_kwargs = kwargs
 
         spawner.log.info(
-            "[Groups] user=%s groups=%s docker=%s privileged=%s gpu=%s mem_limit_gb=%s cpu_limit=%s env_vars=%d skipped=%s compose_project=%s",
+            "[Groups] user=%s groups=%s docker=%s privileged=%s gpu=%s mem_limit_gb=%s swap_off=%s cpu_limit=%s env_vars=%d skipped=%s compose_project=%s",
             username,
             resolved['matched_groups'],
             resolved['docker_access'],
             resolved['docker_privileged'],
             resolved['gpu_access'],
             resolved.get('mem_limit_gb'),
+            bool(resolved.get('mem_swap_disabled')),
             spawner.cpu_limit,
             len(resolved['env_vars']),
             resolved['skipped_env_vars'],

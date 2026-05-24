@@ -197,6 +197,8 @@ class GroupsConfigHandler(BaseHandler):
             except (TypeError, ValueError):
                 gb = 0.0
             config_dict['mem_limit_gb'] = max(0.0, round(gb, 1))
+        if 'mem_swap_disabled' in body:
+            config_dict['mem_swap_disabled'] = bool(body['mem_swap_disabled'])
         if 'cpu_limit_enabled' in body:
             config_dict['cpu_limit_enabled'] = bool(body['cpu_limit_enabled'])
         if 'cpu_limit_cores' in body:

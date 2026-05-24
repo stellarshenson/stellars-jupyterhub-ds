@@ -215,6 +215,16 @@
                    min="0.1" step="0.1" placeholder="0.0" disabled>
             <span class="input-group-text">GB</span>
           </div>
+          <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" id="config-mem-swap-disabled" disabled>
+            <label class="form-check-label" for="config-mem-swap-disabled">
+              Disable swap (hard cap)
+            </label>
+            <div class="form-text">
+              Container is OOM-killed at the limit instead of spilling to disk swap.
+              Otherwise Docker allows swap up to the same size as the limit.
+            </div>
+          </div>
         </div>
 
         <hr>
@@ -322,9 +332,10 @@ require(["jquery"], function($) {
 
   $('#save-config-btn').on('click', saveConfig);
 
-  // Memory limit: disable the GB input whenever the enable checkbox is off
+  // Memory limit: disable the GB input + swap checkbox whenever the enable checkbox is off
   $('#config-mem-limit-enabled').on('change', function() {
     $('#config-mem-limit-gb').prop('disabled', !this.checked);
+    $('#config-mem-swap-disabled').prop('disabled', !this.checked);
   });
 
   // CPU limit: disable the cores input whenever the enable checkbox is off
@@ -595,6 +606,7 @@ require(["jquery"], function($) {
         var memEnabled = !!config.mem_limit_enabled;
         $('#config-mem-limit-enabled').prop('checked', memEnabled);
         $('#config-mem-limit-gb').val(config.mem_limit_gb || '').prop('disabled', !memEnabled);
+        $('#config-mem-swap-disabled').prop('checked', !!config.mem_swap_disabled).prop('disabled', !memEnabled);
         var cpuEnabled = !!config.cpu_limit_enabled;
         $('#config-cpu-limit-enabled').prop('checked', cpuEnabled);
         $('#config-cpu-limit-cores').val(config.cpu_limit_cores || '').prop('disabled', !cpuEnabled);
@@ -679,6 +691,7 @@ require(["jquery"], function($) {
       docker_privileged: $('#config-docker-privileged').is(':checked'),
       mem_limit_enabled: $('#config-mem-limit-enabled').is(':checked'),
       mem_limit_gb: parseFloat($('#config-mem-limit-gb').val()) || 0,
+      mem_swap_disabled: $('#config-mem-swap-disabled').is(':checked'),
       cpu_limit_enabled: $('#config-cpu-limit-enabled').is(':checked'),
       cpu_limit_cores: parseFloat($('#config-cpu-limit-cores').val()) || 0
     };
