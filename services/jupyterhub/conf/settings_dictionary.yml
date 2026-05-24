@@ -172,6 +172,10 @@ Branding:
     description: Custom favicon URI (file:// or URL)
     default: ""
 
+  - name: JUPYTERHUB_FAVICON_BUSY_URI
+    description: Custom kernel-busy favicon for JupyterLab (file:// or URL); empty = JupyterLab default busy frames
+    default: ""
+
   - name: JUPYTERHUB_LAB_MAIN_ICON_URI
     description: JupyterLab main icon (file:// or URL)
     default: ""

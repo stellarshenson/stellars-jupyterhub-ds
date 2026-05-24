@@ -4,17 +4,19 @@ import os
 
 
 class TestDefaults:
-    def test_returns_dict_with_six_keys(self):
-        """Default branding returns dict with 6 keys, all empty/None."""
+    def test_returns_dict_with_expected_keys(self):
+        """Default branding returns dict with all keys empty/None."""
         from stellars_hub.branding import setup_branding
         result = setup_branding()
 
         assert isinstance(result, dict)
-        expected_keys = {'logo_file', 'favicon_uri', 'lab_main_icon_static',
-                         'lab_main_icon_url', 'lab_splash_icon_static', 'lab_splash_icon_url'}
+        expected_keys = {'logo_file', 'favicon_uri', 'favicon_busy_target',
+                         'lab_main_icon_static', 'lab_main_icon_url',
+                         'lab_splash_icon_static', 'lab_splash_icon_url'}
         assert set(result.keys()) == expected_keys
         assert result['logo_file'] is None
         assert result['favicon_uri'] == ''
+        assert result['favicon_busy_target'] == ''
         assert result['lab_main_icon_static'] == ''
         assert result['lab_main_icon_url'] == ''
         assert result['lab_splash_icon_static'] == ''
@@ -61,6 +63,41 @@ class TestFavicon:
         from stellars_hub.branding import setup_branding
         result = setup_branding(favicon_uri="https://example.com/fav.ico")
         assert result['favicon_uri'] == "https://example.com/fav.ico"
+
+
+class TestBusyFavicon:
+    def test_file_uri_copies_and_sets_static_target(self, monkeypatch, tmp_path):
+        """file:// busy favicon copies to favicon-busy.ico and returns the hub-static target."""
+        busy = tmp_path / "busy.ico"
+        busy.write_bytes(b'\x00\x00\x01\x00')
+
+        share_dir = tmp_path / "share" / "jupyterhub" / "static"
+        share_dir.mkdir(parents=True)
+        monkeypatch.setattr("stellars_hub.branding.sys", type("sys", (), {"prefix": str(tmp_path)})())
+
+        from stellars_hub.branding import setup_branding
+        result = setup_branding(favicon_busy_uri=f"file://{busy}")
+
+        assert result['favicon_busy_target'] == 'hub/static/favicon-busy.ico'
+        assert (share_dir / "favicon-busy.ico").exists()
+
+    def test_file_uri_nonexistent_leaves_empty(self):
+        """file:// busy favicon that doesn't exist leaves the target empty (no override)."""
+        from stellars_hub.branding import setup_branding
+        result = setup_branding(favicon_busy_uri="file:///no/such/busy.ico")
+        assert result['favicon_busy_target'] == ''
+
+    def test_url_passes_through_as_target(self):
+        """URL busy favicon is used as the redirect target directly."""
+        from stellars_hub.branding import setup_branding
+        result = setup_branding(favicon_busy_uri="https://example.com/busy.ico")
+        assert result['favicon_busy_target'] == "https://example.com/busy.ico"
+
+    def test_empty_leaves_target_empty(self):
+        """Empty busy URI leaves the target empty (JupyterLab default busy frames)."""
+        from stellars_hub.branding import setup_branding
+        result = setup_branding(favicon_uri="file:///some/fav.ico")
+        assert result['favicon_busy_target'] == ''
 
 
 class TestLabIcons:
