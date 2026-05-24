@@ -18,7 +18,7 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 - **Notification Broadcast**: Admin broadcast to all active servers via `/hub/notifications`. Supports six notification types, 140-character limit. Requires [jupyterlab_notifications_extension](https://github.com/stellarshenson/jupyterlab_notifications_extension)
 - **User Self-Service**: Users can restart their JupyterLab containers and selectively reset persistent volumes (home/workspace/cache) without admin intervention
 - **Admin Volume Management**: Admins can manage any user's volumes directly from the admin panel via database icon button in each user row
-- **Group Configuration**: Dedicated `/hub/groups` admin page managing user groups with per-group configuration: custom environment variables, GPU access, Docker engine / privileged container access, and memory limit in GB. User access is resolved at spawn time by collapsing all of the user's groups - grants (GPU / Docker / privileged) OR-accumulate, env vars use highest-priority wins on conflict, memory limit uses biggest-value wins (disabled groups do not un-cap). Reserved env var names (`JUPYTERHUB_*` / `JPY_*` / `MEM_*` / `CPU_*` plus platform defaults) are rejected with an inline error message. Drag-and-drop row reorder plus move-up / move-down buttons set the priority. Group membership managed via the stock JupyterHub admin panel now shows a post-Apply confirmation modal listing added and removed users per group
+- **Group Configuration**: Dedicated `/hub/groups` admin page managing user groups with per-group configuration: custom environment variables, GPU access, Docker engine / privileged container access, memory limit in GB (with optional swap-disable for a hard cap), and CPU limit in cores. User access is resolved at spawn time by collapsing all of the user's groups - grants (GPU / Docker / privileged) OR-accumulate, env vars use highest-priority wins on conflict, memory and CPU limits use biggest-value wins (disabled groups do not un-cap). Reserved env var names (`JUPYTERHUB_*` / `JPY_*` / `MEM_*` / `CPU_*` plus platform defaults) are rejected with an inline error message. Drag-and-drop row reorder plus move-up / move-down buttons set the priority. Group membership managed via the stock JupyterHub admin panel now shows a post-Apply confirmation modal listing added and removed users per group
 - **Docker Access Control**: Per-group Docker engine access (`/var/run/docker.sock` mount) and privileged container mode, configured via the Groups admin page
 - **Isolated Environments**: Each user gets dedicated JupyterLab container with persistent volumes via DockerSpawner
 - **Native Authentication**: Built-in user management with NativeAuthenticator supporting optional self-registration (`JUPYTERHUB_SIGNUP_ENABLED`) and admin approval. Authorization page protects existing users from accidental discard - only pending signup requests can be discarded
@@ -28,6 +28,8 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 - **Activity Monitor**: Admin-only dashboard showing real-time CPU/memory usage, volume sizes with per-volume breakdown, 3-state status indicator (active/inactive/offline), and historical activity scoring with exponential decay
 - **Mobile Interface**: Server management from mobile devices - status strip with pulsating indicator and uptime, inline session extension slider, admin activity monitor with card-based layout, health check with auto-reload on state change. No JupyterLab navigation - start/stop/restart only
 - **Health Check Endpoint**: Unauthenticated `GET /hub/health` returning JSON with hub status, uptime, version, and active server count. Rate-limited to 1 req/s per IP. Designed for Zabbix, Prometheus, or other monitoring agents
+- **Standalone Compose**: `compose.yml` runs without any extra files - the image ships a working built-in config. Drop your own `jupyterhub_config.py` into `./config/` (plus optional helper modules) to override, or your TLS yml + cert/key into `./certs/`; missing or empty folders fall back to the built-in config and an auto-generated self-signed cert. See [docs/configuration.md](docs/configuration.md) and [docs/certificates.md](docs/certificates.md)
+- **Custom Busy Favicon**: Optional `JUPYTERHUB_FAVICON_BUSY_URI` brands the kernel-busy favicon frames in JupyterLab; empty keeps JupyterLab's default busy animation
 - **Production Ready**: Traefik reverse proxy with TLS termination, automatic container updates via Watchtower
 
 ## Quickstart
@@ -484,10 +486,11 @@ Replace the default JupyterHub logo, favicon, and JupyterLab icons with custom a
 |----------|---------|
 | `JUPYTERHUB_LOGO_URI` | Hub login and navigation logo |
 | `JUPYTERHUB_FAVICON_URI` | Browser tab favicon for hub and JupyterLab sessions |
+| `JUPYTERHUB_FAVICON_BUSY_URI` | Kernel-busy favicon frames in JupyterLab; empty = JupyterLab default busy animation |
 | `JUPYTERHUB_LAB_MAIN_ICON_URI` | JupyterLab main toolbar logo |
 | `JUPYTERHUB_LAB_SPLASH_ICON_URI` | JupyterLab splash screen icon |
 
-Lab icons are resolved to hub static URLs and passed to spawned containers as `JUPYTERLAB_MAIN_ICON_URI` and `JUPYTERLAB_SPLASH_ICON_URI` environment variables for extensions to consume.
+Lab icons are resolved to hub static URLs and passed to spawned containers as `JUPYTERLAB_MAIN_ICON_URI` and `JUPYTERLAB_SPLASH_ICON_URI` environment variables for extensions to consume. The favicon variables also work for JupyterLab sessions via CHP proxy routing: the idle frame (`favicon.ico`) redirects to your custom icon, and `JUPYTERHUB_FAVICON_BUSY_URI` (when set) brands the kernel-busy frames - otherwise busy frames fall through to JupyterLab's own defaults.
 
 ```yaml
 services:
@@ -581,19 +584,21 @@ Admin-only dashboard at `/hub/groups` for creating, deleting, prioritising, and 
 
 - **Environment Variables**: Name / value / description rows. Reserved names (`JUPYTERHUB_*`, `JPY_*`, `MEM_*`, `CPU_*` prefixes plus every platform-managed variable) are rejected at save time with an inline error banner showing which names were refused
 - **GPU Access**: Single toggle. Grants nvidia `device_requests` on spawn. Only effective if GPU hardware is detected on the host
-- **Memory**: Optional limit in GB. Enforced by Docker via `HostConfig.Memory` and exposed to the container as `MEM_LIMIT`
+- **Memory**: Optional limit in GB. Enforced by Docker via `HostConfig.Memory`. Optional **Disable swap (hard cap)** checkbox pins `memswap_limit` to the memory limit so the container is OOM-killed at the limit instead of spilling to disk swap (default leaves Docker's 2x swap allowance)
+- **CPU**: Optional limit in cores (fractional input). Applied via `spawner.cpu_limit` (Docker `--cpus`); ceiled to whole cores at spawn so a container is never assigned a sub-core or zero-core quota. The config modal hints the host's available core count
 - **Docker Access**: Two toggles - mount `/var/run/docker.sock` and run container with `--privileged` flag
 
 **Resolution rules** (when a user belongs to multiple groups):
 
 - GPU / Docker / Privileged: **grants win** - OR across all groups. Once any group grants, no other group can revoke
 - Env vars: **highest priority wins on conflict** - groups scanned in descending priority order, first write of each name is kept
-- Memory limit: **biggest value wins** - among groups with the flag enabled. A group with the flag disabled does NOT un-cap
+- Memory limit: **biggest value wins** - among groups with the flag enabled. A group with the flag disabled does NOT un-cap. The swap policy travels with the winning limit - the group that owns the largest cap also decides whether swap is allowed
+- CPU limit: **biggest value wins** - same rule as memory
 
 **UI features**:
 
 - Priority order set via drag-and-drop rows or move-up / move-down buttons
-- Features column shows badges for configured features (`GPU`, `Docker`, `Privileged`, `Mem: N.N GB`, `N Vars`)
+- Features column shows badges for configured features (`GPU`, `Docker`, `Privileged`, `Mem`, `CPU`, `N Vars`)
 - Members column lists users added to the group, max two names per line in tooltip
 - Group name is sanitised on blur to the `[A-Za-z][A-Za-z0-9_-]*` shape (spaces become underscores); env var names are sanitised to the POSIX `[A-Z_][A-Z0-9_]*` convention
 
