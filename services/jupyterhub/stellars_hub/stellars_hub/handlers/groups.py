@@ -1,6 +1,7 @@
 """Handlers for group management page and API."""
 
 import json
+import os
 
 from jupyterhub.handlers import BaseHandler
 from tornado import web
@@ -19,7 +20,13 @@ class GroupsPageHandler(BaseHandler):
             raise web.HTTPError(403, "Only administrators can access this page")
 
         self.log.info(f"[Groups Page] Admin {current_user.name} accessed groups management")
-        html = self.render_template("groups.html", sync=True, user=current_user)
+        # host_cpu_count hints the admin at the upper bound for the per-group CPU
+        # limit (cores visible to the hub container = host cores in the usual
+        # unconstrained-hub deployment).
+        html = self.render_template(
+            "groups.html", sync=True, user=current_user,
+            host_cpu_count=(os.cpu_count() or 1),
+        )
         self.finish(html)
 
 
@@ -190,6 +197,14 @@ class GroupsConfigHandler(BaseHandler):
             except (TypeError, ValueError):
                 gb = 0.0
             config_dict['mem_limit_gb'] = max(0.0, round(gb, 1))
+        if 'cpu_limit_enabled' in body:
+            config_dict['cpu_limit_enabled'] = bool(body['cpu_limit_enabled'])
+        if 'cpu_limit_cores' in body:
+            try:
+                cores = float(body['cpu_limit_cores'])
+            except (TypeError, ValueError):
+                cores = 0.0
+            config_dict['cpu_limit_cores'] = max(0.0, round(cores, 1))
 
         manager = GroupsConfigManager.get_instance()
 
