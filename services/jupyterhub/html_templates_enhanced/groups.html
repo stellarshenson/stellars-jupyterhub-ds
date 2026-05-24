@@ -219,6 +219,32 @@
 
         <hr>
 
+        <!-- CPU Limit -->
+        <div class="mb-4">
+          <h6 class="text-uppercase text-muted mb-2">
+            <i class="fa fa-microchip" aria-hidden="true"></i> CPU
+          </h6>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="config-cpu-limit-enabled">
+            <label class="form-check-label" for="config-cpu-limit-enabled">
+              Enable CPU limit for this group
+            </label>
+            <div class="form-text">
+              When a user belongs to multiple groups, the largest limit wins.
+              Groups with this disabled do not remove an existing limit.
+              The value is rounded up to whole cores at spawn (never below 1 core).
+            </div>
+          </div>
+          <div class="input-group input-group-sm" style="max-width: 15em;">
+            <input type="number" class="form-control" id="config-cpu-limit-cores"
+                   min="0.1" step="0.1" max="{{ host_cpu_count }}" placeholder="0.0" disabled>
+            <span class="input-group-text">cores</span>
+          </div>
+          <div class="form-text">This host has {{ host_cpu_count }} core(s) available.</div>
+        </div>
+
+        <hr>
+
         <!-- Docker Access -->
         <div class="mb-4">
           <h6 class="text-uppercase text-muted mb-2">
@@ -301,6 +327,11 @@ require(["jquery"], function($) {
     $('#config-mem-limit-gb').prop('disabled', !this.checked);
   });
 
+  // CPU limit: disable the cores input whenever the enable checkbox is off
+  $('#config-cpu-limit-enabled').on('change', function() {
+    $('#config-cpu-limit-cores').prop('disabled', !this.checked);
+  });
+
   // ── Data Loading ──
 
   function loadGroups(callback) {
@@ -352,6 +383,9 @@ require(["jquery"], function($) {
       if (group.config.docker_privileged) features.push('Privileged');
       if (group.config.mem_limit_enabled && group.config.mem_limit_gb > 0) {
         features.push('Mem');
+      }
+      if (group.config.cpu_limit_enabled && group.config.cpu_limit_cores > 0) {
+        features.push('CPU');
       }
 
       var featureBadges = features.length
@@ -561,6 +595,9 @@ require(["jquery"], function($) {
         var memEnabled = !!config.mem_limit_enabled;
         $('#config-mem-limit-enabled').prop('checked', memEnabled);
         $('#config-mem-limit-gb').val(config.mem_limit_gb || '').prop('disabled', !memEnabled);
+        var cpuEnabled = !!config.cpu_limit_enabled;
+        $('#config-cpu-limit-enabled').prop('checked', cpuEnabled);
+        $('#config-cpu-limit-cores').val(config.cpu_limit_cores || '').prop('disabled', !cpuEnabled);
 
         // Populate env vars table
         var tbody = $('#env-vars-body');
@@ -641,7 +678,9 @@ require(["jquery"], function($) {
       docker_access: $('#config-docker-access').is(':checked'),
       docker_privileged: $('#config-docker-privileged').is(':checked'),
       mem_limit_enabled: $('#config-mem-limit-enabled').is(':checked'),
-      mem_limit_gb: parseFloat($('#config-mem-limit-gb').val()) || 0
+      mem_limit_gb: parseFloat($('#config-mem-limit-gb').val()) || 0,
+      cpu_limit_enabled: $('#config-cpu-limit-enabled').is(':checked'),
+      cpu_limit_cores: parseFloat($('#config-cpu-limit-cores').val()) || 0
     };
 
     $('#save-config-btn').prop('disabled', true);

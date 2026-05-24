@@ -1,5 +1,6 @@
 """Pre-spawn hook factory and startup callbacks."""
 
+import math
 from urllib.parse import urlparse
 
 from .group_resolver import resolve_group_config
@@ -89,6 +90,15 @@ def make_pre_spawn_hook(
         else:
             spawner.mem_limit = None
 
+        # CPU limit: resolved cores -> spawner.cpu_limit (DockerSpawner maps it
+        # to cpu_quota = cpu_limit * cpu_period). Ceil to whole cores so a
+        # fractional cap never rounds down to a zero-core quota (which Docker
+        # would treat as unlimited); min 1 core whenever a cap is set.
+        if resolved.get('cpu_limit_cores'):
+            spawner.cpu_limit = float(max(1, math.ceil(float(resolved['cpu_limit_cores']))))
+        else:
+            spawner.cpu_limit = None
+
         # Docker Compose project labels: tag the container so `docker compose ls`
         # / `docker compose -p <project> ps` group all spawned user containers
         # under the same project as the hub. Container name stays literal
@@ -107,13 +117,14 @@ def make_pre_spawn_hook(
             spawner.extra_create_kwargs = kwargs
 
         spawner.log.info(
-            "[Groups] user=%s groups=%s docker=%s privileged=%s gpu=%s mem_limit_gb=%s env_vars=%d skipped=%s compose_project=%s",
+            "[Groups] user=%s groups=%s docker=%s privileged=%s gpu=%s mem_limit_gb=%s cpu_limit=%s env_vars=%d skipped=%s compose_project=%s",
             username,
             resolved['matched_groups'],
             resolved['docker_access'],
             resolved['docker_privileged'],
             resolved['gpu_access'],
             resolved.get('mem_limit_gb'),
+            spawner.cpu_limit,
             len(resolved['env_vars']),
             resolved['skipped_env_vars'],
             compose_project or '-',

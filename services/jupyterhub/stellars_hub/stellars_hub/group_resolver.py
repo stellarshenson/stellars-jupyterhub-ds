@@ -10,6 +10,9 @@ Resolution rules:
   descending priority order and the first occurrence of each name is kept.
 - MEM_LIMIT_GB: biggest enabled value wins across all groups. A group with
   mem_limit_enabled=False does NOT remove a cap granted by another group.
+- CPU_LIMIT_CORES: biggest enabled value wins across all groups, same rule as
+  memory. The spawn-time application ceils to whole cores so a container is
+  never assigned a sub-core (or zero-core) quota.
 - RESERVED NAMES: env vars with reserved names are stripped and reported in
   skipped_env_vars. The handler is expected to reject at save time; this is
   defence-in-depth.
@@ -53,6 +56,7 @@ def resolve_group_config(
           'docker_access': bool,
           'docker_privileged': bool,
           'mem_limit_gb': float | None,  # biggest enabled value, None if no cap
+          'cpu_limit_cores': float | None,  # biggest enabled value, None if no cap
           'matched_groups': list[str],   # ordered by priority desc
           'skipped_env_vars': list[str], # names stripped because reserved
         }
@@ -68,6 +72,7 @@ def resolve_group_config(
     docker_access = False
     docker_privileged = False
     mem_limit_gb = None
+    cpu_limit_cores = None
 
     for cfg in matched:
         inner = cfg.get('config') or {}
@@ -86,6 +91,15 @@ def resolve_group_config(
                 val = 0.0
             if val > 0:
                 mem_limit_gb = val if mem_limit_gb is None else max(mem_limit_gb, val)
+
+        # CPU limit: biggest enabled value wins; disabled groups do not un-cap
+        if inner.get('cpu_limit_enabled'):
+            try:
+                cval = float(inner.get('cpu_limit_cores') or 0)
+            except (TypeError, ValueError):
+                cval = 0.0
+            if cval > 0:
+                cpu_limit_cores = cval if cpu_limit_cores is None else max(cpu_limit_cores, cval)
 
         for entry in (inner.get('env_vars') or []):
             name = (entry.get('name') or '').strip()
@@ -107,6 +121,7 @@ def resolve_group_config(
         'docker_access': docker_access,
         'docker_privileged': docker_privileged,
         'mem_limit_gb': mem_limit_gb,
+        'cpu_limit_cores': cpu_limit_cores,
         'matched_groups': [c['group_name'] for c in matched],
         'skipped_env_vars': skipped,
     }

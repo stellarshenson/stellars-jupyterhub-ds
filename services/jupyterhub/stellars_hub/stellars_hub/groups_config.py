@@ -41,6 +41,8 @@ def default_config():
         'docker_privileged': False,
         'mem_limit_enabled': False,
         'mem_limit_gb': 0,
+        'cpu_limit_enabled': False,
+        'cpu_limit_cores': 0,
     }
 
 
