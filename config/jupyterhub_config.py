@@ -123,6 +123,7 @@ JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")                           
 # Branding URIs - file:// copies to static dir, http(s):// passed to templates, empty = stock assets
 JUPYTERHUB_LOGO_URI = os.environ.get("JUPYTERHUB_LOGO_URI", "")                                # hub logo (login page, nav bar)
 JUPYTERHUB_FAVICON_URI = os.environ.get("JUPYTERHUB_FAVICON_URI", "")                          # browser tab icon (hub + JupyterLab via CHP route)
+JUPYTERHUB_FAVICON_BUSY_URI = os.environ.get("JUPYTERHUB_FAVICON_BUSY_URI", "")                # kernel-busy tab icon for JupyterLab; empty = JupyterLab default busy frames
 JUPYTERHUB_LAB_MAIN_ICON_URI = os.environ.get("JUPYTERHUB_LAB_MAIN_ICON_URI", "")             # JupyterLab main area icon
 JUPYTERHUB_LAB_SPLASH_ICON_URI = os.environ.get("JUPYTERHUB_LAB_SPLASH_ICON_URI", "")         # JupyterLab splash screen icon
 
@@ -453,6 +454,7 @@ gpu_enabled, nvidia_detected = resolve_gpu_mode(JUPYTERHUB_GPU_ENABLED, JUPYTERH
 branding = setup_branding(
     logo_uri=JUPYTERHUB_LOGO_URI,
     favicon_uri=JUPYTERHUB_FAVICON_URI,
+    favicon_busy_uri=JUPYTERHUB_FAVICON_BUSY_URI,
     lab_main_icon_uri=JUPYTERHUB_LAB_MAIN_ICON_URI,
     lab_splash_icon_uri=JUPYTERHUB_LAB_SPLASH_ICON_URI,
 )
@@ -561,7 +563,8 @@ c.JupyterHub.tornado_settings = {
 # CHP favicon proxy routes and JupyterLab icon URLs.
 c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     branding,                                                # icon static names and URLs from setup_branding()
-    favicon_uri=JUPYTERHUB_FAVICON_URI,                      # non-empty activates CHP favicon routing
+    favicon_uri=JUPYTERHUB_FAVICON_URI,                      # non-empty activates the favicon.ico CHP route
+    favicon_busy_target=branding['favicon_busy_target'],    # non-empty activates the favicon-busy CHP route; empty = JupyterLab default busy frames
     gpu_available=bool(gpu_enabled),                         # hardware present - required for per-group GPU grant
     reserved_env_var_names=RESERVED_ENV_VAR_NAMES,           # names groups cannot override
     reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,     # prefixes reserved for JupyterHub/platform
@@ -651,6 +654,9 @@ c.JupyterHub.load_roles = roles                              # service API token
 
 # Register CHP favicon proxy routes for servers that survived a hub restart
 # (pre_spawn_hook only fires on new spawns, this catches already-running servers)
-schedule_startup_favicon_callback(favicon_uri=JUPYTERHUB_FAVICON_URI)
+schedule_startup_favicon_callback(
+    favicon_uri=JUPYTERHUB_FAVICON_URI,
+    favicon_busy_target=branding['favicon_busy_target'],
+)
 
 # EOF

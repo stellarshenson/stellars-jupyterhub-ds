@@ -9,6 +9,7 @@ from .groups_config import GroupsConfigManager
 def make_pre_spawn_hook(
     branding,
     favicon_uri='',
+    favicon_busy_target='',
     gpu_available=False,
     reserved_env_var_names=frozenset(),
     reserved_env_var_prefixes=(),
@@ -18,7 +19,12 @@ def make_pre_spawn_hook(
 
     Args:
         branding: dict from setup_branding() with icon static names and URLs
-        favicon_uri: JUPYTERHUB_FAVICON_URI value (non-empty activates CHP routes)
+        favicon_uri: JUPYTERHUB_FAVICON_URI value (non-empty activates the
+            favicon.ico CHP route)
+        favicon_busy_target: resolved redirect target for kernel-busy favicon
+            frames (hub-relative static path or external URL); non-empty
+            activates the favicon-busy CHP route. Empty leaves busy frames to
+            the user's own JupyterLab server.
         gpu_available: True when host has GPU hardware (detected or forced) - a
             prerequisite for any per-group GPU grant taking effect.
         reserved_env_var_names: names that groups cannot override (platform env).
@@ -113,29 +119,40 @@ def make_pre_spawn_hook(
             compose_project or '-',
         )
 
-        # Favicon proxy route
-        if favicon_uri:
+        # Favicon proxy routes. Only the overridden frames are routed to the hub
+        # (exact filenames), so un-overridden frames fall through CHP's
+        # longest-prefix match to the user's own server. Without this narrowing
+        # the kernel-busy frames (favicon-busy-N.ico) loop on the hub.
+        if favicon_uri or favicon_busy_target:
             from jupyterhub.app import JupyterHub
             from .handlers.favicon import FaviconRedirectHandler
             from tornado.web import url
 
             app = JupyterHub.instance()
 
-            # One-time: inject Tornado handler into app (outside /hub/ prefix)
+            # One-time: inject Tornado handler into app (outside /hub/ prefix).
+            # Pattern captures the favicon filename so the handler maps the idle
+            # frame vs busy frames; busy_target tells it where busy frames go.
             if not getattr(app, '_favicon_handler_injected', False):
-                pattern = app.base_url + r'user/[^/]+/static/favicons/favicon\.ico'
-                rule = url(pattern, FaviconRedirectHandler)
+                pattern = app.base_url + r'user/[^/]+/static/favicons/(favicon[^/]*\.ico)'
+                rule = url(pattern, FaviconRedirectHandler, dict(busy_target=favicon_busy_target))
                 app.tornado_application.wildcard_router.rules.insert(0, rule)
                 app._favicon_handler_injected = True
                 spawner.log.info(f"[Favicon] Injected Tornado handler for pattern: {pattern}")
 
-            # Per-user: add CHP route for favicon path -> hub (idempotent)
+            # Per-user: add CHP routes for the overridden frames only (idempotent)
             parsed = urlparse(app.hub.url)
             hub_target = f'{parsed.scheme}://{parsed.netloc}'
-            routespec = f'{app.base_url}user/{username}/static/favicons/'
-            await app.proxy.add_route(routespec, hub_target, {})
-            app.proxy.extra_routes[routespec] = hub_target
-            spawner.log.info(f"[Favicon] Added CHP route: {routespec} -> {hub_target}")
+            base = f'{app.base_url}user/{username}/static/favicons/'
+            routespecs = []
+            if favicon_uri:
+                routespecs.append(f'{base}favicon.ico')
+            if favicon_busy_target:
+                routespecs.append(f'{base}favicon-busy')
+            for routespec in routespecs:
+                await app.proxy.add_route(routespec, hub_target, {})
+                app.proxy.extra_routes[routespec] = hub_target
+                spawner.log.info(f"[Favicon] Added CHP route: {routespec} -> {hub_target}")
 
         # JupyterLab icon URIs - resolve static filenames to fully qualified URLs
         _main_static = branding.get('lab_main_icon_static', '')
@@ -164,13 +181,16 @@ def make_pre_spawn_hook(
     return pre_spawn_hook
 
 
-def schedule_startup_favicon_callback(favicon_uri=''):
+def schedule_startup_favicon_callback(favicon_uri='', favicon_busy_target=''):
     """Schedule startup callback to register CHP routes for already-running servers.
 
     Args:
-        favicon_uri: JUPYTERHUB_FAVICON_URI value (non-empty activates callback)
+        favicon_uri: JUPYTERHUB_FAVICON_URI value (non-empty activates the
+            favicon.ico route)
+        favicon_busy_target: resolved busy-frame redirect target (non-empty
+            activates the favicon-busy route)
     """
-    if not favicon_uri:
+    if not (favicon_uri or favicon_busy_target):
         return
 
     async def _register_favicon_routes_for_active_servers():
@@ -182,8 +202,8 @@ def schedule_startup_favicon_callback(favicon_uri=''):
 
         # Inject Tornado handler (same as pre_spawn_hook, guarded by flag)
         if not getattr(app, '_favicon_handler_injected', False):
-            pattern = app.base_url + r'user/[^/]+/static/favicons/favicon\.ico'
-            rule = url(pattern, FaviconRedirectHandler)
+            pattern = app.base_url + r'user/[^/]+/static/favicons/(favicon[^/]*\.ico)'
+            rule = url(pattern, FaviconRedirectHandler, dict(busy_target=favicon_busy_target))
             app.tornado_application.wildcard_router.rules.insert(0, rule)
             app._favicon_handler_injected = True
             app.log.info(f"[Favicon Startup] Injected Tornado handler for pattern: {pattern}")
@@ -197,14 +217,20 @@ def schedule_startup_favicon_callback(favicon_uri=''):
             user = app.users.get(orm_user.name)
             if user and user.spawner and user.spawner.active:
                 username = user.name
-                routespec = f'{app.base_url}user/{username}/static/favicons/'
-                await app.proxy.add_route(routespec, hub_target, {})
-                app.proxy.extra_routes[routespec] = hub_target
+                base = f'{app.base_url}user/{username}/static/favicons/'
+                routespecs = []
+                if favicon_uri:
+                    routespecs.append(f'{base}favicon.ico')
+                if favicon_busy_target:
+                    routespecs.append(f'{base}favicon-busy')
+                for routespec in routespecs:
+                    await app.proxy.add_route(routespec, hub_target, {})
+                    app.proxy.extra_routes[routespec] = hub_target
+                    app.log.info(f"[Favicon Startup] Added CHP route: {routespec} -> {hub_target}")
                 count += 1
-                app.log.info(f"[Favicon Startup] Added CHP route: {routespec} -> {hub_target}")
 
         if count:
-            app.log.info(f"[Favicon Startup] Registered {count} CHP route(s) for active servers")
+            app.log.info(f"[Favicon Startup] Registered {count} active server(s) with favicon CHP routes")
 
     from tornado.ioloop import IOLoop
     IOLoop.current().add_callback(_register_favicon_routes_for_active_servers)

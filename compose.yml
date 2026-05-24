@@ -99,6 +99,7 @@ services:
       - JUPYTERHUB_USER_CONFIG_FILE=jupyterhub_config.py # name of the root config file under /mnt/user_config (default jupyterhub_config.py); siblings copied alongside as importable helpers
       - JUPYTERHUB_LOGO_URI= # custom logo URI (file:// or http(s)://)
       - JUPYTERHUB_FAVICON_URI= # custom favicon URI (file:// or http(s)://)
+      - JUPYTERHUB_FAVICON_BUSY_URI= # custom kernel-busy favicon for JupyterLab (file:// or URL); empty = JupyterLab default busy frames
       - JUPYTERHUB_LAB_MAIN_ICON_URI= # JupyterLab main icon (file:// or URL)
       - JUPYTERHUB_LAB_SPLASH_ICON_URI= # JupyterLab splash icon (file:// or URL)
       - COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-jupyterhub} # propagated so user containers carry the same compose project label and volume namespace as the hub
