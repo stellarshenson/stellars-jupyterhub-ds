@@ -76,17 +76,22 @@ def make_pre_spawn_hook(
         if resolved['gpu_access']:
             if resolved.get('gpu_all', True) or not resolved.get('gpu_device_ids'):
                 gpu_request = {'Driver': 'nvidia', 'Count': -1, 'Capabilities': [['gpu']]}
+                spawner.environment['NVIDIA_VISIBLE_DEVICES'] = 'all'
             else:
-                gpu_request = {
-                    'Driver': 'nvidia',
-                    'DeviceIDs': list(resolved['gpu_device_ids']),
-                    'Capabilities': [['gpu']],
-                }
+                ids = list(resolved['gpu_device_ids'])
+                gpu_request = {'Driver': 'nvidia', 'DeviceIDs': ids, 'Capabilities': [['gpu']]}
+                # NVIDIA_VISIBLE_DEVICES is the toolkit's authoritative selector and
+                # overrides the image's baked-in 'all'. It enforces the subset on
+                # native Linux (per-GPU /dev/nvidiaN nodes); on WSL2/Docker Desktop
+                # GPUs come through a single /dev/dxg and selection is NOT enforced -
+                # all GPUs stay visible. See docs/gpu-selection-jupyterlab-containers.md.
+                spawner.environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(ids)
             spawner.extra_host_config['device_requests'] = [gpu_request]
             spawner.environment['ENABLE_GPU_SUPPORT'] = '1'
             spawner.environment['ENABLE_GPUSTAT'] = '1'
         else:
             spawner.extra_host_config.pop('device_requests', None)
+            spawner.environment['NVIDIA_VISIBLE_DEVICES'] = 'void'  # override image default 'all'
             spawner.environment['ENABLE_GPU_SUPPORT'] = '0'
             spawner.environment['ENABLE_GPUSTAT'] = '0'
 
