@@ -82,3 +82,18 @@ def resolve_gpu_mode(gpu_enabled, nvidia_image):
         if gpu_enabled == 2:
             gpu_enabled = 1 if nvidia_detected else 0
     return gpu_enabled, nvidia_detected, gpu_list
+
+
+def is_wsl2():
+    """True if the host is WSL2.
+
+    On WSL2 GPUs come through a single paravirtual /dev/dxg, so per-GPU container
+    isolation is not enforceable - selection becomes advisory. Detected from the
+    kernel release string (containers share the host kernel).
+    """
+    try:
+        with open('/proc/version') as f:
+            v = f.read().lower()
+        return 'microsoft' in v or 'wsl2' in v
+    except Exception:
+        return False

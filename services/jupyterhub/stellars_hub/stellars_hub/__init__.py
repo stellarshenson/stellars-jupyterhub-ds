@@ -13,7 +13,7 @@ from .admin_bootstrap import (
 from .auth import StellarsNativeAuthenticator
 from .branding import setup_branding
 from .events import register_events
-from .gpu import resolve_gpu_mode
+from .gpu import is_wsl2, resolve_gpu_mode
 from .hooks import make_pre_spawn_hook, schedule_startup_favicon_callback
 from .idle_culler import (
     calc_available_hours,
@@ -50,6 +50,7 @@ __all__ = [
     "should_cull",
     "get_user_volume_name_templates",
     "get_user_volume_suffixes",
+    "is_wsl2",
     "load_merged_user_volumes",
     "make_admin_post_auth_hook",
     "make_pre_spawn_hook",

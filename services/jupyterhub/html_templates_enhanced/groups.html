@@ -185,6 +185,14 @@
             <i class="fa fa-microchip" aria-hidden="true"></i> GPU Access
           </h6>
           {% if gpus %}
+          {% if not gpu_isolation_enforced %}
+          <div class="alert alert-warning py-2 px-2 small mb-2" role="alert">
+            <i class="fa fa-triangle-exclamation" aria-hidden="true"></i>
+            This host (WSL2 / Docker Desktop) cannot enforce per-GPU isolation - selection is
+            <strong>advisory, not a hard limit</strong>. Containers can still reach all GPUs; CUDA
+            workloads default to the selected GPUs but a user can override that.
+          </div>
+          {% endif %}
           <div class="form-check">
             <input class="form-check-input" type="checkbox" id="config-gpu-access">
             <label class="form-check-label" for="config-gpu-access">

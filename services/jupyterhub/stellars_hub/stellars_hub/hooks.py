@@ -12,6 +12,7 @@ def make_pre_spawn_hook(
     favicon_uri='',
     favicon_busy_target='',
     gpu_available=False,
+    gpu_uuid_by_index=None,
     reserved_env_var_names=frozenset(),
     reserved_env_var_prefixes=(),
     compose_project='',
@@ -28,6 +29,8 @@ def make_pre_spawn_hook(
             the user's own JupyterLab server.
         gpu_available: True when host has GPU hardware (detected or forced) - a
             prerequisite for any per-group GPU grant taking effect.
+        gpu_uuid_by_index: dict mapping GPU index string -> UUID, used to set
+            CUDA_VISIBLE_DEVICES by UUID (stable across in-container re-indexing).
         reserved_env_var_names: names that groups cannot override (platform env).
         reserved_env_var_prefixes: tuple of prefixes reserved for JupyterHub
             itself (e.g. JUPYTERHUB_, JPY_, MEM_, CPU_).
@@ -77,21 +80,30 @@ def make_pre_spawn_hook(
             if resolved.get('gpu_all', True) or not resolved.get('gpu_device_ids'):
                 gpu_request = {'Driver': 'nvidia', 'Count': -1, 'Capabilities': [['gpu']]}
                 spawner.environment['NVIDIA_VISIBLE_DEVICES'] = 'all'
+                spawner.environment.pop('CUDA_VISIBLE_DEVICES', None)  # no restriction
             else:
                 ids = list(resolved['gpu_device_ids'])
                 gpu_request = {'Driver': 'nvidia', 'DeviceIDs': ids, 'Capabilities': [['gpu']]}
-                # NVIDIA_VISIBLE_DEVICES is the toolkit's authoritative selector and
-                # overrides the image's baked-in 'all'. It enforces the subset on
-                # native Linux (per-GPU /dev/nvidiaN nodes); on WSL2/Docker Desktop
-                # GPUs come through a single /dev/dxg and selection is NOT enforced -
-                # all GPUs stay visible. See docs/gpu-selection-jupyterlab-containers.md.
+                # NVIDIA_VISIBLE_DEVICES (host indices) is the toolkit's authoritative
+                # selector and overrides the image's baked-in 'all'. It enforces the
+                # subset on native Linux (per-GPU /dev/nvidiaN nodes); on WSL2/Docker
+                # Desktop GPUs come through a single /dev/dxg and it is NOT enforced.
                 spawner.environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(ids)
+                # CUDA_VISIBLE_DEVICES by UUID so CUDA targets the right physical GPU
+                # whether it was re-indexed to 0 (native Linux, only the subset
+                # injected) or all GPUs are visible (WSL2). Soft, app-level: nvidia-smi
+                # still shows all on WSL2 and a user can override it. UUIDs are
+                # order-independent, unlike host indices which break once re-indexed.
+                uuid_map = gpu_uuid_by_index or {}
+                uuids = [uuid_map[i] for i in ids if i in uuid_map]
+                spawner.environment['CUDA_VISIBLE_DEVICES'] = ','.join(uuids) if uuids else ','.join(ids)
             spawner.extra_host_config['device_requests'] = [gpu_request]
             spawner.environment['ENABLE_GPU_SUPPORT'] = '1'
             spawner.environment['ENABLE_GPUSTAT'] = '1'
         else:
             spawner.extra_host_config.pop('device_requests', None)
             spawner.environment['NVIDIA_VISIBLE_DEVICES'] = 'void'  # override image default 'all'
+            spawner.environment.pop('CUDA_VISIBLE_DEVICES', None)
             spawner.environment['ENABLE_GPU_SUPPORT'] = '0'
             spawner.environment['ENABLE_GPUSTAT'] = '0'
 
