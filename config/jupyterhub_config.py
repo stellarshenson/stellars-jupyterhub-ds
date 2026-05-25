@@ -22,7 +22,8 @@ from stellars_hub import (
     StellarsNativeAuthenticator,            # parent class for the inline BootstrapAdminAuthenticator (refactor in progress)
     compute_bootstrap_window_open,          # truth-table predicate for the bootstrap-by-signup window
     configure_volume_cache,                 # one-time init: feeds canonical volume-name templates to the activity-monitor sizes cache
-    get_services_and_roles,                 # builds JupyterHub services list (activity sampler, idle culler)
+    get_services_and_roles,                 # builds JupyterHub services list (activity sampler)
+    schedule_idle_culler,                   # in-hub idle culler (honours per-user session extensions)
     get_user_volume_name_templates,         # maps suffix -> full volume-name template (with {username} placeholder)
     get_user_volume_suffixes,               # extracts ['home', 'workspace', 'cache'] from volumes dict
     load_merged_user_volumes,               # loads + merges platform-defaults YAML with operator overrides
@@ -645,16 +646,21 @@ c.JupyterHub.extra_handlers = [
 # ── Section 5: Services & Startup Callbacks ──────────────────────────────────
 # JupyterHub managed services (background processes) and one-time startup hooks.
 
-# Build service definitions: activity sampler (always), idle culler (conditional)
+# Build service definitions: activity sampler (always enabled)
 services, roles = get_services_and_roles(
-    culler_enabled=JUPYTERHUB_IDLE_CULLER_ENABLED,           # 0=off, 1=on
-    culler_timeout=JUPYTERHUB_IDLE_CULLER_TIMEOUT,           # seconds before cull
-    culler_interval=JUPYTERHUB_IDLE_CULLER_INTERVAL,         # seconds between checks
-    culler_max_age=JUPYTERHUB_IDLE_CULLER_MAX_AGE,           # max server lifetime (0=unlimited)
     sample_interval=ACTIVITYMON_SAMPLE_INTERVAL,             # activity sampling interval
 )
 c.JupyterHub.services = services                             # register managed services
 c.JupyterHub.load_roles = roles                              # service API token scopes
+
+# Idle culler runs in-process (not a managed service) so it can read each
+# server's granted extension from spawner state and actually delay the cull.
+if JUPYTERHUB_IDLE_CULLER_ENABLED == 1:
+    schedule_idle_culler(
+        base_seconds=JUPYTERHUB_IDLE_CULLER_TIMEOUT,        # derived seconds (from _MINUTES)
+        interval_seconds=JUPYTERHUB_IDLE_CULLER_INTERVAL,   # seconds between cull sweeps
+        max_age_seconds=JUPYTERHUB_IDLE_CULLER_MAX_AGE,     # max server lifetime (0=unlimited)
+    )
 
 # Register CHP favicon proxy routes for servers that survived a hub restart
 # (pre_spawn_hook only fires on new spawns, this catches already-running servers)

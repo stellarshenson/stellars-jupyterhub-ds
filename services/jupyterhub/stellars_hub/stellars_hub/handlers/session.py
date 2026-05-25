@@ -1,4 +1,9 @@
-"""Handlers for session info and extension."""
+"""Handlers for session info and extension.
+
+The session-extension calculations live in `stellars_hub.idle_culler` (single
+source of truth shared with the in-hub culler); they are re-exported here so
+existing `from ...handlers.session import calc_*` imports keep resolving.
+"""
 
 import json
 from datetime import datetime, timezone
@@ -6,38 +11,23 @@ from datetime import datetime, timezone
 from jupyterhub.handlers import BaseHandler
 from tornado import web
 
+from stellars_hub.idle_culler import (
+    calc_available_hours,
+    calc_ceiling,
+    calc_effective_timeout,
+    calc_new_extensions,
+    calc_time_remaining,
+)
 
-# ── Pure calculation functions (testable without Tornado/JupyterHub) ──
-
-def calc_effective_timeout(timeout_seconds, extensions_used_hours):
-    """Effective timeout = base timeout + extension hours in seconds."""
-    return timeout_seconds + extensions_used_hours * 3600
-
-
-def calc_time_remaining(effective_timeout, elapsed_seconds):
-    """Remaining seconds until culler stops server."""
-    return max(0, effective_timeout - elapsed_seconds)
-
-
-def calc_ceiling(timeout_seconds, max_extension_hours):
-    """Maximum possible remaining time (base + all extensions)."""
-    return timeout_seconds + max_extension_hours * 3600
-
-
-def calc_available_hours(ceiling, time_remaining):
-    """Whole hours available for extension (gap between remaining and ceiling)."""
-    return int(max(0, ceiling - time_remaining) / 3600)
-
-
-def calc_new_extensions(current_extensions, hours, available, max_extension_hours):
-    """New extensions_used_hours after extending.
-
-    When extending by full available amount, snaps to max_extension_hours
-    for a clean ceiling hit. Otherwise adds hours to current.
-    """
-    if hours >= available:
-        return max_extension_hours
-    return current_extensions + hours
+__all__ = [
+    "calc_available_hours",
+    "calc_ceiling",
+    "calc_effective_timeout",
+    "calc_new_extensions",
+    "calc_time_remaining",
+    "SessionInfoHandler",
+    "ExtendSessionHandler",
+]
 
 
 class SessionInfoHandler(BaseHandler):
@@ -82,13 +72,13 @@ class SessionInfoHandler(BaseHandler):
                 now = datetime.now(timezone.utc)
                 last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
                 elapsed_seconds = (now - last_activity_utc).total_seconds()
-                remaining = calc_time_remaining(effective, elapsed_seconds)
+                remaining = calc_time_remaining(effective, elapsed_seconds, ceiling)
 
                 response["last_activity"] = last_activity_utc.isoformat()
                 response["time_remaining_seconds"] = int(remaining)
             else:
                 response["last_activity"] = None
-                response["time_remaining_seconds"] = effective
+                response["time_remaining_seconds"] = int(calc_time_remaining(effective, 0, ceiling))
 
             response["extensions_used_hours"] = extensions_used_hours
             response["extensions_available_hours"] = calc_available_hours(ceiling, response["time_remaining_seconds"])
@@ -154,9 +144,9 @@ class ExtendSessionHandler(BaseHandler):
             now_utc = datetime.now(timezone.utc)
             last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
             elapsed_seconds = (now_utc - last_activity_utc).total_seconds()
-            time_remaining = calc_time_remaining(effective, elapsed_seconds)
+            time_remaining = calc_time_remaining(effective, elapsed_seconds, ceiling)
         else:
-            time_remaining = effective
+            time_remaining = calc_time_remaining(effective, 0, ceiling)
 
         available = calc_available_hours(ceiling, time_remaining)
 
@@ -174,7 +164,7 @@ class ExtendSessionHandler(BaseHandler):
             hours = available
             truncated = True
 
-        new_total_extensions = calc_new_extensions(current_extensions, hours, available, max_extension_hours)
+        new_total_extensions = calc_new_extensions(current_extensions, hours)
 
         new_state = dict(current_state)
         new_state['extension_hours_used'] = new_total_extensions
@@ -183,9 +173,9 @@ class ExtendSessionHandler(BaseHandler):
 
         new_effective = calc_effective_timeout(timeout_seconds, new_total_extensions)
         if last_activity:
-            new_time_remaining = max(0, int(new_effective - elapsed_seconds))
+            new_time_remaining = int(calc_time_remaining(new_effective, elapsed_seconds, ceiling))
         else:
-            new_time_remaining = new_effective
+            new_time_remaining = int(calc_time_remaining(new_effective, 0, ceiling))
 
         new_available = calc_available_hours(ceiling, new_time_remaining)
 

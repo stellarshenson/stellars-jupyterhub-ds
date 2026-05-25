@@ -15,6 +15,16 @@ from .branding import setup_branding
 from .events import register_events
 from .gpu import resolve_gpu_mode
 from .hooks import make_pre_spawn_hook, schedule_startup_favicon_callback
+from .idle_culler import (
+    calc_available_hours,
+    calc_ceiling,
+    calc_effective_timeout,
+    calc_new_extensions,
+    calc_time_remaining,
+    run_cull_pass,
+    schedule_idle_culler,
+    should_cull,
+)
 from .services import get_services_and_roles
 from .volume_cache import configure_volume_cache
 from .volumes import (
@@ -27,9 +37,17 @@ __all__ = [
     "BootstrapAdminAuthenticator",
     "BootstrapAdminSignUpHandler",
     "StellarsNativeAuthenticator",
+    "calc_available_hours",
+    "calc_ceiling",
+    "calc_effective_timeout",
+    "calc_new_extensions",
+    "calc_time_remaining",
     "compute_bootstrap_window_open",
     "configure_volume_cache",
     "get_services_and_roles",
+    "run_cull_pass",
+    "schedule_idle_culler",
+    "should_cull",
     "get_user_volume_name_templates",
     "get_user_volume_suffixes",
     "load_merged_user_volumes",
