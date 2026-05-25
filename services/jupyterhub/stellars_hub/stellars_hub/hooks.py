@@ -68,11 +68,21 @@ def make_pre_spawn_hook(
         else:
             spawner.extra_host_config.pop('privileged', None)
 
-        # GPU device passthrough (per-user, replaces old global config)
+        # GPU device passthrough (per-user). gpu_access is already gated on
+        # hardware availability in the resolver, so on a GPU-less host this branch
+        # is skipped entirely and no device_requests are set - spawns never crash.
+        # All GPUs -> Count -1; specific GPUs -> DeviceIDs (index strings). Empty
+        # selection falls back to all (the resolver/validator prevent that state).
         if resolved['gpu_access']:
-            spawner.extra_host_config['device_requests'] = [
-                {'Driver': 'nvidia', 'Count': -1, 'Capabilities': [['gpu']]}
-            ]
+            if resolved.get('gpu_all', True) or not resolved.get('gpu_device_ids'):
+                gpu_request = {'Driver': 'nvidia', 'Count': -1, 'Capabilities': [['gpu']]}
+            else:
+                gpu_request = {
+                    'Driver': 'nvidia',
+                    'DeviceIDs': list(resolved['gpu_device_ids']),
+                    'Capabilities': [['gpu']],
+                }
+            spawner.extra_host_config['device_requests'] = [gpu_request]
             spawner.environment['ENABLE_GPU_SUPPORT'] = '1'
             spawner.environment['ENABLE_GPUSTAT'] = '1'
         else:
@@ -127,13 +137,18 @@ def make_pre_spawn_hook(
             kwargs['labels'] = labels
             spawner.extra_create_kwargs = kwargs
 
+        gpu_sel = (
+            ('all' if resolved.get('gpu_all', True) else resolved.get('gpu_device_ids'))
+            if resolved['gpu_access'] else '-'
+        )
         spawner.log.info(
-            "[Groups] user=%s groups=%s docker=%s privileged=%s gpu=%s mem_limit_gb=%s swap_off=%s cpu_limit=%s env_vars=%d skipped=%s compose_project=%s",
+            "[Groups] user=%s groups=%s docker=%s privileged=%s gpu=%s gpu_sel=%s mem_limit_gb=%s swap_off=%s cpu_limit=%s env_vars=%d skipped=%s compose_project=%s",
             username,
             resolved['matched_groups'],
             resolved['docker_access'],
             resolved['docker_privileged'],
             resolved['gpu_access'],
+            gpu_sel,
             resolved.get('mem_limit_gb'),
             bool(resolved.get('mem_swap_disabled')),
             spawner.cpu_limit,

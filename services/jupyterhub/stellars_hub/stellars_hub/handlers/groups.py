@@ -7,7 +7,7 @@ from jupyterhub.handlers import BaseHandler
 from tornado import web
 
 from ..group_resolver import is_reserved_env_var
-from ..groups_config import GroupsConfigManager, validate_group_name
+from ..groups_config import GroupsConfigManager, validate_group_name, validate_gpu_selection
 
 
 class GroupsPageHandler(BaseHandler):
@@ -20,12 +20,20 @@ class GroupsPageHandler(BaseHandler):
             raise web.HTTPError(403, "Only administrators can access this page")
 
         self.log.info(f"[Groups Page] Admin {current_user.name} accessed groups management")
+
+        # Host GPUs were enumerated once at startup by the ephemeral CUDA detection
+        # container (the hub has no GPU access of its own); this is a cached read,
+        # no container spin per page load. Empty list -> the GPU section renders
+        # grayed-out and the per-GPU checkboxes are omitted.
+        gpus = (self.settings.get('stellars_config') or {}).get('gpu_list', [])
+
         # host_cpu_count hints the admin at the upper bound for the per-group CPU
         # limit (cores visible to the hub container = host cores in the usual
         # unconstrained-hub deployment).
         html = self.render_template(
             "groups.html", sync=True, user=current_user,
             host_cpu_count=(os.cpu_count() or 1),
+            gpus=gpus,
         )
         self.finish(html)
 
@@ -185,6 +193,13 @@ class GroupsConfigHandler(BaseHandler):
 
         if 'gpu_access' in body:
             config_dict['gpu_access'] = bool(body['gpu_access'])
+        if 'gpu_all' in body:
+            config_dict['gpu_all'] = bool(body['gpu_all'])
+        if 'gpu_device_ids' in body:
+            ids = body['gpu_device_ids']
+            if not isinstance(ids, list):
+                raise web.HTTPError(400, "gpu_device_ids must be a list")
+            config_dict['gpu_device_ids'] = [str(x) for x in ids]
         if 'docker_access' in body:
             config_dict['docker_access'] = bool(body['docker_access'])
         if 'docker_privileged' in body:
@@ -214,6 +229,17 @@ class GroupsConfigHandler(BaseHandler):
         existing = manager.ensure_config(group_name)
         merged = existing['config'].copy()
         merged.update(config_dict)
+
+        # GPU selection must be coherent: access on + not all + no specific GPU is invalid
+        gpu_valid, gpu_msg = validate_gpu_selection(
+            merged.get('gpu_access'),
+            merged.get('gpu_all', True),
+            merged.get('gpu_device_ids') or [],
+        )
+        if not gpu_valid:
+            self.set_status(400)
+            self.finish({'error': 'invalid_gpu_selection', 'message': gpu_msg})
+            return
 
         manager.save_config(group_name, description=description, config_dict=merged)
 

@@ -6,6 +6,11 @@ Resolution rules:
 - GRANTS (gpu/docker/privileged): OR across all groups. Once any group grants,
   it cannot be revoked by another. GPU is additionally gated on hardware
   availability.
+- GPU SELECTION: among the groups that grant GPU access, "all GPUs" is the most
+  permissive and wins - if any such group selects all, the user gets all GPUs.
+  Otherwise the specific device ids are unioned across those groups. As a
+  defensive fallback, a grant with neither "all" nor any device id resolves to
+  "all" (the save-time validator already rejects that state).
 - ENV VARS: higher priority wins on name conflict. Groups are scanned in
   descending priority order and the first occurrence of each name is kept.
 - MEM_LIMIT_GB: biggest enabled value wins across all groups. A group with
@@ -55,6 +60,8 @@ def resolve_group_config(
         {
           'env_vars': dict[str, str],
           'gpu_access': bool,
+          'gpu_all': bool,               # all GPUs (True) vs specific device ids
+          'gpu_device_ids': list[str],   # selected GPU indices when gpu_all False
           'docker_access': bool,
           'docker_privileged': bool,
           'mem_limit_gb': float | None,  # biggest enabled value, None if no cap
@@ -72,6 +79,8 @@ def resolve_group_config(
     env_vars = {}
     skipped = []
     gpu_requested = False
+    gpu_all = False
+    gpu_device_ids = set()
     docker_access = False
     docker_privileged = False
     mem_limit_gb = None
@@ -82,6 +91,12 @@ def resolve_group_config(
         inner = cfg.get('config') or {}
         if inner.get('gpu_access'):
             gpu_requested = True
+            # all-GPUs is most permissive and wins; otherwise union device ids
+            if inner.get('gpu_all', True):
+                gpu_all = True
+            else:
+                for did in (inner.get('gpu_device_ids') or []):
+                    gpu_device_ids.add(str(did))
         if inner.get('docker_access'):
             docker_access = True
         if inner.get('docker_privileged'):
@@ -123,9 +138,15 @@ def resolve_group_config(
             value = entry.get('value', '')
             env_vars[name] = '' if value is None else str(value)
 
+    # Defensive: a grant with neither "all" nor specific ids falls back to all.
+    if gpu_requested and not gpu_all and not gpu_device_ids:
+        gpu_all = True
+
     return {
         'env_vars': env_vars,
         'gpu_access': bool(gpu_requested and gpu_available),
+        'gpu_all': bool(gpu_all),
+        'gpu_device_ids': sorted(gpu_device_ids, key=lambda x: (len(x), x)),
         'docker_access': docker_access,
         'docker_privileged': docker_privileged,
         'mem_limit_gb': mem_limit_gb,
