@@ -450,9 +450,13 @@ async def _admin_post_auth_hook(authenticator, handler, authentication):
         authentication['admin'] = True
     return authentication
 
-# Detect GPU availability: mode 2 runs nvidia-smi in a CUDA container to auto-detect
-# Returns (gpu_enabled: 0|1, nvidia_detected: 0|1)
-gpu_enabled, nvidia_detected = resolve_gpu_mode(JUPYTERHUB_GPU_ENABLED, JUPYTERHUB_NVIDIA_IMAGE)
+# Detect GPU availability: modes 1 (forced) and 2 (autodetect) run nvidia-smi in
+# an ephemeral CUDA container to enumerate the host GPUs (the hub itself has no GPU
+# access); mode 2 also derives on/off from whether any were found.
+# Returns (gpu_enabled: 0|1, nvidia_detected: 0|1, gpu_list: list of GPU dicts)
+gpu_enabled, nvidia_detected, gpu_list = resolve_gpu_mode(JUPYTERHUB_GPU_ENABLED, JUPYTERHUB_NVIDIA_IMAGE)
+# TEMP DEBUG (remove once GPU enumeration is wired into the per-group feature):
+print(f"[GPU debug] enabled={gpu_enabled} detected={nvidia_detected} gpus={gpu_list}", flush=True)
 
 # Process branding URIs: file:// copies to JupyterHub static dir, URLs pass through
 # Returns dict with resolved paths/URLs for logo_file, favicon_uri, lab icons
@@ -553,6 +557,7 @@ c.JupyterHub.tornado_settings = {
         'idle_culler_enabled': JUPYTERHUB_IDLE_CULLER_ENABLED,  # for SessionInfoHandler, ActivityDataHandler
         'idle_culler_timeout': JUPYTERHUB_IDLE_CULLER_TIMEOUT,  # for SessionInfoHandler, ExtendSessionHandler
         'idle_culler_max_extension': JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION,  # for ExtendSessionHandler limits
+        'gpu_list': gpu_list,                                 # host GPUs enumerated at startup (for GroupsPageHandler)
         'container_max_extra_space_mb': JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB * 1024,  # threshold in MB for container size warning
         'volume_max_total_size_mb': JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE_GB * 1024,        # threshold in MB for volume size warning
         'memory_max_usage_mb': JUPYTERHUB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning

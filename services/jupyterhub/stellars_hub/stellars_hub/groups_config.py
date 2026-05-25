@@ -37,6 +37,8 @@ def default_config():
     return {
         'env_vars': [],
         'gpu_access': False,
+        'gpu_all': True,          # all GPUs (default); when False, gpu_device_ids applies
+        'gpu_device_ids': [],     # specific GPU index strings, e.g. ['0', '2']
         'docker_access': False,
         'docker_privileged': False,
         'mem_limit_enabled': False,
@@ -45,6 +47,22 @@ def default_config():
         'cpu_limit_enabled': False,
         'cpu_limit_cores': 0,
     }
+
+
+def validate_gpu_selection(gpu_access, gpu_all, gpu_device_ids):
+    """Validate a group's GPU selection. Returns (valid: bool, error_message: str).
+
+    Only meaningful when GPU access is enabled. Selecting GPU access while
+    deselecting 'all GPUs' requires at least one specific GPU to be chosen -
+    otherwise the grant would refer to no devices at all.
+    """
+    if not gpu_access:
+        return True, ''
+    if gpu_all:
+        return True, ''
+    if not gpu_device_ids:
+        return False, 'Select at least one GPU, or enable "All GPUs".'
+    return True, ''
 
 
 def validate_group_name(name):

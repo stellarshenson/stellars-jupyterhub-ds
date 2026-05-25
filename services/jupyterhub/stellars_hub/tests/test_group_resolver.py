@@ -13,11 +13,11 @@ def _grp(name, **config):
     return {"group_name": name, "config": config}
 
 
-def _resolve(user_groups, all_configs):
+def _resolve(user_groups, all_configs, gpu_available=False):
     return resolve_group_config(
         user_group_names=user_groups,
         all_group_configs=all_configs,
-        gpu_available=False,
+        gpu_available=gpu_available,
         reserved_names=frozenset(),
         reserved_prefixes=(),
     )
@@ -118,3 +118,77 @@ class TestCpuAndMemoryIndependent:
         result = _resolve(["a"], cfgs)
         assert result["cpu_limit_cores"] == 4
         assert result["mem_limit_gb"] is None
+
+
+class TestGpuSelection:
+    def test_no_gpu_group(self):
+        r = _resolve(["a"], [_grp("a")], gpu_available=True)
+        assert r["gpu_access"] is False
+        assert r["gpu_device_ids"] == []
+
+    def test_all_gpus_when_available(self):
+        cfgs = [_grp("a", gpu_access=True, gpu_all=True)]
+        r = _resolve(["a"], cfgs, gpu_available=True)
+        assert r["gpu_access"] is True
+        assert r["gpu_all"] is True
+        assert r["gpu_device_ids"] == []
+
+    def test_specific_gpus(self):
+        cfgs = [_grp("a", gpu_access=True, gpu_all=False, gpu_device_ids=["0", "2"])]
+        r = _resolve(["a"], cfgs, gpu_available=True)
+        assert r["gpu_access"] is True
+        assert r["gpu_all"] is False
+        assert r["gpu_device_ids"] == ["0", "2"]
+
+    def test_gated_on_hardware(self):
+        # GPU requested but host has none -> access denied, never reaches the spawner
+        cfgs = [_grp("a", gpu_access=True, gpu_all=True)]
+        assert _resolve(["a"], cfgs, gpu_available=False)["gpu_access"] is False
+
+    def test_all_wins_over_specific(self):
+        cfgs = [
+            _grp("all", gpu_access=True, gpu_all=True),
+            _grp("specific", gpu_access=True, gpu_all=False, gpu_device_ids=["1"]),
+        ]
+        assert _resolve(["all", "specific"], cfgs, gpu_available=True)["gpu_all"] is True
+
+    def test_specific_union_across_groups(self):
+        cfgs = [
+            _grp("a", gpu_access=True, gpu_all=False, gpu_device_ids=["0"]),
+            _grp("b", gpu_access=True, gpu_all=False, gpu_device_ids=["2", "0"]),
+        ]
+        r = _resolve(["a", "b"], cfgs, gpu_available=True)
+        assert r["gpu_all"] is False
+        assert r["gpu_device_ids"] == ["0", "2"]
+
+    def test_default_gpu_all_true_when_unset(self):
+        # grant without specifying gpu_all -> defaults to all
+        r = _resolve(["a"], [_grp("a", gpu_access=True)], gpu_available=True)
+        assert r["gpu_all"] is True
+
+    def test_empty_selection_falls_back_to_all(self):
+        # defensive: access on, not all, no ids -> all (validator rejects this at save)
+        cfgs = [_grp("a", gpu_access=True, gpu_all=False, gpu_device_ids=[])]
+        r = _resolve(["a"], cfgs, gpu_available=True)
+        assert r["gpu_access"] is True
+        assert r["gpu_all"] is True
+
+
+class TestGpuSelectionValidation:
+    def test_access_off_always_valid(self):
+        from stellars_hub.groups_config import validate_gpu_selection
+        assert validate_gpu_selection(False, False, [])[0] is True
+
+    def test_all_gpus_valid(self):
+        from stellars_hub.groups_config import validate_gpu_selection
+        assert validate_gpu_selection(True, True, [])[0] is True
+
+    def test_specific_with_ids_valid(self):
+        from stellars_hub.groups_config import validate_gpu_selection
+        assert validate_gpu_selection(True, False, ["0"])[0] is True
+
+    def test_access_on_not_all_no_ids_invalid(self):
+        from stellars_hub.groups_config import validate_gpu_selection
+        valid, msg = validate_gpu_selection(True, False, [])
+        assert valid is False
+        assert "at least one GPU" in msg
