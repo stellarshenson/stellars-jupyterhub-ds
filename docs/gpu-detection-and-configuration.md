@@ -47,7 +47,7 @@ A user can belong to several groups. Their effective GPU access is collapsed by 
 The pre-spawn hook (`stellars_hub/hooks.py`) translates the resolved selection into a Docker device request plus the `NVIDIA_VISIBLE_DEVICES` selector env on the user container:
 
 - All GPUs - `{'Driver': 'nvidia', 'Count': -1, 'Capabilities': [['gpu']]}` and `NVIDIA_VISIBLE_DEVICES=all`
-- Specific GPUs - `{'Driver': 'nvidia', 'DeviceIDs': ['0', '2'], 'Capabilities': [['gpu']]}` and `NVIDIA_VISIBLE_DEVICES=0,2`
+- Specific GPUs - `{'Driver': 'nvidia', 'DeviceIDs': ['0', '2'], 'Capabilities': [['gpu']]}`, `NVIDIA_VISIBLE_DEVICES=0,2`, and `CUDA_VISIBLE_DEVICES=<uuids>` (soft, app-level default)
 - No access - no device request and `NVIDIA_VISIBLE_DEVICES=void` (overrides the image's baked-in `all`)
 
 `NVIDIA_VISIBLE_DEVICES` is set explicitly because the NVIDIA toolkit treats it as the authoritative selector and the jupyterlab image bakes in `=all`. Because access is already gated on hardware availability, a GPU-less host skips this entirely - spawns proceed normally. When GPU is granted the container also receives `ENABLE_GPU_SUPPORT=1` and `ENABLE_GPUSTAT=1`. The spawn log records the selection, for example `gpu=True gpu_sel=['0', '2']`.

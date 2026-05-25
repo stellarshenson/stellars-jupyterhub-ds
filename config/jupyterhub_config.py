@@ -26,6 +26,7 @@ from stellars_hub import (
     schedule_idle_culler,                   # in-hub idle culler (honours per-user session extensions)
     get_user_volume_name_templates,         # maps suffix -> full volume-name template (with {username} placeholder)
     get_user_volume_suffixes,               # extracts ['home', 'workspace', 'cache'] from volumes dict
+    is_wsl2,                                 # host is WSL2 -> per-GPU isolation not enforceable (advisory)
     load_merged_user_volumes,               # loads + merges platform-defaults YAML with operator overrides
     make_admin_post_auth_hook,              # async closure that flips authentication['admin']=True for JUPYTERHUB_ADMIN
     make_pre_spawn_hook,                    # factory returning async hook for group perms, favicon, icons
@@ -455,8 +456,13 @@ async def _admin_post_auth_hook(authenticator, handler, authentication):
 # access); mode 2 also derives on/off from whether any were found.
 # Returns (gpu_enabled: 0|1, nvidia_detected: 0|1, gpu_list: list of GPU dicts)
 gpu_enabled, nvidia_detected, gpu_list = resolve_gpu_mode(JUPYTERHUB_GPU_ENABLED, JUPYTERHUB_NVIDIA_IMAGE)
-# TEMP DEBUG (remove once GPU enumeration is wired into the per-group feature):
-print(f"[GPU debug] enabled={gpu_enabled} detected={nvidia_detected} gpus={gpu_list}", flush=True)
+# index -> UUID map for CUDA_VISIBLE_DEVICES (UUIDs are stable across in-container
+# GPU re-indexing, unlike host indices). isolation is only real on native Linux;
+# on WSL2 (/dev/dxg) per-GPU selection is advisory, not enforced.
+GPU_UUID_BY_INDEX = {str(g.get('index')): g.get('uuid', '') for g in gpu_list if g.get('uuid')}
+GPU_ISOLATION_ENFORCED = bool(gpu_list) and not is_wsl2()
+print(f"[GPU debug] enabled={gpu_enabled} detected={nvidia_detected} "
+      f"isolation_enforced={GPU_ISOLATION_ENFORCED} gpus={gpu_list}", flush=True)
 
 # Process branding URIs: file:// copies to JupyterHub static dir, URLs pass through
 # Returns dict with resolved paths/URLs for logo_file, favicon_uri, lab icons
@@ -508,7 +514,7 @@ c.DockerSpawner.environment = {
 # the GPU selector and must not be settable by a group).
 RESERVED_ENV_VAR_PREFIXES = ('JUPYTERHUB_', 'JPY_', 'MEM_', 'CPU_')
 RESERVED_ENV_VAR_NAMES = set(c.DockerSpawner.environment.keys()) | {
-    'ENABLE_GPU_SUPPORT', 'ENABLE_GPUSTAT', 'NVIDIA_VISIBLE_DEVICES',
+    'ENABLE_GPU_SUPPORT', 'ENABLE_GPUSTAT', 'NVIDIA_VISIBLE_DEVICES', 'CUDA_VISIBLE_DEVICES',
 }
 
 # GPU device_requests is set per-user by the pre-spawn hook based on resolved
@@ -559,6 +565,7 @@ c.JupyterHub.tornado_settings = {
         'idle_culler_timeout': JUPYTERHUB_IDLE_CULLER_TIMEOUT,  # for SessionInfoHandler, ExtendSessionHandler
         'idle_culler_max_extension': JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION,  # for ExtendSessionHandler limits
         'gpu_list': gpu_list,                                 # host GPUs enumerated at startup (for GroupsPageHandler)
+        'gpu_isolation_enforced': GPU_ISOLATION_ENFORCED,     # False on WSL2 -> GroupsPageHandler shows the advisory note
         'container_max_extra_space_mb': JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB * 1024,  # threshold in MB for container size warning
         'volume_max_total_size_mb': JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE_GB * 1024,        # threshold in MB for volume size warning
         'memory_max_usage_mb': JUPYTERHUB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning
@@ -577,6 +584,7 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     favicon_uri=JUPYTERHUB_FAVICON_URI,                      # non-empty activates the favicon.ico CHP route
     favicon_busy_target=branding['favicon_busy_target'],    # non-empty activates the favicon-busy CHP route; empty = JupyterLab default busy frames
     gpu_available=bool(gpu_enabled),                         # hardware present - required for per-group GPU grant
+    gpu_uuid_by_index=GPU_UUID_BY_INDEX,                     # index->UUID for CUDA_VISIBLE_DEVICES
     reserved_env_var_names=RESERVED_ENV_VAR_NAMES,           # names groups cannot override
     reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,     # prefixes reserved for JupyterHub/platform
     compose_project=COMPOSE_PROJECT_NAME,                    # docker compose project label so user containers group with the hub in `docker compose ls`

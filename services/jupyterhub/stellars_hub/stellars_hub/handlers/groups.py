@@ -25,7 +25,10 @@ class GroupsPageHandler(BaseHandler):
         # container (the hub has no GPU access of its own); this is a cached read,
         # no container spin per page load. Empty list -> the GPU section renders
         # grayed-out and the per-GPU checkboxes are omitted.
-        gpus = (self.settings.get('stellars_config') or {}).get('gpu_list', [])
+        stellars_config = self.settings.get('stellars_config') or {}
+        gpus = stellars_config.get('gpu_list', [])
+        # False on WSL2 -> the GPU section shows an "advisory, not a hard limit" note
+        gpu_isolation_enforced = stellars_config.get('gpu_isolation_enforced', True)
 
         # host_cpu_count hints the admin at the upper bound for the per-group CPU
         # limit (cores visible to the hub container = host cores in the usual
@@ -34,6 +37,7 @@ class GroupsPageHandler(BaseHandler):
             "groups.html", sync=True, user=current_user,
             host_cpu_count=(os.cpu_count() or 1),
             gpus=gpus,
+            gpu_isolation_enforced=gpu_isolation_enforced,
         )
         self.finish(html)
 
