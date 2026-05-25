@@ -435,17 +435,17 @@ Automatically stop user servers after a period of inactivity to free up resource
 services:
   jupyterhub:
     environment:
-      - JUPYTERHUB_IDLE_CULLER_ENABLED=1        # enable idle culler
-      - JUPYTERHUB_IDLE_CULLER_TIMEOUT=86400    # 24 hours (default) - stop after this many seconds of inactivity
-      - JUPYTERHUB_IDLE_CULLER_INTERVAL=600     # 10 minutes (default) - how often to check for idle servers
-      - JUPYTERHUB_IDLE_CULLER_MAX_AGE=0        # 0 (default) - max server age regardless of activity (0=unlimited)
-      - JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION=24 # 24 hours (default) - max hours users can extend their session
+      - JUPYTERHUB_IDLE_CULLER_ENABLED=1               # enable idle culler
+      - JUPYTERHUB_IDLE_CULLER_TIMEOUT_MINUTES=1440    # 24 hours (default) - stop after this many minutes of inactivity
+      - JUPYTERHUB_IDLE_CULLER_INTERVAL=600            # 10 minutes (default, seconds) - how often to check for idle servers
+      - JUPYTERHUB_IDLE_CULLER_MAX_AGE=0               # 0 (default, seconds) - max server age regardless of activity (0=unlimited)
+      - JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION_MINUTES=1440 # 24 hours (default) - max minutes users can extend their session
 ```
 
 **Behavior**:
-- `JUPYTERHUB_IDLE_CULLER_TIMEOUT`: Server is stopped after this many seconds without activity. Active servers are never culled
-- `JUPYTERHUB_IDLE_CULLER_MAX_AGE`: Force stop servers older than this (useful to force image updates). Set to 0 to disable
-- `JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION`: Maximum total hours a user can extend their session. Users see a "Session Status" card on the home page showing time remaining and can request extensions up to this limit. Extension allowance resets when server restarts
+- `JUPYTERHUB_IDLE_CULLER_TIMEOUT_MINUTES`: Server is stopped after this many minutes without activity. Active servers are never culled
+- `JUPYTERHUB_IDLE_CULLER_MAX_AGE`: Force stop servers older than this (in seconds, useful to force image updates). Set to 0 to disable
+- `JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION_MINUTES`: Maximum total session extension expressed in minutes. Users see a "Session Status" card on the home page showing time remaining and can request extensions (the extend control works in whole hours) up to this limit. Extension allowance resets when server restarts
 
 #### Activity Monitor
 

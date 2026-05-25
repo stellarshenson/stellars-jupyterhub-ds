@@ -89,9 +89,9 @@ Idle Culler:
     description: Idle culler (0=disabled, 1=enabled)
     default: "0"
 
-  - name: JUPYTERHUB_IDLE_CULLER_TIMEOUT
-    description: Idle timeout in seconds
-    default: "86400"
+  - name: JUPYTERHUB_IDLE_CULLER_TIMEOUT_MINUTES
+    description: Idle timeout in minutes
+    default: "1440"
 
   - name: JUPYTERHUB_IDLE_CULLER_INTERVAL
     description: Check interval in seconds
@@ -101,9 +101,9 @@ Idle Culler:
     description: Max server age (0=unlimited)
     default: "0"
 
-  - name: JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION
-    description: Max session extension hours per session
-    default: "24"
+  - name: JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION_MINUTES
+    description: Max session extension in minutes per session
+    default: "1440"
 
 Activity Monitor:
   - name: JUPYTERHUB_ACTIVITYMON_RETENTION_DAYS
