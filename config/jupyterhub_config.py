@@ -178,7 +178,7 @@ USER_VOLUMES = load_merged_user_volumes(
 # plus the shared volume (read-write across all users; can be CIFS via override).
 DOCKER_SPAWNER_VOLUMES = {
     **{pattern: data['mount'] for pattern, data in USER_VOLUMES.items()},
-    f"{COMPOSE_PROJECT_NAME}_shared": "/mnt/shared",
+    f"{COMPOSE_PROJECT_NAME}_jupyterhub_shared": "/mnt/shared",
 }
 
 # Derived: extract user-resettable volume suffixes ['home', 'workspace', 'cache'] from volumes dict
