@@ -77,10 +77,14 @@ JUPYTERHUB_SIGNUP_ENABLED = int(os.environ.get("JUPYTERHUB_SIGNUP_ENABLED", 1)) 
 
 # Idle culler - automatic server shutdown after inactivity
 JUPYTERHUB_IDLE_CULLER_ENABLED = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_ENABLED", 0))       # 0=off, 1=on
-JUPYTERHUB_IDLE_CULLER_TIMEOUT = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_TIMEOUT", 86400))   # seconds of inactivity before cull (24h)
+JUPYTERHUB_IDLE_CULLER_TIMEOUT_MINUTES = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_TIMEOUT_MINUTES", 1440))  # minutes of inactivity before cull (24h)
 JUPYTERHUB_IDLE_CULLER_INTERVAL = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_INTERVAL", 600))   # seconds between cull checks (10min)
 JUPYTERHUB_IDLE_CULLER_MAX_AGE = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_AGE", 0))       # max server lifetime in seconds (0=unlimited)
-JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION", 24))  # max user-requested extension hours
+JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION_MINUTES = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION_MINUTES", 1440))  # max user-requested extension in minutes (24h)
+
+# Derived internal units: culler service + handlers consume seconds; extend UI operates in whole hours
+JUPYTERHUB_IDLE_CULLER_TIMEOUT = JUPYTERHUB_IDLE_CULLER_TIMEOUT_MINUTES * 60               # seconds before cull
+JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION = JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION_MINUTES // 60  # whole hours users can extend
 
 # Activity monitor - engagement scoring via periodic sampling
 ACTIVITYMON_TARGET_HOURS = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_TARGET_HOURS', 8))        # scoring window in hours
