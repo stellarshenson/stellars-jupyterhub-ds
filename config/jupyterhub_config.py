@@ -504,10 +504,11 @@ c.DockerSpawner.environment = {
 }
 
 # Reserved env var names groups cannot override - every key we inject globally
-# plus ENABLE_GPU_SUPPORT/ENABLE_GPUSTAT which the pre-spawn hook sets per-user.
+# plus the GPU vars the pre-spawn hook sets per-user (NVIDIA_VISIBLE_DEVICES is
+# the GPU selector and must not be settable by a group).
 RESERVED_ENV_VAR_PREFIXES = ('JUPYTERHUB_', 'JPY_', 'MEM_', 'CPU_')
 RESERVED_ENV_VAR_NAMES = set(c.DockerSpawner.environment.keys()) | {
-    'ENABLE_GPU_SUPPORT', 'ENABLE_GPUSTAT',
+    'ENABLE_GPU_SUPPORT', 'ENABLE_GPUSTAT', 'NVIDIA_VISIBLE_DEVICES',
 }
 
 # GPU device_requests is set per-user by the pre-spawn hook based on resolved
