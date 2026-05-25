@@ -152,9 +152,15 @@
     // time text
     $timeValue.text(formatTime(remaining));
 
-    // available hours (in modal)
+    // available hours (in modal). This is the gap from current remaining up to
+    // the ceiling, so it already includes both idle time to replenish and unused
+    // extension headroom. Raise the desktop input's max so the user can choose
+    // up to the full offer (the mobile slider sets its own max separately).
     var avail = info.extensions_available_hours || 0;
     $available.html('Available: <strong>' + avail + '</strong> hour(s)');
+    if ($hours && $hours.length) {
+      $hours.attr('max', Math.max(1, Math.floor(avail)));
+    }
 
     // enable/disable extend trigger based on available hours
     if (avail > 0) {

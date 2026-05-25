@@ -213,13 +213,7 @@ def test_hooks():
 
 def test_services():
     from stellars_hub.services import get_services_and_roles
-    services, roles = get_services_and_roles(
-        culler_enabled=0,
-        culler_timeout=86400,
-        culler_interval=600,
-        culler_max_age=0,
-        sample_interval=600,
-    )
+    services, roles = get_services_and_roles(sample_interval=600)
     assert isinstance(services, list)
     assert isinstance(roles, list)
     assert len(services) >= 1  # At least activity-sampler

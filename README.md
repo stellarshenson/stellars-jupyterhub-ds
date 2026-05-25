@@ -429,7 +429,7 @@ Note: the **bootstrap window** (see "First Admin Bootstrap") temporarily overrid
 
 #### Idle Server Culler
 
-Automatically stop user servers after a period of inactivity to free up resources. Disabled by default.
+Automatically stop user servers after a period of inactivity to free up resources. Disabled by default. Culling runs in-process inside the hub (not as a separate service) so that per-user session extensions actually delay the cull - the hub reads each server's granted extension directly from its spawner state.
 
 ```yaml
 services:
@@ -445,7 +445,9 @@ services:
 **Behavior**:
 - `JUPYTERHUB_IDLE_CULLER_TIMEOUT_MINUTES`: Server is stopped after this many minutes without activity. Active servers are never culled
 - `JUPYTERHUB_IDLE_CULLER_MAX_AGE`: Force stop servers older than this (in seconds, useful to force image updates). Set to 0 to disable
-- `JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION_MINUTES`: Maximum total session extension expressed in minutes. Users see a "Session Status" card on the home page showing time remaining and can request extensions (the extend control works in whole hours) up to this limit. Extension allowance resets when server restarts
+- `JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION_MINUTES`: Maximum total session extension expressed in minutes. Users see a "Session Status" card on the home page showing time remaining and can request extensions (the extend control works in whole hours). Extension allowance resets when server restarts
+
+**Session extension and replenish**: the absolute ceiling on a server's remaining time is `timeout + max_extension` (with both defaults, 24h + 24h = 48h). The extend control offers the full gap from the current remaining up to that ceiling - this includes both unused extension headroom and idle time already elapsed, so a user can opt to replenish time already spent idle and refill remaining back to the ceiling. Replenishment is opt-in: the user chooses how many hours to add, nothing is replenished automatically. Remaining can never be shown above the ceiling, and the calculations live in one place (`stellars_hub.idle_culler`) shared by the countdown, the extend handler, the admin dashboard, and the culler, so the displayed countdown matches the actual cull.
 
 #### Activity Monitor
 
