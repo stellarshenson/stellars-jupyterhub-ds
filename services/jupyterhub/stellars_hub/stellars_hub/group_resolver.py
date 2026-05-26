@@ -26,6 +26,18 @@ Resolution rules:
 """
 
 
+# Fallback per-group limited-Docker quota/caps when a granting group stored a
+# zero/unset value (defensive - save-time defaults already seed these).
+_DL_DEFAULTS = {
+    'max_containers': 10,
+    'max_volumes': 10,
+    'max_networks': 3,
+    'max_storage_gb': 50,
+    'cpu_cap_cores': 2,
+    'mem_cap_gb': 8,
+}
+
+
 def is_reserved_env_var(name, reserved_names, reserved_prefixes):
     """Return True if the env var name is reserved (cannot be set by a group)."""
     if not name:
@@ -62,7 +74,14 @@ def resolve_group_config(
           'gpu_access': bool,
           'gpu_all': bool,               # all GPUs (True) vs specific device ids
           'gpu_device_ids': list[str],   # selected GPU indices when gpu_all False
-          'docker_access': bool,
+          'docker_access': bool,          # normal raw-socket access
+          'docker_limited': bool,         # proxy access (False if docker_access)
+          'docker_limited_max_containers': int,
+          'docker_limited_max_volumes': int,
+          'docker_limited_max_networks': int,
+          'docker_limited_max_storage_gb': float,
+          'docker_limited_cpu_cap_cores': float,
+          'docker_limited_mem_cap_gb': float,
           'docker_privileged': bool,
           'mem_limit_gb': float | None,  # biggest enabled value, None if no cap
           'mem_swap_disabled': bool,     # swap policy of the winning mem-limit group
@@ -82,6 +101,8 @@ def resolve_group_config(
     gpu_all = False
     gpu_device_ids = set()
     docker_access = False
+    docker_limited = False
+    dl_quota = {k: 0 for k in _DL_DEFAULTS}
     docker_privileged = False
     mem_limit_gb = None
     mem_swap_disabled = False
@@ -99,6 +120,17 @@ def resolve_group_config(
                     gpu_device_ids.add(str(did))
         if inner.get('docker_access'):
             docker_access = True
+        if inner.get('docker_limited'):
+            # Limited (proxy) access: granted if any group grants it; quota/caps
+            # are the most-generous (max) across the granting groups.
+            docker_limited = True
+            for key in _DL_DEFAULTS:
+                try:
+                    val = float(inner.get(f'docker_limited_{key}') or 0)
+                except (TypeError, ValueError):
+                    val = 0.0
+                if val > dl_quota[key]:
+                    dl_quota[key] = val
         if inner.get('docker_privileged'):
             docker_privileged = True
 
@@ -142,12 +174,29 @@ def resolve_group_config(
     if gpu_requested and not gpu_all and not gpu_device_ids:
         gpu_all = True
 
+    # Normal (raw) Docker access supersedes limited (proxy): wider wins, and a
+    # raw socket makes the filtered one moot. So limited only takes effect when
+    # no group grants normal access.
+    if docker_access:
+        docker_limited = False
+    if docker_limited:
+        for key, default in _DL_DEFAULTS.items():
+            if dl_quota[key] <= 0:
+                dl_quota[key] = default
+
     return {
         'env_vars': env_vars,
         'gpu_access': bool(gpu_requested and gpu_available),
         'gpu_all': bool(gpu_all),
         'gpu_device_ids': sorted(gpu_device_ids, key=lambda x: (len(x), x)),
         'docker_access': docker_access,
+        'docker_limited': docker_limited,
+        'docker_limited_max_containers': int(dl_quota['max_containers']),
+        'docker_limited_max_volumes': int(dl_quota['max_volumes']),
+        'docker_limited_max_networks': int(dl_quota['max_networks']),
+        'docker_limited_max_storage_gb': dl_quota['max_storage_gb'],
+        'docker_limited_cpu_cap_cores': dl_quota['cpu_cap_cores'],
+        'docker_limited_mem_cap_gb': dl_quota['mem_cap_gb'],
         'docker_privileged': docker_privileged,
         'mem_limit_gb': mem_limit_gb,
         'mem_swap_disabled': mem_swap_disabled,

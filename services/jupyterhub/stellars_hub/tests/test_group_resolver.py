@@ -192,3 +192,79 @@ class TestGpuSelectionValidation:
         valid, msg = validate_gpu_selection(True, False, [])
         assert valid is False
         assert "at least one GPU" in msg
+
+
+class TestDockerLimited:
+    def test_not_granted_by_default(self):
+        cfgs = [_grp("a")]
+        assert _resolve(["a"], cfgs)["docker_limited"] is False
+
+    def test_granted_uses_defaults_when_unset(self):
+        cfgs = [_grp("d", docker_limited=True)]
+        r = _resolve(["d"], cfgs)
+        assert r["docker_limited"] is True
+        assert r["docker_limited_max_containers"] == 10
+        assert r["docker_limited_max_volumes"] == 10
+        assert r["docker_limited_max_networks"] == 3
+        assert r["docker_limited_max_storage_gb"] == 50
+        assert r["docker_limited_cpu_cap_cores"] == 2
+        assert r["docker_limited_mem_cap_gb"] == 8
+
+    def test_granted_with_custom_quota(self):
+        cfgs = [_grp("d", docker_limited=True, docker_limited_max_containers=5,
+                     docker_limited_max_volumes=4, docker_limited_max_networks=2,
+                     docker_limited_max_storage_gb=20, docker_limited_cpu_cap_cores=1,
+                     docker_limited_mem_cap_gb=3)]
+        r = _resolve(["d"], cfgs)
+        assert r["docker_limited_max_containers"] == 5
+        assert r["docker_limited_max_volumes"] == 4
+        assert r["docker_limited_max_networks"] == 2
+        assert r["docker_limited_max_storage_gb"] == 20
+        assert r["docker_limited_cpu_cap_cores"] == 1
+        assert r["docker_limited_mem_cap_gb"] == 3
+
+    def test_most_generous_quota_wins_across_groups(self):
+        cfgs = [
+            _grp("a", docker_limited=True, docker_limited_max_containers=5,
+                 docker_limited_mem_cap_gb=4),
+            _grp("b", docker_limited=True, docker_limited_max_containers=12,
+                 docker_limited_mem_cap_gb=2),
+        ]
+        r = _resolve(["a", "b"], cfgs)
+        assert r["docker_limited_max_containers"] == 12
+        assert r["docker_limited_mem_cap_gb"] == 4
+
+    def test_normal_access_supersedes_limited(self):
+        cfgs = [
+            _grp("norm", docker_access=True),
+            _grp("lim", docker_limited=True, docker_limited_max_containers=5),
+        ]
+        r = _resolve(["norm", "lim"], cfgs)
+        assert r["docker_access"] is True
+        assert r["docker_limited"] is False
+
+    def test_only_matched_groups_count(self):
+        cfgs = [_grp("mine", docker_limited=True), _grp("other", docker_access=True)]
+        r = _resolve(["mine"], cfgs)
+        assert r["docker_limited"] is True
+        assert r["docker_access"] is False
+
+
+class TestDockerSelectionValidation:
+    def test_both_invalid(self):
+        from stellars_hub.groups_config import validate_docker_selection
+        valid, msg = validate_docker_selection(True, True)
+        assert valid is False
+        assert "both" in msg.lower()
+
+    def test_only_normal_valid(self):
+        from stellars_hub.groups_config import validate_docker_selection
+        assert validate_docker_selection(True, False)[0] is True
+
+    def test_only_limited_valid(self):
+        from stellars_hub.groups_config import validate_docker_selection
+        assert validate_docker_selection(False, True)[0] is True
+
+    def test_neither_valid(self):
+        from stellars_hub.groups_config import validate_docker_selection
+        assert validate_docker_selection(False, False)[0] is True

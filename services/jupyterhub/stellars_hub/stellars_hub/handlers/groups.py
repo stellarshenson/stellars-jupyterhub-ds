@@ -7,7 +7,12 @@ from jupyterhub.handlers import BaseHandler
 from tornado import web
 
 from ..group_resolver import is_reserved_env_var
-from ..groups_config import GroupsConfigManager, validate_group_name, validate_gpu_selection
+from ..groups_config import (
+    GroupsConfigManager,
+    validate_docker_selection,
+    validate_group_name,
+    validate_gpu_selection,
+)
 
 
 class GroupsPageHandler(BaseHandler):
@@ -206,6 +211,22 @@ class GroupsConfigHandler(BaseHandler):
             config_dict['gpu_device_ids'] = [str(x) for x in ids]
         if 'docker_access' in body:
             config_dict['docker_access'] = bool(body['docker_access'])
+        if 'docker_limited' in body:
+            config_dict['docker_limited'] = bool(body['docker_limited'])
+        for _key in ('docker_limited_max_containers', 'docker_limited_max_volumes',
+                     'docker_limited_max_networks'):
+            if _key in body:
+                try:
+                    config_dict[_key] = max(0, int(body[_key]))
+                except (TypeError, ValueError):
+                    config_dict[_key] = 0
+        for _key in ('docker_limited_max_storage_gb', 'docker_limited_cpu_cap_cores',
+                     'docker_limited_mem_cap_gb'):
+            if _key in body:
+                try:
+                    config_dict[_key] = max(0.0, round(float(body[_key]), 1))
+                except (TypeError, ValueError):
+                    config_dict[_key] = 0
         if 'docker_privileged' in body:
             config_dict['docker_privileged'] = bool(body['docker_privileged'])
         if 'mem_limit_enabled' in body:
@@ -243,6 +264,17 @@ class GroupsConfigHandler(BaseHandler):
         if not gpu_valid:
             self.set_status(400)
             self.finish({'error': 'invalid_gpu_selection', 'message': gpu_msg})
+            return
+
+        # Docker access must be coherent: a group cannot grant both normal and
+        # limited access (they are orthogonal grants, mutually exclusive per group)
+        docker_valid, docker_msg = validate_docker_selection(
+            merged.get('docker_access'),
+            merged.get('docker_limited'),
+        )
+        if not docker_valid:
+            self.set_status(400)
+            self.finish({'error': 'invalid_docker_selection', 'message': docker_msg})
             return
 
         manager.save_config(group_name, description=description, config_dict=merged)

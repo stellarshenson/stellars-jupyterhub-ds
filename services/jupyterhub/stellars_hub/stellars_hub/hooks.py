@@ -3,6 +3,7 @@
 import math
 from urllib.parse import urlparse
 
+from .docker_proxy import ensure_user_proxy
 from .group_resolver import resolve_group_config
 from .groups_config import GroupsConfigManager
 
@@ -16,6 +17,8 @@ def make_pre_spawn_hook(
     reserved_env_var_names=frozenset(),
     reserved_env_var_prefixes=(),
     compose_project='',
+    docker_proxy_image='',
+    docker_network_name='jupyterhub_network',
 ):
     """Create a pre_spawn_hook closure that captures branding + resolution context.
 
@@ -37,6 +40,10 @@ def make_pre_spawn_hook(
         compose_project: when set, attaches docker-compose project labels so
             spawned containers are grouped under that project in `docker compose
             ls` and `docker compose -p <project> ps` alongside the hub.
+        docker_proxy_image: image used to run the per-user docker-proxy sidecar
+            for limited-docker users (the hub's own image). Empty disables the
+            limited-docker wiring (the grant resolves but no socket is attached).
+        docker_network_name: network the sidecar joins (same as user containers).
     """
 
     async def pre_spawn_hook(spawner):
@@ -59,11 +66,39 @@ def make_pre_spawn_hook(
             reserved_prefixes=reserved_env_var_prefixes,
         )
 
-        # Docker socket mount
+        # Docker access. Normal (raw socket) supersedes limited (proxy) - the
+        # resolver already cleared docker_limited when docker_access is set.
+        name_base = getattr(spawner, 'escaped_name', None) or username
         if resolved['docker_access']:
+            # Normal: mount the raw host socket (sees all, no quota).
             spawner.volumes['/var/run/docker.sock'] = '/var/run/docker.sock'
+            spawner.environment.pop('DOCKER_HOST', None)
+        elif resolved.get('docker_limited') and docker_proxy_image:
+            # Limited: start a per-user ownership-filtering proxy sidecar and
+            # point the user container at its socket via DOCKER_HOST. The stock
+            # docker CLI then transparently sees/manages only this user's own
+            # resources, up to the resolved quota.
+            try:
+                vol, mount_dir, docker_host = ensure_user_proxy(
+                    username,
+                    name_base,
+                    resolved,
+                    proxy_image=docker_proxy_image,
+                    network_name=docker_network_name,
+                    compose_project=compose_project,
+                )
+                spawner.volumes[vol] = mount_dir
+                spawner.environment['DOCKER_HOST'] = docker_host
+                spawner.volumes.pop('/var/run/docker.sock', None)
+            except Exception as e:
+                spawner.log.error(
+                    "[Groups] limited docker proxy setup failed for %s: %s", username, e
+                )
+                spawner.volumes.pop('/var/run/docker.sock', None)
+                spawner.environment.pop('DOCKER_HOST', None)
         else:
             spawner.volumes.pop('/var/run/docker.sock', None)
+            spawner.environment.pop('DOCKER_HOST', None)
 
         # Privileged container mode
         if resolved['docker_privileged']:
@@ -159,10 +194,11 @@ def make_pre_spawn_hook(
             if resolved['gpu_access'] else '-'
         )
         spawner.log.info(
-            "[Groups] user=%s groups=%s docker=%s privileged=%s gpu=%s gpu_sel=%s mem_limit_gb=%s swap_off=%s cpu_limit=%s env_vars=%d skipped=%s compose_project=%s",
+            "[Groups] user=%s groups=%s docker=%s docker_limited=%s privileged=%s gpu=%s gpu_sel=%s mem_limit_gb=%s swap_off=%s cpu_limit=%s env_vars=%d skipped=%s compose_project=%s",
             username,
             resolved['matched_groups'],
             resolved['docker_access'],
+            resolved.get('docker_limited'),
             resolved['docker_privileged'],
             resolved['gpu_access'],
             gpu_sel,

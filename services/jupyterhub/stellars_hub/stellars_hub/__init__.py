@@ -12,6 +12,7 @@ from .admin_bootstrap import (
 )
 from .auth import StellarsNativeAuthenticator
 from .branding import setup_branding
+from .docker_proxy import detect_self_image, ensure_user_proxy, stop_user_proxy
 from .events import register_events
 from .gpu import is_wsl2, resolve_gpu_mode
 from .hooks import make_pre_spawn_hook, schedule_startup_favicon_callback
@@ -44,6 +45,9 @@ __all__ = [
     "calc_time_remaining",
     "compute_bootstrap_window_open",
     "configure_volume_cache",
+    "detect_self_image",
+    "ensure_user_proxy",
+    "stop_user_proxy",
     "get_services_and_roles",
     "run_cull_pass",
     "schedule_idle_culler",
