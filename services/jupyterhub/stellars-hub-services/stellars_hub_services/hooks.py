@@ -78,8 +78,7 @@ def make_pre_spawn_hook(
             # Normal: mount the raw host socket (sees all, no quota).
             spawner.volumes['/var/run/docker.sock'] = '/var/run/docker.sock'
             spawner.environment.pop('DOCKER_HOST', None)
-        elif (resolved.get('docker_limited') and docker_proxy_socket_dir
-              and docker_proxy_volume_name):
+        elif resolved.get('docker_limited'):
             # Limited: the in-process docker-proxy creates a per-user listener
             # at <socket_dir>/<user>/docker.sock in the hub's own filesystem
             # (backed by the named docker volume). The spawner mounts only
@@ -87,28 +86,31 @@ def make_pre_spawn_hook(
             # /run/dockersock via Docker's Subpath mount option, then sets
             # DOCKER_HOST. The stock docker CLI in the lab sees only this
             # user's own resources (mount-level isolation, no host path).
-            try:
-                _socket_host_path, mount_dir, docker_host = await register_user(
-                    username,
-                    resolved,
-                    socket_dir=docker_proxy_socket_dir,
-                    compose_project=compose_project,
+            # No fallback: if the proxy setup fails (missing socket dir, empty
+            # volume name, register_user raises) the whole spawn fails outright
+            # rather than silently downgrading the user to no docker access.
+            if not docker_proxy_socket_dir or not docker_proxy_volume_name:
+                raise RuntimeError(
+                    f"limited docker requested for {username} but proxy is not "
+                    f"configured (socket_dir={docker_proxy_socket_dir!r} "
+                    f"volume_name={docker_proxy_volume_name!r}). "
+                    "Both must be set; see config/jupyterhub_config.py."
                 )
-                spawner.extra_host_config.setdefault('mounts', []).append({
-                    'Type': 'volume',
-                    'Source': docker_proxy_volume_name,
-                    'Target': mount_dir,
-                    'ReadOnly': False,
-                    'VolumeOptions': {'Subpath': username},
-                })
-                spawner.environment['DOCKER_HOST'] = docker_host
-                spawner.volumes.pop('/var/run/docker.sock', None)
-            except Exception as e:
-                spawner.log.error(
-                    "[Groups] limited docker proxy setup failed for %s: %s", username, e
-                )
-                spawner.volumes.pop('/var/run/docker.sock', None)
-                spawner.environment.pop('DOCKER_HOST', None)
+            _socket_host_path, mount_dir, docker_host = await register_user(
+                username,
+                resolved,
+                socket_dir=docker_proxy_socket_dir,
+                compose_project=compose_project,
+            )
+            spawner.extra_host_config.setdefault('mounts', []).append({
+                'Type': 'volume',
+                'Source': docker_proxy_volume_name,
+                'Target': mount_dir,
+                'ReadOnly': False,
+                'VolumeOptions': {'Subpath': username},
+            })
+            spawner.environment['DOCKER_HOST'] = docker_host
+            spawner.volumes.pop('/var/run/docker.sock', None)
         else:
             spawner.volumes.pop('/var/run/docker.sock', None)
             spawner.environment.pop('DOCKER_HOST', None)

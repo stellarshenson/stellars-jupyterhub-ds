@@ -119,7 +119,15 @@ JUPYTERHUB_TIMEZONE = os.environ.get("JUPYTERHUB_TIMEZONE", "Etc/UTC")          
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")                                     # URL prefix (e.g. /jupyterhub), None or / for root
 JUPYTERHUB_NETWORK_NAME = os.environ.get("JUPYTERHUB_NETWORK_NAME", "jupyterhub_network")       # Docker network for hub + spawned containers
 JUPYTERHUB_NOTEBOOK_IMAGE = os.environ.get("JUPYTERHUB_NOTEBOOK_IMAGE", "stellars/stellars-jupyterlab-ds:latest")  # JupyterLab image to spawn
-COMPOSE_PROJECT_NAME = os.environ.get("COMPOSE_PROJECT_NAME", "jupyterhub")                    # passed through by compose - drives docker compose project label and volume namespace; defaults to "jupyterhub" when running outside compose
+COMPOSE_PROJECT_NAME = os.environ.get("COMPOSE_PROJECT_NAME", "").strip()                      # passed through by compose - drives docker compose project label and volume namespace; required (every named volume in this config is namespaced as f"{COMPOSE_PROJECT_NAME}_..."; empty would silently mismatch the compose-side namespacing and fail spawns at Subpath resolution)
+if not COMPOSE_PROJECT_NAME:
+    raise RuntimeError(
+        "COMPOSE_PROJECT_NAME is empty - cannot start. Every named volume in this "
+        "config is namespaced as f'{COMPOSE_PROJECT_NAME}_...' to match compose's "
+        "own project-prefixing; an empty prefix would resolve to a different "
+        "volume than the one compose creates. Set COMPOSE_PROJECT_NAME (compose "
+        "does this automatically when invoked normally; passthrough is in compose.yml)."
+    )
 JUPYTERHUB_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_NVIDIA_IMAGE", "nvidia/cuda:13.0.2-base-ubuntu24.04")  # CUDA image for GPU auto-detection
 JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")                                          # admin username (auto-authorized on first signup)
 
@@ -579,13 +587,17 @@ c.JupyterHub.tornado_settings = {
 # CHP favicon proxy routes and JupyterLab icon URLs.
 # Docker-proxy (limited-docker users): runs in-process inside this hub
 # container on the same asyncio event loop as the rest of the hub. Backed by
-# a named docker volume (Dockerfile ENV JUPYTERHUB_DOCKER_PROXY_VOLUME, default
-# `jupyterhub_docker`) mounted at the path Dockerfile ENV
-# JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR sets (default `/var/run/stellars-docker-proxy-sockets`).
-# The spawner mounts a per-user subpath of that same named volume into each lab,
-# so each lab sees only its own docker.sock under /run/dockersock. No host path.
+# a named docker volume mounted at JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR (default
+# `/var/run/stellars-docker-proxy-sockets`, set by Dockerfile ENV). The volume
+# name follows the standard COMPOSE_PROJECT_NAME-prefixing convention used by
+# every other named volume in this config (see DOCKER_SPAWNER_VOLUMES line above):
+# compose declares `jupyterhub_docker:` and namespaces it to
+# `{COMPOSE_PROJECT_NAME}_jupyterhub_docker` on the daemon; the spawner must
+# reference the same namespaced name when subpath-mounting the volume into each
+# lab, otherwise Docker silently auto-creates an empty volume with the bare name
+# and the per-user subdir lookup fails with 404 at container start.
 JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR = os.environ.get("JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR", "/var/run/stellars-docker-proxy-sockets")
-JUPYTERHUB_DOCKER_PROXY_VOLUME = os.environ.get("JUPYTERHUB_DOCKER_PROXY_VOLUME", "jupyterhub_docker")
+JUPYTERHUB_DOCKER_PROXY_VOLUME = f"{COMPOSE_PROJECT_NAME}_jupyterhub_docker"
 
 c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     branding,                                                # icon static names and URLs from setup_branding()

@@ -24,14 +24,15 @@ Each `<username>/docker.sock` is an aiohttp `UnixSite` listener bound to a per-u
 
 ## Operator notes
 
-- Volume name: `jupyterhub_docker` (declared in `compose.yml`)
+- Volume declared in `compose.yml` as `jupyterhub_docker:`; compose namespaces it on the daemon to `${COMPOSE_PROJECT_NAME}_jupyterhub_docker` (same convention as every other named volume in this stack)
 - Container path: `/var/run/stellars-docker-proxy-sockets` (set by `JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR` in `Dockerfile.jupyterhub`)
+- The spawner references the same namespaced name when subpath-mounting into each lab; the name is computed in `config/jupyterhub_config.py` from `COMPOSE_PROJECT_NAME`. Empty `COMPOSE_PROJECT_NAME` aborts hub startup
 - This README is shipped inside the image at the same path; Docker copies it into the volume on first creation (volume-content-init). Subsequent restarts preserve it
-- Wipe state: `docker volume rm jupyterhub_docker` (compose must be down first)
+- Wipe state: `docker volume rm ${COMPOSE_PROJECT_NAME}_jupyterhub_docker` (compose must be down first)
 
 ## References
 
-- `docs/limited-docker-access.md` - architecture, mermaid, quota rules
-- `docs/jupyterhub-working-with-docker.md` - operator-facing overview
-- `services/jupyterhub/stellars-docker-proxy/` - the proxy library (`Manager`, `create_app`)
-- `services/jupyterhub/stellars-hub-services/stellars_hub_services/docker_proxy.py` - hub-side wiring (`register_user`, `unregister_user`)
+- [docs/limited-docker-access.md](https://github.com/stellarshenson/stellars-jupyterhub-ds/blob/main/docs/limited-docker-access.md) - architecture, mermaid, quota rules
+- [docs/jupyterhub-working-with-docker.md](https://github.com/stellarshenson/stellars-jupyterhub-ds/blob/main/docs/jupyterhub-working-with-docker.md) - operator-facing overview
+- [services/jupyterhub/stellars-docker-proxy/](https://github.com/stellarshenson/stellars-jupyterhub-ds/tree/main/services/jupyterhub/stellars-docker-proxy) - the proxy library (`Manager`, `create_app`)
+- [services/jupyterhub/stellars-hub-services/stellars_hub_services/docker_proxy.py](https://github.com/stellarshenson/stellars-jupyterhub-ds/blob/main/services/jupyterhub/stellars-hub-services/stellars_hub_services/docker_proxy.py) - hub-side wiring (`register_user`, `unregister_user`)
