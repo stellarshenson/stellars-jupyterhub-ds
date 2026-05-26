@@ -271,6 +271,7 @@ class GroupsConfigHandler(BaseHandler):
         docker_valid, docker_msg = validate_docker_selection(
             merged.get('docker_access'),
             merged.get('docker_limited'),
+            merged.get('docker_privileged'),
         )
         if not docker_valid:
             self.set_status(400)

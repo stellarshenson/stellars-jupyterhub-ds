@@ -268,3 +268,23 @@ class TestDockerSelectionValidation:
     def test_neither_valid(self):
         from stellars_hub.groups_config import validate_docker_selection
         assert validate_docker_selection(False, False)[0] is True
+
+    def test_root_without_access_invalid(self):
+        from stellars_hub.groups_config import validate_docker_selection
+        valid, msg = validate_docker_selection(False, False, docker_privileged=True)
+        assert valid is False
+        assert "root" in msg.lower()
+
+    def test_root_with_normal_valid(self):
+        from stellars_hub.groups_config import validate_docker_selection
+        assert validate_docker_selection(True, False, docker_privileged=True)[0] is True
+
+    def test_root_with_limited_valid(self):
+        from stellars_hub.groups_config import validate_docker_selection
+        assert validate_docker_selection(False, True, docker_privileged=True)[0] is True
+
+    def test_root_with_both_still_invalid_on_mutex(self):
+        from stellars_hub.groups_config import validate_docker_selection
+        valid, msg = validate_docker_selection(True, True, docker_privileged=True)
+        assert valid is False
+        assert "both" in msg.lower()
