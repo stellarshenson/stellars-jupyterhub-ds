@@ -591,19 +591,19 @@ require(["jquery"], function($) {
           '<span title="' + formatMembersTooltip(group.members) + '">' + group.member_count + '</span>' +
         '</td>' +
         '<td class="text-center text-nowrap">' +
-          '<button class="btn btn-outline-primary btn-sm me-1 btn-config d-inline-flex justify-content-center align-items-center" data-name="' + escapeAttr(group.name) + '" title="Configure group">' +
-            '<i class="fa fa-cog fa-fw"></i>' +
+          '<button class="btn btn-outline-primary btn-sm me-1 btn-config d-inline-flex justify-content-center align-items-center" style="width:2rem;padding-left:0;padding-right:0;" data-name="' + escapeAttr(group.name) + '" title="Configure group">' +
+            '<i class="fa fa-cog" style="font-size:0.85em;"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-up d-inline-flex justify-content-center align-items-center" data-name="' + escapeAttr(group.name) + '" title="Move up (higher priority)"' +
+          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-up d-inline-flex justify-content-center align-items-center" style="width:2rem;padding-left:0;padding-right:0;" data-name="' + escapeAttr(group.name) + '" title="Move up (higher priority)"' +
             (isFirst ? ' disabled' : '') + '>' +
-            '<i class="fa fa-arrow-up fa-fw"></i>' +
+            '<i class="fa fa-arrow-up" style="font-size:0.85em;"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-down d-inline-flex justify-content-center align-items-center" data-name="' + escapeAttr(group.name) + '" title="Move down (lower priority)"' +
+          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-down d-inline-flex justify-content-center align-items-center" style="width:2rem;padding-left:0;padding-right:0;" data-name="' + escapeAttr(group.name) + '" title="Move down (lower priority)"' +
             (isLast ? ' disabled' : '') + '>' +
-            '<i class="fa fa-arrow-down fa-fw"></i>' +
+            '<i class="fa fa-arrow-down" style="font-size:0.85em;"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-danger btn-sm btn-delete d-inline-flex justify-content-center align-items-center" data-name="' + escapeAttr(group.name) + '" title="Delete group">' +
-            '<i class="fa fa-trash fa-fw"></i>' +
+          '<button class="btn btn-outline-danger btn-sm btn-delete d-inline-flex justify-content-center align-items-center" style="width:2rem;padding-left:0;padding-right:0;" data-name="' + escapeAttr(group.name) + '" title="Delete group">' +
+            '<i class="fa fa-trash" style="font-size:0.85em;"></i>' +
           '</button>' +
         '</td>' +
       '</tr>';
