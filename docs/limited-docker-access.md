@@ -96,10 +96,10 @@ flowchart TD
 | `stellars_docker_proxy.quota` | pure accounting (counts, `/system/df` storage per owner) |
 | `stellars_docker_proxy.server` | aiohttp reverse proxy: classify -> mutate/guard/quota -> stream; optional `owner_resolver` hook for per-request identity |
 | `stellars_docker_proxy.__main__` | CLI `python -m stellars_docker_proxy --owner ... --listen-socket ...` |
-| `stellars_hub.docker_proxy` | `detect_self_image`, `ensure_user_proxy`, `stop_user_proxy` (sidecar orchestration via the docker SDK) |
-| `stellars_hub.group_resolver` | `docker_limited` + quota max-wins + normal-supersedes-limited precedence |
-| `stellars_hub.groups_config` | default fields + `validate_docker_selection` (mutual exclusivity) |
-| `stellars_hub.hooks` | 3-branch docker block (normal / limited / none) |
+| `stellars_hub_services.docker_proxy` | `detect_self_image`, `ensure_user_proxy`, `stop_user_proxy` (sidecar orchestration via the docker SDK) |
+| `stellars_hub_services.group_resolver` | `docker_limited` + quota max-wins + normal-supersedes-limited precedence |
+| `stellars_hub_services.groups_config` | default fields + `validate_docker_selection` (mutual exclusivity) |
+| `stellars_hub_services.hooks` | 3-branch docker block (normal / limited / none) |
 
 ## Configuration
 
@@ -119,7 +119,7 @@ flowchart TD
 
 ## Identity model
 
-The proxy itself knows only an `owner` string; no JupyterHub notion. Today: one sidecar per user, owner baked at start. Future token-roundtrip resolution lives in `stellars_hub` via the `owner_resolver(request)` hook on `create_app()` - the proxy package never changes.
+The proxy itself knows only an `owner` string; no JupyterHub notion. Today: one sidecar per user, owner baked at start. Future token-roundtrip resolution lives in `stellars_hub_services` via the `owner_resolver(request)` hook on `create_app()` - the proxy package never changes.
 
 ## Related
 

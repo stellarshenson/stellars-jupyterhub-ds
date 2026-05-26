@@ -6,23 +6,23 @@
 ##############################################################################################
 ##############################################################################################
 
-# Builder stage: build and test stellars_hub using uv in a venv
+# Builder stage: build and test stellars_hub_services using uv in a venv
 FROM python:3.12-slim AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-COPY services/jupyterhub/stellars_hub /src/stellars_hub
+COPY services/jupyterhub/stellars-hub-services /src/stellars-hub-services
 
 # Create venv, build wheel, install and test
 RUN uv venv /build-venv
 ENV VIRTUAL_ENV=/build-venv
 ENV PATH="/build-venv/bin:$PATH"
 
-RUN uv pip install pip build && python -m build /src/stellars_hub --outdir /dist
-RUN uv pip install /dist/stellars_hub-*.whl pytest && pytest /src/stellars_hub/tests/ -v
+RUN uv pip install pip build && python -m build /src/stellars-hub-services --outdir /dist
+RUN uv pip install /dist/stellars_hub_services-*.whl pytest && pytest /src/stellars-hub-services/tests/ -v
 
 # Build and test stellars-docker-proxy (per-user ownership-filtering Docker socket
-# proxy for limited-docker groups). Its tests gate the image build, like stellars_hub.
+# proxy for limited-docker groups). Its tests gate the image build, like stellars_hub_services.
 COPY services/jupyterhub/stellars-docker-proxy /src/stellars-docker-proxy
 RUN python -m build /src/stellars-docker-proxy --outdir /dist
 RUN uv pip install /dist/stellars_docker_proxy-*.whl pytest pytest-asyncio \
@@ -100,9 +100,9 @@ EOF
 #  INSTALL PLATFORM PACKAGE AND RESOURCES              #
 ########################################################
 
-## install stellars_hub + stellars-docker-proxy packages (carry all pip dependencies)
+## install stellars_hub_services + stellars-docker-proxy packages (carry all pip dependencies)
 COPY --from=builder /dist/*.whl /tmp/
-RUN pip install -U --no-cache-dir /tmp/stellars_hub-*.whl /tmp/stellars_docker_proxy-*.whl && rm -f /tmp/*.whl
+RUN pip install -U --no-cache-dir /tmp/stellars_hub_services-*.whl /tmp/stellars_docker_proxy-*.whl && rm -f /tmp/*.whl
 
 ## copy resources (shell scripts, startup scripts, templates, config, settings)
 COPY --chmod=755  services/jupyterhub/conf/bin/*.sh /
