@@ -17,7 +17,7 @@ def make_pre_spawn_hook(
     reserved_env_var_names=frozenset(),
     reserved_env_var_prefixes=(),
     compose_project='',
-    docker_proxy_socket_dir='/var/run/stellars-proxy',
+    docker_proxy_socket_dir='/var/run/stellars-docker-proxy-sockets',
     docker_proxy_volume_name='jupyterhub_docker',
 ):
     """Create a pre_spawn_hook closure that captures branding + resolution context.

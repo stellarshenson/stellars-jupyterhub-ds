@@ -108,6 +108,8 @@ RUN pip install -U --no-cache-dir /tmp/stellars_hub_services-*.whl /tmp/stellars
 COPY --chmod=755  services/jupyterhub/conf/bin/*.sh /
 COPY --chmod=755  services/jupyterhub/conf/bin/start-platform.d /start-platform.d
 COPY --chmod=600  services/jupyterhub/templates/certs /mnt/certs
+# Diagnostic README copied into the jupyterhub_docker volume via Docker's volume-init on first create.
+COPY --chmod=644  services/jupyterhub/templates/proxy-sockets/README.md /var/run/stellars-docker-proxy-sockets/README.md
 COPY --chmod=644  services/jupyterhub/html_templates_enhanced/*.html /srv/jupyterhub/templates/
 COPY --chmod=644  services/jupyterhub/html_templates_enhanced/static/custom.css /tmp/custom.css
 COPY --chmod=644  services/jupyterhub/html_templates_enhanced/static/session-timer.js /tmp/session-timer.js
@@ -170,7 +172,7 @@ ENV JUPYTERHUB_MEMORY_MAX_USAGE_FRACTION=0.25
 # so they stay out of compose.yml. The hub mounts the named docker volume
 # JUPYTERHUB_DOCKER_PROXY_VOLUME at JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR; the
 # spawner subpath-mounts the same named volume into each user lab.
-ENV JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR=/var/run/stellars-proxy
+ENV JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR=/var/run/stellars-docker-proxy-sockets
 ENV JUPYTERHUB_DOCKER_PROXY_VOLUME=jupyterhub_docker
 # User environment customization
 ENV JUPYTERLAB_AUX_SCRIPTS_PATH=
