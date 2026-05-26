@@ -85,7 +85,7 @@ def resolve_group_config(
           'docker_limited_allow_dangerous_flags': bool,  # OR across limited groups
           'docker_limited_user_compose_project_enabled': bool,
           'docker_limited_user_compose_project_allow_override': bool,
-          'docker_limited_reveal_hub_network': bool,
+          'docker_limited_hub_network_access': bool,
           'docker_privileged': bool,
           'mem_limit_gb': float | None,  # biggest enabled value, None if no cap
           'mem_swap_disabled': bool,     # swap policy of the winning mem-limit group
@@ -110,7 +110,7 @@ def resolve_group_config(
     docker_limited_allow_dangerous_flags = False
     docker_limited_user_compose_project_enabled = False
     docker_limited_user_compose_project_allow_override = False
-    docker_limited_reveal_hub_network = False
+    docker_limited_hub_network_access = False
     docker_privileged = False
     mem_limit_gb = None
     mem_swap_disabled = False
@@ -151,8 +151,8 @@ def resolve_group_config(
                 docker_limited_user_compose_project_enabled = True
             if inner.get('docker_limited_user_compose_project_allow_override'):
                 docker_limited_user_compose_project_allow_override = True
-            if inner.get('docker_limited_reveal_hub_network'):
-                docker_limited_reveal_hub_network = True
+            if inner.get('docker_limited_hub_network_access'):
+                docker_limited_hub_network_access = True
         if inner.get('docker_privileged'):
             docker_privileged = True
 
@@ -206,7 +206,7 @@ def resolve_group_config(
         docker_limited_allow_dangerous_flags = False
         docker_limited_user_compose_project_enabled = False
         docker_limited_user_compose_project_allow_override = False
-        docker_limited_reveal_hub_network = False
+        docker_limited_hub_network_access = False
     if docker_limited:
         for key, default in _DL_DEFAULTS.items():
             if dl_quota[key] <= 0:
@@ -228,7 +228,7 @@ def resolve_group_config(
         'docker_limited_allow_dangerous_flags': docker_limited_allow_dangerous_flags,
         'docker_limited_user_compose_project_enabled': docker_limited_user_compose_project_enabled,
         'docker_limited_user_compose_project_allow_override': docker_limited_user_compose_project_allow_override,
-        'docker_limited_reveal_hub_network': docker_limited_reveal_hub_network,
+        'docker_limited_hub_network_access': docker_limited_hub_network_access,
         'docker_privileged': docker_privileged,
         'mem_limit_gb': mem_limit_gb,
         'mem_swap_disabled': mem_swap_disabled,

@@ -396,13 +396,13 @@
                 </tr>
                 <tr>
                   <td>
-                    <strong>Reveal hub network</strong>
+                    <strong>Access hub network</strong>
                     <div class="text-muted small">
-                      Show the hub's docker network (<code>JUPYTERHUB_NETWORK_NAME</code>) in the user's <code>docker network ls</code>. Containers they spawn can then bind to that network with <code>--network &lt;hub-net&gt;</code> and resolve other containers by DNS. Off = networks list is owner-scoped only.
+                      Grant access to the hub's docker network (<code>JUPYTERHUB_NETWORK_NAME</code>): visible in <code>docker network ls</code>, containers can attach with <code>--network &lt;hub-net&gt;</code>, and <code>docker network connect &lt;hub-net&gt;</code> works - so user containers can resolve hub services and other containers by DNS. Off = the hub network is hidden and inaccessible: list omits it, container creates referencing it are rejected, and connect/disconnect actions return 404.
                     </div>
                   </td>
                   <td class="text-center">
-                    <input class="form-check-input" type="checkbox" id="config-docker-limited-reveal-hub-network" checked>
+                    <input class="form-check-input" type="checkbox" id="config-docker-limited-hub-network-access" checked>
                   </td>
                 </tr>
               </tbody>
@@ -588,19 +588,19 @@ require(["jquery"], function($) {
           '<span title="' + formatMembersTooltip(group.members) + '">' + group.member_count + '</span>' +
         '</td>' +
         '<td class="text-center text-nowrap">' +
-          '<button class="btn btn-outline-primary btn-sm me-1 btn-config d-inline-flex align-items-center justify-content-center" style="width: 2rem; height: 2rem; padding: 0;" data-name="' + escapeAttr(group.name) + '" title="Configure group">' +
-            '<i class="fa fa-cog"></i>' +
+          '<button class="btn btn-outline-primary btn-sm me-1 btn-config" data-name="' + escapeAttr(group.name) + '" title="Configure group">' +
+            '<i class="fa fa-cog fa-fw"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-up d-inline-flex align-items-center justify-content-center" style="width: 2rem; height: 2rem; padding: 0;" data-name="' + escapeAttr(group.name) + '" title="Move up (higher priority)"' +
+          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-up" data-name="' + escapeAttr(group.name) + '" title="Move up (higher priority)"' +
             (isFirst ? ' disabled' : '') + '>' +
-            '<i class="fa fa-arrow-up"></i>' +
+            '<i class="fa fa-arrow-up fa-fw"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-down d-inline-flex align-items-center justify-content-center" style="width: 2rem; height: 2rem; padding: 0;" data-name="' + escapeAttr(group.name) + '" title="Move down (lower priority)"' +
+          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-down" data-name="' + escapeAttr(group.name) + '" title="Move down (lower priority)"' +
             (isLast ? ' disabled' : '') + '>' +
-            '<i class="fa fa-arrow-down"></i>' +
+            '<i class="fa fa-arrow-down fa-fw"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-danger btn-sm btn-delete d-inline-flex align-items-center justify-content-center" style="width: 2rem; height: 2rem; padding: 0;" data-name="' + escapeAttr(group.name) + '" title="Delete group">' +
-            '<i class="fa fa-trash"></i>' +
+          '<button class="btn btn-outline-danger btn-sm btn-delete" data-name="' + escapeAttr(group.name) + '" title="Delete group">' +
+            '<i class="fa fa-trash fa-fw"></i>' +
           '</button>' +
         '</td>' +
       '</tr>';
@@ -791,7 +791,7 @@ require(["jquery"], function($) {
         $('#config-docker-limited-allow-dangerous').prop('checked', config.docker_limited_allow_dangerous_flags || false);
         $('#config-docker-limited-user-compose-enabled').prop('checked', config.docker_limited_user_compose_project_enabled !== false);
         $('#config-docker-limited-user-compose-allow-override').prop('checked', config.docker_limited_user_compose_project_allow_override !== false);
-        $('#config-docker-limited-reveal-hub-network').prop('checked', config.docker_limited_reveal_hub_network !== false);
+        $('#config-docker-limited-hub-network-access').prop('checked', config.docker_limited_hub_network_access !== false);
         updateDockerControls();
         $('#config-docker-privileged').prop('checked', config.docker_privileged || false);
         var memEnabled = !!config.mem_limit_enabled;
@@ -914,7 +914,7 @@ require(["jquery"], function($) {
       docker_limited_allow_dangerous_flags: $('#config-docker-limited-allow-dangerous').is(':checked'),
       docker_limited_user_compose_project_enabled: $('#config-docker-limited-user-compose-enabled').is(':checked'),
       docker_limited_user_compose_project_allow_override: $('#config-docker-limited-user-compose-allow-override').is(':checked'),
-      docker_limited_reveal_hub_network: $('#config-docker-limited-reveal-hub-network').is(':checked'),
+      docker_limited_hub_network_access: $('#config-docker-limited-hub-network-access').is(':checked'),
       mem_limit_enabled: $('#config-mem-limit-enabled').is(':checked'),
       mem_limit_gb: parseFloat($('#config-mem-limit-gb').val()) || 0,
       mem_swap_disabled: $('#config-mem-swap-disabled').is(':checked'),

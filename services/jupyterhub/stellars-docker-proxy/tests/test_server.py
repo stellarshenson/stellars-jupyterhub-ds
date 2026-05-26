@@ -314,7 +314,7 @@ async def test_create_no_compose_project_means_no_label_stamp():
 
 
 async def test_list_networks_default_owner_scoped_only():
-    # Without extra_visible_networks the path uses the injected-filter branch.
+    # Without extra_accessible_networks the path uses the injected-filter branch.
     # Daemon-side filter is applied by upstream; the proxy injects the label.
     async with running_proxy(owner="alice") as (client, daemon, _):
         daemon.set("GET", "/networks", [])
@@ -325,8 +325,8 @@ async def test_list_networks_default_owner_scoped_only():
         assert f"{OWNER_LABEL}=alice" in flt["label"]
 
 
-async def test_list_networks_reveal_hub_network_via_extras():
-    # extra_visible_networks reveals a named network even though it's not owned.
+async def test_list_networks_hub_net_revealed_via_extras():
+    # extra_accessible_networks reveals a named network even though it's not owned.
     # Proxy MUST NOT pass an owner label filter to the upstream in this mode
     # (it post-filters in Python to OR ownership with the extras set).
     upstream_networks = [
@@ -337,7 +337,7 @@ async def test_list_networks_reveal_hub_network_via_extras():
     ]
     async with running_proxy(
         owner="alice",
-        extra_visible_networks=("stellars-tech-ai-lab_network",),
+        extra_accessible_networks=("stellars-tech-ai-lab_network",),
     ) as (client, daemon, _):
         daemon.set("GET", "/networks", upstream_networks)
         resp = await client.get("/networks")
@@ -359,7 +359,7 @@ async def test_list_networks_extras_set_but_no_match_returns_owned_only():
         {"Name": "bob_net", "Labels": {OWNER_LABEL: "bob"}},
     ]
     async with running_proxy(
-        owner="alice", extra_visible_networks=("missing_network",),
+        owner="alice", extra_accessible_networks=("missing_network",),
     ) as (client, daemon, _):
         daemon.set("GET", "/networks", upstream_networks)
         resp = await client.get("/networks")
@@ -367,12 +367,132 @@ async def test_list_networks_extras_set_but_no_match_returns_owned_only():
         assert [n["Name"] for n in revealed] == ["alice_net"]
 
 
-async def test_list_containers_unchanged_by_extra_visible_networks():
-    # extra_visible_networks must NOT bleed into containers listing.
+async def test_list_containers_unchanged_by_extra_accessible_networks():
+    # extra_accessible_networks must NOT bleed into containers listing.
     async with running_proxy(
-        owner="alice", extra_visible_networks=("stellars-tech-ai-lab_network",),
+        owner="alice", extra_accessible_networks=("stellars-tech-ai-lab_network",),
     ) as (client, daemon, _):
         daemon.set("GET", "/containers/json", [])
         await client.get("/containers/json")
         flt = json.loads(daemon.find("GET", "/containers/json")[-1]["query"]["filters"])
         assert f"{OWNER_LABEL}=alice" in flt["label"]
+
+
+# ---------------------------------------------------------------------------
+# Network-access enforcement on container create + action handler.
+# Confirms the rename's new semantic: extra_accessible_networks gates list,
+# action, AND create - non-allow-listed non-owned networks are 403 / 404'd.
+# ---------------------------------------------------------------------------
+
+
+async def test_create_passes_with_builtin_network_modes():
+    # bridge / none / default / empty / container:* are always allowed,
+    # regardless of the access allow-list.
+    async with running_proxy(owner="alice") as (client, daemon, _):
+        daemon.set("POST", "/containers/create", {"Id": "ok"}, status=201)
+        for nm in ("", "default", "bridge", "none", "container:other-id"):
+            resp = await client.post(
+                "/containers/create",
+                json={"Image": "x", "HostConfig": {"NetworkMode": nm}},
+            )
+            assert resp.status == 201, f"NetworkMode={nm!r} should pass"
+
+
+async def test_create_rejects_non_owned_non_allow_listed_network_mode():
+    # A bare network name that's neither built-in, owned, nor allow-listed
+    # is rejected with 403 - no inspect/forward to the daemon for the create.
+    async with running_proxy(owner="alice") as (client, daemon, _):
+        # Inspect returns 200 with non-owner labels -> not owned.
+        daemon.set("GET", "/networks/hub-net", {"Name": "hub-net", "Labels": {}})
+        resp = await client.post(
+            "/containers/create",
+            json={"Image": "x", "HostConfig": {"NetworkMode": "hub-net"}},
+        )
+        assert resp.status == 403
+        assert "network not accessible" in (await resp.json())["message"]
+        assert daemon.find("POST", "/containers/create") == []
+
+
+async def test_create_passes_when_network_in_extra_accessible_networks():
+    # Allow-listed network passes without even hitting inspect.
+    async with running_proxy(
+        owner="alice", extra_accessible_networks=("hub-net",),
+    ) as (client, daemon, _):
+        daemon.set("POST", "/containers/create", {"Id": "ok"}, status=201)
+        resp = await client.post(
+            "/containers/create",
+            json={"Image": "x", "HostConfig": {"NetworkMode": "hub-net"}},
+        )
+        assert resp.status == 201
+        # No need to inspect because the name is in the allow-list.
+        assert daemon.find("GET", "/networks/hub-net") == []
+
+
+async def test_create_passes_when_network_is_owner_labelled():
+    # Owned network passes via inspect.
+    async with running_proxy(owner="alice") as (client, daemon, _):
+        daemon.set("GET", "/networks/my-net", {
+            "Name": "my-net", "Labels": {OWNER_LABEL: "alice"},
+        })
+        daemon.set("POST", "/containers/create", {"Id": "ok"}, status=201)
+        resp = await client.post(
+            "/containers/create",
+            json={"Image": "x", "HostConfig": {"NetworkMode": "my-net"}},
+        )
+        assert resp.status == 201
+
+
+async def test_create_rejects_unauthorized_network_in_endpoints_config():
+    # NetworkingConfig.EndpointsConfig keys are checked the same way.
+    async with running_proxy(owner="alice") as (client, daemon, _):
+        daemon.set("GET", "/networks/hub-net", {"Name": "hub-net", "Labels": {}})
+        resp = await client.post(
+            "/containers/create",
+            json={
+                "Image": "x",
+                "NetworkingConfig": {"EndpointsConfig": {"hub-net": {}}},
+            },
+        )
+        assert resp.status == 403
+        assert daemon.find("POST", "/containers/create") == []
+
+
+async def test_create_passes_endpoints_config_with_allow_listed_network():
+    async with running_proxy(
+        owner="alice", extra_accessible_networks=("hub-net",),
+    ) as (client, daemon, _):
+        daemon.set("POST", "/containers/create", {"Id": "ok"}, status=201)
+        resp = await client.post(
+            "/containers/create",
+            json={
+                "Image": "x",
+                "NetworkingConfig": {"EndpointsConfig": {"hub-net": {}}},
+            },
+        )
+        assert resp.status == 201
+
+
+async def test_network_action_allowed_on_allow_listed_network():
+    # docker network connect <hub-net> <container> on an allow-listed network
+    # must pass even though the network is not owned by alice.
+    async with running_proxy(
+        owner="alice", extra_accessible_networks=("hub-net",),
+    ) as (client, daemon, _):
+        daemon.set("GET", "/networks/hub-net", {"Name": "hub-net", "Labels": {}})
+        daemon.set("POST", "/networks/hub-net/connect", {}, status=200)
+        resp = await client.post(
+            "/networks/hub-net/connect", json={"Container": "alice-web"},
+        )
+        assert resp.status == 200
+        assert daemon.find("POST", "/networks/hub-net/connect")
+
+
+async def test_network_action_404_on_non_owned_non_allow_listed():
+    # Same scenario without the toggle -> 404, no forward.
+    async with running_proxy(owner="alice") as (client, daemon, _):
+        daemon.set("GET", "/networks/hub-net", {"Name": "hub-net", "Labels": {}})
+        resp = await client.post(
+            "/networks/hub-net/connect", json={"Container": "alice-web"},
+        )
+        assert resp.status == 404
+        assert daemon.find("POST", "/networks/hub-net/connect") == []

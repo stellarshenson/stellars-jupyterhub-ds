@@ -232,8 +232,8 @@ class GroupsConfigHandler(BaseHandler):
             config_dict['docker_limited_user_compose_project_enabled'] = bool(body['docker_limited_user_compose_project_enabled'])
         if 'docker_limited_user_compose_project_allow_override' in body:
             config_dict['docker_limited_user_compose_project_allow_override'] = bool(body['docker_limited_user_compose_project_allow_override'])
-        if 'docker_limited_reveal_hub_network' in body:
-            config_dict['docker_limited_reveal_hub_network'] = bool(body['docker_limited_reveal_hub_network'])
+        if 'docker_limited_hub_network_access' in body:
+            config_dict['docker_limited_hub_network_access'] = bool(body['docker_limited_hub_network_access'])
         if 'docker_privileged' in body:
             config_dict['docker_privileged'] = bool(body['docker_privileged'])
         if 'mem_limit_enabled' in body:

@@ -24,6 +24,12 @@ log = logging.getLogger("stellars_docker_proxy")
 _VERSION_RE = re.compile(r"^/v\d+(?:\.\d+)?(?=/)")
 _HOP_BY_HOP = {"transfer-encoding", "content-length", "content-encoding", "connection"}
 
+# Built-in Docker network references that need no allow-list entry. ``host`` is
+# rejected upstream by dangerous_reason() unless allow_dangerous_flags is on -
+# treating it as built-in here means the network-access check stays orthogonal
+# (the dangerous-flags toggle is what gates it, not the hub-network toggle).
+_BUILTIN_NETWORK_REFS = frozenset({"", "default", "bridge", "none", "host"})
+
 
 def _strip_version(path):
     return _VERSION_RE.sub("", path, count=1)
@@ -161,6 +167,37 @@ class ProxyApp:
             log.exception("proxy error on %s %s", request.method, request.rel_url.path)
             return _err(502, f"proxy error: {e}")
 
+    async def _check_network_access(self, body, owner):
+        """Return error message if container body asks for an inaccessible
+        network, else None.
+
+        Looks at ``HostConfig.NetworkMode`` (a string like ``"bridge"``,
+        ``"my-net"`` or ``"container:<id>"``) and ``NetworkingConfig.EndpointsConfig``
+        keys. Built-in references pass without inspection. Otherwise the
+        network is permitted iff it is either owner-labelled OR named in
+        ``extra_accessible_networks``. ``host`` is treated as built-in here
+        because it is already gated by ``dangerous_reason()`` upstream.
+        """
+        requested = []
+        hc = (body or {}).get("HostConfig") or {}
+        nm = hc.get("NetworkMode") or ""
+        if nm not in _BUILTIN_NETWORK_REFS and not nm.startswith("container:"):
+            requested.append(nm)
+        eps = ((body or {}).get("NetworkingConfig") or {}).get("EndpointsConfig") or {}
+        for name in eps.keys():
+            if name not in _BUILTIN_NETWORK_REFS:
+                requested.append(name)
+        if not requested:
+            return None
+        extras = set(self.config.extra_accessible_networks)
+        for name in requested:
+            if name in extras:
+                continue
+            inspect = await self._inspect("networks", name)
+            if inspect is None or not F.is_owned(inspect, owner):
+                return f"network not accessible: {name}"
+        return None
+
     async def _handle_create(self, request, owner, kind):
         raw = await request.read()
         try:
@@ -184,6 +221,9 @@ class ProxyApp:
                 return _err(403, cap_err)
             if not self._image_allowed(body.get("Image") or ""):
                 return _err(403, f"image not allowed: {body.get('Image')}")
+            net_err = await self._check_network_access(body, owner)
+            if net_err:
+                return _err(403, net_err)
 
         maxes = {
             "containers": self.config.max_containers,
@@ -225,16 +265,24 @@ class ProxyApp:
 
     async def _handle_action(self, request, owner, kind, ident):
         inspect = await self._inspect(kind, ident)
-        if inspect is None or not F.is_owned(inspect, owner):
+        if inspect is None:
             return _err(404, f"no such {kind[:-1]}: {ident}")
-        return await self._forward(request)
+        if F.is_owned(inspect, owner):
+            return await self._forward(request)
+        # Networks: allow actions (connect, disconnect, inspect, ...) on
+        # networks in the accessible allow-list, even though they are not
+        # owner-labelled. Hides everything else with 404 to mimic an
+        # owner-scoped view.
+        if kind == "networks" and inspect.get("Name") in self.config.extra_accessible_networks:
+            return await self._forward(request)
+        return _err(404, f"no such {kind[:-1]}: {ident}")
 
     async def _handle_list(self, request, owner, kind):
         # Networks: when extras are configured (e.g. the hub's network), drop
         # the upstream owner-label filter and post-filter in Python so the user
         # sees BOTH their own networks AND the named extras. Avoids needing
         # Docker filters with OR semantics (it only ANDs).
-        if kind == "networks" and self.config.extra_visible_networks:
+        if kind == "networks" and self.config.extra_accessible_networks:
             return await self._list_networks_with_extras(request, owner)
         query = dict(request.rel_url.query)
         query["filters"] = F.merge_label_filter(query.get("filters"), owner)
@@ -264,7 +312,7 @@ class ProxyApp:
             return web.Response(status=upstream.status, body=raw, content_type=upstream.headers.get("Content-Type", "application/json"))
         if not isinstance(data, list):
             return web.json_response(data, status=upstream.status)
-        extras = set(self.config.extra_visible_networks)
+        extras = set(self.config.extra_accessible_networks)
         out = [
             n for n in data
             if isinstance(n, dict)

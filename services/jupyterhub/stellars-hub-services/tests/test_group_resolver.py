@@ -321,26 +321,26 @@ class TestDockerLimited:
         assert r["docker_limited_user_compose_project_enabled"] is False
         assert r["docker_limited_user_compose_project_allow_override"] is False
 
-    def test_reveal_hub_network_default_on_from_default_config(self):
-        cfgs = [_grp("d", docker_limited=True, docker_limited_reveal_hub_network=True)]
+    def test_hub_network_access_default_on_from_default_config(self):
+        cfgs = [_grp("d", docker_limited=True, docker_limited_hub_network_access=True)]
         r = _resolve(["d"], cfgs)
-        assert r["docker_limited_reveal_hub_network"] is True
+        assert r["docker_limited_hub_network_access"] is True
 
-    def test_reveal_hub_network_or_accumulates(self):
+    def test_hub_network_access_or_accumulates(self):
         cfgs = [
-            _grp("a", docker_limited=True, docker_limited_reveal_hub_network=False),
-            _grp("b", docker_limited=True, docker_limited_reveal_hub_network=True),
+            _grp("a", docker_limited=True, docker_limited_hub_network_access=False),
+            _grp("b", docker_limited=True, docker_limited_hub_network_access=True),
         ]
         r = _resolve(["a", "b"], cfgs)
-        assert r["docker_limited_reveal_hub_network"] is True
+        assert r["docker_limited_hub_network_access"] is True
 
-    def test_reveal_hub_network_collapses_when_normal_supersedes(self):
+    def test_hub_network_access_collapses_when_normal_supersedes(self):
         cfgs = [
             _grp("norm", docker_access=True),
-            _grp("lim", docker_limited=True, docker_limited_reveal_hub_network=True),
+            _grp("lim", docker_limited=True, docker_limited_hub_network_access=True),
         ]
         r = _resolve(["norm", "lim"], cfgs)
-        assert r["docker_limited_reveal_hub_network"] is False
+        assert r["docker_limited_hub_network_access"] is False
 
 
 class TestDockerSelectionValidation:
