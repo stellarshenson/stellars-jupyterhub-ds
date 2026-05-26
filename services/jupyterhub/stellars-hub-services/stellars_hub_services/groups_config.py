@@ -76,17 +76,16 @@ def validate_docker_selection(docker_access, docker_limited, docker_privileged=F
     """Validate a group's Docker access choice. Returns (valid, error_message).
 
     Within one group, normal access (raw socket - sees all, no quota) and limited
-    access (per-user ownership-filtering proxy) are mutually exclusive. They are
-    orthogonal grants, but a single group must pick one or neither.
+    access (per-user ownership-filtering proxy) are mutually exclusive.
 
-    Docker (root) - the --privileged flag on the user container - only makes
-    sense alongside one of the two access modes (it raises the privilege of
-    the same Docker access, it is not a third independent grant).
+    Docker (root) - the --privileged flag on the user container - is fully
+    orthogonal. A group may grant it with normal, with limited, or on its own.
+    Standalone "root" gives the user container --privileged but no Docker socket
+    of any kind; when combined with an access mode (same group or via another
+    group the user belongs to), it escalates that access mode at spawn time.
     """
     if docker_access and docker_limited:
         return False, 'A group cannot grant both normal and limited Docker access - choose one.'
-    if docker_privileged and not (docker_access or docker_limited):
-        return False, 'Docker (root) requires either normal or limited Docker access to be enabled.'
     return True, ''
 
 
