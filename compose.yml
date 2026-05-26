@@ -60,6 +60,7 @@ services:
       - jupyterhub_data:/data # database and cookie secrets
       - jupyterhub_shared:/mnt/shared # shared volume across environments
       - /var/run/docker.sock:/var/run/docker.sock:ro # for nvidia autodetection
+      - /var/run/stellars-proxy:/var/run/stellars-proxy # in-process docker-proxy: per-user listener sockets (bind-mounted as user docker socket by the spawner)
     environment:
       # Core settings
       - JUPYTERHUB_ADMIN=admin # this username will be a JupyterHub admin
@@ -103,10 +104,7 @@ services:
       - JUPYTERHUB_LAB_MAIN_ICON_URI= # JupyterLab main icon (file:// or URL)
       - JUPYTERHUB_LAB_SPLASH_ICON_URI= # JupyterLab splash icon (file:// or URL)
       - COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-jupyterhub} # propagated so user containers carry the same compose project label and volume namespace as the hub
-      # Central docker-proxy (limited-docker users). All three must be set for limited-docker grants to take effect.
-      - JUPYTERHUB_DOCKER_PROXY_ADMIN_URL=http://stellars-docker-proxy:9000 # admin HTTP endpoint of the central proxy service (this compose stack)
-      - JUPYTERHUB_DOCKER_PROXY_ADMIN_TOKEN=${STELLARS_DOCKER_PROXY_ADMIN_TOKEN:?STELLARS_DOCKER_PROXY_ADMIN_TOKEN must be set in .env} # shared secret with stellars-docker-proxy
-      - JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR=/var/run/stellars-proxy # host directory where the proxy writes per-user sockets
+      # JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR defaults to /var/run/stellars-proxy (set in Dockerfile ENV). Override only if you bind-mount a different host path below.
       # - JUPYTERHUB_ADMIN_PASSWORD= # optional INITIAL admin password; pre-creates admin UserInfo on startup. Once admin changes their password, env is permanently ignored (verified via bcrypt.checkpw). Not listed in settings_dictionary.yml so it stays off the Settings page.
       # - JUPYTERLAB_SYSTEM_NAME= # rebrand stellars-jupyterlab-ds in welcome page, MOTD, toolbar header badge; empty = no rebrand
       # - JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME=1 # uppercase the toolbar header badge (0/1)
@@ -132,31 +130,6 @@ services:
       timeout: 5s
       retries: 10
       start_period: 5s
-    restart: unless-stopped
-
-  # central docker-proxy: one container, N per-user unix listeners. Hub
-  # registers each limited-docker user on spawn (admin HTTP API on TCP 9000
-  # inside jupyterhub_network); the proxy writes a per-user socket under
-  # /var/run/stellars-proxy/<user>.sock on the host, which the spawner then
-  # bind-mounts as the user's docker socket. No per-user sidecars.
-  stellars-docker-proxy:
-    image: stellars/stellars-jupyterhub-ds:latest # same image; carries stellars_docker_proxy
-    pull_policy: build
-    container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-docker-proxy
-    command: ["python", "-m", "stellars_docker_proxy"]
-    environment:
-      - STELLARS_PROXY_ADMIN_TOKEN=${STELLARS_DOCKER_PROXY_ADMIN_TOKEN:?STELLARS_DOCKER_PROXY_ADMIN_TOKEN must be set in .env}
-      - STELLARS_PROXY_SOCKET_DIR=/var/run/stellars-proxy
-      - STELLARS_PROXY_UPSTREAM=/var/run/docker.sock
-      - STELLARS_PROXY_ADMIN_HOST=0.0.0.0
-      - STELLARS_PROXY_ADMIN_PORT=9000
-    volumes:
-      - /var/run/stellars-proxy:/var/run/stellars-proxy # host bind so user-container bind mounts can reach the per-user sockets
-      - /var/run/docker.sock:/var/run/docker.sock:rw # upstream Docker daemon
-    networks:
-      - jupyterhub_network
-    labels:
-      - "com.centurylinklabs.watchtower.enable=false" # tied to hub image release, not its own
     restart: unless-stopped
 
   ## watchtower for automatic docker image refresh
