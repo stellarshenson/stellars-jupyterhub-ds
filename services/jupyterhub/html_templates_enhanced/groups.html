@@ -299,16 +299,52 @@
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" id="config-docker-access">
             <label class="form-check-label" for="config-docker-access">
-              Docker engine access
+              Normal Docker access
             </label>
-            <div class="form-text">Mounts /var/run/docker.sock into user containers</div>
+            <div class="form-text">Mounts the raw /var/run/docker.sock - sees all containers, no quota. For trusted users.</div>
           </div>
-          <div class="form-check">
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="config-docker-limited">
+            <label class="form-check-label" for="config-docker-limited">
+              Limited Docker access
+            </label>
+            <div class="form-text">Per-user filtered socket: users see and manage only their own containers, up to a quota. Mutually exclusive with normal access.</div>
+          </div>
+          <div id="config-docker-limited-config" class="ms-4 mt-2">
+            <div class="row g-2">
+              <div class="col-6 col-md-4">
+                <label class="form-label small mb-1" for="config-docker-max-containers">Max containers</label>
+                <input type="number" min="0" step="1" class="form-control form-control-sm" id="config-docker-max-containers">
+              </div>
+              <div class="col-6 col-md-4">
+                <label class="form-label small mb-1" for="config-docker-max-volumes">Max volumes</label>
+                <input type="number" min="0" step="1" class="form-control form-control-sm" id="config-docker-max-volumes">
+              </div>
+              <div class="col-6 col-md-4">
+                <label class="form-label small mb-1" for="config-docker-max-networks">Max networks</label>
+                <input type="number" min="0" step="1" class="form-control form-control-sm" id="config-docker-max-networks">
+              </div>
+              <div class="col-6 col-md-4">
+                <label class="form-label small mb-1" for="config-docker-max-storage">Max storage (GB)</label>
+                <input type="number" min="0" step="1" class="form-control form-control-sm" id="config-docker-max-storage">
+              </div>
+              <div class="col-6 col-md-4">
+                <label class="form-label small mb-1" for="config-docker-cpu-cap">CPU cap (cores)</label>
+                <input type="number" min="0" step="0.5" class="form-control form-control-sm" id="config-docker-cpu-cap">
+              </div>
+              <div class="col-6 col-md-4">
+                <label class="form-label small mb-1" for="config-docker-mem-cap">Memory cap (GB)</label>
+                <input type="number" min="0" step="1" class="form-control form-control-sm" id="config-docker-mem-cap">
+              </div>
+            </div>
+            <div class="form-text">Counts are hard limits (create rejected at the cap). Storage is a soft budget (blocks new creates when exceeded). CPU/memory caps apply to each container the user creates.</div>
+          </div>
+          <div class="form-check mt-2">
             <input class="form-check-input" type="checkbox" id="config-docker-privileged">
             <label class="form-check-label" for="config-docker-privileged">
               Privileged container mode
             </label>
-            <div class="form-text">Runs user containers with --privileged flag (full host access)</div>
+            <div class="form-text">Runs user containers with --privileged flag (full host access). Orthogonal to the access type above.</div>
           </div>
         </div>
 
@@ -393,6 +429,21 @@ require(["jquery"], function($) {
   $('#config-gpu-access').on('change', updateGpuControls);
   $('#config-gpu-all').on('change', updateGpuControls);
 
+  // Docker: normal and limited are mutually exclusive; the limited config panel
+  // (quota + caps) is enabled only when limited access is on.
+  function updateDockerControls() {
+    var limited = $('#config-docker-limited').is(':checked');
+    $('#config-docker-limited-config').find('input').prop('disabled', !limited);
+  }
+  $('#config-docker-access').on('change', function() {
+    if (this.checked) { $('#config-docker-limited').prop('checked', false); }
+    updateDockerControls();
+  });
+  $('#config-docker-limited').on('change', function() {
+    if (this.checked) { $('#config-docker-access').prop('checked', false); }
+    updateDockerControls();
+  });
+
   // ── Data Loading ──
 
   function loadGroups(callback) {
@@ -441,6 +492,7 @@ require(["jquery"], function($) {
       if (envCount > 0) features.push(envCount + ' Var' + (envCount !== 1 ? 's' : ''));
       if (group.config.gpu_access) features.push('GPU');
       if (group.config.docker_access) features.push('Docker');
+      if (group.config.docker_limited) features.push('Docker (limited)');
       if (group.config.docker_privileged) features.push('Privileged');
       if (group.config.mem_limit_enabled && group.config.mem_limit_gb > 0) {
         features.push('Mem');
@@ -658,6 +710,14 @@ require(["jquery"], function($) {
         });
         updateGpuControls();
         $('#config-docker-access').prop('checked', config.docker_access || false);
+        $('#config-docker-limited').prop('checked', config.docker_limited || false);
+        $('#config-docker-max-containers').val(config.docker_limited_max_containers != null ? config.docker_limited_max_containers : 10);
+        $('#config-docker-max-volumes').val(config.docker_limited_max_volumes != null ? config.docker_limited_max_volumes : 10);
+        $('#config-docker-max-networks').val(config.docker_limited_max_networks != null ? config.docker_limited_max_networks : 3);
+        $('#config-docker-max-storage').val(config.docker_limited_max_storage_gb != null ? config.docker_limited_max_storage_gb : 50);
+        $('#config-docker-cpu-cap').val(config.docker_limited_cpu_cap_cores != null ? config.docker_limited_cpu_cap_cores : 2);
+        $('#config-docker-mem-cap').val(config.docker_limited_mem_cap_gb != null ? config.docker_limited_mem_cap_gb : 8);
+        updateDockerControls();
         $('#config-docker-privileged').prop('checked', config.docker_privileged || false);
         var memEnabled = !!config.mem_limit_enabled;
         $('#config-mem-limit-enabled').prop('checked', memEnabled);
@@ -750,13 +810,29 @@ require(["jquery"], function($) {
       return;
     }
 
+    // Docker access: normal and limited are mutually exclusive
+    var dockerAccess = $('#config-docker-access').is(':checked');
+    var dockerLimited = $('#config-docker-limited').is(':checked');
+    if (dockerAccess && dockerLimited) {
+      $('#config-error').text('A group cannot grant both normal and limited Docker access - choose one.').show();
+      $('#config-error')[0].scrollIntoView({behavior: 'smooth', block: 'center'});
+      return;
+    }
+
     var payload = {
       description: $('#config-description').val().trim(),
       env_vars: envVars,
       gpu_access: gpuAccess,
       gpu_all: gpuAll,
       gpu_device_ids: gpuDeviceIds,
-      docker_access: $('#config-docker-access').is(':checked'),
+      docker_access: dockerAccess,
+      docker_limited: dockerLimited,
+      docker_limited_max_containers: parseInt($('#config-docker-max-containers').val(), 10) || 0,
+      docker_limited_max_volumes: parseInt($('#config-docker-max-volumes').val(), 10) || 0,
+      docker_limited_max_networks: parseInt($('#config-docker-max-networks').val(), 10) || 0,
+      docker_limited_max_storage_gb: parseFloat($('#config-docker-max-storage').val()) || 0,
+      docker_limited_cpu_cap_cores: parseFloat($('#config-docker-cpu-cap').val()) || 0,
+      docker_limited_mem_cap_gb: parseFloat($('#config-docker-mem-cap').val()) || 0,
       docker_privileged: $('#config-docker-privileged').is(':checked'),
       mem_limit_enabled: $('#config-mem-limit-enabled').is(':checked'),
       mem_limit_gb: parseFloat($('#config-mem-limit-gb').val()) || 0,

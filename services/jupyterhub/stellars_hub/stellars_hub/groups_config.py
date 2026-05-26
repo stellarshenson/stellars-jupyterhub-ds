@@ -39,7 +39,14 @@ def default_config():
         'gpu_access': False,
         'gpu_all': True,          # all GPUs (default); when False, gpu_device_ids applies
         'gpu_device_ids': [],     # specific GPU index strings, e.g. ['0', '2']
-        'docker_access': False,
+        'docker_access': False,        # normal: raw host docker.sock (sees all, no quota)
+        'docker_limited': False,       # limited: per-user ownership-filtering proxy
+        'docker_limited_max_containers': 10,
+        'docker_limited_max_volumes': 10,
+        'docker_limited_max_networks': 3,
+        'docker_limited_max_storage_gb': 50,
+        'docker_limited_cpu_cap_cores': 2,
+        'docker_limited_mem_cap_gb': 8,
         'docker_privileged': False,
         'mem_limit_enabled': False,
         'mem_limit_gb': 0,
@@ -62,6 +69,18 @@ def validate_gpu_selection(gpu_access, gpu_all, gpu_device_ids):
         return True, ''
     if not gpu_device_ids:
         return False, 'Select at least one GPU, or enable "All GPUs".'
+    return True, ''
+
+
+def validate_docker_selection(docker_access, docker_limited):
+    """Validate a group's Docker access choice. Returns (valid, error_message).
+
+    Within one group, normal access (raw socket - sees all, no quota) and limited
+    access (per-user ownership-filtering proxy) are mutually exclusive. They are
+    orthogonal grants, but a single group must pick one or neither.
+    """
+    if docker_access and docker_limited:
+        return False, 'A group cannot grant both normal and limited Docker access - choose one.'
     return True, ''
 
 

@@ -21,6 +21,13 @@ ENV PATH="/build-venv/bin:$PATH"
 RUN uv pip install pip build && python -m build /src/stellars_hub --outdir /dist
 RUN uv pip install /dist/stellars_hub-*.whl pytest && pytest /src/stellars_hub/tests/ -v
 
+# Build and test stellars-docker-proxy (per-user ownership-filtering Docker socket
+# proxy for limited-docker groups). Its tests gate the image build, like stellars_hub.
+COPY services/jupyterhub/stellars-docker-proxy /src/stellars-docker-proxy
+RUN python -m build /src/stellars-docker-proxy --outdir /dist
+RUN uv pip install /dist/stellars_docker_proxy-*.whl pytest pytest-asyncio \
+    && pytest /src/stellars-docker-proxy/tests/ -v
+
 ##############################################################################################
 
 FROM jupyterhub/jupyterhub:5.4.2 AS target
@@ -93,9 +100,9 @@ EOF
 #  INSTALL PLATFORM PACKAGE AND RESOURCES              #
 ########################################################
 
-## install stellars_hub package (carries all pip dependencies)
+## install stellars_hub + stellars-docker-proxy packages (carry all pip dependencies)
 COPY --from=builder /dist/*.whl /tmp/
-RUN pip install -U --no-cache-dir /tmp/stellars_hub-*.whl && rm -f /tmp/stellars_hub-*.whl
+RUN pip install -U --no-cache-dir /tmp/stellars_hub-*.whl /tmp/stellars_docker_proxy-*.whl && rm -f /tmp/*.whl
 
 ## copy resources (shell scripts, startup scripts, templates, config, settings)
 COPY --chmod=755  services/jupyterhub/conf/bin/*.sh /

@@ -24,6 +24,8 @@ from stellars_hub import (
     configure_volume_cache,                 # one-time init: feeds canonical volume-name templates to the activity-monitor sizes cache
     get_services_and_roles,                 # builds JupyterHub services list (activity sampler)
     schedule_idle_culler,                   # in-hub idle culler (honours per-user session extensions)
+    detect_self_image,                      # hub's own image tag - runs the per-user docker-proxy sidecar
+    stop_user_proxy,                        # removes a user's docker-proxy sidecar on server stop
     get_user_volume_name_templates,         # maps suffix -> full volume-name template (with {username} placeholder)
     get_user_volume_suffixes,               # extracts ['home', 'workspace', 'cache'] from volumes dict
     is_wsl2,                                 # host is WSL2 -> per-GPU isolation not enforceable (advisory)
@@ -515,6 +517,7 @@ c.DockerSpawner.environment = {
 RESERVED_ENV_VAR_PREFIXES = ('JUPYTERHUB_', 'JPY_', 'MEM_', 'CPU_')
 RESERVED_ENV_VAR_NAMES = set(c.DockerSpawner.environment.keys()) | {
     'ENABLE_GPU_SUPPORT', 'ENABLE_GPUSTAT', 'NVIDIA_VISIBLE_DEVICES', 'CUDA_VISIBLE_DEVICES',
+    'DOCKER_HOST',  # set per-user by the limited-docker proxy wiring; groups must not override
 }
 
 # GPU device_requests is set per-user by the pre-spawn hook based on resolved
@@ -579,6 +582,11 @@ c.JupyterHub.tornado_settings = {
 # Hook runs before each container spawn: resolves all user's groups into one
 # effective config (docker/gpu/env vars), applies it to spawner, then injects
 # CHP favicon proxy routes and JupyterLab icon URLs.
+# Image used to run the per-user docker-proxy sidecar for limited-docker users.
+# Defaults to the hub's own image (which carries stellars_docker_proxy); operator
+# can override. Empty -> limited-docker grants resolve but no socket is attached.
+JUPYTERHUB_DOCKER_PROXY_IMAGE = os.environ.get("JUPYTERHUB_DOCKER_PROXY_IMAGE", "") or (detect_self_image() or "")
+
 c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     branding,                                                # icon static names and URLs from setup_branding()
     favicon_uri=JUPYTERHUB_FAVICON_URI,                      # non-empty activates the favicon.ico CHP route
@@ -588,7 +596,25 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     reserved_env_var_names=RESERVED_ENV_VAR_NAMES,           # names groups cannot override
     reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,     # prefixes reserved for JupyterHub/platform
     compose_project=COMPOSE_PROJECT_NAME,                    # docker compose project label so user containers group with the hub in `docker compose ls`
+    docker_proxy_image=JUPYTERHUB_DOCKER_PROXY_IMAGE,        # image running the per-user limited-docker proxy sidecar
+    docker_network_name=JUPYTERHUB_NETWORK_NAME,             # network the sidecar joins (same as user containers)
 )
+
+
+def _post_stop_cleanup(spawner):
+    """Remove the user's docker-proxy sidecar when their server stops.
+
+    No-op for users without a sidecar. User-created containers are independent
+    and keep running; the proxy is recreated on the next spawn.
+    """
+    try:
+        name_base = getattr(spawner, 'escaped_name', None) or spawner.user.name
+        stop_user_proxy(name_base)
+    except Exception as e:  # never block a stop on cleanup
+        spawner.log.warning("[Groups] docker-proxy cleanup failed: %s", e)
+
+
+c.DockerSpawner.post_stop_hook = _post_stop_cleanup
 
 # ── Spawner args ──
 # Command-line arguments passed to the spawned JupyterLab ServerApp
