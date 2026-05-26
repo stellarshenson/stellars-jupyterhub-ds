@@ -296,19 +296,22 @@
           <h6 class="text-uppercase text-muted mb-2">
             <i class="fab fa-docker" aria-hidden="true"></i> Docker Access
           </h6>
+          <div class="small text-muted mb-2">
+            Across groups: <strong>most permissive wins</strong>. Toggles OR-accumulate (any group on &rarr; on); quotas max-win. Standard supersedes Limited; Privileged is orthogonal.
+          </div>
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" id="config-docker-access">
             <label class="form-check-label" for="config-docker-access">
               Standard Docker Access
             </label>
-            <div class="form-text">Mounts the raw /var/run/docker.sock - sees all containers, no quota. For trusted users.</div>
+            <div class="form-text">Mounts the raw /var/run/docker.sock - sees all containers, no quota. For trusted users. Any group on &rarr; on.</div>
           </div>
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" id="config-docker-limited">
             <label class="form-check-label" for="config-docker-limited">
               Limited Docker Access
             </label>
-            <div class="form-text">Per-user filtered socket: users see and manage only their own containers, up to a quota. Mutually exclusive with normal access.</div>
+            <div class="form-text">Per-user filtered socket: users see and manage only their own containers, up to a quota. Mutually exclusive with Standard Docker Access. Any group on &rarr; on; quotas max-win.</div>
           </div>
           <div id="config-docker-limited-config" class="ms-4 mt-2">
             <table class="table table-sm table-bordered align-middle" id="docker-limited-settings-table">
@@ -365,7 +368,7 @@
                   <td>
                     <strong>Allow dangerous Docker flags</strong>
                     <div class="text-muted small">
-                      <strong class="text-danger">Warning:</strong> bypass the proxy safety filter for host bind mounts, host network/PID namespaces, added capabilities, and device passthrough. Ownership labelling, list/prune filtering and quota caps still apply. Grant only when the user genuinely needs host paths or kernel devices in a sub-container.
+                      <strong class="text-danger">Warning:</strong> bypass the proxy safety filter for host bind mounts, host network/PID namespaces, added capabilities, and device passthrough. Ownership labelling, list/prune filtering and quota caps still apply. Grant only when the user genuinely needs host paths or kernel devices in a sub-container. Any group on &rarr; on.
                     </div>
                   </td>
                   <td class="text-center">
@@ -376,7 +379,7 @@
                   <td>
                     <strong>Enforce per-user compose project</strong>
                     <div class="text-muted small">
-                      Group each user's <code>docker run</code> containers under their own compose project so they show up together in <code>docker compose ls</code> / Docker Desktop. The project name comes from the platform env <code>JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE</code> (default <code>{compose_project}_{username}_containers</code>). Off = ad-hoc containers belong to no compose project (free-floating); the user's own <code>docker compose</code> projects are unaffected either way.
+                      Group each user's <code>docker run</code> containers under their own compose project so they show up together in <code>docker compose ls</code> / Docker Desktop. The project name comes from the platform env <code>JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE</code> (default <code>{compose_project}_{username}_containers</code>). Off = ad-hoc containers belong to no compose project (free-floating); the user's own <code>docker compose</code> projects are unaffected either way. Any group on &rarr; on.
                     </div>
                   </td>
                   <td class="text-center">
@@ -387,7 +390,7 @@
                   <td>
                     <strong>Allow override of compose project</strong>
                     <div class="text-muted small">
-                      Respect a project name the user supplies via <code>docker compose -p &lt;name&gt;</code> OR <code>COMPOSE_PROJECT_NAME=&lt;name&gt;</code> instead of rewriting it (both produce the same <code>com.docker.compose.project</code> label on the create body). Off = strict mode: the proxy pins every container to the per-user project regardless of what the user typed.
+                      Respect a project name the user supplies via <code>docker compose -p &lt;name&gt;</code> OR <code>COMPOSE_PROJECT_NAME=&lt;name&gt;</code> instead of rewriting it (both produce the same <code>com.docker.compose.project</code> label on the create body). Off = strict mode: the proxy pins every container to the per-user project regardless of what the user typed. Any group on &rarr; on.
                     </div>
                   </td>
                   <td class="text-center">
@@ -398,7 +401,7 @@
                   <td>
                     <strong>Access hub network</strong>
                     <div class="text-muted small">
-                      Grant access to the hub's docker network (<code>JUPYTERHUB_NETWORK_NAME</code>): visible in <code>docker network ls</code>, containers can attach with <code>--network &lt;hub-net&gt;</code>, and <code>docker network connect &lt;hub-net&gt;</code> works - so user containers can resolve hub services and other containers by DNS. Off = the hub network is hidden and inaccessible: list omits it, container creates referencing it are rejected, and connect/disconnect actions return 404.
+                      Grant access to the hub's docker network (<code>JUPYTERHUB_NETWORK_NAME</code>): visible in <code>docker network ls</code>, containers can attach with <code>--network &lt;hub-net&gt;</code>, and <code>docker network connect &lt;hub-net&gt;</code> works - so user containers can resolve hub services and other containers by DNS. Off = the hub network is hidden and inaccessible: list omits it, container creates referencing it are rejected, and connect/disconnect actions return 404. Any group on &rarr; on.
                     </div>
                   </td>
                   <td class="text-center">
@@ -413,7 +416,7 @@
             <label class="form-check-label" for="config-docker-privileged">
               Privileged Docker (root)
             </label>
-            <div class="form-text">Runs the user container with --privileged (kernel-root inside the container). Orthogonal to the access mode - granted on its own this group gives root with no Docker socket; combined with normal or limited (same group or another group the user is in) it escalates that access.</div>
+            <div class="form-text">Runs the user container with --privileged (kernel-root inside the container). Orthogonal to the access mode - granted on its own this group gives root with no Docker socket; combined with normal or limited (same group or another group the user is in) it escalates that access. Any group on &rarr; on. Does NOT imply "Allow dangerous Docker flags".</div>
           </div>
         </div>
 
@@ -588,18 +591,18 @@ require(["jquery"], function($) {
           '<span title="' + formatMembersTooltip(group.members) + '">' + group.member_count + '</span>' +
         '</td>' +
         '<td class="text-center text-nowrap">' +
-          '<button class="btn btn-outline-primary btn-sm me-1 btn-config" data-name="' + escapeAttr(group.name) + '" title="Configure group">' +
+          '<button class="btn btn-outline-primary btn-sm me-1 btn-config d-inline-flex justify-content-center align-items-center" data-name="' + escapeAttr(group.name) + '" title="Configure group">' +
             '<i class="fa fa-cog fa-fw"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-up" data-name="' + escapeAttr(group.name) + '" title="Move up (higher priority)"' +
+          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-up d-inline-flex justify-content-center align-items-center" data-name="' + escapeAttr(group.name) + '" title="Move up (higher priority)"' +
             (isFirst ? ' disabled' : '') + '>' +
             '<i class="fa fa-arrow-up fa-fw"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-down" data-name="' + escapeAttr(group.name) + '" title="Move down (lower priority)"' +
+          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-down d-inline-flex justify-content-center align-items-center" data-name="' + escapeAttr(group.name) + '" title="Move down (lower priority)"' +
             (isLast ? ' disabled' : '') + '>' +
             '<i class="fa fa-arrow-down fa-fw"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-danger btn-sm btn-delete" data-name="' + escapeAttr(group.name) + '" title="Delete group">' +
+          '<button class="btn btn-outline-danger btn-sm btn-delete d-inline-flex justify-content-center align-items-center" data-name="' + escapeAttr(group.name) + '" title="Delete group">' +
             '<i class="fa fa-trash fa-fw"></i>' +
           '</button>' +
         '</td>' +
