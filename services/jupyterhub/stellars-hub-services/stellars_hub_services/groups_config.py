@@ -55,7 +55,7 @@ def default_config():
         'docker_limited_allow_dangerous_flags': False,
         # Per-user compose-project enforcement. When enabled, ad-hoc `docker run`s
         # are stamped with a per-user project label rendered from a platform
-        # template (default `{compose_project}_{username}_containers`). When
+        # template (default `{username}_containers`). When
         # allow_override is True the user can still pass `-p name` to their own
         # `docker compose` and it is respected; when False the proxy rewrites
         # the user's label too. Both default True - feel free to turn enforcement

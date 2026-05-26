@@ -7,13 +7,15 @@ socket: whoever connects to the listen socket acts as that owner, so the stock
 user container's ``/var/run/docker.sock``.
 """
 
+import os
 from dataclasses import dataclass, field
 from typing import Tuple
 
-# Label namespace stamped on every resource the proxy creates. Ownership and
-# all filtering keys off OWNER_LABEL; MANAGED_LABEL marks proxy-created objects
-# so a janitor can find them later.
-LABEL_NAMESPACE = "stellars"
+# Label namespace; overridable via env to dodge clashes with host's own labels.
+LABEL_NAMESPACE = os.environ.get(
+    "JUPYTERHUB_DOCKER_PROXY_LABEL_PREFIX",
+    "jupyterhub.docker.proxy",
+)
 OWNER_LABEL = f"{LABEL_NAMESPACE}.owner"
 MANAGED_LABEL = f"{LABEL_NAMESPACE}.managed"
 
