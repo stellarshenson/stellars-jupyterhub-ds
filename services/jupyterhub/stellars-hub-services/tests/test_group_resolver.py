@@ -269,11 +269,10 @@ class TestDockerSelectionValidation:
         from stellars_hub_services.groups_config import validate_docker_selection
         assert validate_docker_selection(False, False)[0] is True
 
-    def test_root_without_access_invalid(self):
+    def test_root_alone_valid(self):
+        """Root without an access mode is allowed: --privileged with no socket."""
         from stellars_hub_services.groups_config import validate_docker_selection
-        valid, msg = validate_docker_selection(False, False, docker_privileged=True)
-        assert valid is False
-        assert "root" in msg.lower()
+        assert validate_docker_selection(False, False, docker_privileged=True)[0] is True
 
     def test_root_with_normal_valid(self):
         from stellars_hub_services.groups_config import validate_docker_selection

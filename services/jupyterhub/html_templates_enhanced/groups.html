@@ -340,11 +340,11 @@
             <div class="form-text">Counts are hard limits (create rejected at the cap). Storage is a soft budget (blocks new creates when exceeded). CPU/memory caps apply to each container the user creates.</div>
           </div>
           <div class="form-check mt-2">
-            <input class="form-check-input" type="checkbox" id="config-docker-privileged" disabled>
+            <input class="form-check-input" type="checkbox" id="config-docker-privileged">
             <label class="form-check-label" for="config-docker-privileged">
               Docker (root)
             </label>
-            <div class="form-text">Runs the user container with --privileged so docker commands inside it have root on the host kernel. Requires normal or limited Docker access to be enabled; raises that grant's privilege, does not bypass the proxy.</div>
+            <div class="form-text">Runs the user container with --privileged (kernel-root inside the container). Orthogonal to the access mode - granted on its own this group gives root with no Docker socket; combined with normal or limited (same group or another group the user is in) it escalates that access.</div>
           </div>
         </div>
 
@@ -431,16 +431,11 @@ require(["jquery"], function($) {
 
   // Docker: normal and limited are mutually exclusive; the limited config panel
   // (quota + caps) is enabled only when limited access is on; Docker (root) is
-  // a privilege escalation of an existing access grant, so it's enabled only
-  // when normal or limited is on (and unchecked when neither is).
+  // fully orthogonal - it can be granted standalone (gives --privileged but no
+  // socket) or combined with either access mode.
   function updateDockerControls() {
     var limited = $('#config-docker-limited').is(':checked');
-    var access = $('#config-docker-access').is(':checked');
     $('#config-docker-limited-config').find('input').prop('disabled', !limited);
-    var hasAccess = limited || access;
-    var $root = $('#config-docker-privileged');
-    $root.prop('disabled', !hasAccess);
-    if (!hasAccess) { $root.prop('checked', false); }
   }
   $('#config-docker-access').on('change', function() {
     if (this.checked) { $('#config-docker-limited').prop('checked', false); }
@@ -817,18 +812,13 @@ require(["jquery"], function($) {
       return;
     }
 
-    // Docker access: normal and limited are mutually exclusive; Docker (root)
-    // is a privilege escalation of an existing grant, not a standalone option.
+    // Docker access: normal and limited are mutually exclusive within one group.
+    // Docker (root) is orthogonal - standalone OK (privileged with no socket).
     var dockerAccess = $('#config-docker-access').is(':checked');
     var dockerLimited = $('#config-docker-limited').is(':checked');
     var dockerPrivileged = $('#config-docker-privileged').is(':checked');
     if (dockerAccess && dockerLimited) {
       $('#config-error').text('A group cannot grant both normal and limited Docker access - choose one.').show();
-      $('#config-error')[0].scrollIntoView({behavior: 'smooth', block: 'center'});
-      return;
-    }
-    if (dockerPrivileged && !(dockerAccess || dockerLimited)) {
-      $('#config-error').text('Docker (root) requires either normal or limited Docker access to be enabled.').show();
       $('#config-error')[0].scrollIntoView({behavior: 'smooth', block: 'center'});
       return;
     }

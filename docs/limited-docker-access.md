@@ -23,27 +23,28 @@ flowchart LR
 
 ## Group config (admin UI: `/hub/groups`)
 
-Three Docker fields, with the four valid combinations spelled out in the UI:
+Three Docker fields. All valid within-a-group combinations:
 
 | `docker_access` | `docker_limited` | `docker_privileged` | UI shorthand |
 |---|---|---|---|
 | 1 | 0 | 0 | Docker |
 | 0 | 1 | 0 | Docker limited |
+| 0 | 0 | 1 | Docker root (privileged container only, no socket) |
 | 1 | 0 | 1 | Docker + Docker root |
 | 0 | 1 | 1 | Docker limited + Docker root |
 
 - `docker_access` - normal access: raw `/var/run/docker.sock` (sees all, no quota)
 - `docker_limited` - per-user filtered socket (this feature)
-- `docker_privileged` - **"Docker (root)"**: runs the user container with `--privileged`. This is a privilege escalation of an existing grant, not a third independent option. It does **not** bypass the proxy on a limited grant - it raises the user container's kernel privileges so docker commands inside it have root on the host kernel
+- `docker_privileged` - **"Docker (root)"**: runs the user container with `--privileged`. Fully orthogonal: standalone in a group it gives kernel-root inside the lab with no Docker socket; combined with normal or limited (same group or another the user belongs to) it escalates that access mode. It does **not** bypass the proxy on a limited grant
 - limited quota/caps: `max_containers` (10), `max_volumes` (10), `max_networks` (3), `max_storage_gb` (50, soft), `cpu_cap_cores` (2), `mem_cap_gb` (8 per created container)
 
-The UI exposes the rules directly: normal and limited are mutually exclusive within a group; the **Docker (root)** checkbox is disabled (and auto-unchecked) when neither is selected. The features pill on the groups table is a single `Docker` chip whenever any of the three is on - it indicates "this group has Docker config" without revealing flavour.
+The UI rule: normal and limited are mutually exclusive within a group; Docker (root) is freely selectable on its own or with either. The features pill on the groups table is a single `Docker` chip whenever any of the three is on - it indicates "this group has Docker config" without revealing flavour.
 
 ## Precedence
 
 - Across groups: normal supersedes limited (raw socket makes the proxy moot); grants OR; quotas max-wins
 - Within a group: normal XOR limited
-- Docker (root) requires normal or limited in the same group (validated server-side: `invalid_docker_selection`); across groups it OR-accumulates with the access grants from the other groups
+- Docker (root) is fully orthogonal: it OR-accumulates across groups and may stand alone in a group (granting `--privileged` with no Docker socket)
 
 ## Labels stamped on every create
 

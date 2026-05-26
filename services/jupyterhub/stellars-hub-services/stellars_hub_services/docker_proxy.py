@@ -71,6 +71,17 @@ def ensure_user_proxy(username, name_base, resolved, *, proxy_image,
         existing = client.containers.get(proxy_name)
         if existing.status != 'running':
             existing.start()
+        log.info(
+            "reused docker-proxy sidecar %s for owner=%s (limits unchanged: "
+            "containers=%s volumes=%s networks=%s storage_gb=%s cpu=%s mem_gb=%s)",
+            proxy_name, username,
+            resolved['docker_limited_max_containers'],
+            resolved['docker_limited_max_volumes'],
+            resolved['docker_limited_max_networks'],
+            resolved['docker_limited_max_storage_gb'],
+            resolved['docker_limited_cpu_cap_cores'],
+            resolved['docker_limited_mem_cap_gb'],
+        )
         return vol_name, SOCK_MOUNT_DIR, docker_host_url()
     except Exception:
         pass
@@ -111,7 +122,20 @@ def ensure_user_proxy(username, name_base, resolved, *, proxy_image,
         },
         labels=labels,
     )
-    log.info("started docker-proxy sidecar %s for owner=%s", proxy_name, username)
+    log.info(
+        "started docker-proxy sidecar %s for owner=%s limits: "
+        "containers=%s volumes=%s networks=%s storage_gb=%s cpu=%s mem_gb=%s"
+        " compose_project=%s network=%s",
+        proxy_name, username,
+        resolved['docker_limited_max_containers'],
+        resolved['docker_limited_max_volumes'],
+        resolved['docker_limited_max_networks'],
+        resolved['docker_limited_max_storage_gb'],
+        resolved['docker_limited_cpu_cap_cores'],
+        resolved['docker_limited_mem_cap_gb'],
+        compose_project or '<none>',
+        network_name,
+    )
     return vol_name, SOCK_MOUNT_DIR, docker_host_url()
 
 
