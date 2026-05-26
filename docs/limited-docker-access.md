@@ -12,7 +12,7 @@ flowchart LR
     DAEMON[Host Docker daemon]
     DESKTOP[Docker Desktop<br/>operator sees all]
 
-    HUB ---|/var/run/stellars-proxy| VOL
+    HUB ---|/var/run/stellars-docker-proxy-sockets| VOL
     CLI -->|DOCKER_HOST<br/>unix:///run/dockersock/docker.sock<br/>Subpath: user| VOL
     HUB -->|/var/run/docker.sock| DAEMON
     DAEMON --- DESKTOP
@@ -81,8 +81,8 @@ flowchart TD
 ## Lifecycle
 
 - The proxy is **embedded in the hub container** - no second compose service, no admin HTTP, no token. The module-singleton `Manager` lives in the hub's own asyncio event loop alongside the activity sampler and idle culler
-- The socket directory `/var/run/stellars-proxy` inside the hub is backed by a named docker volume `jupyterhub_docker` (declared in `compose.yml`, managed by Docker, no host path)
-- On `pre_spawn_hook` the hub does `await register_user(...)` directly - the Manager creates a per-user `UnixSite` listener at `/var/run/stellars-proxy/<user>/docker.sock` with the resolved quotas. Re-register is idempotent: replaces the previous listener so quota changes apply on the user's next spawn
+- The socket directory `/var/run/stellars-docker-proxy-sockets` inside the hub is backed by a named docker volume `jupyterhub_docker` (declared in `compose.yml`, managed by Docker, no host path)
+- On `pre_spawn_hook` the hub does `await register_user(...)` directly - the Manager creates a per-user `UnixSite` listener at `/var/run/stellars-docker-proxy-sockets/<user>/docker.sock` with the resolved quotas. Re-register is idempotent: replaces the previous listener so quota changes apply on the user's next spawn
 - The spawner mounts the same named volume into the user container with `Subpath: <user>`, so each lab sees ONLY its own subdirectory under `/run/dockersock/` containing the single `docker.sock` it's allowed to talk to. Mount-level isolation, no cross-user visibility
 - On `post_stop_hook` the hub does `await unregister_user(...)`; the listener tears down, the socket file is removed, and the now-empty per-user subdirectory is cleaned up too
 - Hub restart wipes all listeners (stateless); the next spawn re-registers automatically via `pre_spawn_hook`
@@ -107,7 +107,7 @@ Two knobs, both baked into the image as Dockerfile `ENV` lines. Operators do not
 
 | Env | Default | Purpose |
 |---|---|---|
-| `JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR` | `/var/run/stellars-proxy` | Path inside the hub container where the in-process proxy writes per-user listener sockets. Backed by a named docker volume - not a host path |
+| `JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR` | `/var/run/stellars-docker-proxy-sockets` | Path inside the hub container where the in-process proxy writes per-user listener sockets. Backed by a named docker volume - not a host path |
 | `JUPYTERHUB_DOCKER_PROXY_VOLUME` | `jupyterhub_docker` | Name of the named docker volume that backs the socket directory. The spawner subpath-mounts the same volume into each lab so each lab sees only its own subdirectory |
 | `COMPOSE_PROJECT_NAME` | `jupyterhub` | compose project stamped on ad-hoc creates |
 
@@ -128,11 +128,11 @@ A future authenticated `GET /hub/api/admin/docker-proxy/status` (admin-only) wil
 
 ```json
 {
-  "socket_dir": "/var/run/stellars-proxy",
+  "socket_dir": "/var/run/stellars-docker-proxy-sockets",
   "registered": [
     {
       "user": "konrad.jelen",
-      "socket_path": "/var/run/stellars-proxy/konrad.jelen.sock",
+      "socket_path": "/var/run/stellars-docker-proxy-sockets/konrad.jelen.sock",
       "since": "2026-05-26T15:14:06Z",
       "config": {
         "max_containers": 4,
@@ -148,11 +148,11 @@ A future authenticated `GET /hub/api/admin/docker-proxy/status` (admin-only) wil
 }
 ```
 
-Backed by `Manager.registered()` which already returns this shape. Auth uses the same admin-required decorator the existing `/hub/api/admin/*` handlers use. Until the endpoint lands, the same data is reachable via `docker exec <hub> ls -la /var/run/stellars-proxy/` (one socket file per registered user) and the per-spawn `[Groups]` log line that carries `docker_limits=[...]` inline. Not yet implemented.
+Backed by `Manager.registered()` which already returns this shape. Auth uses the same admin-required decorator the existing `/hub/api/admin/*` handlers use. Until the endpoint lands, the same data is reachable via `docker exec <hub> ls -la /var/run/stellars-docker-proxy-sockets/` (one socket file per registered user) and the per-spawn `[Groups]` log line that carries `docker_limits=[...]` inline. Not yet implemented.
 
 ## Identity model
 
-The proxy library itself knows only an `owner` string; no JupyterHub notion. Inside the hub process, the `Manager` holds N per-user `ProxyApp` instances, each bound to its own unix listener at `/var/run/stellars-proxy/<owner>.sock`. Identity is baked into the listener: whichever container mounts a given socket file acts as that owner. There is no per-request authentication on the data path; access control is the bind-mount choice the spawner makes.
+The proxy library itself knows only an `owner` string; no JupyterHub notion. Inside the hub process, the `Manager` holds N per-user `ProxyApp` instances, each bound to its own unix listener at `/var/run/stellars-docker-proxy-sockets/<owner>.sock`. Identity is baked into the listener: whichever container mounts a given socket file acts as that owner. There is no per-request authentication on the data path; access control is the bind-mount choice the spawner makes.
 
 ## Related
 

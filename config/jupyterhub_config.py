@@ -581,10 +581,10 @@ c.JupyterHub.tornado_settings = {
 # container on the same asyncio event loop as the rest of the hub. Backed by
 # a named docker volume (Dockerfile ENV JUPYTERHUB_DOCKER_PROXY_VOLUME, default
 # `jupyterhub_docker`) mounted at the path Dockerfile ENV
-# JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR sets (default `/var/run/stellars-proxy`).
+# JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR sets (default `/var/run/stellars-docker-proxy-sockets`).
 # The spawner mounts a per-user subpath of that same named volume into each lab,
 # so each lab sees only its own docker.sock under /run/dockersock. No host path.
-JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR = os.environ.get("JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR", "/var/run/stellars-proxy")
+JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR = os.environ.get("JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR", "/var/run/stellars-docker-proxy-sockets")
 JUPYTERHUB_DOCKER_PROXY_VOLUME = os.environ.get("JUPYTERHUB_DOCKER_PROXY_VOLUME", "jupyterhub_docker")
 
 c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
