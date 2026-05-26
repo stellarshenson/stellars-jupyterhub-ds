@@ -98,7 +98,7 @@ flowchart TD
 | `stellars_docker_proxy.manager` | `Manager` holds N per-user listeners in one process; register/unregister lifecycle |
 | `stellars_hub_services.docker_proxy` | module-singleton `Manager` + `register_user`/`unregister_user` (async, direct Manager calls) |
 | `stellars_hub_services.group_resolver` | `docker_limited` + quota max-wins + normal-supersedes-limited precedence |
-| `stellars_hub_services.groups_config` | default fields + `validate_docker_selection` (mutual exclusivity) |
+| `stellars_hub_services.groups_config` | default fields + `GroupConfigValidator` (GPU / Docker / CPU / Mem coherence) |
 | `stellars_hub_services.hooks` | 3-branch docker block (normal / limited / none); awaits `register_user` |
 
 ## Configuration
@@ -175,7 +175,7 @@ A future authenticated `GET /hub/api/admin/docker-proxy/status` (admin-only) wil
   "registered": [
     {
       "user": "konrad.jelen",
-      "socket_path": "/var/run/stellars-docker-proxy-sockets/konrad.jelen.sock",
+      "socket_path": "/var/run/stellars-docker-proxy-sockets/konrad.jelen/docker.sock",
       "since": "2026-05-26T15:14:06Z",
       "config": {
         "max_containers": 4,
@@ -184,7 +184,11 @@ A future authenticated `GET /hub/api/admin/docker-proxy/status` (admin-only) wil
         "max_storage_gb": 50.0,
         "cpu_cap_cores": 4.0,
         "mem_cap_gb": 16.0,
-        "compose_project": "stellars-tech-ai-lab"
+        "compose_project": "stellars-tech-ai-lab_konrad.jelen_containers",
+        "allow_privileged": false,
+        "allow_dangerous_flags": false,
+        "allow_compose_project_override": true,
+        "extra_visible_networks": ["stellars-tech-ai-lab_network"]
       }
     }
   ]
@@ -195,7 +199,7 @@ Backed by `Manager.registered()` which already returns this shape. Auth uses the
 
 ## Identity model
 
-The proxy library itself knows only an `owner` string; no JupyterHub notion. Inside the hub process, the `Manager` holds N per-user `ProxyApp` instances, each bound to its own unix listener at `/var/run/stellars-docker-proxy-sockets/<owner>.sock`. Identity is baked into the listener: whichever container mounts a given socket file acts as that owner. There is no per-request authentication on the data path; access control is the bind-mount choice the spawner makes.
+The proxy library itself knows only an `owner` string; no JupyterHub notion. Inside the hub process, the `Manager` holds N per-user `ProxyApp` instances, each bound to its own unix listener at `/var/run/stellars-docker-proxy-sockets/<owner>/docker.sock`. The per-user subdirectory exists so the named volume backing the socket directory can be subpath-mounted into each user lab - each lab sees ONLY its own subdirectory, so mount-level isolation prevents cross-user listener access. Identity is baked into the listener: whichever container mounts a given socket file acts as that owner. There is no per-request authentication on the data path; access control is the bind-mount choice the spawner makes.
 
 ## Related
 
