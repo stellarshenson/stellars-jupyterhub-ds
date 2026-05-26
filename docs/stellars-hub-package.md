@@ -1,8 +1,8 @@
-## stellars_hub Package
+## stellars_hub_services Package
 
-The `stellars_hub` package provides all platform logic for the Stellars JupyterHub deployment. It is a pip-installable Python package installed into the JupyterHub container during Docker build. The package is a pure logic library - it contains zero hardcoded data, zero environment variable reads at module level, and zero configuration state. All data flows in through explicit function parameters from `jupyterhub_config.py`.
+The `stellars_hub_services` package provides all platform logic for the Stellars JupyterHub deployment. It is a pip-installable Python package installed into the JupyterHub container during Docker build. The package is a pure logic library - it contains zero hardcoded data, zero environment variable reads at module level, and zero configuration state. All data flows in through explicit function parameters from `jupyterhub_config.py`.
 
-**Package version**: defined in `stellars_hub/__init__.py`
+**Package version**: defined in `stellars_hub_services/__init__.py`
 
 **Build system**: hatchling via `pyproject.toml`
 
@@ -15,7 +15,7 @@ The package follows a declarative configuration pattern. `jupyterhub_config.py` 
 ```
 jupyterhub_config.py          (data + orchestration)
   |
-  +-- stellars_hub/           (pure logic)
+  +-- stellars_hub_services/           (pure logic)
   |     +-- auth.py           (authenticator)
   |     +-- branding.py       (logo, favicon, icons)
   |     +-- events.py         (SQLAlchemy event listeners)
@@ -110,7 +110,7 @@ Handlers read this via `self.settings['stellars_config']['key']` instead of `os.
 The package includes 65 tests across 8 test files. Tests run during Docker build (builder stage) and locally via:
 
 ```bash
-cd services/jupyterhub/stellars_hub
+cd services/jupyterhub/stellars_hub_services
 python3 -m pytest tests/ -v
 ```
 

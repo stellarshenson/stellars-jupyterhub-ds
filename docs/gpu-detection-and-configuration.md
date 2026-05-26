@@ -6,7 +6,7 @@ The platform detects host GPUs, enumerates them, and lets administrators grant G
 
 The hub has no GPU of its own, so it cannot read `nvidia-smi` directly. Instead it asks Docker to run a short-lived CUDA container with the NVIDIA runtime and parses that container's output. The same single run both detects presence and enumerates the devices, so no second container is ever spawned.
 
-- Detection runs once at hub startup, in `resolve_gpu_mode()` (`stellars_hub/gpu.py`)
+- Detection runs once at hub startup, in `resolve_gpu_mode()` (`stellars_hub_services/gpu.py`)
 - The ephemeral container runs `nvidia-smi --query-gpu=index,name,uuid,memory.total --format=csv,noheader`
 - Its stdout is parsed into a list of `{index, name, uuid, memory_mb}` by `enumerate_gpus()`
 - The enumerated list is cached and passed to the Groups admin page; any failure (no GPU, no NVIDIA runtime, Docker error) yields an empty list rather than an error
@@ -31,11 +31,11 @@ If the host reports no GPUs, the whole section is grayed out and a "No GPUs dete
 
 ### Validation
 
-Enabling GPU access while deselecting "All GPUs" requires at least one specific GPU. Saving with access on, "All GPUs" off, and nothing selected is rejected both in the browser and on the server with the message: `Select at least one GPU, or enable "All GPUs".` The check is `validate_gpu_selection()` in `stellars_hub/groups_config.py`.
+Enabling GPU access while deselecting "All GPUs" requires at least one specific GPU. Saving with access on, "All GPUs" off, and nothing selected is rejected both in the browser and on the server with the message: `Select at least one GPU, or enable "All GPUs".` The check is `validate_gpu_selection()` in `stellars_hub_services/groups_config.py`.
 
 ## Resolution across multiple groups
 
-A user can belong to several groups. Their effective GPU access is collapsed by `resolve_group_config()` (`stellars_hub/group_resolver.py`):
+A user can belong to several groups. Their effective GPU access is collapsed by `resolve_group_config()` (`stellars_hub_services/group_resolver.py`):
 
 - **Access** is OR-ed across groups, then gated on hardware availability - if no GPU is present, access resolves to off
 - **All GPUs wins** - if any granting group selects all, the user gets all GPUs
@@ -44,7 +44,7 @@ A user can belong to several groups. Their effective GPU access is collapsed by 
 
 ## Application at spawn
 
-The pre-spawn hook (`stellars_hub/hooks.py`) translates the resolved selection into a Docker device request plus the `NVIDIA_VISIBLE_DEVICES` selector env on the user container:
+The pre-spawn hook (`stellars_hub_services/hooks.py`) translates the resolved selection into a Docker device request plus the `NVIDIA_VISIBLE_DEVICES` selector env on the user container:
 
 - All GPUs - `{'Driver': 'nvidia', 'Count': -1, 'Capabilities': [['gpu']]}` and `NVIDIA_VISIBLE_DEVICES=all`
 - Specific GPUs - `{'Driver': 'nvidia', 'DeviceIDs': ['0', '2'], 'Capabilities': [['gpu']]}`, `NVIDIA_VISIBLE_DEVICES=0,2`, and `CUDA_VISIBLE_DEVICES=<uuids>` (soft, app-level default)
@@ -59,7 +59,7 @@ The pre-spawn hook (`stellars_hub/hooks.py`) translates the resolved selection i
 - `JUPYTERHUB_GPU_ENABLED`: `0` disabled, `1` forced on, `2` autodetect (default)
 - `JUPYTERHUB_NVIDIA_IMAGE`: CUDA image for the detection/enumeration probe (default `nvidia/cuda:13.0.2-base-ubuntu24.04`)
 
-Group GPU settings persist in the group configuration store (`stellars_hub/groups_config.py`): `gpu_access` (bool), `gpu_all` (bool, default true), and `gpu_device_ids` (list of index strings). They take effect on each user's next spawn.
+Group GPU settings persist in the group configuration store (`stellars_hub_services/groups_config.py`): `gpu_access` (bool), `gpu_all` (bool, default true), and `gpu_device_ids` (list of index strings). They take effect on each user's next spawn.
 
 ## Troubleshooting
 

@@ -1,6 +1,6 @@
 # Configuration file for JupyterHub
 #
-# All data (env vars, volumes, groups) is defined here. The stellars_hub
+# All data (env vars, volumes, groups) is defined here. The stellars_hub_services
 # package provides pure logic functions only - zero hardcoded data, zero
 # env var reads at module level. Every parameter is passed explicitly.
 #
@@ -16,11 +16,9 @@ import os                       # env var reads
 import jupyterhub               # __version__, __file__ for template paths
 import nativeauthenticator      # __file__ for template path resolution
 
-# stellars_hub core functions - pure logic, no side effects on import
-from stellars_hub import (
-    BootstrapAdminAuthenticator,            # NativeAuth subclass with bootstrap-window admin signup
-    StellarsNativeAuthenticator,            # parent class for the inline BootstrapAdminAuthenticator (refactor in progress)
-    compute_bootstrap_window_open,          # truth-table predicate for the bootstrap-by-signup window
+# stellars_hub_services core functions - pure logic, no side effects on import
+from stellars_hub_services import (
+    StellarsNativeAuthenticator,            # parent class for the inline BootstrapAdminAuthenticator
     configure_volume_cache,                 # one-time init: feeds canonical volume-name templates to the activity-monitor sizes cache
     get_services_and_roles,                 # builds JupyterHub services list (activity sampler)
     schedule_idle_culler,                   # in-hub idle culler (honours per-user session extensions)
@@ -28,12 +26,9 @@ from stellars_hub import (
     stop_user_proxy,                        # removes a user's docker-proxy sidecar on server stop
     get_user_volume_name_templates,         # maps suffix -> full volume-name template (with {username} placeholder)
     get_user_volume_suffixes,               # extracts ['home', 'workspace', 'cache'] from volumes dict
-    is_wsl2,                                 # host is WSL2 -> per-GPU isolation not enforceable (advisory)
+    is_wsl2,                                # host is WSL2 -> per-GPU isolation not enforceable (advisory)
     load_merged_user_volumes,               # loads + merges platform-defaults YAML with operator overrides
-    make_admin_post_auth_hook,              # async closure that flips authentication['admin']=True for JUPYTERHUB_ADMIN
     make_pre_spawn_hook,                    # factory returning async hook for group perms, favicon, icons
-    provision_admin_userinfo,               # bootstrap-by-env: seed admin UserInfo from JUPYTERHUB_ADMIN_PASSWORD
-    query_admin_state,                      # (db_empty, admin_present) inspection of users_info
     register_events,                        # attaches SQLAlchemy listeners for user rename/delete sync
     resolve_gpu_mode,                       # GPU detection: 0=off, 1=forced, 2=auto-detect via nvidia-smi
     schedule_startup_favicon_callback,      # registers CHP favicon routes for already-running servers
@@ -41,7 +36,7 @@ from stellars_hub import (
 )
 
 # Tornado request handlers - registered via c.JupyterHub.extra_handlers
-from stellars_hub.handlers import (
+from stellars_hub_services.handlers import (
     ActivityDataHandler,                    # GET  /api/activity - user activity data with Docker stats
     ActivityPageHandler,                    # GET  /activity - admin activity monitoring dashboard
     ActivityResetHandler,                   # POST /api/activity/reset - clear all activity samples
@@ -238,7 +233,7 @@ register_events()
 #      on the Settings page.
 #
 # c.Authenticator.admin_users is intentionally NOT set: setting it makes JupyterHub
-# eagerly insert a User row at startup, which fires stellars_hub.events' after_insert
+# eagerly insert a User row at startup, which fires stellars_hub_services.events' after_insert
 # listener and creates a UserInfo with a random xkcd password the operator cannot
 # retrieve. Admin role is granted purely at login time via post_auth_hook below.
 
@@ -338,7 +333,7 @@ class BootstrapAdminSignUpHandler(_NativeSignUpHandler):
 
       * Success branch keys off `username in admin_users`, which we deliberately
         leave empty (populating admin_users triggers the eager User insert and
-        the random-password trap in stellars_hub.events). With our create_user
+        the random-password trap in stellars_hub_services.events). With our create_user
         override flagging is_authorized=True, the row is correct but the message
         still drops to "Your information has been sent to the admin." Treat
         is_authorized as the success signal here.

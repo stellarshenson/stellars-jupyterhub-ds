@@ -91,5 +91,5 @@ When you add a custom suffix via the overlay, it appears as an additional checkb
 |---|---|
 | `/srv/jupyterhub/volumes_dictionary.yml` | Platform defaults baked into the image |
 | Path of `JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE` | Operator overlay (optional, mounted at deploy time) |
-| `services/jupyterhub/stellars_hub/stellars_hub/volumes.py::load_merged_user_volumes` | Loader + per-field merger |
+| `services/jupyterhub/stellars_hub_services/stellars_hub_services/volumes.py::load_merged_user_volumes` | Loader + per-field merger |
 | `config/jupyterhub_config.py::USER_VOLUMES` | Final merged dict, keyed by full pattern with `{username}` placeholder |
