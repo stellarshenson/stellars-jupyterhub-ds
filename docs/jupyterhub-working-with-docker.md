@@ -43,19 +43,17 @@ flowchart LR
     USER[user's JupyterLab]
     SOCK_RAW[(host /var/run/docker.sock)]
     SOCK_PROXY[(per-user listener<br/>/var/run/stellars-proxy/user.sock)]
-    PROXY[stellars-docker-proxy<br/>compose service<br/>admin HTTP api]
-    HUB[JupyterHub]
+    HUB[JupyterHub container<br/>+ in-process Manager<br/>+ N per-user UnixSite listeners]
     DAEMON[Host Docker daemon]
 
-    HUB -->|register/unregister| PROXY
     USER -->|normal| SOCK_RAW --> DAEMON
     USER -->|limited<br/>DOCKER_HOST set| SOCK_PROXY
-    PROXY --> SOCK_PROXY
-    PROXY --> SOCK_RAW
+    HUB --> SOCK_PROXY
+    HUB --> SOCK_RAW
     SOCK_RAW -.privileged flag.-> USER
 ```
 
-One central `stellars-docker-proxy` container, lifecycle bound to compose (`make start`/`make stop`). On spawn, `pre_spawn_hook` POSTs `/admin/registered/<user>` with the resolved quotas; the proxy creates a per-user `UnixSite` listener at `/var/run/stellars-proxy/<user>.sock`. The spawner bind-mounts that single socket file into the user container as `/run/dockersock/docker.sock` and sets `DOCKER_HOST` accordingly. Identity stays baked-at-socket - the user container can only act as itself. On `post_stop_hook` the hub DELETEs the registration and the listener tears down.
+The proxy runs **in-process inside the hub container**, on the same asyncio event loop JupyterHub itself runs on. One process, one container in compose, no admin HTTP surface, no token. `pre_spawn_hook` calls `await register_user(...)` directly; a module-singleton `Manager` instantiates a per-user `UnixSite` at `/var/run/stellars-proxy/<user>.sock` with that spawn's resolved quotas. The spawner bind-mounts that single socket file into the user container as `/run/dockersock/docker.sock` and sets `DOCKER_HOST`. Identity stays baked-at-socket. On `post_stop_hook` the listener tears down and the socket file is removed. Hub restart loses all listeners; the next spawn re-creates them.
 
 ## Common gotcha
 
@@ -66,8 +64,8 @@ Putting a user in BOTH a limited group AND a group that carries `docker_access=T
 - Group field defaults: `services/jupyterhub/stellars-hub-services/stellars_hub_services/groups_config.py` (`default_config`, `validate_docker_selection`)
 - Across-group resolution: `services/jupyterhub/stellars-hub-services/stellars_hub_services/group_resolver.py` (`resolve_group_config`)
 - Spawn-time application: `services/jupyterhub/stellars-hub-services/stellars_hub_services/hooks.py` (`pre_spawn_hook` - mounts the right socket, sets `DOCKER_HOST`, applies `--privileged`; `post_stop_hook` unregisters)
-- Admin HTTP client (register/unregister): `services/jupyterhub/stellars-hub-services/stellars_hub_services/docker_proxy.py` (`register_user`, `unregister_user`)
-- Proxy itself: `services/jupyterhub/stellars-docker-proxy/` - `Manager` (per-user listeners), `create_admin_app` (admin HTTP API), `create_app`/`ProxyApp` (per-owner filtering)
+- Hub-side wiring: `services/jupyterhub/stellars-hub-services/stellars_hub_services/docker_proxy.py` (`register_user`, `unregister_user` - async, direct Manager calls; module singleton)
+- Proxy library: `services/jupyterhub/stellars-docker-proxy/` - `Manager` (per-user listeners), `create_app`/`ProxyApp` (per-owner filtering). Pure library, no `__main__`, no admin API
 
 ## Related
 

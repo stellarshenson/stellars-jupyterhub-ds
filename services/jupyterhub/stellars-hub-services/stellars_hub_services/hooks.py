@@ -17,9 +17,7 @@ def make_pre_spawn_hook(
     reserved_env_var_names=frozenset(),
     reserved_env_var_prefixes=(),
     compose_project='',
-    docker_proxy_admin_url='',
-    docker_proxy_admin_token='',
-    docker_proxy_socket_dir='',
+    docker_proxy_socket_dir='/var/run/stellars-proxy',
 ):
     """Create a pre_spawn_hook closure that captures branding + resolution context.
 
@@ -41,14 +39,12 @@ def make_pre_spawn_hook(
         compose_project: when set, attaches docker-compose project labels so
             spawned containers are grouped under that project in `docker compose
             ls` and `docker compose -p <project> ps` alongside the hub.
-        docker_proxy_admin_url: URL of the central docker-proxy admin HTTP API
-            (e.g. http://stellars-docker-proxy:9000). Empty disables the limited-
-            docker wiring (the grant resolves but no socket is attached).
-        docker_proxy_admin_token: bearer token shared with the proxy container.
-        docker_proxy_socket_dir: host filesystem directory where the proxy writes
-            per-user sockets (bind-mounted into the proxy container at the same
-            path). The spawner bind-mounts <socket_dir>/<user>.sock as the user's
-            docker socket.
+        docker_proxy_socket_dir: host filesystem directory where the in-process
+            proxy writes per-user sockets. Must be bind-mounted into the hub
+            container at the same path. The spawner bind-mounts
+            <socket_dir>/<user>.sock as the user's docker socket. Empty
+            disables the limited-docker wiring (the grant resolves but no
+            socket is attached).
     """
 
     async def pre_spawn_hook(spawner):
@@ -77,19 +73,16 @@ def make_pre_spawn_hook(
             # Normal: mount the raw host socket (sees all, no quota).
             spawner.volumes['/var/run/docker.sock'] = '/var/run/docker.sock'
             spawner.environment.pop('DOCKER_HOST', None)
-        elif (resolved.get('docker_limited') and docker_proxy_admin_url
-              and docker_proxy_admin_token and docker_proxy_socket_dir):
-            # Limited: register the user with the central docker-proxy. The
-            # proxy spawns a per-user listener at <socket_dir>/<user>.sock; we
-            # bind-mount that single file into the user container as the docker
-            # socket and point DOCKER_HOST at it. The stock docker CLI then
-            # transparently sees/manages only this user's own resources.
+        elif resolved.get('docker_limited') and docker_proxy_socket_dir:
+            # Limited: the in-process docker-proxy spawns a per-user listener
+            # at <socket_dir>/<user>.sock on the hub's own event loop; we
+            # bind-mount that single file into the user container as the
+            # docker socket and point DOCKER_HOST at it. The stock docker CLI
+            # then transparently sees/manages only this user's own resources.
             try:
-                socket_host_path, mount_dir, docker_host = register_user(
+                socket_host_path, mount_dir, docker_host = await register_user(
                     username,
                     resolved,
-                    admin_url=docker_proxy_admin_url,
-                    admin_token=docker_proxy_admin_token,
                     socket_dir=docker_proxy_socket_dir,
                     compose_project=compose_project,
                 )
