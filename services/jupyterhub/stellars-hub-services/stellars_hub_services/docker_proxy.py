@@ -96,11 +96,14 @@ def _build_overrides(resolved, *, username, compose_project='',
     }
     if effective_project:
         overrides['compose_project'] = effective_project
-    # Extra-visible networks: reveal the hub's docker network in `docker network
-    # ls` for users in a group that opts in. Hub network name comes from env;
-    # an empty value falls back to no extra reveal even when the toggle is on.
-    if resolved.get('docker_limited_reveal_hub_network') and hub_network_name:
-        overrides['extra_visible_networks'] = (hub_network_name,)
+    # Hub network access: grants full access to the hub's docker network
+    # (list + container create attach + network connect/disconnect) for users
+    # in a group that opts in. Hub network name comes from env; an empty value
+    # falls back to no extra access even when the toggle is on. When the toggle
+    # is off, attempts to use the hub network are 403-rejected on container
+    # create and 404-rejected on connect/disconnect actions.
+    if resolved.get('docker_limited_hub_network_access') and hub_network_name:
+        overrides['extra_accessible_networks'] = (hub_network_name,)
     return overrides
 
 
@@ -128,7 +131,7 @@ async def register_user(username, resolved, *, socket_dir=DEFAULT_SOCKET_DIR,
         "volumes=%s networks=%s storage_gb=%s cpu=%s mem_gb=%s "
         "allow_privileged=%s allow_dangerous_flags=%s "
         "compose_project=%s allow_compose_project_override=%s "
-        "extra_visible_networks=%s",
+        "extra_accessible_networks=%s",
         username, socket_host_path,
         overrides['max_containers'], overrides['max_volumes'],
         overrides['max_networks'], overrides['max_storage_gb'],
@@ -136,7 +139,7 @@ async def register_user(username, resolved, *, socket_dir=DEFAULT_SOCKET_DIR,
         overrides['allow_privileged'], overrides['allow_dangerous_flags'],
         overrides.get('compose_project') or '<none>',
         overrides['allow_compose_project_override'],
-        overrides.get('extra_visible_networks') or (),
+        overrides.get('extra_accessible_networks') or (),
     )
     return socket_host_path, SOCK_MOUNT_DIR, docker_host_url()
 

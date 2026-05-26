@@ -62,12 +62,16 @@ def default_config():
         # off for groups whose users should remain in the hub's compose project.
         'docker_limited_user_compose_project_enabled': True,
         'docker_limited_user_compose_project_allow_override': True,
-        # ON by default. When True, the proxy reveals the hub's docker network
-        # in this user's `docker network ls` so they can attach sidecars via
-        # `--network <hub-net>` and resolve other containers (incl. the hub
-        # services) by DNS. The hub's network name comes from the platform env
-        # JUPYTERHUB_NETWORK_NAME. Off = networks list is pure owner-scoped.
-        'docker_limited_reveal_hub_network': True,
+        # ON by default. When True, the user's filtered docker socket grants
+        # full access to the hub's docker network (from JUPYTERHUB_NETWORK_NAME):
+        # the network appears in `docker network ls`, containers can attach via
+        # `--network <hub-net>` on create, and `docker network connect <hub-net>`
+        # works - so user containers can resolve other containers (incl. the hub
+        # services) by DNS. Off = the hub network is invisible AND inaccessible:
+        # network ls hides it; container create with --network <hub-net> is
+        # rejected; connect/disconnect actions return 404. Owned networks and
+        # built-in modes (bridge/none/default/container:*) are unaffected.
+        'docker_limited_hub_network_access': True,
         'docker_privileged': False,
         'mem_limit_enabled': False,
         'mem_limit_gb': 0,

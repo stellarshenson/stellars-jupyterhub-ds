@@ -49,12 +49,18 @@ class ProxyConfig:
     # to `compose_project` instead of leaving it alone. Strict mode for groups
     # that want every container pinned to the per-user project.
     allow_compose_project_override: bool = True
-    # Network names that should appear in `docker network ls` even though they
-    # are not owned by this user. Typical use: reveal the hub network so users
-    # can `--network <hub-net>` their sidecars and resolve other containers by
-    # DNS. The proxy reveals these in list responses only; creates/attaches
-    # already pass through unfiltered (Docker enforces "network must exist").
-    extra_visible_networks: Tuple[str, ...] = field(default_factory=tuple)
+    # Network names this user is granted access to even though they are not
+    # owner-labelled. Typical use: grant access to the hub network so user
+    # containers can `--network <hub-net>` and resolve other containers by DNS.
+    # Access is enforced everywhere: networks in this set appear in `docker
+    # network ls`, container creates referencing them (HostConfig.NetworkMode
+    # or NetworkingConfig.EndpointsConfig) are accepted, and `docker network
+    # connect <net> <container>` is forwarded. Networks NOT in this set and
+    # NOT owner-labelled are blocked end-to-end - hidden in list, container
+    # creates referencing them are rejected with 403, and connect/disconnect
+    # actions return 404. Built-in modes (bridge/none/default/container:*) are
+    # always allowed and need no entry here.
+    extra_accessible_networks: Tuple[str, ...] = field(default_factory=tuple)
     # When set, ad-hoc `docker run` containers are grouped under this compose
     # project (Docker Desktop dashboard grouping). Empty = free-floating. A
     # container the user creates via `docker compose` (already carrying a

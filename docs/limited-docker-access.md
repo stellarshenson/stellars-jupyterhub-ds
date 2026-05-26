@@ -48,16 +48,16 @@ The UI rule: normal and limited are mutually exclusive within a group; Docker (r
 
 - `stellars.owner=<user>` - identity, used for all filtering
 - `stellars.managed=true` - proxy-created (for janitors)
-- `com.docker.compose.project=<configured>` - ad-hoc grouping in Docker Desktop; **not** overridden if the user is running their own `docker compose` (project + names preserved)
+- `com.docker.compose.project=<per-user-project>` - per-user compose project rendered from `JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE` when `docker_limited_user_compose_project_enabled=True` (default). With `_allow_override=True` (default) the user's own `docker compose -p <name>` / `COMPOSE_PROJECT_NAME=<name>` is respected; with `_allow_override=False` (strict) the user's label is REWRITTEN. With `_enabled=False` the label is not set at all (ad-hoc containers are free-floating)
 
 ## Request flow
 
 ```mermaid
 flowchart TD
     REQ[Docker API request] --> CL{classify}
-    CL -- create --> CR[inject owner+managed labels<br/>prefix name 'user-owner-...'<br/>reject privileged / host-mount / host-net / cap-add<br/>count quota<br/>storage budget<br/>cap CPU and mem]
-    CL -- list --> LS[merge owner-label filter into ?filters=]
-    CL -- "action id" --> AC{target owner<br/>equals caller?}
+    CL -- create --> CR[inject owner+managed labels<br/>prefix name 'user-owner-...'<br/>reject privileged / host-mount / host-net / cap-add<br/>reject non-owned non-allow-listed networks<br/>count quota<br/>storage budget<br/>cap CPU and mem]
+    CL -- list --> LS[merge owner-label filter into ?filters=<br/>networks: post-filter owned OR accessible-extras]
+    CL -- "action id" --> AC{target owner<br/>equals caller?<br/>networks: OR allow-listed?}
     AC -- yes --> FW
     AC -- no --> NF[404 not found]
     CL -- prune --> PR[scope prune to owner label]
@@ -71,9 +71,11 @@ flowchart TD
 
 | Endpoint | Behaviour |
 |---|---|
-| `POST /containers\|volumes\|networks/create` | inject labels; count quota; storage budget (containers, volumes); containers also: name prefix, dangerous-flag check, image allowlist, CPU/mem cap |
-| `GET /containers/json`, `/volumes`, `/networks` | inject `label=stellars.owner=<user>` into `?filters=` |
-| `GET/POST/DELETE /containers\|volumes\|networks/{id}/...` | inspect target, 404 if not owned, else forward |
+| `POST /containers\|volumes\|networks/create` | inject labels; count quota; storage budget (containers, volumes); containers also: name prefix, dangerous-flag check, image allowlist, CPU/mem cap, network-access check (`HostConfig.NetworkMode` and `NetworkingConfig.EndpointsConfig` must reference a built-in mode, an owner-labelled network, or an entry of `extra_accessible_networks`; else 403) |
+| `GET /containers/json`, `/volumes` | inject `label=stellars.owner=<user>` into `?filters=` |
+| `GET /networks` | inject owner-label filter normally; when `extra_accessible_networks` is non-empty, buffer the response and post-filter to `is_owned(owner) OR Name in extras` instead (so the user sees their own networks AND the hub network) |
+| `GET/POST/DELETE /containers\|volumes/{id}/...` | inspect target, 404 if not owned, else forward |
+| `GET/POST/DELETE /networks/{id}/...` (incl. `/connect`, `/disconnect`) | inspect target, 404 if not owned AND not in `extra_accessible_networks`, else forward |
 | `POST /containers\|volumes\|networks/prune` | inject owner label into `?filters=` so prune is owner-scoped |
 | `POST /images/create` (`docker pull`) | image allowlist (if configured), else forward |
 | everything else | streamed pass-through |
@@ -126,22 +128,32 @@ Stored in `groups_config.sqlite` per group, surfaced on `/hub/groups` for admin 
 | `docker_limited_max_containers` / `_volumes` / `_networks` | 10 / 10 / 3 | Hard quotas - create rejected at the cap |
 | `docker_limited_max_storage_gb` | 50 | Soft budget - new creates blocked once measured usage exceeds it |
 | `docker_limited_cpu_cap_cores` / `_mem_cap_gb` | 2 / 8 | Per-container caps; applied as defaults and rejected when the user requests more |
-| `docker_limited_allow_dangerous_flags` | `False` | **Warning - escape-hatch grant.** When `True`, the proxy stops rejecting host bind mounts, host network/PID namespaces, added capabilities, and device passthrough on the user's sub-containers. Ownership labelling and quota caps still apply. Independent of `docker_privileged` - flipping that one does NOT imply this. Surfaced in the admin UI with a red warning. Use only when the user genuinely needs to mount host paths or kernel devices into a sub-container (e.g. 9P sidecar to an external mount) |
-| `docker_limited_user_compose_project_enabled` | `True` | When `True`, the proxy stamps the user's ad-hoc `docker run` containers with a per-user `com.docker.compose.project` label rendered from `JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE`, so each user's containers group under their own project in `docker compose ls` / Docker Desktop. When `False`, ad-hoc containers carry no compose project label at all (free-floating); the user's own `docker compose` projects are unaffected either way |
-| `docker_limited_user_compose_project_allow_override` | `True` | When `True` and enforcement is on, a project label the user supplies via `docker compose -p <name>` OR `COMPOSE_PROJECT_NAME=<name>` is respected - the proxy only stamps containers that do not declare a project. When `False` (strict mode), the proxy REWRITES the user's label to the template-rendered name regardless of what the user typed |
-| `docker_limited_reveal_hub_network` | `True` | When `True`, the proxy reveals the hub's docker network (from `JUPYTERHUB_NETWORK_NAME`) in the user's `docker network ls` even though it is not owned by them. Containers they spawn can then bind to that network with `--network <hub-net>` and resolve other containers (incl. the hub services) by DNS. List-only - container creates / attaches were already passing through; Docker itself enforces "network must exist". When `False`, the networks list stays strictly owner-scoped |
-| `docker_privileged` | `False` | Runs the user's own lab with `--privileged` (kernel-root inside the lab). Orthogonal to the access mode. When on, the proxy also accepts the `--privileged` flag on sub-containers the user spawns - their lab is already kernel-root, so a privileged sub-container grants nothing new. **Does NOT imply `docker_limited_allow_dangerous_flags`** - host binds and friends remain blocked unless that separate field is on |
+| `docker_limited_allow_dangerous_flags` | `False` | **Warning - escape-hatch grant.** When `True`, the proxy stops rejecting host bind mounts, host network/PID namespaces, added capabilities, and device passthrough on the user's sub-containers. Ownership labelling and quota caps still apply. Independent of `docker_privileged` - flipping that one does NOT imply this. Surfaced in the admin UI with a red warning. Use only when the user genuinely needs to mount host paths or kernel devices into a sub-container (e.g. attach a 9P export of an external host directory). **Access affected**: host binds, `--network host`, `--pid host`, `--cap-add`, `--device` are accepted when ON; rejected with 403 on container create when OFF |
+| `docker_limited_user_compose_project_enabled` | `True` | When `True`, the proxy stamps the user's ad-hoc `docker run` containers with a per-user `com.docker.compose.project` label rendered from `JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE` (default `{compose_project}_{username}_containers`), so each user's containers group under their own project in `docker compose ls` and Docker Desktop. **Access affected**: none - this is a cosmetic / organisational stamp, the user can still launch / inspect / stop any of their own containers regardless. When `False`, ad-hoc containers carry no compose project label at all (free-floating). The user's own `docker compose` projects are unaffected either way - their compose runs set the project label themselves |
+| `docker_limited_user_compose_project_allow_override` | `True` | Only meaningful when `_enabled` is on. When `True`, a project label the user supplies via `docker compose -p <name>` OR `COMPOSE_PROJECT_NAME=<name>` is respected - the proxy only stamps containers that do not already declare a project. When `False` (strict mode), the proxy REWRITES the user's label to the template-rendered per-user name regardless of what the user typed - so even `docker compose -p mine up` groups under `<project>_<user>_containers` in Docker Desktop. **Access affected**: none - users can still operate on the container; only the visible project grouping changes |
+| `docker_limited_hub_network_access` | `True` | When `True`, the user is granted full access to the hub's docker network (name from `JUPYTERHUB_NETWORK_NAME`): the network appears in `docker network ls`, containers can attach via `--network <hub-net>` on create, and `docker network connect <hub-net> <container>` is forwarded. So a user container can resolve other containers (incl. the hub itself, MLflow, the activity monitor) by DNS. **Access affected**: complete end-to-end gate. When `False`, the hub network is hidden in list, container creates referencing it (in `HostConfig.NetworkMode` or `NetworkingConfig.EndpointsConfig`) are rejected with 403 `network not accessible`, and connect/disconnect actions return 404. The user's own networks remain fully usable; Docker built-in modes (`bridge` / `none` / `default` / `container:<id>`) are always allowed |
+| `docker_privileged` | `False` | Runs the user's own lab with `--privileged` (kernel-root inside the lab). Orthogonal to the access mode. When on, the proxy also accepts the `--privileged` flag on sub-containers the user spawns - their lab is already kernel-root, so a privileged sub-container grants nothing new. **Does NOT imply `docker_limited_allow_dangerous_flags`** - host binds and friends remain blocked unless that separate field is on. **Access affected**: only the `Privileged: true` bit on container create; host binds, host net/pid, cap-add, devices stay blocked independently |
 
-### Bypass semantics on the proxy side
+### What the proxy enforces, and how each setting changes the gate
 
-Mapped from the resolved group config to `ProxyConfig` in `_build_overrides`:
+The proxy ALWAYS enforces these regardless of any toggle:
+
+- Per-create quota counts (`max_containers` / `_volumes` / `_networks`)
+- Per-create storage budget against `max_storage_gb` (queries `/system/df`)
+- Per-container CPU and memory caps (`cpu_cap_cores` / `mem_cap_gb`)
+- Owner labelling: every created container / volume / network gets `stellars.owner=<user>` and `stellars.managed=true`
+- Owner-scope on list and prune: `docker ps` / `docker volume ls` / `docker network ls` / `docker container prune` etc. are filtered to the user's own resources
+- Ownership check on actions: `docker stop/inspect/exec/rm <id>` on a non-owned target returns 404
+
+What each toggle changes on top of that baseline is described in the "Access affected" line of its row above. Mapped to `ProxyConfig` in `_build_overrides`:
 
 - `ProxyConfig.allow_privileged` <- `resolved['docker_privileged']`. Skips ONLY the `Privileged` rejection in `dangerous_reason()`.
-- `ProxyConfig.allow_dangerous_flags` <- `resolved['docker_limited_allow_dangerous_flags']`. Skips host binds, host net/pid, cap-add, device passthrough.
+- `ProxyConfig.allow_dangerous_flags` <- `resolved['docker_limited_allow_dangerous_flags']`. Skips host binds, host net/pid, cap-add, device passthrough in `dangerous_reason()`.
+- `ProxyConfig.compose_project` <- per-user project rendered from the template when `resolved['docker_limited_user_compose_project_enabled']` is True; empty string otherwise (containers carry no compose-project label).
 - `ProxyConfig.allow_compose_project_override` <- `resolved['docker_limited_user_compose_project_allow_override']`. Controls whether `inject_compose_project` REWRITES a user-provided project label.
-- `ProxyConfig.extra_visible_networks` <- `(hub_network_name,)` when `resolved['docker_limited_reveal_hub_network']` is True AND the hub knows its own network name; otherwise empty. The proxy buffers `GET /networks`, parses the JSON response, and emits networks where `Labels[stellars.owner]==user` OR `Name in extra_visible_networks`. Only the list endpoint is affected - container creates / attaches were already passing through unfiltered.
+- `ProxyConfig.extra_accessible_networks` <- `(hub_network_name,)` when `resolved['docker_limited_hub_network_access']` is True AND the hub knows its own network name; otherwise empty. Affects three places: list (post-filter `is_owned(owner) OR Name in extras`), action (allow connect/disconnect on networks in extras even if not owned), and container create (block `HostConfig.NetworkMode` / `NetworkingConfig.EndpointsConfig` references to non-built-in, non-owned, non-allow-listed networks with 403).
 
-All four are independent. Quota caps (`max_containers`, `max_volumes`, `max_networks`, `max_storage_gb`, `cpu_cap_cores`, `mem_cap_gb`), ownership labelling on every created resource, and list/prune filtering by `stellars.owner` are unaffected by any of these toggles.
+All five are independent.
 
 ### Group config validation
 
@@ -188,7 +200,7 @@ A future authenticated `GET /hub/api/admin/docker-proxy/status` (admin-only) wil
         "allow_privileged": false,
         "allow_dangerous_flags": false,
         "allow_compose_project_override": true,
-        "extra_visible_networks": ["stellars-tech-ai-lab_network"]
+        "extra_accessible_networks": ["stellars-tech-ai-lab_network"]
       }
     }
   ]

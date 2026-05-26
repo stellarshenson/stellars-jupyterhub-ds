@@ -135,30 +135,30 @@ class TestBuildOverrides:
         )
         assert 'compose_project' not in ov or ov.get('compose_project') == '_alice_containers'
 
-    def test_extra_visible_networks_set_when_enabled_and_name_known(self):
+    def test_extra_accessible_networks_set_when_enabled_and_name_known(self):
         ov = _build_overrides(
-            _resolved(docker_limited_reveal_hub_network=True),
+            _resolved(docker_limited_hub_network_access=True),
             username="alice",
             compose_project="proj",
             hub_network_name="proj_network",
         )
-        assert ov['extra_visible_networks'] == ("proj_network",)
+        assert ov['extra_accessible_networks'] == ("proj_network",)
 
-    def test_extra_visible_networks_absent_when_toggle_off(self):
+    def test_extra_accessible_networks_absent_when_toggle_off(self):
         ov = _build_overrides(
-            _resolved(docker_limited_reveal_hub_network=False),
+            _resolved(docker_limited_hub_network_access=False),
             username="alice",
             compose_project="proj",
             hub_network_name="proj_network",
         )
-        assert 'extra_visible_networks' not in ov
+        assert 'extra_accessible_networks' not in ov
 
-    def test_extra_visible_networks_absent_when_hub_name_missing(self):
+    def test_extra_accessible_networks_absent_when_hub_name_missing(self):
         # Toggle on but name not configured -> nothing exposed.
         ov = _build_overrides(
-            _resolved(docker_limited_reveal_hub_network=True),
+            _resolved(docker_limited_hub_network_access=True),
             username="alice",
             compose_project="proj",
             hub_network_name="",
         )
-        assert 'extra_visible_networks' not in ov
+        assert 'extra_accessible_networks' not in ov
