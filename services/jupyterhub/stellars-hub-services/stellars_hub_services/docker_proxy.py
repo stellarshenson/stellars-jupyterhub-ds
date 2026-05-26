@@ -4,7 +4,7 @@ The proxy runs inside the JupyterHub process - same asyncio event loop,
 same container, no HTTP, no token, no second compose service. One module
 singleton `Manager` holds N per-user `UnixSite` listeners under a named
 docker volume (default `jupyterhub_docker`) mounted into the hub at
-`/var/run/stellars-docker-proxy-sockets/`. The volume is shared with each user lab via
+`/var/run/jupyterhub-docker-proxy-sockets/`. The volume is shared with each user lab via
 `Subpath: <user>` so each lab sees only its own subdirectory and the
 single `docker.sock` inside it - mount-level isolation, no host path.
 
@@ -22,7 +22,7 @@ log = logging.getLogger('jupyterhub.docker_proxy')
 
 SOCK_MOUNT_DIR = '/run/dockersock'
 SOCK_FILENAME = 'docker.sock'
-DEFAULT_SOCKET_DIR = '/var/run/stellars-docker-proxy-sockets'
+DEFAULT_SOCKET_DIR = '/var/run/jupyterhub-docker-proxy-sockets'
 DEFAULT_VOLUME_NAME = 'jupyterhub_docker'
 
 _manager = None

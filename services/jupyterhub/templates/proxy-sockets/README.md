@@ -5,7 +5,7 @@ This volume holds the per-user unix sockets the in-process docker-proxy binds fo
 ## Layout
 
 ```
-/var/run/stellars-docker-proxy-sockets/
+/var/run/jupyterhub-docker-proxy-sockets/
     README.md                         <- this file
     <username>/                       <- one directory per registered user
         docker.sock                   <- the unix socket the lab connects to
@@ -25,7 +25,7 @@ Each `<username>/docker.sock` is an aiohttp `UnixSite` listener bound to a per-u
 ## Operator notes
 
 - Volume declared in `compose.yml` as `jupyterhub_docker:`; compose namespaces it on the daemon to `${COMPOSE_PROJECT_NAME}_jupyterhub_docker` (same convention as every other named volume in this stack)
-- Container path: `/var/run/stellars-docker-proxy-sockets` (set by `JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR` in `Dockerfile.jupyterhub`)
+- Container path: `/var/run/jupyterhub-docker-proxy-sockets` (set by `JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR` in `Dockerfile.jupyterhub`)
 - The spawner references the same namespaced name when subpath-mounting into each lab; the name is computed in `config/jupyterhub_config.py` from `COMPOSE_PROJECT_NAME`. Empty `COMPOSE_PROJECT_NAME` aborts hub startup
 - This README is shipped inside the image at the same path; Docker copies it into the volume on first creation (volume-content-init). Subsequent restarts preserve it
 - Wipe state: `docker volume rm ${COMPOSE_PROJECT_NAME}_jupyterhub_docker` (compose must be down first)

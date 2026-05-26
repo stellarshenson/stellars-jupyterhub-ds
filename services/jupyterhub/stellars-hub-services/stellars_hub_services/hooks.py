@@ -17,7 +17,7 @@ def make_pre_spawn_hook(
     reserved_env_var_names=frozenset(),
     reserved_env_var_prefixes=(),
     compose_project='',
-    docker_proxy_socket_dir='/var/run/stellars-docker-proxy-sockets',
+    docker_proxy_socket_dir='/var/run/jupyterhub-docker-proxy-sockets',
     docker_proxy_volume_name='jupyterhub_docker',
     user_compose_project_template='',
     hub_network_name='',

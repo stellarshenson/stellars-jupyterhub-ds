@@ -588,7 +588,7 @@ c.JupyterHub.tornado_settings = {
 # Docker-proxy (limited-docker users): runs in-process inside this hub
 # container on the same asyncio event loop as the rest of the hub. Backed by
 # a named docker volume mounted at JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR (default
-# `/var/run/stellars-docker-proxy-sockets`, set by Dockerfile ENV). The volume
+# `/var/run/jupyterhub-docker-proxy-sockets`, set by Dockerfile ENV). The volume
 # name follows the standard COMPOSE_PROJECT_NAME-prefixing convention used by
 # every other named volume in this config (see DOCKER_SPAWNER_VOLUMES line above):
 # compose declares `jupyterhub_docker:` and namespaces it to
@@ -596,14 +596,14 @@ c.JupyterHub.tornado_settings = {
 # reference the same namespaced name when subpath-mounting the volume into each
 # lab, otherwise Docker silently auto-creates an empty volume with the bare name
 # and the per-user subdir lookup fails with 404 at container start.
-JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR = os.environ.get("JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR", "/var/run/stellars-docker-proxy-sockets")
+JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR = os.environ.get("JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR", "/var/run/jupyterhub-docker-proxy-sockets")
 JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME = f"{COMPOSE_PROJECT_NAME}_jupyterhub_docker"
 # Template rendered into a per-user com.docker.compose.project label when a
 # docker-limited group opts in. Placeholders: {compose_project}, {username}.
 # Baked into the image via Dockerfile ENV; operator can override in compose.yml.
 JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE = os.environ.get(
     "JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE",
-    "{compose_project}_{username}_containers",
+    "{username}_containers",
 )
 
 c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(

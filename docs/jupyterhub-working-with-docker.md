@@ -8,7 +8,7 @@ How a user's JupyterLab container ends up with (or without) Docker access. Three
 |---|---|---|
 | none | no docker socket inside the container | safest |
 | `docker_access` | raw `/var/run/docker.sock` mounted - user sees every container/volume/network on the host, can `docker run` anything except `--privileged` from outside | wide |
-| `docker_limited` | per-user proxy socket at `/run/dockersock/docker.sock` (`DOCKER_HOST` set) - user sees only resources labelled `stellars.owner=<them>`, creates are quota-bounded and stamped with the owner label, dangerous flags rejected (host bind, host net, cap-add, `--privileged`) | tight |
+| `docker_limited` | per-user proxy socket at `/run/dockersock/docker.sock` (`DOCKER_HOST` set) - user sees only resources labelled `jupyterhub.docker.proxy.owner=<them>`, creates are quota-bounded and stamped with the owner label, dangerous flags rejected (host bind, host net, cap-add, `--privileged`) | tight |
 | `docker_privileged` standalone | the user's JupyterLab container itself runs with `--privileged` (kernel-root inside it) but **no Docker socket of any kind** - they can install host modules, mount loop devices, etc., from within their lab but cannot talk to dockerd | wide-inside-container |
 | any access + `docker_privileged` | as above plus a docker socket (limited or raw). Does **not** change which socket they reach: limited stays limited, normal stays normal. Privileged is escalation, not bypass | wide |
 
@@ -48,12 +48,12 @@ flowchart LR
 
     USER -->|normal| SOCK_RAW --> DAEMON
     USER -->|limited<br/>Subpath: user<br/>DOCKER_HOST unix sock| VOL
-    HUB ---|/var/run/stellars-docker-proxy-sockets| VOL
+    HUB ---|/var/run/jupyterhub-docker-proxy-sockets| VOL
     HUB --> SOCK_RAW
     SOCK_RAW -.privileged flag.-> USER
 ```
 
-The proxy runs **in-process inside the hub container**, on the same asyncio event loop JupyterHub itself runs on. One process, one container in compose, no admin HTTP surface, no token, no host path. Storage is a named docker volume `jupyterhub_docker` shared between the hub and each user lab via Docker's `Subpath` mount option, giving mount-level per-user isolation. `pre_spawn_hook` calls `await register_user(...)` directly; a module-singleton `Manager` instantiates a per-user `UnixSite` at `/var/run/stellars-docker-proxy-sockets/<user>/docker.sock` with that spawn's resolved quotas. The spawner subpath-mounts the same named volume into the user container at `/run/dockersock`, so the lab sees only its own subdirectory. On `post_stop_hook` the listener tears down and the socket is removed. Hub restart loses all listeners; the next spawn re-creates them.
+The proxy runs **in-process inside the hub container**, on the same asyncio event loop JupyterHub itself runs on. One process, one container in compose, no admin HTTP surface, no token, no host path. Storage is a named docker volume `jupyterhub_docker` shared between the hub and each user lab via Docker's `Subpath` mount option, giving mount-level per-user isolation. `pre_spawn_hook` calls `await register_user(...)` directly; a module-singleton `Manager` instantiates a per-user `UnixSite` at `/var/run/jupyterhub-docker-proxy-sockets/<user>/docker.sock` with that spawn's resolved quotas. The spawner subpath-mounts the same named volume into the user container at `/run/dockersock`, so the lab sees only its own subdirectory. On `post_stop_hook` the listener tears down and the socket is removed. Hub restart loses all listeners; the next spawn re-creates them.
 
 ## Common gotcha
 

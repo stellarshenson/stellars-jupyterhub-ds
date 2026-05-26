@@ -109,7 +109,7 @@ COPY --chmod=755  services/jupyterhub/conf/bin/*.sh /
 COPY --chmod=755  services/jupyterhub/conf/bin/start-platform.d /start-platform.d
 COPY --chmod=600  services/jupyterhub/templates/certs /mnt/certs
 # Volume-purpose README for jupyterhub_docker; Docker volume-init copies it in on first create.
-COPY --chmod=644  services/jupyterhub/templates/proxy-sockets/README.md /var/run/stellars-docker-proxy-sockets/README.md
+COPY --chmod=644  services/jupyterhub/templates/proxy-sockets/README.md /var/run/jupyterhub-docker-proxy-sockets/README.md
 COPY --chmod=644  services/jupyterhub/html_templates_enhanced/*.html /srv/jupyterhub/templates/
 COPY --chmod=644  services/jupyterhub/html_templates_enhanced/static/custom.css /tmp/custom.css
 COPY --chmod=644  services/jupyterhub/html_templates_enhanced/static/session-timer.js /tmp/session-timer.js
@@ -173,13 +173,15 @@ ENV JUPYTERHUB_MEMORY_MAX_USAGE_FRACTION=0.25
 # jupyterhub_config.py from COMPOSE_PROJECT_NAME (matches the convention used
 # by every other named volume in DOCKER_SPAWNER_VOLUMES), so no ENV is set
 # here for it - hardcoding a bare name would mismatch compose's namespacing.
-ENV JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR=/var/run/stellars-docker-proxy-sockets
+ENV JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR=/var/run/jupyterhub-docker-proxy-sockets
 # Per-user compose-project label template for ad-hoc `docker run` containers
 # (opt-in per docker-limited group). Python str.format placeholders:
 # {compose_project} = hub's compose project, {username} = lab owner. The
 # proxy renders this and stamps com.docker.compose.project on creates that
 # do NOT already declare a project (user's own `docker compose` is left alone).
-ENV JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE={compose_project}_{username}_containers
+ENV JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE={username}_containers
+# Label namespace prefix: proxy stamps `<prefix>.owner` and `<prefix>.managed`.
+ENV JUPYTERHUB_DOCKER_PROXY_LABEL_PREFIX=jupyterhub.docker.proxy
 # User environment customization
 ENV JUPYTERLAB_AUX_SCRIPTS_PATH=
 ENV JUPYTERLAB_AUX_MENU_PATH=

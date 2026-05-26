@@ -379,7 +379,7 @@
                   <td>
                     <strong>Enforce per-user compose project</strong>
                     <div class="text-muted small">
-                      Group each user's <code>docker run</code> containers under their own compose project so they show up together in <code>docker compose ls</code> / Docker Desktop. The project name comes from the platform env <code>JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE</code> (default <code>{compose_project}_{username}_containers</code>). Off = ad-hoc containers belong to no compose project (free-floating); the user's own <code>docker compose</code> projects are unaffected either way. Any group on &rarr; on.
+                      Group each user's <code>docker run</code> containers under their own compose project so they show up together in <code>docker compose ls</code> / Docker Desktop. The project name comes from the platform env <code>JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE</code> (default <code>{username}_containers</code>). Off = ad-hoc containers belong to no compose project (free-floating); the user's own <code>docker compose</code> projects are unaffected either way. Any group on &rarr; on.
                     </div>
                   </td>
                   <td class="text-center">
@@ -591,18 +591,18 @@ require(["jquery"], function($) {
           '<span title="' + formatMembersTooltip(group.members) + '">' + group.member_count + '</span>' +
         '</td>' +
         '<td class="text-center text-nowrap">' +
-          '<button class="btn btn-outline-primary btn-sm me-1 btn-config d-inline-flex justify-content-center align-items-center" style="width:2rem;padding-left:0;padding-right:0;" data-name="' + escapeAttr(group.name) + '" title="Configure group">' +
+          '<button class="btn btn-outline-primary btn-sm me-1 btn-config d-inline-flex justify-content-center align-items-center" style="width:2rem;padding-left:3px;padding-right:0;" data-name="' + escapeAttr(group.name) + '" title="Configure group">' +
             '<i class="fa fa-cog" style="font-size:0.85em;"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-up d-inline-flex justify-content-center align-items-center" style="width:2rem;padding-left:0;padding-right:0;" data-name="' + escapeAttr(group.name) + '" title="Move up (higher priority)"' +
+          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-up d-inline-flex justify-content-center align-items-center" style="width:2rem;padding-left:3px;padding-right:0;" data-name="' + escapeAttr(group.name) + '" title="Move up (higher priority)"' +
             (isFirst ? ' disabled' : '') + '>' +
             '<i class="fa fa-arrow-up" style="font-size:0.85em;"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-down d-inline-flex justify-content-center align-items-center" style="width:2rem;padding-left:0;padding-right:0;" data-name="' + escapeAttr(group.name) + '" title="Move down (lower priority)"' +
+          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-down d-inline-flex justify-content-center align-items-center" style="width:2rem;padding-left:3px;padding-right:0;" data-name="' + escapeAttr(group.name) + '" title="Move down (lower priority)"' +
             (isLast ? ' disabled' : '') + '>' +
             '<i class="fa fa-arrow-down" style="font-size:0.85em;"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-danger btn-sm btn-delete d-inline-flex justify-content-center align-items-center" style="width:2rem;padding-left:0;padding-right:0;" data-name="' + escapeAttr(group.name) + '" title="Delete group">' +
+          '<button class="btn btn-outline-danger btn-sm btn-delete d-inline-flex justify-content-center align-items-center" style="width:2rem;padding-left:3px;padding-right:0;" data-name="' + escapeAttr(group.name) + '" title="Delete group">' +
             '<i class="fa fa-trash" style="font-size:0.85em;"></i>' +
           '</button>' +
         '</td>' +
