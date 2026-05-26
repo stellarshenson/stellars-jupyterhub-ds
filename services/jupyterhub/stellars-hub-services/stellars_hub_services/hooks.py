@@ -3,7 +3,7 @@
 import math
 from urllib.parse import urlparse
 
-from .docker_proxy import ensure_user_proxy
+from .docker_proxy import register_user
 from .group_resolver import resolve_group_config
 from .groups_config import GroupsConfigManager
 
@@ -17,8 +17,9 @@ def make_pre_spawn_hook(
     reserved_env_var_names=frozenset(),
     reserved_env_var_prefixes=(),
     compose_project='',
-    docker_proxy_image='',
-    docker_network_name='jupyterhub_network',
+    docker_proxy_admin_url='',
+    docker_proxy_admin_token='',
+    docker_proxy_socket_dir='',
 ):
     """Create a pre_spawn_hook closure that captures branding + resolution context.
 
@@ -40,10 +41,14 @@ def make_pre_spawn_hook(
         compose_project: when set, attaches docker-compose project labels so
             spawned containers are grouped under that project in `docker compose
             ls` and `docker compose -p <project> ps` alongside the hub.
-        docker_proxy_image: image used to run the per-user docker-proxy sidecar
-            for limited-docker users (the hub's own image). Empty disables the
-            limited-docker wiring (the grant resolves but no socket is attached).
-        docker_network_name: network the sidecar joins (same as user containers).
+        docker_proxy_admin_url: URL of the central docker-proxy admin HTTP API
+            (e.g. http://stellars-docker-proxy:9000). Empty disables the limited-
+            docker wiring (the grant resolves but no socket is attached).
+        docker_proxy_admin_token: bearer token shared with the proxy container.
+        docker_proxy_socket_dir: host filesystem directory where the proxy writes
+            per-user sockets (bind-mounted into the proxy container at the same
+            path). The spawner bind-mounts <socket_dir>/<user>.sock as the user's
+            docker socket.
     """
 
     async def pre_spawn_hook(spawner):
@@ -68,26 +73,27 @@ def make_pre_spawn_hook(
 
         # Docker access. Normal (raw socket) supersedes limited (proxy) - the
         # resolver already cleared docker_limited when docker_access is set.
-        name_base = getattr(spawner, 'escaped_name', None) or username
         if resolved['docker_access']:
             # Normal: mount the raw host socket (sees all, no quota).
             spawner.volumes['/var/run/docker.sock'] = '/var/run/docker.sock'
             spawner.environment.pop('DOCKER_HOST', None)
-        elif resolved.get('docker_limited') and docker_proxy_image:
-            # Limited: start a per-user ownership-filtering proxy sidecar and
-            # point the user container at its socket via DOCKER_HOST. The stock
-            # docker CLI then transparently sees/manages only this user's own
-            # resources, up to the resolved quota.
+        elif (resolved.get('docker_limited') and docker_proxy_admin_url
+              and docker_proxy_admin_token and docker_proxy_socket_dir):
+            # Limited: register the user with the central docker-proxy. The
+            # proxy spawns a per-user listener at <socket_dir>/<user>.sock; we
+            # bind-mount that single file into the user container as the docker
+            # socket and point DOCKER_HOST at it. The stock docker CLI then
+            # transparently sees/manages only this user's own resources.
             try:
-                vol, mount_dir, docker_host = ensure_user_proxy(
+                socket_host_path, mount_dir, docker_host = register_user(
                     username,
-                    name_base,
                     resolved,
-                    proxy_image=docker_proxy_image,
-                    network_name=docker_network_name,
+                    admin_url=docker_proxy_admin_url,
+                    admin_token=docker_proxy_admin_token,
+                    socket_dir=docker_proxy_socket_dir,
                     compose_project=compose_project,
                 )
-                spawner.volumes[vol] = mount_dir
+                spawner.volumes[socket_host_path] = f'{mount_dir}/docker.sock'
                 spawner.environment['DOCKER_HOST'] = docker_host
                 spawner.volumes.pop('/var/run/docker.sock', None)
             except Exception as e:

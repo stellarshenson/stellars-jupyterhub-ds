@@ -7,17 +7,17 @@ Per-user filtered Docker socket. A user in a `docker-limited` group manages only
 ```mermaid
 flowchart LR
     CLI[docker CLI in<br/>user's JupyterLab]
-    SOCK[(filtered socket<br/>per-user volume)]
-    PROXY[stellars-docker-proxy sidecar<br/>--owner user]
+    SOCK[(per-user listener<br/>/var/run/stellars-proxy/user.sock)]
+    PROXY[stellars-docker-proxy<br/>compose service<br/>admin HTTP api]
     DAEMON[Host Docker daemon]
     DESKTOP[Docker Desktop<br/>operator sees all]
     HUB[JupyterHub]
 
     CLI -->|DOCKER_HOST<br/>unix:///run/dockersock/docker.sock| SOCK
-    PROXY -->|binds| SOCK
+    PROXY -->|binds N listeners| SOCK
     PROXY -->|/var/run/docker.sock| DAEMON
     DAEMON --- DESKTOP
-    HUB -.->|spawns + configures| PROXY
+    HUB -.->|POST/DELETE admin/registered/user| PROXY
     HUB -.->|spawns| CLI
 ```
 
@@ -80,13 +80,15 @@ flowchart TD
 | `POST /images/create` (`docker pull`) | image allowlist (if configured), else forward |
 | everything else | streamed pass-through |
 
-## Sidecar lifecycle
+## Lifecycle
 
-- Image: the hub's own image (detected via `container.image.tags`); has `stellars_docker_proxy` installed
-- Name: `jupyterlab-<base>-dockerproxy`; shared volume `jupyterlab-<base>_dockersock` mounted at `/run/dockersock` in both sidecar and user container
-- Started on `pre_spawn_hook` for limited users (idempotent: existing sidecar is reused, only started if stopped)
-- `restart_policy: unless-stopped`
-- Removed on `post_stop_hook` (user-created containers persist)
+- One container in the compose stack: service `stellars-docker-proxy`, container name `${COMPOSE_PROJECT_NAME}-docker-proxy`. Same image as the hub (`stellars/stellars-jupyterhub-ds:latest`); command override runs `python -m stellars_docker_proxy`
+- `restart_policy: unless-stopped`; lifecycle tied to `make start`/`make stop`
+- Admin HTTP API on TCP 9000 inside `jupyterhub_network`, gated by `STELLARS_PROXY_ADMIN_TOKEN`
+- On pre_spawn_hook the hub POSTs `/admin/registered/<user>` with the resolved quotas; the proxy `Manager` creates a `UnixSite` listener at `/var/run/stellars-proxy/<user>.sock`. Re-posting is idempotent and replaces the previous listener (so quota changes apply on next spawn)
+- The spawner bind-mounts that socket file from the host into the user container at `/run/dockersock/docker.sock`; `DOCKER_HOST` points at it
+- On post_stop_hook the hub DELETEs the registration; the listener tears down and the socket file is removed
+- Proxy crash recovery: the proxy is stateless across restarts; if it dies, all listeners go. Running labs keep their volume mount but the file is gone until the user restarts the lab (triggers a fresh `pre_spawn_hook` and re-register)
 
 ## Modules
 
@@ -95,19 +97,34 @@ flowchart TD
 | `stellars_docker_proxy.config` | `ProxyConfig` + label constants |
 | `stellars_docker_proxy.filters` | pure transforms (label injection, list filter, caps check/apply, dangerous, ownership, compose project) |
 | `stellars_docker_proxy.quota` | pure accounting (counts, `/system/df` storage per owner) |
-| `stellars_docker_proxy.server` | aiohttp reverse proxy: classify -> mutate/guard/quota -> stream; optional `owner_resolver` hook for per-request identity |
-| `stellars_docker_proxy.__main__` | CLI `python -m stellars_docker_proxy --owner ... --listen-socket ...` |
-| `stellars_hub_services.docker_proxy` | `detect_self_image`, `ensure_user_proxy`, `stop_user_proxy` (sidecar orchestration via the docker SDK) |
+| `stellars_docker_proxy.server` | aiohttp reverse proxy: classify -> mutate/guard/quota -> stream; `create_app(ProxyConfig)` returns a per-owner app |
+| `stellars_docker_proxy.manager` | `Manager` holds N per-user listeners in one process; register/unregister lifecycle |
+| `stellars_docker_proxy.admin` | `create_admin_app(manager, token)` - bearer-auth HTTP API: GET /admin/registered, POST /admin/registered/{user}, DELETE /admin/registered/{user} |
+| `stellars_docker_proxy.__main__` | central-mode entrypoint `python -m stellars_docker_proxy` (env-var driven) |
+| `stellars_hub_services.docker_proxy` | admin HTTP client: `register_user`, `unregister_user` |
 | `stellars_hub_services.group_resolver` | `docker_limited` + quota max-wins + normal-supersedes-limited precedence |
 | `stellars_hub_services.groups_config` | default fields + `validate_docker_selection` (mutual exclusivity) |
 | `stellars_hub_services.hooks` | 3-branch docker block (normal / limited / none) |
 
 ## Configuration
 
+Proxy container env vars:
+
 | Env | Default | Purpose |
 |---|---|---|
-| `JUPYTERHUB_DOCKER_PROXY_IMAGE` | hub's image (auto-detected) | image running the sidecar |
-| `JUPYTERHUB_NETWORK_NAME` | `jupyterhub_network` | network the sidecar joins |
+| `STELLARS_PROXY_ADMIN_TOKEN` | (required) | bearer token gating the admin API; shared with the hub |
+| `STELLARS_PROXY_SOCKET_DIR` | `/var/run/stellars-proxy` | where per-user sockets are written; bind-mount the same host path here |
+| `STELLARS_PROXY_UPSTREAM` | `/var/run/docker.sock` | the real Docker socket the proxy forwards to |
+| `STELLARS_PROXY_ADMIN_HOST` | `0.0.0.0` | bind address for the admin TCP listener |
+| `STELLARS_PROXY_ADMIN_PORT` | `9000` | bind port for the admin TCP listener |
+
+Hub container env vars:
+
+| Env | Default | Purpose |
+|---|---|---|
+| `JUPYTERHUB_DOCKER_PROXY_ADMIN_URL` | `http://stellars-docker-proxy:9000` | proxy admin endpoint (compose DNS name) |
+| `JUPYTERHUB_DOCKER_PROXY_ADMIN_TOKEN` | (required for limited grants) | same value as `STELLARS_PROXY_ADMIN_TOKEN` |
+| `JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR` | `/var/run/stellars-proxy` | host directory the spawner bind-mounts socket files from |
 | `COMPOSE_PROJECT_NAME` | `jupyterhub` | compose project stamped on ad-hoc creates |
 
 ## Caveats
@@ -116,11 +133,12 @@ flowchart TD
 - `DOCKER_HOST` points at `unix:///run/dockersock/docker.sock` (not literally `/var/run/docker.sock` - mounting a volume at `/var/run` would clobber it)
 - `/system/df` is queried per create for the storage budget - latency on busy hosts
 - Interactive TTY hijack (`exec -it`, `attach`) is not specially handled in v1; non-interactive streams work
-- The proxy binds its socket a beat after spawn; benign for interactive use
+- Proxy is stateless across restarts; running limited users need to restart their labs to be re-registered after a proxy crash
+- Process-compromise blast radius is "all limited users" (one process for all); v1 acceptable trade-off for convenience-driven model
 
 ## Identity model
 
-The proxy itself knows only an `owner` string; no JupyterHub notion. Today: one sidecar per user, owner baked at start. Future token-roundtrip resolution lives in `stellars_hub_services` via the `owner_resolver(request)` hook on `create_app()` - the proxy package never changes.
+The proxy itself knows only an `owner` string; no JupyterHub notion. Inside one proxy process, the `Manager` holds N per-user `ProxyApp` instances, each bound to its own unix listener at `/var/run/stellars-proxy/<owner>.sock`. Identity is baked into the listener: whichever container mounts a given socket file acts as that owner. The admin HTTP API on TCP 9000 is the only privileged surface and is gated by a shared bearer token. No per-request token roundtrip on the data path.
 
 ## Related
 

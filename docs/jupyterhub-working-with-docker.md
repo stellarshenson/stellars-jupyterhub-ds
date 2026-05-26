@@ -42,30 +42,32 @@ A user can be in several groups. `group_resolver.resolve_group_config` merges th
 flowchart LR
     USER[user's JupyterLab]
     SOCK_RAW[(host /var/run/docker.sock)]
-    SOCK_PROXY[(per-user socket<br/>/run/dockersock/docker.sock)]
-    SIDECAR[stellars-docker-proxy<br/>sidecar --owner=user]
+    SOCK_PROXY[(per-user listener<br/>/var/run/stellars-proxy/user.sock)]
+    PROXY[stellars-docker-proxy<br/>compose service<br/>admin HTTP api]
+    HUB[JupyterHub]
     DAEMON[Host Docker daemon]
 
+    HUB -->|register/unregister| PROXY
     USER -->|normal| SOCK_RAW --> DAEMON
     USER -->|limited<br/>DOCKER_HOST set| SOCK_PROXY
-    SIDECAR --> SOCK_PROXY
-    SIDECAR --> SOCK_RAW
+    PROXY --> SOCK_PROXY
+    PROXY --> SOCK_RAW
     SOCK_RAW -.privileged flag.-> USER
 ```
 
-The sidecar is launched on first spawn by `pre_spawn_hook` via `ensure_user_proxy`; reused on subsequent spawns; removed on `post_stop_hook`. It runs from the hub's own image (which has `stellars_docker_proxy` installed).
+One central `stellars-docker-proxy` container, lifecycle bound to compose (`make start`/`make stop`). On spawn, `pre_spawn_hook` POSTs `/admin/registered/<user>` with the resolved quotas; the proxy creates a per-user `UnixSite` listener at `/var/run/stellars-proxy/<user>.sock`. The spawner bind-mounts that single socket file into the user container as `/run/dockersock/docker.sock` and sets `DOCKER_HOST` accordingly. Identity stays baked-at-socket - the user container can only act as itself. On `post_stop_hook` the hub DELETEs the registration and the listener tears down.
 
 ## Common gotcha
 
-Putting a user in BOTH a limited group AND a group that carries `docker_access=True` produces the bonanza, not the limited+root state. The "normal supersedes limited" rule fires across groups, collapsing limited to False. The legacy `docker-privileged` group historically carries `docker_access=True` together with `docker_privileged=True` - a user in `docker-limited` + `docker-privileged` ends up on the raw socket, not the proxy. To get limited + root, either keep the user out of any normal-granting group, or split root into its own group that does **not** also grant access.
+Putting a user in BOTH a limited group AND a group that carries `docker_access=True` produces the bonanza, not the limited+root state. The "normal supersedes limited" rule fires across groups, collapsing limited to False. If you historically used a `docker-privileged` group that also granted normal access, users co-existing in `docker-limited` will end up on the raw socket. The fix is to split root into its own group that does **not** also grant access (the validator now allows standalone `docker_privileged`).
 
 ## Where the rules live
 
 - Group field defaults: `services/jupyterhub/stellars-hub-services/stellars_hub_services/groups_config.py` (`default_config`, `validate_docker_selection`)
 - Across-group resolution: `services/jupyterhub/stellars-hub-services/stellars_hub_services/group_resolver.py` (`resolve_group_config`)
-- Spawn-time application: `services/jupyterhub/stellars-hub-services/stellars_hub_services/hooks.py` (`pre_spawn_hook` - mounts the right socket, sets `DOCKER_HOST`, applies `--privileged`)
-- Sidecar orchestration: `services/jupyterhub/stellars-hub-services/stellars_hub_services/docker_proxy.py` (`ensure_user_proxy`, `stop_user_proxy`)
-- Proxy itself: `services/jupyterhub/stellars-docker-proxy/` (JupyterHub-agnostic aiohttp filter)
+- Spawn-time application: `services/jupyterhub/stellars-hub-services/stellars_hub_services/hooks.py` (`pre_spawn_hook` - mounts the right socket, sets `DOCKER_HOST`, applies `--privileged`; `post_stop_hook` unregisters)
+- Admin HTTP client (register/unregister): `services/jupyterhub/stellars-hub-services/stellars_hub_services/docker_proxy.py` (`register_user`, `unregister_user`)
+- Proxy itself: `services/jupyterhub/stellars-docker-proxy/` - `Manager` (per-user listeners), `create_admin_app` (admin HTTP API), `create_app`/`ProxyApp` (per-owner filtering)
 
 ## Related
 

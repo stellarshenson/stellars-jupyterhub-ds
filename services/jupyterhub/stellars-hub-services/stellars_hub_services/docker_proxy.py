@@ -1,20 +1,30 @@
-"""Per-user Docker proxy sidecar orchestration.
+"""Central docker-proxy wiring (admin HTTP client).
 
-For a "limited docker" user, ensure a `stellars-docker-proxy` sidecar is running
-that vends an owner-scoped Docker socket on a shared volume, and return the
-wiring the spawner needs (volume name, mount dir, DOCKER_HOST). The sidecar runs
-from the hub's own image (which has `stellars_docker_proxy` installed). None of
-the proxy filtering logic lives here - this only launches and points at it.
+The proxy is one container in the compose stack (`stellars-docker-proxy`)
+running `python -m stellars_docker_proxy`. JupyterHub registers a limited user
+on `pre_spawn_hook` (creates a per-user listener inside the proxy + a socket
+file under a shared host directory) and unregisters on `post_stop_hook`. The
+user's lab gets a single file-bind from `<host_socket_dir>/<user>.sock` to
+`/run/dockersock/docker.sock` plus `DOCKER_HOST=unix:///run/dockersock/docker.sock`.
+
+No per-user container is started by the hub. The package's admin API is the
+only privileged surface; the data path (per-user unix sockets) is identical to
+the previous sidecar layout.
 """
 
+import asyncio
 import logging
-import socket as _socket
+import os
 
-log = logging.getLogger('stellars_hub_services.docker_proxy')
+import aiohttp
+
+log = logging.getLogger('jupyterhub.docker_proxy')
 
 SOCK_MOUNT_DIR = '/run/dockersock'
 SOCK_FILENAME = 'docker.sock'
-HOST_DOCKER_SOCK = '/var/run/docker.sock'
+
+DEFAULT_ADMIN_URL = 'http://stellars-docker-proxy:9000'
+DEFAULT_SOCKET_DIR = '/var/run/stellars-proxy'
 
 
 def docker_host_url():
@@ -22,133 +32,73 @@ def docker_host_url():
     return f"unix://{SOCK_MOUNT_DIR}/{SOCK_FILENAME}"
 
 
-def _client():
-    import docker
-    return docker.DockerClient(base_url='unix://var/run/docker.sock')
+def _socket_host_path(socket_dir, user):
+    return os.path.join(socket_dir, f"{user}.sock")
 
 
-def detect_self_image(client=None):
-    """Best-effort: the hub's own image tag, used to run the sidecar.
-
-    Returns None on failure - the caller treats that as "limited proxy
-    unavailable" and skips wiring rather than failing the spawn.
-    """
-    try:
-        client = client or _client()
-        container = client.containers.get(_socket.gethostname())
-        tags = container.image.tags
-        return tags[0] if tags else container.image.id
-    except Exception as e:
-        log.warning("could not detect hub image for docker-proxy sidecar: %s", e)
-        return None
-
-
-def _names(name_base):
-    return f"jupyterlab-{name_base}_dockersock", f"jupyterlab-{name_base}-dockerproxy"
-
-
-def ensure_user_proxy(username, name_base, resolved, *, proxy_image,
-                      network_name, compose_project='', client=None):
-    """Ensure the per-user proxy sidecar and its socket volume are running.
-
-    Returns (volume_name, mount_dir, docker_host). Raises on hard failure; the
-    caller decides whether to fail the spawn or fall back to no docker access.
-    """
-    client = client or _client()
-    vol_name, proxy_name = _names(name_base)
-
-    try:
-        client.volumes.get(vol_name)
-    except Exception:
-        client.volumes.create(
-            name=vol_name,
-            labels={'stellars.managed': 'true', 'stellars.owner': username},
-        )
-
-    # Reuse an existing sidecar (start it if stopped) so we don't churn it on
-    # every spawn; config changes take effect after it is removed and recreated.
-    try:
-        existing = client.containers.get(proxy_name)
-        if existing.status != 'running':
-            existing.start()
-        log.info(
-            "reused docker-proxy sidecar %s for owner=%s (limits unchanged: "
-            "containers=%s volumes=%s networks=%s storage_gb=%s cpu=%s mem_gb=%s)",
-            proxy_name, username,
-            resolved['docker_limited_max_containers'],
-            resolved['docker_limited_max_volumes'],
-            resolved['docker_limited_max_networks'],
-            resolved['docker_limited_max_storage_gb'],
-            resolved['docker_limited_cpu_cap_cores'],
-            resolved['docker_limited_mem_cap_gb'],
-        )
-        return vol_name, SOCK_MOUNT_DIR, docker_host_url()
-    except Exception:
-        pass
-
-    command = [
-        'python', '-m', 'stellars_docker_proxy',
-        '--owner', username,
-        '--listen-socket', f"{SOCK_MOUNT_DIR}/{SOCK_FILENAME}",
-        '--upstream-socket', HOST_DOCKER_SOCK,
-        '--max-containers', str(resolved['docker_limited_max_containers']),
-        '--max-volumes', str(resolved['docker_limited_max_volumes']),
-        '--max-networks', str(resolved['docker_limited_max_networks']),
-        '--max-storage-gb', str(resolved['docker_limited_max_storage_gb']),
-        '--cpu-cap-cores', str(resolved['docker_limited_cpu_cap_cores']),
-        '--mem-cap-gb', str(resolved['docker_limited_mem_cap_gb']),
-    ]
-    if compose_project:
-        command += ['--compose-project', compose_project]
-
-    labels = {
-        'stellars.managed': 'true',
-        'stellars.owner': username,
-        'stellars.role': 'docker-proxy',
+def _build_overrides(resolved, compose_project=''):
+    """Map the resolver dict to ProxyConfig field names the admin API accepts."""
+    overrides = {
+        'max_containers': int(resolved.get('docker_limited_max_containers', 10)),
+        'max_volumes': int(resolved.get('docker_limited_max_volumes', 10)),
+        'max_networks': int(resolved.get('docker_limited_max_networks', 3)),
+        'max_storage_gb': float(resolved.get('docker_limited_max_storage_gb', 50.0)),
+        'cpu_cap_cores': float(resolved.get('docker_limited_cpu_cap_cores', 2.0)),
+        'mem_cap_gb': float(resolved.get('docker_limited_mem_cap_gb', 8.0)),
     }
     if compose_project:
-        labels['com.docker.compose.project'] = compose_project
-
-    client.containers.run(
-        proxy_image,
-        command=command,
-        name=proxy_name,
-        detach=True,
-        network=network_name,
-        restart_policy={'Name': 'unless-stopped'},
-        volumes={
-            HOST_DOCKER_SOCK: {'bind': HOST_DOCKER_SOCK, 'mode': 'rw'},
-            vol_name: {'bind': SOCK_MOUNT_DIR, 'mode': 'rw'},
-        },
-        labels=labels,
-    )
-    log.info(
-        "started docker-proxy sidecar %s for owner=%s limits: "
-        "containers=%s volumes=%s networks=%s storage_gb=%s cpu=%s mem_gb=%s"
-        " compose_project=%s network=%s",
-        proxy_name, username,
-        resolved['docker_limited_max_containers'],
-        resolved['docker_limited_max_volumes'],
-        resolved['docker_limited_max_networks'],
-        resolved['docker_limited_max_storage_gb'],
-        resolved['docker_limited_cpu_cap_cores'],
-        resolved['docker_limited_mem_cap_gb'],
-        compose_project or '<none>',
-        network_name,
-    )
-    return vol_name, SOCK_MOUNT_DIR, docker_host_url()
+        overrides['compose_project'] = compose_project
+    return overrides
 
 
-def stop_user_proxy(name_base, client=None):
-    """Stop and remove a user's proxy sidecar (on server stop / cleanup).
+async def _post_register(admin_url, token, user, overrides, timeout=10):
+    url = f"{admin_url.rstrip('/')}/admin/registered/{user}"
+    headers = {'Authorization': f'Bearer {token}'}
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as s:
+        async with s.post(url, json={'overrides': overrides}, headers=headers) as r:
+            if r.status != 200:
+                body = await r.text()
+                raise RuntimeError(f"register {user}: HTTP {r.status}: {body[:200]}")
+            return await r.json()
 
-    User-created containers are independent of the sidecar and keep running; the
-    proxy is recreated on the next spawn.
+
+async def _delete_register(admin_url, token, user, timeout=10):
+    url = f"{admin_url.rstrip('/')}/admin/registered/{user}"
+    headers = {'Authorization': f'Bearer {token}'}
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as s:
+        async with s.delete(url, headers=headers) as r:
+            if r.status != 200:
+                body = await r.text()
+                raise RuntimeError(f"unregister {user}: HTTP {r.status}: {body[:200]}")
+            return await r.json()
+
+
+def register_user(username, resolved, *, admin_url, admin_token, socket_dir,
+                  compose_project=''):
+    """Register a limited user with the central proxy. Synchronous wrapper.
+
+    Returns ``(socket_host_path, mount_dir, docker_host)`` so the spawn hook
+    can wire `spawner.volumes` and `spawner.environment` directly.
     """
+    overrides = _build_overrides(resolved, compose_project=compose_project)
+    asyncio.run(_post_register(admin_url, admin_token, username, overrides))
+    socket_host_path = _socket_host_path(socket_dir, username)
+    log.info(
+        "registered docker-proxy for owner=%s socket=%s limits: containers=%s "
+        "volumes=%s networks=%s storage_gb=%s cpu=%s mem_gb=%s compose_project=%s",
+        username, socket_host_path,
+        overrides['max_containers'], overrides['max_volumes'],
+        overrides['max_networks'], overrides['max_storage_gb'],
+        overrides['cpu_cap_cores'], overrides['mem_cap_gb'],
+        compose_project or '<none>',
+    )
+    return socket_host_path, SOCK_MOUNT_DIR, docker_host_url()
+
+
+def unregister_user(username, *, admin_url, admin_token):
+    """Unregister a limited user (idempotent). Logs but never raises."""
     try:
-        client = client or _client()
-        _, proxy_name = _names(name_base)
-        client.containers.get(proxy_name).remove(force=True)
-        log.info("removed docker-proxy sidecar %s", proxy_name)
-    except Exception:
-        pass
+        asyncio.run(_delete_register(admin_url, admin_token, username))
+        log.info("unregistered docker-proxy for owner=%s", username)
+    except Exception as e:
+        log.warning("unregister docker-proxy for %s failed: %s", username, e)

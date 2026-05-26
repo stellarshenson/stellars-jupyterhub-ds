@@ -22,8 +22,8 @@ from stellars_hub_services import (
     configure_volume_cache,                 # one-time init: feeds canonical volume-name templates to the activity-monitor sizes cache
     get_services_and_roles,                 # builds JupyterHub services list (activity sampler)
     schedule_idle_culler,                   # in-hub idle culler (honours per-user session extensions)
-    detect_self_image,                      # hub's own image tag - runs the per-user docker-proxy sidecar
-    stop_user_proxy,                        # removes a user's docker-proxy sidecar on server stop
+    register_user,                          # central docker-proxy: register a limited user (admin HTTP API client)
+    unregister_user,                        # central docker-proxy: unregister on server stop
     get_user_volume_name_templates,         # maps suffix -> full volume-name template (with {username} placeholder)
     get_user_volume_suffixes,               # extracts ['home', 'workspace', 'cache'] from volumes dict
     is_wsl2,                                # host is WSL2 -> per-GPU isolation not enforceable (advisory)
@@ -577,10 +577,14 @@ c.JupyterHub.tornado_settings = {
 # Hook runs before each container spawn: resolves all user's groups into one
 # effective config (docker/gpu/env vars), applies it to spawner, then injects
 # CHP favicon proxy routes and JupyterLab icon URLs.
-# Image used to run the per-user docker-proxy sidecar for limited-docker users.
-# Defaults to the hub's own image (which carries stellars_docker_proxy); operator
-# can override. Empty -> limited-docker grants resolve but no socket is attached.
-JUPYTERHUB_DOCKER_PROXY_IMAGE = os.environ.get("JUPYTERHUB_DOCKER_PROXY_IMAGE", "") or (detect_self_image() or "")
+# Central docker-proxy (limited-docker users): the hub talks to a single
+# stellars-docker-proxy container over the admin HTTP API to register/
+# unregister per-user listeners. All three env vars must be set for the
+# limited-docker wiring to engage; missing any one disables it (grant resolves
+# but no socket is attached).
+JUPYTERHUB_DOCKER_PROXY_ADMIN_URL = os.environ.get("JUPYTERHUB_DOCKER_PROXY_ADMIN_URL", "http://stellars-docker-proxy:9000")
+JUPYTERHUB_DOCKER_PROXY_ADMIN_TOKEN = os.environ.get("JUPYTERHUB_DOCKER_PROXY_ADMIN_TOKEN", "").strip()
+JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR = os.environ.get("JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR", "/var/run/stellars-proxy")
 
 c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     branding,                                                # icon static names and URLs from setup_branding()
@@ -591,22 +595,29 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     reserved_env_var_names=RESERVED_ENV_VAR_NAMES,           # names groups cannot override
     reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,     # prefixes reserved for JupyterHub/platform
     compose_project=COMPOSE_PROJECT_NAME,                    # docker compose project label so user containers group with the hub in `docker compose ls`
-    docker_proxy_image=JUPYTERHUB_DOCKER_PROXY_IMAGE,        # image running the per-user limited-docker proxy sidecar
-    docker_network_name=JUPYTERHUB_NETWORK_NAME,             # network the sidecar joins (same as user containers)
+    docker_proxy_admin_url=JUPYTERHUB_DOCKER_PROXY_ADMIN_URL,    # central docker-proxy admin HTTP API endpoint
+    docker_proxy_admin_token=JUPYTERHUB_DOCKER_PROXY_ADMIN_TOKEN, # bearer token shared with the proxy container
+    docker_proxy_socket_dir=JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR,   # host directory where the proxy writes per-user sockets
 )
 
 
 def _post_stop_cleanup(spawner):
-    """Remove the user's docker-proxy sidecar when their server stops.
+    """Unregister the user from the central docker-proxy on server stop.
 
-    No-op for users without a sidecar. User-created containers are independent
-    and keep running; the proxy is recreated on the next spawn.
+    No-op for users without a registered listener. User-created containers are
+    independent of the proxy and keep running; the listener is re-created on
+    the next spawn via the pre-spawn hook.
     """
+    if not (JUPYTERHUB_DOCKER_PROXY_ADMIN_URL and JUPYTERHUB_DOCKER_PROXY_ADMIN_TOKEN):
+        return
     try:
-        name_base = getattr(spawner, 'escaped_name', None) or spawner.user.name
-        stop_user_proxy(name_base)
+        unregister_user(
+            spawner.user.name,
+            admin_url=JUPYTERHUB_DOCKER_PROXY_ADMIN_URL,
+            admin_token=JUPYTERHUB_DOCKER_PROXY_ADMIN_TOKEN,
+        )
     except Exception as e:  # never block a stop on cleanup
-        spawner.log.warning("[Groups] docker-proxy cleanup failed: %s", e)
+        spawner.log.warning("[Groups] docker-proxy unregister failed: %s", e)
 
 
 c.DockerSpawner.post_stop_hook = _post_stop_cleanup
