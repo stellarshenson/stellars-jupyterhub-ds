@@ -199,12 +199,28 @@ def make_pre_spawn_hook(
             ('all' if resolved.get('gpu_all', True) else resolved.get('gpu_device_ids'))
             if resolved['gpu_access'] else '-'
         )
+        # docker_limits is the actual quota/cap set the central proxy will enforce
+        # for this user (only populated when the limited branch took effect).
+        if resolved.get('docker_limited') and 'DOCKER_HOST' in spawner.environment:
+            docker_limits = (
+                f"containers={resolved.get('docker_limited_max_containers')} "
+                f"volumes={resolved.get('docker_limited_max_volumes')} "
+                f"networks={resolved.get('docker_limited_max_networks')} "
+                f"storage_gb={resolved.get('docker_limited_max_storage_gb')} "
+                f"cpu={resolved.get('docker_limited_cpu_cap_cores')} "
+                f"mem_gb={resolved.get('docker_limited_mem_cap_gb')}"
+            )
+        else:
+            docker_limits = '-'
         spawner.log.info(
-            "[Groups] user=%s groups=%s docker=%s docker_limited=%s privileged=%s gpu=%s gpu_sel=%s mem_limit_gb=%s swap_off=%s cpu_limit=%s env_vars=%d skipped=%s compose_project=%s",
+            "[Groups] user=%s groups=%s docker=%s docker_limited=%s docker_limits=[%s] "
+            "privileged=%s gpu=%s gpu_sel=%s mem_limit_gb=%s swap_off=%s cpu_limit=%s "
+            "env_vars=%d skipped=%s compose_project=%s",
             username,
             resolved['matched_groups'],
             resolved['docker_access'],
             resolved.get('docker_limited'),
+            docker_limits,
             resolved['docker_privileged'],
             resolved['gpu_access'],
             gpu_sel,
