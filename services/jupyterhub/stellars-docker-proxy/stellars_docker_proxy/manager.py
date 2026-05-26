@@ -1,21 +1,25 @@
 """Central proxy: many owners, one process, one listener per registered user.
 
-The package's `create_app` builds an aiohttp app bound to a single owner's
-ProxyConfig. The Manager wraps that with a registration model: `register(user,
-quotas)` instantiates a fresh ProxyConfig + ProxyApp, binds a `UnixSite` to a
-per-user socket path under `socket_dir`, and tracks the runner so it can be torn
-down on `unregister(user)`. The result is N listeners in one process - the
-JupyterHub sidecar pattern collapsed into a single container.
+Per-user socket layout:
 
-Identity stays baked-at-socket: whichever container mounts the per-user socket
-file acts as that user. No tokens, no per-request headers, no auth on the data
-path - the data path is identical to the per-sidecar layout the package was
-designed for. The HTTP admin API (see admin.py) is the only privileged surface.
+    <socket_dir>/
+        <user>/
+            docker.sock     <- the per-user UnixSite listener
+
+The user-keyed subdirectory exists so the spawner can mount JUST that subdir
+into the user's lab via Docker's volume-subpath mount option. Each lab sees
+exactly one socket file under `/run/dockersock/docker.sock` - mount-level
+isolation, no cross-user visibility, identity baked at the socket level.
+
+`register(user, overrides)` builds a fresh `ProxyConfig` + `ProxyApp` and
+binds an aiohttp `UnixSite`. Re-register replaces (so quota edits apply on
+next spawn). `unregister(user)` tears down the listener and removes the
+socket file + its subdirectory.
 """
 
-import asyncio
 import logging
 import os
+import shutil
 from dataclasses import asdict
 
 from aiohttp import web
@@ -25,9 +29,26 @@ from .server import create_app
 
 log = logging.getLogger("jupyterhub.docker_proxy_manager")
 
+SOCKET_FILENAME = "docker.sock"
+
+
+def _user_dir(socket_dir, user):
+    return os.path.join(socket_dir, user)
+
 
 def _socket_path(socket_dir, user):
-    return os.path.join(socket_dir, f"{user}.sock")
+    return os.path.join(_user_dir(socket_dir, user), SOCKET_FILENAME)
+
+
+def _clear_path(path):
+    """Remove whatever's at `path`: file, socket, or auto-created directory."""
+    try:
+        if os.path.isdir(path) and not os.path.islink(path):
+            shutil.rmtree(path)
+        else:
+            os.unlink(path)
+    except FileNotFoundError:
+        pass
 
 
 class Manager:
@@ -63,9 +84,17 @@ class Manager:
             raise ValueError("user is required")
         if user in self._listeners:
             await self._stop(user)
+        user_dir = _user_dir(self.socket_dir, user)
+        socket_path = _socket_path(self.socket_dir, user)
+        os.makedirs(user_dir, exist_ok=True)
+        # Stale state at the socket path can be a leftover socket file from a
+        # previous run, a regular file (unlikely), or a directory (e.g.
+        # auto-created by a prior failed bind-mount). Clear it either way so
+        # UnixSite can bind cleanly.
+        _clear_path(socket_path)
         cfg_kwargs = {
             "owner": user,
-            "listen_socket": _socket_path(self.socket_dir, user),
+            "listen_socket": socket_path,
             "upstream_socket": self.upstream_socket,
         }
         if overrides:
@@ -74,10 +103,6 @@ class Manager:
         app = await create_app(cfg)
         runner = web.AppRunner(app)
         await runner.setup()
-        try:
-            os.unlink(cfg.listen_socket)
-        except FileNotFoundError:
-            pass
         site = web.UnixSite(runner, cfg.listen_socket)
         await site.start()
         os.chmod(cfg.listen_socket, cfg.socket_mode)
@@ -104,9 +129,11 @@ class Manager:
     async def _stop(self, user):
         runner, _site, cfg = self._listeners.pop(user)
         await runner.cleanup()
+        _clear_path(cfg.listen_socket)
+        # Empty per-user subdir can go too; leave it if anything else lives there.
         try:
-            os.unlink(cfg.listen_socket)
-        except FileNotFoundError:
+            os.rmdir(os.path.dirname(cfg.listen_socket))
+        except OSError:
             pass
 
     async def close(self):

@@ -18,6 +18,7 @@ def make_pre_spawn_hook(
     reserved_env_var_prefixes=(),
     compose_project='',
     docker_proxy_socket_dir='/var/run/stellars-proxy',
+    docker_proxy_volume_name='jupyterhub_docker',
 ):
     """Create a pre_spawn_hook closure that captures branding + resolution context.
 
@@ -39,11 +40,15 @@ def make_pre_spawn_hook(
         compose_project: when set, attaches docker-compose project labels so
             spawned containers are grouped under that project in `docker compose
             ls` and `docker compose -p <project> ps` alongside the hub.
-        docker_proxy_socket_dir: host filesystem directory where the in-process
-            proxy writes per-user sockets. Must be bind-mounted into the hub
-            container at the same path. The spawner bind-mounts
-            <socket_dir>/<user>.sock as the user's docker socket. Empty
-            disables the limited-docker wiring (the grant resolves but no
+        docker_proxy_socket_dir: path inside the hub container where the
+            in-process proxy writes per-user sockets - backed by a named
+            docker volume (see docker_proxy_volume_name). Layout is
+            <socket_dir>/<user>/docker.sock so the spawner can mount only
+            the per-user subdir into each lab via volume-subpath.
+        docker_proxy_volume_name: name of the docker volume backing the
+            socket directory; the spawner mounts a per-user subpath of this
+            volume into each lab as `/run/dockersock`. Empty disables
+            limited-docker wiring entirely (the grant resolves but no
             socket is attached).
     """
 
@@ -73,20 +78,29 @@ def make_pre_spawn_hook(
             # Normal: mount the raw host socket (sees all, no quota).
             spawner.volumes['/var/run/docker.sock'] = '/var/run/docker.sock'
             spawner.environment.pop('DOCKER_HOST', None)
-        elif resolved.get('docker_limited') and docker_proxy_socket_dir:
-            # Limited: the in-process docker-proxy spawns a per-user listener
-            # at <socket_dir>/<user>.sock on the hub's own event loop; we
-            # bind-mount that single file into the user container as the
-            # docker socket and point DOCKER_HOST at it. The stock docker CLI
-            # then transparently sees/manages only this user's own resources.
+        elif (resolved.get('docker_limited') and docker_proxy_socket_dir
+              and docker_proxy_volume_name):
+            # Limited: the in-process docker-proxy creates a per-user listener
+            # at <socket_dir>/<user>/docker.sock in the hub's own filesystem
+            # (backed by the named docker volume). The spawner mounts only
+            # that user's subdirectory of the volume into their lab as
+            # /run/dockersock via Docker's Subpath mount option, then sets
+            # DOCKER_HOST. The stock docker CLI in the lab sees only this
+            # user's own resources (mount-level isolation, no host path).
             try:
-                socket_host_path, mount_dir, docker_host = await register_user(
+                _socket_host_path, mount_dir, docker_host = await register_user(
                     username,
                     resolved,
                     socket_dir=docker_proxy_socket_dir,
                     compose_project=compose_project,
                 )
-                spawner.volumes[socket_host_path] = f'{mount_dir}/docker.sock'
+                spawner.extra_host_config.setdefault('mounts', []).append({
+                    'Type': 'volume',
+                    'Source': docker_proxy_volume_name,
+                    'Target': mount_dir,
+                    'ReadOnly': False,
+                    'VolumeOptions': {'Subpath': username},
+                })
                 spawner.environment['DOCKER_HOST'] = docker_host
                 spawner.volumes.pop('/var/run/docker.sock', None)
             except Exception as e:

@@ -60,7 +60,7 @@ services:
       - jupyterhub_data:/data # database and cookie secrets
       - jupyterhub_shared:/mnt/shared # shared volume across environments
       - /var/run/docker.sock:/var/run/docker.sock:ro # for nvidia autodetection
-      - /var/run/stellars-proxy:/var/run/stellars-proxy # in-process docker-proxy: per-user listener sockets (bind-mounted as user docker socket by the spawner)
+      - jupyterhub_docker:/var/run/stellars-proxy # in-process docker-proxy: per-user listener sockets; the spawner mounts the per-user subpath of this volume into each lab as /run/dockersock
     environment:
       # Core settings
       - JUPYTERHUB_ADMIN=admin # this username will be a JupyterHub admin
@@ -160,6 +160,7 @@ volumes:
   jupyterhub_data:
   jupyterhub_certs:
   jupyterhub_shared:
+  jupyterhub_docker: # holds the in-process docker-proxy's per-user listener sockets; subpath-mounted into each user lab
 
 networks:
   jupyterhub_network:
