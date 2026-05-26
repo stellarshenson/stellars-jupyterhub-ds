@@ -103,15 +103,15 @@ flowchart TD
 
 ## Configuration
 
-Two knobs, both baked into the image as Dockerfile `ENV` lines. Operators do nothing:
+One Dockerfile `ENV` and one Python-computed constant. Operators do nothing:
 
-| Env | Default | Purpose |
-|---|---|---|
-| `JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR` | `/var/run/stellars-docker-proxy-sockets` | Path inside the hub container where the in-process proxy writes per-user listener sockets. Backed by a named docker volume - not a host path |
-| `JUPYTERHUB_DOCKER_PROXY_VOLUME` | `jupyterhub_docker` | Name of the named docker volume that backs the socket directory. The spawner subpath-mounts the same volume into each lab so each lab sees only its own subdirectory |
-| `COMPOSE_PROJECT_NAME` | `jupyterhub` | compose project stamped on ad-hoc creates |
+| Setting | Where | Value | Purpose |
+|---|---|---|---|
+| `JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR` | `Dockerfile.jupyterhub` `ENV` | `/var/run/stellars-docker-proxy-sockets` | Path inside the hub container where the in-process proxy writes per-user listener sockets. Backed by a named docker volume - not a host path |
+| `JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME` | `config/jupyterhub_config.py` (computed) | `f"{COMPOSE_PROJECT_NAME}_jupyterhub_docker"` | Actual on-daemon name of the named docker volume that backs the socket directory. Not operator-configurable - computed to match compose's automatic project-prefix namespacing of the `jupyterhub_docker:` volume declared in `compose.yml`. Follows the same convention as `f"{COMPOSE_PROJECT_NAME}_jupyterhub_shared"` in `DOCKER_SPAWNER_VOLUMES`. The spawner subpath-mounts this volume into each lab so each lab sees only its own subdirectory |
+| `COMPOSE_PROJECT_NAME` | compose-passthrough env | required, no default | Drives docker compose project label and volume namespacing. Empty raises `RuntimeError` at hub startup - silent fallback would mismatch compose's namespacing and fail spawns at Subpath resolution |
 
-Compose-side: a single named volume `jupyterhub_docker` is declared at the bottom of `compose.yml` and mounted on the hub at the socket-dir path. No host bind, no second container, no token, no `.env` change. To wipe state, operator can `docker volume rm jupyterhub_docker` (must be down first).
+Compose-side: a single named volume `jupyterhub_docker` is declared at the bottom of `compose.yml`; compose namespaces it on the daemon to `${COMPOSE_PROJECT_NAME}_jupyterhub_docker` and mounts it on the hub at the socket-dir path. No host bind, no second container, no token, no `.env` change. To wipe state, operator can `docker volume rm ${COMPOSE_PROJECT_NAME}_jupyterhub_docker` (must be down first).
 
 ## Caveats
 

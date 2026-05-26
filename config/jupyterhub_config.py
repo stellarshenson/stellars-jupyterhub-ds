@@ -597,7 +597,7 @@ c.JupyterHub.tornado_settings = {
 # lab, otherwise Docker silently auto-creates an empty volume with the bare name
 # and the per-user subdir lookup fails with 404 at container start.
 JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR = os.environ.get("JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR", "/var/run/stellars-docker-proxy-sockets")
-JUPYTERHUB_DOCKER_PROXY_VOLUME = f"{COMPOSE_PROJECT_NAME}_jupyterhub_docker"
+JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME = f"{COMPOSE_PROJECT_NAME}_jupyterhub_docker"
 
 c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     branding,                                                # icon static names and URLs from setup_branding()
@@ -609,7 +609,7 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,     # prefixes reserved for JupyterHub/platform
     compose_project=COMPOSE_PROJECT_NAME,                    # docker compose project label so user containers group with the hub in `docker compose ls`
     docker_proxy_socket_dir=JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR,   # path inside hub where per-user sockets live (backed by named volume)
-    docker_proxy_volume_name=JUPYTERHUB_DOCKER_PROXY_VOLUME,      # named docker volume; the spawner subpath-mounts this into each lab
+    docker_proxy_volume_name=JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME,      # named docker volume; the spawner subpath-mounts this into each lab
 )
 
 
