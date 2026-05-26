@@ -340,11 +340,11 @@
             <div class="form-text">Counts are hard limits (create rejected at the cap). Storage is a soft budget (blocks new creates when exceeded). CPU/memory caps apply to each container the user creates.</div>
           </div>
           <div class="form-check mt-2">
-            <input class="form-check-input" type="checkbox" id="config-docker-privileged">
+            <input class="form-check-input" type="checkbox" id="config-docker-privileged" disabled>
             <label class="form-check-label" for="config-docker-privileged">
-              Privileged container mode
+              Docker (root)
             </label>
-            <div class="form-text">Runs user containers with --privileged flag (full host access). Orthogonal to the access type above.</div>
+            <div class="form-text">Runs the user container with --privileged so docker commands inside it have root on the host kernel. Requires normal or limited Docker access to be enabled; raises that grant's privilege, does not bypass the proxy.</div>
           </div>
         </div>
 
@@ -430,10 +430,17 @@ require(["jquery"], function($) {
   $('#config-gpu-all').on('change', updateGpuControls);
 
   // Docker: normal and limited are mutually exclusive; the limited config panel
-  // (quota + caps) is enabled only when limited access is on.
+  // (quota + caps) is enabled only when limited access is on; Docker (root) is
+  // a privilege escalation of an existing access grant, so it's enabled only
+  // when normal or limited is on (and unchecked when neither is).
   function updateDockerControls() {
     var limited = $('#config-docker-limited').is(':checked');
+    var access = $('#config-docker-access').is(':checked');
     $('#config-docker-limited-config').find('input').prop('disabled', !limited);
+    var hasAccess = limited || access;
+    var $root = $('#config-docker-privileged');
+    $root.prop('disabled', !hasAccess);
+    if (!hasAccess) { $root.prop('checked', false); }
   }
   $('#config-docker-access').on('change', function() {
     if (this.checked) { $('#config-docker-limited').prop('checked', false); }
@@ -491,9 +498,9 @@ require(["jquery"], function($) {
       var envCount = (group.config.env_vars && group.config.env_vars.length) || 0;
       if (envCount > 0) features.push(envCount + ' Var' + (envCount !== 1 ? 's' : ''));
       if (group.config.gpu_access) features.push('GPU');
-      if (group.config.docker_access) features.push('Docker');
-      if (group.config.docker_limited) features.push('Docker (limited)');
-      if (group.config.docker_privileged) features.push('Privileged');
+      if (group.config.docker_access || group.config.docker_limited || group.config.docker_privileged) {
+        features.push('Docker');
+      }
       if (group.config.mem_limit_enabled && group.config.mem_limit_gb > 0) {
         features.push('Mem');
       }
@@ -810,11 +817,18 @@ require(["jquery"], function($) {
       return;
     }
 
-    // Docker access: normal and limited are mutually exclusive
+    // Docker access: normal and limited are mutually exclusive; Docker (root)
+    // is a privilege escalation of an existing grant, not a standalone option.
     var dockerAccess = $('#config-docker-access').is(':checked');
     var dockerLimited = $('#config-docker-limited').is(':checked');
+    var dockerPrivileged = $('#config-docker-privileged').is(':checked');
     if (dockerAccess && dockerLimited) {
       $('#config-error').text('A group cannot grant both normal and limited Docker access - choose one.').show();
+      $('#config-error')[0].scrollIntoView({behavior: 'smooth', block: 'center'});
+      return;
+    }
+    if (dockerPrivileged && !(dockerAccess || dockerLimited)) {
+      $('#config-error').text('Docker (root) requires either normal or limited Docker access to be enabled.').show();
       $('#config-error')[0].scrollIntoView({behavior: 'smooth', block: 'center'});
       return;
     }
@@ -827,13 +841,13 @@ require(["jquery"], function($) {
       gpu_device_ids: gpuDeviceIds,
       docker_access: dockerAccess,
       docker_limited: dockerLimited,
+      docker_privileged: dockerPrivileged,
       docker_limited_max_containers: parseInt($('#config-docker-max-containers').val(), 10) || 0,
       docker_limited_max_volumes: parseInt($('#config-docker-max-volumes').val(), 10) || 0,
       docker_limited_max_networks: parseInt($('#config-docker-max-networks').val(), 10) || 0,
       docker_limited_max_storage_gb: parseFloat($('#config-docker-max-storage').val()) || 0,
       docker_limited_cpu_cap_cores: parseFloat($('#config-docker-cpu-cap').val()) || 0,
       docker_limited_mem_cap_gb: parseFloat($('#config-docker-mem-cap').val()) || 0,
-      docker_privileged: $('#config-docker-privileged').is(':checked'),
       mem_limit_enabled: $('#config-mem-limit-enabled').is(':checked'),
       mem_limit_gb: parseFloat($('#config-mem-limit-gb').val()) || 0,
       mem_swap_disabled: $('#config-mem-swap-disabled').is(':checked'),

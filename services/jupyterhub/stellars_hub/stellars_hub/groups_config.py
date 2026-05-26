@@ -72,15 +72,21 @@ def validate_gpu_selection(gpu_access, gpu_all, gpu_device_ids):
     return True, ''
 
 
-def validate_docker_selection(docker_access, docker_limited):
+def validate_docker_selection(docker_access, docker_limited, docker_privileged=False):
     """Validate a group's Docker access choice. Returns (valid, error_message).
 
     Within one group, normal access (raw socket - sees all, no quota) and limited
     access (per-user ownership-filtering proxy) are mutually exclusive. They are
     orthogonal grants, but a single group must pick one or neither.
+
+    Docker (root) - the --privileged flag on the user container - only makes
+    sense alongside one of the two access modes (it raises the privilege of
+    the same Docker access, it is not a third independent grant).
     """
     if docker_access and docker_limited:
         return False, 'A group cannot grant both normal and limited Docker access - choose one.'
+    if docker_privileged and not (docker_access or docker_limited):
+        return False, 'Docker (root) requires either normal or limited Docker access to be enabled.'
     return True, ''
 
 

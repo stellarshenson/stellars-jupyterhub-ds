@@ -23,16 +23,27 @@ flowchart LR
 
 ## Group config (admin UI: `/hub/groups`)
 
-- `docker_limited` (bool) - orthogonal to `docker_access` (normal) and `docker_privileged`; XOR with `docker_access` within one group
-- counts: `max_containers` (10), `max_volumes` (10), `max_networks` (3)
-- storage: `max_storage_gb` (50) - soft (measure-and-block-new)
-- caps: `cpu_cap_cores` (2), `mem_cap_gb` (8) per created container
+Three Docker fields, with the four valid combinations spelled out in the UI:
+
+| `docker_access` | `docker_limited` | `docker_privileged` | UI shorthand |
+|---|---|---|---|
+| 1 | 0 | 0 | Docker |
+| 0 | 1 | 0 | Docker limited |
+| 1 | 0 | 1 | Docker + Docker root |
+| 0 | 1 | 1 | Docker limited + Docker root |
+
+- `docker_access` - normal access: raw `/var/run/docker.sock` (sees all, no quota)
+- `docker_limited` - per-user filtered socket (this feature)
+- `docker_privileged` - **"Docker (root)"**: runs the user container with `--privileged`. This is a privilege escalation of an existing grant, not a third independent option. It does **not** bypass the proxy on a limited grant - it raises the user container's kernel privileges so docker commands inside it have root on the host kernel
+- limited quota/caps: `max_containers` (10), `max_volumes` (10), `max_networks` (3), `max_storage_gb` (50, soft), `cpu_cap_cores` (2), `mem_cap_gb` (8 per created container)
+
+The UI exposes the rules directly: normal and limited are mutually exclusive within a group; the **Docker (root)** checkbox is disabled (and auto-unchecked) when neither is selected. The features pill on the groups table is a single `Docker` chip whenever any of the three is on - it indicates "this group has Docker config" without revealing flavour.
 
 ## Precedence
 
 - Across groups: normal supersedes limited (raw socket makes the proxy moot); grants OR; quotas max-wins
 - Within a group: normal XOR limited
-- Privileged is orthogonal to both
+- Docker (root) requires normal or limited in the same group (validated server-side: `invalid_docker_selection`); across groups it OR-accumulates with the access grants from the other groups
 
 ## Labels stamped on every create
 
