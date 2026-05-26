@@ -578,11 +578,14 @@ c.JupyterHub.tornado_settings = {
 # effective config (docker/gpu/env vars), applies it to spawner, then injects
 # CHP favicon proxy routes and JupyterLab icon URLs.
 # Docker-proxy (limited-docker users): runs in-process inside this hub
-# container - same asyncio event loop, no token, no second container. The host
-# directory holding per-user listener sockets is set by the Dockerfile ENV
-# JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR (default /var/run/stellars-proxy); the hub
-# container must bind-mount that path from the host.
+# container on the same asyncio event loop as the rest of the hub. Backed by
+# a named docker volume (Dockerfile ENV JUPYTERHUB_DOCKER_PROXY_VOLUME, default
+# `jupyterhub_docker`) mounted at the path Dockerfile ENV
+# JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR sets (default `/var/run/stellars-proxy`).
+# The spawner mounts a per-user subpath of that same named volume into each lab,
+# so each lab sees only its own docker.sock under /run/dockersock. No host path.
 JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR = os.environ.get("JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR", "/var/run/stellars-proxy")
+JUPYTERHUB_DOCKER_PROXY_VOLUME = os.environ.get("JUPYTERHUB_DOCKER_PROXY_VOLUME", "jupyterhub_docker")
 
 c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     branding,                                                # icon static names and URLs from setup_branding()
@@ -593,7 +596,8 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     reserved_env_var_names=RESERVED_ENV_VAR_NAMES,           # names groups cannot override
     reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,     # prefixes reserved for JupyterHub/platform
     compose_project=COMPOSE_PROJECT_NAME,                    # docker compose project label so user containers group with the hub in `docker compose ls`
-    docker_proxy_socket_dir=JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR,   # host dir holding the in-process proxy's per-user sockets
+    docker_proxy_socket_dir=JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR,   # path inside hub where per-user sockets live (backed by named volume)
+    docker_proxy_volume_name=JUPYTERHUB_DOCKER_PROXY_VOLUME,      # named docker volume; the spawner subpath-mounts this into each lab
 )
 
 

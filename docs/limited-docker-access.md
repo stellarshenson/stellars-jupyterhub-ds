@@ -7,13 +7,13 @@ Per-user filtered Docker socket. A user in a `docker-limited` group manages only
 ```mermaid
 flowchart LR
     CLI[docker CLI in<br/>user's JupyterLab]
-    SOCK[(per-user listener<br/>/var/run/stellars-proxy/user.sock)]
+    VOL[(named volume<br/>jupyterhub_docker)]
     HUB[JupyterHub container<br/>+ in-process Manager<br/>+ N per-user UnixSite listeners]
     DAEMON[Host Docker daemon]
     DESKTOP[Docker Desktop<br/>operator sees all]
 
-    CLI -->|DOCKER_HOST<br/>unix:///run/dockersock/docker.sock| SOCK
-    HUB -->|binds N listeners| SOCK
+    HUB ---|/var/run/stellars-proxy| VOL
+    CLI -->|DOCKER_HOST<br/>unix:///run/dockersock/docker.sock<br/>Subpath: user| VOL
     HUB -->|/var/run/docker.sock| DAEMON
     DAEMON --- DESKTOP
     HUB -.->|spawns| CLI
@@ -81,9 +81,10 @@ flowchart TD
 ## Lifecycle
 
 - The proxy is **embedded in the hub container** - no second compose service, no admin HTTP, no token. The module-singleton `Manager` lives in the hub's own asyncio event loop alongside the activity sampler and idle culler
-- On `pre_spawn_hook` the hub does `await register_user(...)` directly - the Manager creates a per-user `UnixSite` listener at `/var/run/stellars-proxy/<user>.sock` with the resolved quotas. Re-register is idempotent: replaces the previous listener so quota changes apply on the user's next spawn
-- The spawner bind-mounts that single socket file from the host into the user container at `/run/dockersock/docker.sock`; `DOCKER_HOST` points at it
-- On `post_stop_hook` the hub does `await unregister_user(...)`; the listener tears down and the socket file is removed
+- The socket directory `/var/run/stellars-proxy` inside the hub is backed by a named docker volume `jupyterhub_docker` (declared in `compose.yml`, managed by Docker, no host path)
+- On `pre_spawn_hook` the hub does `await register_user(...)` directly - the Manager creates a per-user `UnixSite` listener at `/var/run/stellars-proxy/<user>/docker.sock` with the resolved quotas. Re-register is idempotent: replaces the previous listener so quota changes apply on the user's next spawn
+- The spawner mounts the same named volume into the user container with `Subpath: <user>`, so each lab sees ONLY its own subdirectory under `/run/dockersock/` containing the single `docker.sock` it's allowed to talk to. Mount-level isolation, no cross-user visibility
+- On `post_stop_hook` the hub does `await unregister_user(...)`; the listener tears down, the socket file is removed, and the now-empty per-user subdirectory is cleaned up too
 - Hub restart wipes all listeners (stateless); the next spawn re-registers automatically via `pre_spawn_hook`
 
 ## Modules
@@ -102,14 +103,15 @@ flowchart TD
 
 ## Configuration
 
-There is exactly one knob, and it's baked into the image. Operators do nothing:
+Two knobs, both baked into the image as Dockerfile `ENV` lines. Operators do nothing:
 
 | Env | Default | Purpose |
 |---|---|---|
-| `JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR` | `/var/run/stellars-proxy` | Set in `Dockerfile.jupyterhub` as an `ENV`. Host directory where the in-process proxy writes per-user sockets, and source path the spawner bind-mounts from into user containers. Override only at image build time if you really need a different host path; matching compose bind-mount must change too |
+| `JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR` | `/var/run/stellars-proxy` | Path inside the hub container where the in-process proxy writes per-user listener sockets. Backed by a named docker volume - not a host path |
+| `JUPYTERHUB_DOCKER_PROXY_VOLUME` | `jupyterhub_docker` | Name of the named docker volume that backs the socket directory. The spawner subpath-mounts the same volume into each lab so each lab sees only its own subdirectory |
 | `COMPOSE_PROJECT_NAME` | `jupyterhub` | compose project stamped on ad-hoc creates |
 
-Compose-side: the hub container has a single host bind `/var/run/stellars-proxy:/var/run/stellars-proxy` that exposes the proxy's socket directory to DockerSpawner. No second container, no token, no `.env` change needed.
+Compose-side: a single named volume `jupyterhub_docker` is declared at the bottom of `compose.yml` and mounted on the hub at the socket-dir path. No host bind, no second container, no token, no `.env` change. To wipe state, operator can `docker volume rm jupyterhub_docker` (must be down first).
 
 ## Caveats
 
@@ -119,6 +121,34 @@ Compose-side: the hub container has a single host bind `/var/run/stellars-proxy:
 - Interactive TTY hijack (`exec -it`, `attach`) is not specially handled in v1; non-interactive streams work
 - Hub restart wipes all listeners; running limited users need to restart their labs to be re-registered. Acceptable since a hub restart already stops all user spawners
 - Process-compromise blast radius: a proxy bug inside the hub process can affect the hub itself. v1 acceptable trade-off for the convenience-driven model; the proxy code is small, well-tested, and entirely on the same loop as the hub's existing services
+
+## Diagnostic endpoint (planned)
+
+A future authenticated `GET /hub/api/admin/docker-proxy/status` (admin-only) will expose proxy state as JSON for triage and a possible future status page:
+
+```json
+{
+  "socket_dir": "/var/run/stellars-proxy",
+  "registered": [
+    {
+      "user": "konrad.jelen",
+      "socket_path": "/var/run/stellars-proxy/konrad.jelen.sock",
+      "since": "2026-05-26T15:14:06Z",
+      "config": {
+        "max_containers": 4,
+        "max_volumes": 4,
+        "max_networks": 1,
+        "max_storage_gb": 50.0,
+        "cpu_cap_cores": 4.0,
+        "mem_cap_gb": 16.0,
+        "compose_project": "stellars-tech-ai-lab"
+      }
+    }
+  ]
+}
+```
+
+Backed by `Manager.registered()` which already returns this shape. Auth uses the same admin-required decorator the existing `/hub/api/admin/*` handlers use. Until the endpoint lands, the same data is reachable via `docker exec <hub> ls -la /var/run/stellars-proxy/` (one socket file per registered user) and the per-spawn `[Groups]` log line that carries `docker_limits=[...]` inline. Not yet implemented.
 
 ## Identity model
 

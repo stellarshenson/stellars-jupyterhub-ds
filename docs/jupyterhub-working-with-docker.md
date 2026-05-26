@@ -42,18 +42,18 @@ A user can be in several groups. `group_resolver.resolve_group_config` merges th
 flowchart LR
     USER[user's JupyterLab]
     SOCK_RAW[(host /var/run/docker.sock)]
-    SOCK_PROXY[(per-user listener<br/>/var/run/stellars-proxy/user.sock)]
+    VOL[(named volume<br/>jupyterhub_docker)]
     HUB[JupyterHub container<br/>+ in-process Manager<br/>+ N per-user UnixSite listeners]
     DAEMON[Host Docker daemon]
 
     USER -->|normal| SOCK_RAW --> DAEMON
-    USER -->|limited<br/>DOCKER_HOST set| SOCK_PROXY
-    HUB --> SOCK_PROXY
+    USER -->|limited<br/>Subpath: user<br/>DOCKER_HOST unix sock| VOL
+    HUB ---|/var/run/stellars-proxy| VOL
     HUB --> SOCK_RAW
     SOCK_RAW -.privileged flag.-> USER
 ```
 
-The proxy runs **in-process inside the hub container**, on the same asyncio event loop JupyterHub itself runs on. One process, one container in compose, no admin HTTP surface, no token. `pre_spawn_hook` calls `await register_user(...)` directly; a module-singleton `Manager` instantiates a per-user `UnixSite` at `/var/run/stellars-proxy/<user>.sock` with that spawn's resolved quotas. The spawner bind-mounts that single socket file into the user container as `/run/dockersock/docker.sock` and sets `DOCKER_HOST`. Identity stays baked-at-socket. On `post_stop_hook` the listener tears down and the socket file is removed. Hub restart loses all listeners; the next spawn re-creates them.
+The proxy runs **in-process inside the hub container**, on the same asyncio event loop JupyterHub itself runs on. One process, one container in compose, no admin HTTP surface, no token, no host path. Storage is a named docker volume `jupyterhub_docker` shared between the hub and each user lab via Docker's `Subpath` mount option, giving mount-level per-user isolation. `pre_spawn_hook` calls `await register_user(...)` directly; a module-singleton `Manager` instantiates a per-user `UnixSite` at `/var/run/stellars-proxy/<user>/docker.sock` with that spawn's resolved quotas. The spawner subpath-mounts the same named volume into the user container at `/run/dockersock`, so the lab sees only its own subdirectory. On `post_stop_hook` the listener tears down and the socket is removed. Hub restart loses all listeners; the next spawn re-creates them.
 
 ## Common gotcha
 

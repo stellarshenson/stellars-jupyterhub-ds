@@ -23,7 +23,7 @@ from .config import (
 from .manager import Manager
 from .server import classify, create_app, run
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "ProxyConfig",

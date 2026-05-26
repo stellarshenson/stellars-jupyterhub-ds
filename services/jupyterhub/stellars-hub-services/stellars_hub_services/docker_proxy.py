@@ -2,10 +2,11 @@
 
 The proxy runs inside the JupyterHub process - same asyncio event loop,
 same container, no HTTP, no token, no second compose service. One module
-singleton `Manager` holds N per-user `UnixSite` listeners under
-`/var/run/stellars-proxy/` (a host bind mount in the hub container); each
-listener is the same per-owner aiohttp app the package was already built
-around.
+singleton `Manager` holds N per-user `UnixSite` listeners under a named
+docker volume (default `jupyterhub_docker`) mounted into the hub at
+`/var/run/stellars-proxy/`. The volume is shared with each user lab via
+`Subpath: <user>` so each lab sees only its own subdirectory and the
+single `docker.sock` inside it - mount-level isolation, no host path.
 
 `pre_spawn_hook` calls `register_user` directly (it's async, same loop);
 `post_stop_hook` calls `unregister_user`. Quotas are re-applied on every
@@ -22,6 +23,7 @@ log = logging.getLogger('jupyterhub.docker_proxy')
 SOCK_MOUNT_DIR = '/run/dockersock'
 SOCK_FILENAME = 'docker.sock'
 DEFAULT_SOCKET_DIR = '/var/run/stellars-proxy'
+DEFAULT_VOLUME_NAME = 'jupyterhub_docker'
 
 _manager = None
 
@@ -46,7 +48,7 @@ def docker_host_url():
 
 
 def _socket_host_path(socket_dir, user):
-    return os.path.join(socket_dir, f"{user}.sock")
+    return os.path.join(socket_dir, user, "docker.sock")
 
 
 def _build_overrides(resolved, compose_project=''):

@@ -166,11 +166,12 @@ ENV JUPYTERHUB_DOCKER_TIMEOUT=360
 ENV JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB=10
 ENV JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE_GB=50
 ENV JUPYTERHUB_MEMORY_MAX_USAGE_FRACTION=0.25
-# In-process docker-proxy (limited-docker users). Path baked into the image
-# so it stays out of compose.yml; the operator only needs to bind-mount
-# /var/run/stellars-proxy from the host into the hub container at the same
-# path (already wired in compose.yml).
+# In-process docker-proxy (limited-docker users). Paths baked into the image
+# so they stay out of compose.yml. The hub mounts the named docker volume
+# JUPYTERHUB_DOCKER_PROXY_VOLUME at JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR; the
+# spawner subpath-mounts the same named volume into each user lab.
 ENV JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR=/var/run/stellars-proxy
+ENV JUPYTERHUB_DOCKER_PROXY_VOLUME=jupyterhub_docker
 # User environment customization
 ENV JUPYTERLAB_AUX_SCRIPTS_PATH=
 ENV JUPYTERLAB_AUX_MENU_PATH=

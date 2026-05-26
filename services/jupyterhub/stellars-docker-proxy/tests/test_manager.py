@@ -33,7 +33,7 @@ async def test_register_creates_socket_with_expected_mode(socket_dir, upstream):
     mgr = Manager(socket_dir=socket_dir, upstream_socket=upstream)
     try:
         path = await mgr.register("alice")
-        assert path == os.path.join(socket_dir, "alice.sock")
+        assert path == os.path.join(socket_dir, "alice", "docker.sock")
         assert os.path.exists(path)
         # default socket_mode is 0o666 (world rw)
         mode = stat.S_IMODE(os.stat(path).st_mode)
@@ -69,7 +69,7 @@ async def test_register_is_idempotent_replace(socket_dir, upstream):
         info = mgr.registered()
         assert len(info) == 1
         assert info[0]["config"]["max_containers"] == 5
-        assert os.path.exists(os.path.join(socket_dir, "alice.sock"))
+        assert os.path.exists(os.path.join(socket_dir, "alice", "docker.sock"))
     finally:
         await mgr.close()
 
@@ -79,7 +79,7 @@ async def test_unregister_removes_socket(socket_dir, upstream):
     mgr = Manager(socket_dir=socket_dir, upstream_socket=upstream)
     try:
         await mgr.register("alice")
-        path = os.path.join(socket_dir, "alice.sock")
+        path = os.path.join(socket_dir, "alice", "docker.sock")
         assert os.path.exists(path)
         removed = await mgr.unregister("alice")
         assert removed is True
@@ -108,8 +108,8 @@ async def test_multiple_users_independent(socket_dir, upstream):
         info = {r["user"]: r for r in mgr.registered()}
         assert info["alice"]["config"]["max_containers"] == 1
         assert info["bob"]["config"]["max_containers"] == 9
-        assert os.path.exists(os.path.join(socket_dir, "alice.sock"))
-        assert os.path.exists(os.path.join(socket_dir, "bob.sock"))
+        assert os.path.exists(os.path.join(socket_dir, "alice", "docker.sock"))
+        assert os.path.exists(os.path.join(socket_dir, "bob", "docker.sock"))
         await mgr.unregister("alice")
         assert mgr.is_registered("bob")
         assert not mgr.is_registered("alice")
@@ -125,8 +125,8 @@ async def test_close_tears_everything_down(socket_dir, upstream):
     assert len(mgr.registered()) == 2
     await mgr.close()
     assert mgr.registered() == []
-    assert not os.path.exists(os.path.join(socket_dir, "alice.sock"))
-    assert not os.path.exists(os.path.join(socket_dir, "bob.sock"))
+    assert not os.path.exists(os.path.join(socket_dir, "alice", "docker.sock"))
+    assert not os.path.exists(os.path.join(socket_dir, "bob", "docker.sock"))
 
 
 @pytest.mark.asyncio
@@ -135,5 +135,21 @@ async def test_register_rejects_empty_user(socket_dir, upstream):
     try:
         with pytest.raises(ValueError):
             await mgr.register("")
+    finally:
+        await mgr.close()
+
+
+@pytest.mark.asyncio
+async def test_register_clears_stale_directory_at_socket_path(socket_dir, upstream):
+    """If something previously created a directory at <user>/docker.sock (e.g.
+    Docker auto-creating the bind source as a dir), register() cleans it up
+    instead of failing."""
+    os.makedirs(os.path.join(socket_dir, "alice", "docker.sock"), exist_ok=True)
+    mgr = Manager(socket_dir=socket_dir, upstream_socket=upstream)
+    try:
+        path = await mgr.register("alice")
+        assert path == os.path.join(socket_dir, "alice", "docker.sock")
+        # the path is now a socket file, not the stale directory
+        assert stat.S_ISSOCK(os.stat(path).st_mode)
     finally:
         await mgr.close()
