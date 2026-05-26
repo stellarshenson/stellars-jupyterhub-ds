@@ -319,9 +319,6 @@
                 </tr>
               </thead>
               <tbody>
-                <tr class="table-light">
-                  <th colspan="2" class="small text-uppercase text-muted">Quotas &amp; caps</th>
-                </tr>
                 <tr>
                   <td>
                     <strong>Max containers</strong>
@@ -363,9 +360,6 @@
                     <div class="text-muted small">Per-container memory cap applied as a default. A user request exceeding this is rejected.</div>
                   </td>
                   <td><input type="number" min="0" step="1" class="form-control form-control-sm text-end" id="config-docker-mem-cap"></td>
-                </tr>
-                <tr class="table-light">
-                  <th colspan="2" class="small text-uppercase text-muted">Options</th>
                 </tr>
                 <tr>
                   <td>
@@ -594,19 +588,19 @@ require(["jquery"], function($) {
           '<span title="' + formatMembersTooltip(group.members) + '">' + group.member_count + '</span>' +
         '</td>' +
         '<td class="text-center text-nowrap">' +
-          '<button class="btn btn-outline-primary btn-sm me-1 btn-config" data-name="' + escapeAttr(group.name) + '" title="Configure group">' +
-            '<i class="fa fa-cog fa-fw"></i>' +
+          '<button class="btn btn-outline-primary btn-sm me-1 btn-config d-inline-flex align-items-center justify-content-center" style="width: 2rem; height: 2rem; padding: 0;" data-name="' + escapeAttr(group.name) + '" title="Configure group">' +
+            '<i class="fa fa-cog"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-up" data-name="' + escapeAttr(group.name) + '" title="Move up (higher priority)"' +
+          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-up d-inline-flex align-items-center justify-content-center" style="width: 2rem; height: 2rem; padding: 0;" data-name="' + escapeAttr(group.name) + '" title="Move up (higher priority)"' +
             (isFirst ? ' disabled' : '') + '>' +
-            '<i class="fa fa-arrow-up fa-fw"></i>' +
+            '<i class="fa fa-arrow-up"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-down" data-name="' + escapeAttr(group.name) + '" title="Move down (lower priority)"' +
+          '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-down d-inline-flex align-items-center justify-content-center" style="width: 2rem; height: 2rem; padding: 0;" data-name="' + escapeAttr(group.name) + '" title="Move down (lower priority)"' +
             (isLast ? ' disabled' : '') + '>' +
-            '<i class="fa fa-arrow-down fa-fw"></i>' +
+            '<i class="fa fa-arrow-down"></i>' +
           '</button>' +
-          '<button class="btn btn-outline-danger btn-sm btn-delete" data-name="' + escapeAttr(group.name) + '" title="Delete group">' +
-            '<i class="fa fa-trash fa-fw"></i>' +
+          '<button class="btn btn-outline-danger btn-sm btn-delete d-inline-flex align-items-center justify-content-center" style="width: 2rem; height: 2rem; padding: 0;" data-name="' + escapeAttr(group.name) + '" title="Delete group">' +
+            '<i class="fa fa-trash"></i>' +
           '</button>' +
         '</td>' +
       '</tr>';
