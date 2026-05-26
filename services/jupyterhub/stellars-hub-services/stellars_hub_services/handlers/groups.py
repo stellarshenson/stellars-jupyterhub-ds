@@ -8,10 +8,9 @@ from tornado import web
 
 from ..group_resolver import is_reserved_env_var
 from ..groups_config import (
+    GroupConfigValidator,
     GroupsConfigManager,
-    validate_docker_selection,
     validate_group_name,
-    validate_gpu_selection,
 )
 
 
@@ -227,6 +226,14 @@ class GroupsConfigHandler(BaseHandler):
                     config_dict[_key] = max(0.0, round(float(body[_key]), 1))
                 except (TypeError, ValueError):
                     config_dict[_key] = 0
+        if 'docker_limited_allow_dangerous_flags' in body:
+            config_dict['docker_limited_allow_dangerous_flags'] = bool(body['docker_limited_allow_dangerous_flags'])
+        if 'docker_limited_user_compose_project_enabled' in body:
+            config_dict['docker_limited_user_compose_project_enabled'] = bool(body['docker_limited_user_compose_project_enabled'])
+        if 'docker_limited_user_compose_project_allow_override' in body:
+            config_dict['docker_limited_user_compose_project_allow_override'] = bool(body['docker_limited_user_compose_project_allow_override'])
+        if 'docker_limited_reveal_hub_network' in body:
+            config_dict['docker_limited_reveal_hub_network'] = bool(body['docker_limited_reveal_hub_network'])
         if 'docker_privileged' in body:
             config_dict['docker_privileged'] = bool(body['docker_privileged'])
         if 'mem_limit_enabled' in body:
@@ -255,27 +262,14 @@ class GroupsConfigHandler(BaseHandler):
         merged = existing['config'].copy()
         merged.update(config_dict)
 
-        # GPU selection must be coherent: access on + not all + no specific GPU is invalid
-        gpu_valid, gpu_msg = validate_gpu_selection(
-            merged.get('gpu_access'),
-            merged.get('gpu_all', True),
-            merged.get('gpu_device_ids') or [],
-        )
-        if not gpu_valid:
+        # Per-field coherence: GPU selection, Docker mutual exclusivity + quota
+        # sanity, CPU cap presence-with-positive-value, Mem cap likewise. The
+        # validator class returns the first failure; the handler maps the error
+        # code to HTTP 400 with a stable JSON shape.
+        valid, code, msg = GroupConfigValidator.validate_all(merged)
+        if not valid:
             self.set_status(400)
-            self.finish({'error': 'invalid_gpu_selection', 'message': gpu_msg})
-            return
-
-        # Docker access must be coherent: a group cannot grant both normal and
-        # limited access (they are orthogonal grants, mutually exclusive per group)
-        docker_valid, docker_msg = validate_docker_selection(
-            merged.get('docker_access'),
-            merged.get('docker_limited'),
-            merged.get('docker_privileged'),
-        )
-        if not docker_valid:
-            self.set_status(400)
-            self.finish({'error': 'invalid_docker_selection', 'message': docker_msg})
+            self.finish({'error': code, 'message': msg})
             return
 
         manager.save_config(group_name, description=description, config_dict=merged)

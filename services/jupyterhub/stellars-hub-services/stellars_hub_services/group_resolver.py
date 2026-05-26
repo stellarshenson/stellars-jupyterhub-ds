@@ -82,6 +82,10 @@ def resolve_group_config(
           'docker_limited_max_storage_gb': float,
           'docker_limited_cpu_cap_cores': float,
           'docker_limited_mem_cap_gb': float,
+          'docker_limited_allow_dangerous_flags': bool,  # OR across limited groups
+          'docker_limited_user_compose_project_enabled': bool,
+          'docker_limited_user_compose_project_allow_override': bool,
+          'docker_limited_reveal_hub_network': bool,
           'docker_privileged': bool,
           'mem_limit_gb': float | None,  # biggest enabled value, None if no cap
           'mem_swap_disabled': bool,     # swap policy of the winning mem-limit group
@@ -103,6 +107,10 @@ def resolve_group_config(
     docker_access = False
     docker_limited = False
     dl_quota = {k: 0 for k in _DL_DEFAULTS}
+    docker_limited_allow_dangerous_flags = False
+    docker_limited_user_compose_project_enabled = False
+    docker_limited_user_compose_project_allow_override = False
+    docker_limited_reveal_hub_network = False
     docker_privileged = False
     mem_limit_gb = None
     mem_swap_disabled = False
@@ -131,6 +139,20 @@ def resolve_group_config(
                     val = 0.0
                 if val > dl_quota[key]:
                     dl_quota[key] = val
+            # OR-accumulate the dangerous-flags bypass: if ANY granting group
+            # turns it on, the user gets it. Independent of docker_privileged.
+            if inner.get('docker_limited_allow_dangerous_flags'):
+                docker_limited_allow_dangerous_flags = True
+            # OR-accumulate compose-project enforcement and allow-override.
+            # Both have True defaults in default_config so a freshly created
+            # limited group automatically opts the user in to per-user grouping
+            # while still respecting the user's own `docker compose -p`.
+            if inner.get('docker_limited_user_compose_project_enabled'):
+                docker_limited_user_compose_project_enabled = True
+            if inner.get('docker_limited_user_compose_project_allow_override'):
+                docker_limited_user_compose_project_allow_override = True
+            if inner.get('docker_limited_reveal_hub_network'):
+                docker_limited_reveal_hub_network = True
         if inner.get('docker_privileged'):
             docker_privileged = True
 
@@ -176,9 +198,15 @@ def resolve_group_config(
 
     # Normal (raw) Docker access supersedes limited (proxy): wider wins, and a
     # raw socket makes the filtered one moot. So limited only takes effect when
-    # no group grants normal access.
+    # no group grants normal access. Same applies to the limited-only bypass:
+    # collapses to False when docker_access wins (it has no limited proxy to
+    # relax).
     if docker_access:
         docker_limited = False
+        docker_limited_allow_dangerous_flags = False
+        docker_limited_user_compose_project_enabled = False
+        docker_limited_user_compose_project_allow_override = False
+        docker_limited_reveal_hub_network = False
     if docker_limited:
         for key, default in _DL_DEFAULTS.items():
             if dl_quota[key] <= 0:
@@ -197,6 +225,10 @@ def resolve_group_config(
         'docker_limited_max_storage_gb': dl_quota['max_storage_gb'],
         'docker_limited_cpu_cap_cores': dl_quota['cpu_cap_cores'],
         'docker_limited_mem_cap_gb': dl_quota['mem_cap_gb'],
+        'docker_limited_allow_dangerous_flags': docker_limited_allow_dangerous_flags,
+        'docker_limited_user_compose_project_enabled': docker_limited_user_compose_project_enabled,
+        'docker_limited_user_compose_project_allow_override': docker_limited_user_compose_project_allow_override,
+        'docker_limited_reveal_hub_network': docker_limited_reveal_hub_network,
         'docker_privileged': docker_privileged,
         'mem_limit_gb': mem_limit_gb,
         'mem_swap_disabled': mem_swap_disabled,

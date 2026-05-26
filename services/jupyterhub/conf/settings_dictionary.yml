@@ -53,6 +53,15 @@ Docker:
     description: Per-user memory warning threshold as fraction of host RAM (e.g. 0.25 = 25%)
     default: "0.25"
 
+Docker Proxy (limited-docker users):
+  - name: JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR
+    description: Path inside the hub container where the in-process proxy writes per-user listener sockets; backed by a named docker volume (no host path)
+    default: /var/run/stellars-docker-proxy-sockets
+
+  - name: JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE
+    description: Python str.format template for per-user `com.docker.compose.project` label stamped on ad-hoc `docker run` containers when a docker-limited group enables it. Placeholders - {compose_project} (hub project), {username}. User's own `docker compose -p` is still respected when the group's allow-override is on
+    default: "{compose_project}_{username}_containers"
+
 Docker Spawner:
   - name: JUPYTERHUB_NOTEBOOK_IMAGE
     description: User container image

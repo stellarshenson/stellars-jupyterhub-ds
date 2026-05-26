@@ -249,6 +249,99 @@ class TestDockerLimited:
         assert r["docker_limited"] is True
         assert r["docker_access"] is False
 
+    def test_allow_dangerous_flags_off_by_default(self):
+        cfgs = [_grp("d", docker_limited=True)]
+        r = _resolve(["d"], cfgs)
+        assert r["docker_limited_allow_dangerous_flags"] is False
+
+    def test_allow_dangerous_flags_or_accumulates(self):
+        cfgs = [
+            _grp("a", docker_limited=True),
+            _grp("b", docker_limited=True, docker_limited_allow_dangerous_flags=True),
+        ]
+        r = _resolve(["a", "b"], cfgs)
+        assert r["docker_limited_allow_dangerous_flags"] is True
+
+    def test_allow_dangerous_flags_independent_of_privileged(self):
+        # docker_privileged does NOT imply allow_dangerous_flags.
+        cfgs = [_grp("p", docker_limited=True, docker_privileged=True)]
+        r = _resolve(["p"], cfgs)
+        assert r["docker_privileged"] is True
+        assert r["docker_limited_allow_dangerous_flags"] is False
+
+    def test_allow_dangerous_flags_collapses_when_normal_supersedes(self):
+        # Normal access wins over limited, and the limited-only bypass goes with it.
+        cfgs = [
+            _grp("norm", docker_access=True),
+            _grp("lim", docker_limited=True, docker_limited_allow_dangerous_flags=True),
+        ]
+        r = _resolve(["norm", "lim"], cfgs)
+        assert r["docker_limited"] is False
+        assert r["docker_limited_allow_dangerous_flags"] is False
+
+    def test_user_compose_project_defaults(self):
+        # default_config has both enforce + allow_override on, so a fresh limited
+        # group accumulates both as True.
+        cfgs = [_grp("d", docker_limited=True,
+                     docker_limited_user_compose_project_enabled=True,
+                     docker_limited_user_compose_project_allow_override=True)]
+        r = _resolve(["d"], cfgs)
+        assert r["docker_limited_user_compose_project_enabled"] is True
+        assert r["docker_limited_user_compose_project_allow_override"] is True
+
+    def test_user_compose_project_can_be_disabled(self):
+        cfgs = [_grp("d", docker_limited=True,
+                     docker_limited_user_compose_project_enabled=False,
+                     docker_limited_user_compose_project_allow_override=False)]
+        r = _resolve(["d"], cfgs)
+        assert r["docker_limited_user_compose_project_enabled"] is False
+        assert r["docker_limited_user_compose_project_allow_override"] is False
+
+    def test_user_compose_project_or_accumulates(self):
+        cfgs = [
+            _grp("a", docker_limited=True,
+                 docker_limited_user_compose_project_enabled=False,
+                 docker_limited_user_compose_project_allow_override=False),
+            _grp("b", docker_limited=True,
+                 docker_limited_user_compose_project_enabled=True,
+                 docker_limited_user_compose_project_allow_override=True),
+        ]
+        r = _resolve(["a", "b"], cfgs)
+        assert r["docker_limited_user_compose_project_enabled"] is True
+        assert r["docker_limited_user_compose_project_allow_override"] is True
+
+    def test_user_compose_project_collapses_when_normal_supersedes(self):
+        cfgs = [
+            _grp("norm", docker_access=True),
+            _grp("lim", docker_limited=True,
+                 docker_limited_user_compose_project_enabled=True,
+                 docker_limited_user_compose_project_allow_override=True),
+        ]
+        r = _resolve(["norm", "lim"], cfgs)
+        assert r["docker_limited_user_compose_project_enabled"] is False
+        assert r["docker_limited_user_compose_project_allow_override"] is False
+
+    def test_reveal_hub_network_default_on_from_default_config(self):
+        cfgs = [_grp("d", docker_limited=True, docker_limited_reveal_hub_network=True)]
+        r = _resolve(["d"], cfgs)
+        assert r["docker_limited_reveal_hub_network"] is True
+
+    def test_reveal_hub_network_or_accumulates(self):
+        cfgs = [
+            _grp("a", docker_limited=True, docker_limited_reveal_hub_network=False),
+            _grp("b", docker_limited=True, docker_limited_reveal_hub_network=True),
+        ]
+        r = _resolve(["a", "b"], cfgs)
+        assert r["docker_limited_reveal_hub_network"] is True
+
+    def test_reveal_hub_network_collapses_when_normal_supersedes(self):
+        cfgs = [
+            _grp("norm", docker_access=True),
+            _grp("lim", docker_limited=True, docker_limited_reveal_hub_network=True),
+        ]
+        r = _resolve(["norm", "lim"], cfgs)
+        assert r["docker_limited_reveal_hub_network"] is False
+
 
 class TestDockerSelectionValidation:
     def test_both_invalid(self):
