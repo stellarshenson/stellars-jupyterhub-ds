@@ -353,7 +353,13 @@ class ProxyApp:
 
         if body is not None:
             data = body
-        elif method in ("POST", "PUT", "PATCH"):
+        elif method in ("POST", "PUT", "PATCH") and request.body_exists:
+            # Only forward a body when the client actually sent one. Passing
+            # an empty StreamReader makes aiohttp upgrade to chunked transfer
+            # encoding (terminating 0\r\n\r\n) which dockerd treats as a
+            # non-empty body and rejects on endpoints like
+            # POST /containers/<id>/start (deprecated since v1.22, removed
+            # in v1.24).
             data = request.content
         else:
             data = None

@@ -173,6 +173,26 @@ async def test_action_on_owned_container_forwarded():
         assert daemon.find("POST", "/containers/c1/stop")
 
 
+async def test_empty_post_body_not_chunk_encoded_upstream():
+    # Regression: POST /containers/<id>/start with empty body. Forwarding
+    # request.content as data= used to make aiohttp upgrade to chunked
+    # transfer-encoding (terminating 0\r\n\r\n) which dockerd rejects as a
+    # "non-empty request body" on endpoints that ban bodies (start removed
+    # body support in Docker API v1.24). After the fix, _forward checks
+    # request.body_exists and passes None for empty-body requests.
+    async with running_proxy(owner="alice") as (client, daemon, _):
+        daemon.set("GET", "/containers/c1/json", {"Config": {"Labels": {OWNER_LABEL: "alice"}}})
+        daemon.set("POST", "/containers/c1/start", {}, status=204)
+        # No json= / data= -> aiohttp client sends Content-Length: 0 and no body.
+        resp = await client.post("/containers/c1/start")
+        assert resp.status == 204
+        rec = daemon.find("POST", "/containers/c1/start")[-1]
+        # The upstream call must NOT have a parsed body. (MockDaemon returns
+        # body=None on empty/un-decodable payloads; the failure mode would be
+        # an empty dict or a chunked body causing JSON parse to differ.)
+        assert rec["body"] is None
+
+
 async def test_prune_scoped_to_owner():
     async with running_proxy(owner="alice") as (client, daemon, _):
         daemon.set("POST", "/containers/prune", {"ContainersDeleted": []})
