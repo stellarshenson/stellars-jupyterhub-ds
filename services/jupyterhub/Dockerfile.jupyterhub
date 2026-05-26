@@ -108,7 +108,7 @@ RUN pip install -U --no-cache-dir /tmp/stellars_hub_services-*.whl /tmp/stellars
 COPY --chmod=755  services/jupyterhub/conf/bin/*.sh /
 COPY --chmod=755  services/jupyterhub/conf/bin/start-platform.d /start-platform.d
 COPY --chmod=600  services/jupyterhub/templates/certs /mnt/certs
-# Diagnostic README copied into the jupyterhub_docker volume via Docker's volume-init on first create.
+# Volume-purpose README for jupyterhub_docker; Docker volume-init copies it in on first create.
 COPY --chmod=644  services/jupyterhub/templates/proxy-sockets/README.md /var/run/stellars-docker-proxy-sockets/README.md
 COPY --chmod=644  services/jupyterhub/html_templates_enhanced/*.html /srv/jupyterhub/templates/
 COPY --chmod=644  services/jupyterhub/html_templates_enhanced/static/custom.css /tmp/custom.css
