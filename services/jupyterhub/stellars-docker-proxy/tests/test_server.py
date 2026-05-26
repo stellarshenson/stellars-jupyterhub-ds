@@ -189,3 +189,190 @@ async def test_passthrough_untouched():
         assert resp.status == 200
         assert (await resp.json())["Version"] == "99"
         assert "filters" not in daemon.find("GET", "/version")[-1]["query"]
+
+
+# ---------------------------------------------------------------------------
+# Per-flag bypasses and reveal toggles surfaced from ProxyConfig.
+# Confirms the server picks up each new field independently and enriches /
+# rewrites requests as designed.
+# ---------------------------------------------------------------------------
+
+
+async def test_create_privileged_allowed_when_allow_privileged_true():
+    # ProxyConfig.allow_privileged=True opens ONLY the Privileged check.
+    # Body must reach the daemon with Privileged=True preserved.
+    async with running_proxy(owner="alice", allow_privileged=True) as (client, daemon, _):
+        daemon.set("POST", "/containers/create", {"Id": "p"}, status=201)
+        resp = await client.post(
+            "/containers/create",
+            json={"Image": "x", "HostConfig": {"Privileged": True}},
+        )
+        assert resp.status == 201
+        rec = daemon.find("POST", "/containers/create")[0]
+        assert rec["body"]["HostConfig"]["Privileged"] is True
+        assert rec["body"]["Labels"][OWNER_LABEL] == "alice"
+
+
+async def test_create_host_bind_still_rejected_when_only_allow_privileged():
+    # allow_privileged on its own must NOT also unlock host binds.
+    async with running_proxy(owner="alice", allow_privileged=True) as (client, daemon, _):
+        resp = await client.post(
+            "/containers/create",
+            json={"Image": "x", "HostConfig": {"Binds": ["/etc:/etc"]}},
+        )
+        assert resp.status == 403
+        assert daemon.find("POST", "/containers/create") == []
+
+
+async def test_create_host_bind_allowed_when_allow_dangerous_flags_true():
+    # allow_dangerous_flags lets a host bind through.
+    async with running_proxy(owner="alice", allow_dangerous_flags=True) as (client, daemon, _):
+        daemon.set("POST", "/containers/create", {"Id": "hb"}, status=201)
+        resp = await client.post(
+            "/containers/create",
+            json={"Image": "x", "HostConfig": {"Binds": ["/etc:/etc"]}},
+        )
+        assert resp.status == 201
+        rec = daemon.find("POST", "/containers/create")[0]
+        assert rec["body"]["HostConfig"]["Binds"] == ["/etc:/etc"]
+
+
+async def test_create_privileged_still_rejected_when_only_allow_dangerous_flags():
+    # allow_dangerous_flags must NOT also unlock Privileged.
+    async with running_proxy(owner="alice", allow_dangerous_flags=True) as (client, daemon, _):
+        resp = await client.post(
+            "/containers/create",
+            json={"Image": "x", "HostConfig": {"Privileged": True}},
+        )
+        assert resp.status == 403
+        assert daemon.find("POST", "/containers/create") == []
+
+
+async def test_create_both_bypass_flags_open_privileged_and_host_bind_together():
+    async with running_proxy(
+        owner="alice", allow_privileged=True, allow_dangerous_flags=True,
+    ) as (client, daemon, _):
+        daemon.set("POST", "/containers/create", {"Id": "b"}, status=201)
+        resp = await client.post(
+            "/containers/create",
+            json={
+                "Image": "x",
+                "HostConfig": {
+                    "Privileged": True,
+                    "Binds": ["/etc:/etc"],
+                    "CapAdd": ["SYS_ADMIN"],
+                },
+            },
+        )
+        assert resp.status == 201
+        body = daemon.find("POST", "/containers/create")[0]["body"]
+        assert body["HostConfig"]["Privileged"] is True
+        assert body["HostConfig"]["Binds"] == ["/etc:/etc"]
+        assert body["HostConfig"]["CapAdd"] == ["SYS_ADMIN"]
+
+
+async def test_create_compose_project_strict_rewrites_user_label():
+    # allow_compose_project_override=False forces every container under the
+    # configured per-user project, regardless of what the user typed.
+    async with running_proxy(
+        owner="alice", compose_project="alice-proj", allow_compose_project_override=False,
+    ) as (client, daemon, _):
+        daemon.set("POST", "/containers/create", {"Id": "s"}, status=201)
+        resp = await client.post(
+            "/containers/create",
+            params={"name": "myproj-web-1"},
+            json={"Image": "x", "Labels": {COMPOSE_PROJECT_LABEL: "myproj"}},
+        )
+        assert resp.status == 201
+        body = daemon.find("POST", "/containers/create")[0]["body"]
+        assert body["Labels"][COMPOSE_PROJECT_LABEL] == "alice-proj"  # REWRITTEN
+        assert body["Labels"][OWNER_LABEL] == "alice"
+
+
+async def test_create_compose_project_default_override_respects_user_label():
+    # allow_compose_project_override=True (default): user-supplied label kept.
+    async with running_proxy(
+        owner="alice", compose_project="alice-proj",
+    ) as (client, daemon, _):
+        daemon.set("POST", "/containers/create", {"Id": "s"}, status=201)
+        await client.post(
+            "/containers/create",
+            json={"Image": "x", "Labels": {COMPOSE_PROJECT_LABEL: "myproj"}},
+        )
+        body = daemon.find("POST", "/containers/create")[0]["body"]
+        assert body["Labels"][COMPOSE_PROJECT_LABEL] == "myproj"  # untouched
+
+
+async def test_create_no_compose_project_means_no_label_stamp():
+    # compose_project='' (off-mode) leaves ad-hoc containers free-floating.
+    async with running_proxy(owner="alice", compose_project="") as (client, daemon, _):
+        daemon.set("POST", "/containers/create", {"Id": "f"}, status=201)
+        await client.post("/containers/create", json={"Image": "x"})
+        body = daemon.find("POST", "/containers/create")[0]["body"]
+        assert COMPOSE_PROJECT_LABEL not in (body.get("Labels") or {})
+        assert body["Labels"][OWNER_LABEL] == "alice"  # ownership unchanged
+
+
+async def test_list_networks_default_owner_scoped_only():
+    # Without extra_visible_networks the path uses the injected-filter branch.
+    # Daemon-side filter is applied by upstream; the proxy injects the label.
+    async with running_proxy(owner="alice") as (client, daemon, _):
+        daemon.set("GET", "/networks", [])
+        resp = await client.get("/networks")
+        assert resp.status == 200
+        rec = daemon.find("GET", "/networks")[-1]
+        flt = json.loads(rec["query"]["filters"])
+        assert f"{OWNER_LABEL}=alice" in flt["label"]
+
+
+async def test_list_networks_reveal_hub_network_via_extras():
+    # extra_visible_networks reveals a named network even though it's not owned.
+    # Proxy MUST NOT pass an owner label filter to the upstream in this mode
+    # (it post-filters in Python to OR ownership with the extras set).
+    upstream_networks = [
+        {"Name": "alice_net", "Labels": {OWNER_LABEL: "alice"}},
+        {"Name": "stellars-tech-ai-lab_network", "Labels": {}},  # hub network
+        {"Name": "bob_net", "Labels": {OWNER_LABEL: "bob"}},
+        {"Name": "random_external", "Labels": {}},
+    ]
+    async with running_proxy(
+        owner="alice",
+        extra_visible_networks=("stellars-tech-ai-lab_network",),
+    ) as (client, daemon, _):
+        daemon.set("GET", "/networks", upstream_networks)
+        resp = await client.get("/networks")
+        assert resp.status == 200
+        revealed = await resp.json()
+        names = {n["Name"] for n in revealed}
+        assert names == {"alice_net", "stellars-tech-ai-lab_network"}
+        # And critically: the upstream call carried no owner-label filter.
+        rec = daemon.find("GET", "/networks")[-1]
+        assert "filters" not in rec["query"] or (
+            f"{OWNER_LABEL}=alice" not in json.loads(rec["query"]["filters"]).get("label", [])
+        )
+
+
+async def test_list_networks_extras_set_but_no_match_returns_owned_only():
+    # extras configured but the hub network doesn't appear upstream -> owner only.
+    upstream_networks = [
+        {"Name": "alice_net", "Labels": {OWNER_LABEL: "alice"}},
+        {"Name": "bob_net", "Labels": {OWNER_LABEL: "bob"}},
+    ]
+    async with running_proxy(
+        owner="alice", extra_visible_networks=("missing_network",),
+    ) as (client, daemon, _):
+        daemon.set("GET", "/networks", upstream_networks)
+        resp = await client.get("/networks")
+        revealed = await resp.json()
+        assert [n["Name"] for n in revealed] == ["alice_net"]
+
+
+async def test_list_containers_unchanged_by_extra_visible_networks():
+    # extra_visible_networks must NOT bleed into containers listing.
+    async with running_proxy(
+        owner="alice", extra_visible_networks=("stellars-tech-ai-lab_network",),
+    ) as (client, daemon, _):
+        daemon.set("GET", "/containers/json", [])
+        await client.get("/containers/json")
+        flt = json.loads(daemon.find("GET", "/containers/json")[-1]["query"]["filters"])
+        assert f"{OWNER_LABEL}=alice" in flt["label"]
