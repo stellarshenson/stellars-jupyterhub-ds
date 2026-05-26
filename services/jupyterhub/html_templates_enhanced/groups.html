@@ -299,62 +299,82 @@
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" id="config-docker-access">
             <label class="form-check-label" for="config-docker-access">
-              Normal Docker access
+              Standard Docker Access
             </label>
             <div class="form-text">Mounts the raw /var/run/docker.sock - sees all containers, no quota. For trusted users.</div>
           </div>
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" id="config-docker-limited">
             <label class="form-check-label" for="config-docker-limited">
-              Limited Docker access
+              Limited Docker Access
             </label>
             <div class="form-text">Per-user filtered socket: users see and manage only their own containers, up to a quota. Mutually exclusive with normal access.</div>
           </div>
           <div id="config-docker-limited-config" class="ms-4 mt-2">
-            <div class="row g-2">
-              <div class="col-6 col-md-4">
-                <label class="form-label small mb-1" for="config-docker-max-containers">Max containers</label>
-                <input type="number" min="0" step="1" class="form-control form-control-sm" id="config-docker-max-containers">
-              </div>
-              <div class="col-6 col-md-4">
-                <label class="form-label small mb-1" for="config-docker-max-volumes">Max volumes</label>
-                <input type="number" min="0" step="1" class="form-control form-control-sm" id="config-docker-max-volumes">
-              </div>
-              <div class="col-6 col-md-4">
-                <label class="form-label small mb-1" for="config-docker-max-networks">Max networks</label>
-                <input type="number" min="0" step="1" class="form-control form-control-sm" id="config-docker-max-networks">
-              </div>
-              <div class="col-6 col-md-4">
-                <label class="form-label small mb-1" for="config-docker-max-storage">Max storage (GB)</label>
-                <input type="number" min="0" step="1" class="form-control form-control-sm" id="config-docker-max-storage">
-              </div>
-              <div class="col-6 col-md-4">
-                <label class="form-label small mb-1" for="config-docker-cpu-cap">CPU cap (cores)</label>
-                <input type="number" min="0" step="0.5" class="form-control form-control-sm" id="config-docker-cpu-cap">
-              </div>
-              <div class="col-6 col-md-4">
-                <label class="form-label small mb-1" for="config-docker-mem-cap">Memory cap (GB)</label>
-                <input type="number" min="0" step="1" class="form-control form-control-sm" id="config-docker-mem-cap">
-              </div>
-            </div>
-            <div class="form-text">Counts are hard limits (create rejected at the cap). Storage is a soft budget (blocks new creates when exceeded). CPU/memory caps apply to each container the user creates.</div>
-            <h6 class="mt-3 mb-2">Options</h6>
-            <table class="table table-sm table-bordered" id="docker-limited-options-table">
+            <table class="table table-sm table-bordered align-middle" id="docker-limited-settings-table">
               <thead>
                 <tr>
-                  <th>Option</th>
-                  <th style="width: 90px;" class="text-center">Enabled</th>
+                  <th>Setting</th>
+                  <th style="width: 130px;" class="text-center">Value</th>
                 </tr>
               </thead>
               <tbody>
-                <tr class="table-danger">
+                <tr class="table-light">
+                  <th colspan="2" class="small text-uppercase text-muted">Quotas &amp; caps</th>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Max containers</strong>
+                    <div class="text-muted small">Hard limit on the number of containers the user can own. Create rejected once the cap is reached.</div>
+                  </td>
+                  <td><input type="number" min="0" step="1" class="form-control form-control-sm text-end" id="config-docker-max-containers"></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Max volumes</strong>
+                    <div class="text-muted small">Hard limit on owner-stamped volumes. Volume create rejected at the cap.</div>
+                  </td>
+                  <td><input type="number" min="0" step="1" class="form-control form-control-sm text-end" id="config-docker-max-volumes"></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Max networks</strong>
+                    <div class="text-muted small">Hard limit on owner-created docker networks. Attaching to the hub network (see below) does not count.</div>
+                  </td>
+                  <td><input type="number" min="0" step="1" class="form-control form-control-sm text-end" id="config-docker-max-networks"></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Max storage (GB)</strong>
+                    <div class="text-muted small">Soft budget against the user's total <code>docker system df</code> footprint. New creates blocked once exceeded; existing volumes can still grow.</div>
+                  </td>
+                  <td><input type="number" min="0" step="1" class="form-control form-control-sm text-end" id="config-docker-max-storage"></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>CPU cap (cores)</strong>
+                    <div class="text-muted small">Per-container CPU cap applied as a default. A user request exceeding this is rejected.</div>
+                  </td>
+                  <td><input type="number" min="0" step="0.5" class="form-control form-control-sm text-end" id="config-docker-cpu-cap"></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Memory cap (GB)</strong>
+                    <div class="text-muted small">Per-container memory cap applied as a default. A user request exceeding this is rejected.</div>
+                  </td>
+                  <td><input type="number" min="0" step="1" class="form-control form-control-sm text-end" id="config-docker-mem-cap"></td>
+                </tr>
+                <tr class="table-light">
+                  <th colspan="2" class="small text-uppercase text-muted">Options</th>
+                </tr>
+                <tr>
                   <td>
                     <strong>Allow dangerous Docker flags</strong>
                     <div class="text-muted small">
                       <strong class="text-danger">Warning:</strong> bypass the proxy safety filter for host bind mounts, host network/PID namespaces, added capabilities, and device passthrough. Ownership labelling, list/prune filtering and quota caps still apply. Grant only when the user genuinely needs host paths or kernel devices in a sub-container.
                     </div>
                   </td>
-                  <td class="text-center align-middle">
+                  <td class="text-center">
                     <input class="form-check-input" type="checkbox" id="config-docker-limited-allow-dangerous">
                   </td>
                 </tr>
@@ -362,10 +382,10 @@
                   <td>
                     <strong>Enforce per-user compose project</strong>
                     <div class="text-muted small">
-                      Stamp ad-hoc <code>docker run</code> containers with a per-user <code>com.docker.compose.project</code> label so they group under their own project in <code>docker compose ls</code> / Docker Desktop. Template comes from the platform env <code>JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE</code> (default <code>{compose_project}_{username}_containers</code>). Off = hub project applies.
+                      Group each user's <code>docker run</code> containers under their own compose project so they show up together in <code>docker compose ls</code> / Docker Desktop. The project name comes from the platform env <code>JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE</code> (default <code>{compose_project}_{username}_containers</code>). Off = ad-hoc containers belong to no compose project (free-floating); the user's own <code>docker compose</code> projects are unaffected either way.
                     </div>
                   </td>
-                  <td class="text-center align-middle">
+                  <td class="text-center">
                     <input class="form-check-input" type="checkbox" id="config-docker-limited-user-compose-enabled" checked>
                   </td>
                 </tr>
@@ -373,10 +393,10 @@
                   <td>
                     <strong>Allow override of compose project</strong>
                     <div class="text-muted small">
-                      Respect a project name the user supplies via <code>docker compose -p &lt;name&gt;</code> instead of rewriting it. Off = strict mode: the proxy pins every container to the per-user project regardless of what the user typed.
+                      Respect a project name the user supplies via <code>docker compose -p &lt;name&gt;</code> OR <code>COMPOSE_PROJECT_NAME=&lt;name&gt;</code> instead of rewriting it (both produce the same <code>com.docker.compose.project</code> label on the create body). Off = strict mode: the proxy pins every container to the per-user project regardless of what the user typed.
                     </div>
                   </td>
-                  <td class="text-center align-middle">
+                  <td class="text-center">
                     <input class="form-check-input" type="checkbox" id="config-docker-limited-user-compose-allow-override" checked>
                   </td>
                 </tr>
@@ -384,10 +404,10 @@
                   <td>
                     <strong>Reveal hub network</strong>
                     <div class="text-muted small">
-                      Show the hub's docker network (<code>JUPYTERHUB_NETWORK_NAME</code>) in the user's <code>docker network ls</code>. They can then attach sidecars with <code>--network &lt;hub-net&gt;</code> and resolve other containers by DNS. Off = networks list is owner-scoped only.
+                      Show the hub's docker network (<code>JUPYTERHUB_NETWORK_NAME</code>) in the user's <code>docker network ls</code>. Containers they spawn can then bind to that network with <code>--network &lt;hub-net&gt;</code> and resolve other containers by DNS. Off = networks list is owner-scoped only.
                     </div>
                   </td>
-                  <td class="text-center align-middle">
+                  <td class="text-center">
                     <input class="form-check-input" type="checkbox" id="config-docker-limited-reveal-hub-network" checked>
                   </td>
                 </tr>
@@ -397,7 +417,7 @@
           <div class="form-check mt-2">
             <input class="form-check-input" type="checkbox" id="config-docker-privileged">
             <label class="form-check-label" for="config-docker-privileged">
-              Docker (root)
+              Privileged Docker (root)
             </label>
             <div class="form-text">Runs the user container with --privileged (kernel-root inside the container). Orthogonal to the access mode - granted on its own this group gives root with no Docker socket; combined with normal or limited (same group or another group the user is in) it escalates that access.</div>
           </div>
@@ -575,18 +595,18 @@ require(["jquery"], function($) {
         '</td>' +
         '<td class="text-center text-nowrap">' +
           '<button class="btn btn-outline-primary btn-sm me-1 btn-config" data-name="' + escapeAttr(group.name) + '" title="Configure group">' +
-            '<i class="fa fa-cog"></i>' +
+            '<i class="fa fa-cog fa-fw"></i>' +
           '</button>' +
           '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-up" data-name="' + escapeAttr(group.name) + '" title="Move up (higher priority)"' +
             (isFirst ? ' disabled' : '') + '>' +
-            '<i class="fa fa-arrow-up"></i>' +
+            '<i class="fa fa-arrow-up fa-fw"></i>' +
           '</button>' +
           '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-down" data-name="' + escapeAttr(group.name) + '" title="Move down (lower priority)"' +
             (isLast ? ' disabled' : '') + '>' +
-            '<i class="fa fa-arrow-down"></i>' +
+            '<i class="fa fa-arrow-down fa-fw"></i>' +
           '</button>' +
           '<button class="btn btn-outline-danger btn-sm btn-delete" data-name="' + escapeAttr(group.name) + '" title="Delete group">' +
-            '<i class="fa fa-trash"></i>' +
+            '<i class="fa fa-trash fa-fw"></i>' +
           '</button>' +
         '</td>' +
       '</tr>';

@@ -87,14 +87,16 @@ class TestBuildOverrides:
         # Privileged still off (independent).
         assert ov['allow_privileged'] is False
 
-    def test_compose_project_unchanged_when_user_enforcement_off(self):
+    def test_no_compose_project_when_user_enforcement_off(self):
+        # Off mode = ad-hoc `docker run` containers carry no compose project
+        # label at all (free-floating). The hub's project is NOT propagated.
         ov = _build_overrides(
             _resolved(docker_limited_user_compose_project_enabled=False),
             username="alice",
             compose_project="hub-proj",
             user_compose_project_template="{compose_project}_{username}_containers",
         )
-        assert ov['compose_project'] == "hub-proj"
+        assert 'compose_project' not in ov
 
     def test_compose_project_rendered_when_enforcement_on(self):
         ov = _build_overrides(
@@ -123,13 +125,15 @@ class TestBuildOverrides:
 
     def test_empty_compose_project_omits_field(self):
         # When no compose project is set, the override dict doesn't carry one
-        # (ProxyConfig default of '' wins).
+        # (ProxyConfig default of '' wins). With enforcement on and the
+        # template referencing {compose_project}, the result is also empty.
         ov = _build_overrides(
-            _resolved(),
+            _resolved(docker_limited_user_compose_project_enabled=True),
             username="alice",
             compose_project="",
+            user_compose_project_template="{compose_project}_{username}_containers",
         )
-        assert 'compose_project' not in ov
+        assert 'compose_project' not in ov or ov.get('compose_project') == '_alice_containers'
 
     def test_extra_visible_networks_set_when_enabled_and_name_known(self):
         ov = _build_overrides(

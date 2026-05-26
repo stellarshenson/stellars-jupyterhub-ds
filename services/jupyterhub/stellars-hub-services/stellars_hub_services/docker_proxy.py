@@ -77,7 +77,10 @@ def _build_overrides(resolved, *, username, compose_project='',
             username=username,
         )
     else:
-        effective_project = compose_project
+        # Enforcement off => ad-hoc `docker run`s carry NO compose project at
+        # all (free-floating). The user's own `docker compose` projects are
+        # unaffected (their label is set by compose itself, not by us).
+        effective_project = ''
     overrides = {
         'max_containers': int(resolved.get('docker_limited_max_containers', 10)),
         'max_volumes': int(resolved.get('docker_limited_max_volumes', 10)),
