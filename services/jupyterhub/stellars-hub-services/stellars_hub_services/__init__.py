@@ -4,7 +4,7 @@ __version__ = "3.8.0"
 
 from .auth import StellarsNativeAuthenticator
 from .branding import setup_branding
-from .docker_proxy import detect_self_image, ensure_user_proxy, stop_user_proxy
+from .docker_proxy import register_user, unregister_user
 from .events import register_events
 from .gpu import is_wsl2, resolve_gpu_mode
 from .hooks import make_pre_spawn_hook, schedule_startup_favicon_callback
@@ -34,9 +34,8 @@ __all__ = [
     "calc_new_extensions",
     "calc_time_remaining",
     "configure_volume_cache",
-    "detect_self_image",
-    "ensure_user_proxy",
-    "stop_user_proxy",
+    "register_user",
+    "unregister_user",
     "get_services_and_roles",
     "run_cull_pass",
     "schedule_idle_culler",
