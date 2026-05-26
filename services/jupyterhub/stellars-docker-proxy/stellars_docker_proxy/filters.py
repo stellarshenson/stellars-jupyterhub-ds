@@ -21,13 +21,18 @@ def has_compose_project(body):
     return bool(labels.get(COMPOSE_PROJECT_LABEL))
 
 
-def inject_compose_project(body, project):
+def inject_compose_project(body, project, *, allow_override=True):
     """Group an ad-hoc container under ``project`` via the compose project label.
 
-    No-op when ``project`` is empty or the body already declares a compose
-    project (respect the user's own compose).
+    No-op when ``project`` is empty. With ``allow_override=True`` (default) a
+    body that already declares a compose project is left alone (user's own
+    ``docker compose`` is respected). With ``allow_override=False`` the user's
+    label is REWRITTEN to ``project`` - strict mode that pins every container
+    to the per-user project regardless of what the user typed.
     """
-    if not project or has_compose_project(body):
+    if not project:
+        return dict(body or {})
+    if allow_override and has_compose_project(body):
         return dict(body or {})
     out = dict(body or {})
     labels = dict(out.get("Labels") or {})
@@ -143,27 +148,42 @@ def apply_caps(body, cpu_cap_cores, mem_cap_gb):
     return out
 
 
-def dangerous_reason(body):
+def dangerous_reason(body, *, allow_privileged=False, allow_dangerous_flags=False):
     """Return a reason string if a container create body asks for something unsafe.
 
     Covers the escape/host-access vectors: privileged, host bind mounts (incl.
     the docker socket), host network/PID namespaces, added capabilities, and
     device passthrough. Named-volume mounts (``Type=volume``) are allowed.
+
+    Two independent bypasses, each driven from a different group-config field
+    on the hub side:
+
+    - ``allow_privileged`` - skip ONLY the ``Privileged`` check. Set when the
+      user's own lab runs ``--privileged`` (docker_privileged group grant); the
+      user already has kernel-root inside their lab, so spawning a privileged
+      sub-container grants nothing they could not already do.
+    - ``allow_dangerous_flags`` - skip the OTHER checks (host binds, host
+      net/pid, cap-add, devices). Set by a separate docker-limited toggle
+      that is OFF by default and surfaced in the admin UI with a warning;
+      flipping it on hands the user the kernel-level escape vectors via the
+      proxy. Ownership labelling, list/prune filtering, and quota caps still
+      apply unchanged.
     """
     hc = (body or {}).get("HostConfig") or {}
-    if hc.get("Privileged"):
+    if hc.get("Privileged") and not allow_privileged:
         return "privileged containers are not allowed"
-    if hc.get("Binds"):
-        return "host path bind mounts are not allowed"
-    for m in (hc.get("Mounts") or []):
-        if isinstance(m, dict) and m.get("Type") == "bind":
+    if not allow_dangerous_flags:
+        if hc.get("Binds"):
             return "host path bind mounts are not allowed"
-    if (hc.get("NetworkMode") or "") == "host":
-        return "host network mode is not allowed"
-    if (hc.get("PidMode") or "") == "host":
-        return "host PID namespace is not allowed"
-    if hc.get("CapAdd"):
-        return "added capabilities are not allowed"
-    if hc.get("Devices"):
-        return "device passthrough is not allowed"
+        for m in (hc.get("Mounts") or []):
+            if isinstance(m, dict) and m.get("Type") == "bind":
+                return "host path bind mounts are not allowed"
+        if (hc.get("NetworkMode") or "") == "host":
+            return "host network mode is not allowed"
+        if (hc.get("PidMode") or "") == "host":
+            return "host PID namespace is not allowed"
+        if hc.get("CapAdd"):
+            return "added capabilities are not allowed"
+        if hc.get("Devices"):
+            return "device passthrough is not allowed"
     return None

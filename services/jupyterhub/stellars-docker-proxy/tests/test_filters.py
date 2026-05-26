@@ -87,6 +87,87 @@ def test_dangerous_reason_allows_named_volume_mount():
     assert F.dangerous_reason(body) is None
 
 
+def test_dangerous_reason_allow_privileged_bypasses_only_privileged():
+    # allow_privileged opens ONLY the Privileged check; the rest stay blocked.
+    assert F.dangerous_reason({"HostConfig": {"Privileged": True}}, allow_privileged=True) is None
+    # Host bind still rejected with allow_privileged on its own.
+    assert F.dangerous_reason(
+        {"HostConfig": {"Binds": ["/etc:/etc"]}}, allow_privileged=True
+    )
+    # Cap-add still rejected.
+    assert F.dangerous_reason(
+        {"HostConfig": {"CapAdd": ["SYS_ADMIN"]}}, allow_privileged=True
+    )
+
+
+def test_dangerous_reason_allow_dangerous_flags_bypasses_others_but_not_privileged():
+    # allow_dangerous_flags opens host binds, host net/pid, cap-add, devices but
+    # NOT Privileged (that's the other knob).
+    assert F.dangerous_reason(
+        {"HostConfig": {"Binds": ["/etc:/etc"]}}, allow_dangerous_flags=True
+    ) is None
+    assert F.dangerous_reason(
+        {"HostConfig": {"Mounts": [{"Type": "bind", "Source": "/"}]}},
+        allow_dangerous_flags=True,
+    ) is None
+    assert F.dangerous_reason(
+        {"HostConfig": {"NetworkMode": "host"}}, allow_dangerous_flags=True
+    ) is None
+    assert F.dangerous_reason(
+        {"HostConfig": {"PidMode": "host"}}, allow_dangerous_flags=True
+    ) is None
+    assert F.dangerous_reason(
+        {"HostConfig": {"CapAdd": ["SYS_ADMIN"]}}, allow_dangerous_flags=True
+    ) is None
+    assert F.dangerous_reason(
+        {"HostConfig": {"Devices": [{"PathOnHost": "/dev/x"}]}},
+        allow_dangerous_flags=True,
+    ) is None
+    # Privileged still rejected.
+    assert F.dangerous_reason(
+        {"HostConfig": {"Privileged": True}}, allow_dangerous_flags=True
+    )
+
+
+def test_dangerous_reason_both_flags_open_everything():
+    body = {"HostConfig": {
+        "Privileged": True,
+        "Binds": ["/etc:/etc"],
+        "CapAdd": ["SYS_ADMIN"],
+    }}
+    assert F.dangerous_reason(
+        body, allow_privileged=True, allow_dangerous_flags=True
+    ) is None
+
+
+def test_inject_compose_project_allow_override_respects_user_label():
+    # Default allow_override=True: user-provided project label is left alone.
+    body = {"Labels": {"com.docker.compose.project": "user-pick"}}
+    out = F.inject_compose_project(body, "platform-default")
+    assert out["Labels"]["com.docker.compose.project"] == "user-pick"
+
+
+def test_inject_compose_project_strict_rewrites_user_label():
+    # allow_override=False: user-provided project label is REWRITTEN.
+    body = {"Labels": {"com.docker.compose.project": "user-pick"}}
+    out = F.inject_compose_project(body, "platform-default", allow_override=False)
+    assert out["Labels"]["com.docker.compose.project"] == "platform-default"
+
+
+def test_inject_compose_project_empty_project_is_noop_in_both_modes():
+    body = {"Labels": {"com.docker.compose.project": "user-pick"}}
+    assert F.inject_compose_project(body, "")["Labels"]["com.docker.compose.project"] == "user-pick"
+    assert F.inject_compose_project(body, "", allow_override=False)["Labels"]["com.docker.compose.project"] == "user-pick"
+
+
+def test_inject_compose_project_stamps_ad_hoc_body_in_both_modes():
+    # Body with no project label gets stamped regardless of allow_override.
+    body = {}
+    for allow in (True, False):
+        out = F.inject_compose_project(body, "platform-default", allow_override=allow)
+        assert out["Labels"]["com.docker.compose.project"] == "platform-default"
+
+
 def test_is_owned_container_and_volume():
     container = {"Config": {"Labels": {OWNER_LABEL: "alice"}}}
     assert F.is_owned(container, "alice")

@@ -47,6 +47,27 @@ def default_config():
         'docker_limited_max_storage_gb': 50,
         'docker_limited_cpu_cap_cores': 2,
         'docker_limited_mem_cap_gb': 8,
+        # OFF by default. When True, the limited proxy stops rejecting host
+        # bind mounts, host net/pid, cap-add, and device passthrough for this
+        # user. Ownership labelling and quota caps still apply. Surfaced in
+        # the admin UI with a strong warning - flipping it on hands the user
+        # the kernel-level escape vectors via the proxy.
+        'docker_limited_allow_dangerous_flags': False,
+        # Per-user compose-project enforcement. When enabled, ad-hoc `docker run`s
+        # are stamped with a per-user project label rendered from a platform
+        # template (default `{compose_project}_{username}_containers`). When
+        # allow_override is True the user can still pass `-p name` to their own
+        # `docker compose` and it is respected; when False the proxy rewrites
+        # the user's label too. Both default True - feel free to turn enforcement
+        # off for groups whose users should remain in the hub's compose project.
+        'docker_limited_user_compose_project_enabled': True,
+        'docker_limited_user_compose_project_allow_override': True,
+        # ON by default. When True, the proxy reveals the hub's docker network
+        # in this user's `docker network ls` so they can attach sidecars via
+        # `--network <hub-net>` and resolve other containers (incl. the hub
+        # services) by DNS. The hub's network name comes from the platform env
+        # JUPYTERHUB_NETWORK_NAME. Off = networks list is pure owner-scoped.
+        'docker_limited_reveal_hub_network': True,
         'docker_privileged': False,
         'mem_limit_enabled': False,
         'mem_limit_gb': 0,
@@ -56,37 +77,130 @@ def default_config():
     }
 
 
-def validate_gpu_selection(gpu_access, gpu_all, gpu_device_ids):
-    """Validate a group's GPU selection. Returns (valid: bool, error_message: str).
+class GroupConfigValidator:
+    """Field-level validators for group config dicts.
 
-    Only meaningful when GPU access is enabled. Selecting GPU access while
-    deselecting 'all GPUs' requires at least one specific GPU to be chosen -
-    otherwise the grant would refer to no devices at all.
+    Each class method takes a partial config dict and returns
+    ``(valid: bool, error_message: str)``. ``validate_all`` runs every
+    validator in turn and returns the first failure, or ``(True, '')`` if
+    they all pass. Errors carry an ``error`` code (used by handlers) and a
+    user-facing ``message``; the handler maps them to HTTP 400 responses.
+
+    The class is stateless - all methods are pure functions of the input
+    dict, no DB / I/O. Defaults align with ``default_config()`` so partial
+    dicts validate the same way as full ones.
     """
-    if not gpu_access:
+
+    @classmethod
+    def validate_gpu(cls, config):
+        """GPU access on + not "all" + no specific device id is incoherent.
+
+        ``code = 'invalid_gpu_selection'`` on failure.
+        """
+        if not config.get('gpu_access'):
+            return True, ''
+        if config.get('gpu_all', True):
+            return True, ''
+        if not (config.get('gpu_device_ids') or []):
+            return False, 'Select at least one GPU, or enable "All GPUs".'
         return True, ''
-    if gpu_all:
+
+    @classmethod
+    def validate_docker(cls, config):
+        """Mutual exclusivity of access modes within one group + sanity on the
+        limited-Docker quotas. Docker (root) is orthogonal - allowed standalone
+        OR combined with either access mode.
+
+        ``code = 'invalid_docker_selection'`` on failure.
+        """
+        docker_access = config.get('docker_access')
+        docker_limited = config.get('docker_limited')
+        if docker_access and docker_limited:
+            return False, 'A group cannot grant both normal and limited Docker access - choose one.'
+        if docker_limited:
+            for key in ('docker_limited_max_containers', 'docker_limited_max_volumes',
+                        'docker_limited_max_networks', 'docker_limited_max_storage_gb',
+                        'docker_limited_cpu_cap_cores', 'docker_limited_mem_cap_gb'):
+                try:
+                    val = float(config.get(key) or 0)
+                except (TypeError, ValueError):
+                    return False, f'{key} must be a number.'
+                if val < 0:
+                    return False, f'{key} cannot be negative.'
         return True, ''
-    if not gpu_device_ids:
-        return False, 'Select at least one GPU, or enable "All GPUs".'
-    return True, ''
+
+    @classmethod
+    def validate_cpu(cls, config):
+        """When the CPU cap is enabled, cores must be a positive number.
+        A zero cap with "enabled" is meaningless (would translate to no quota
+        at spawn-time and silently render the toggle inert).
+
+        ``code = 'invalid_cpu_limit'`` on failure.
+        """
+        if not config.get('cpu_limit_enabled'):
+            return True, ''
+        try:
+            cores = float(config.get('cpu_limit_cores') or 0)
+        except (TypeError, ValueError):
+            return False, 'CPU limit (cores) must be a number.'
+        if cores <= 0:
+            return False, 'CPU limit (cores) must be greater than zero when enabled.'
+        return True, ''
+
+    @classmethod
+    def validate_mem(cls, config):
+        """When the memory cap is enabled, GB must be a positive number. Swap
+        policy is independent and needs no validation (its truthiness flows to
+        the spawner only when a cap is set).
+
+        ``code = 'invalid_mem_limit'`` on failure.
+        """
+        if not config.get('mem_limit_enabled'):
+            return True, ''
+        try:
+            gb = float(config.get('mem_limit_gb') or 0)
+        except (TypeError, ValueError):
+            return False, 'Memory limit (GB) must be a number.'
+        if gb <= 0:
+            return False, 'Memory limit (GB) must be greater than zero when enabled.'
+        return True, ''
+
+    _ALL = (
+        ('invalid_gpu_selection', 'validate_gpu'),
+        ('invalid_docker_selection', 'validate_docker'),
+        ('invalid_cpu_limit', 'validate_cpu'),
+        ('invalid_mem_limit', 'validate_mem'),
+    )
+
+    @classmethod
+    def validate_all(cls, config):
+        """Run every validator. Returns ``(valid, error_code, message)`` -
+        first failure wins so the user is shown one error at a time. Returns
+        ``(True, '', '')`` when all checks pass.
+        """
+        for code, name in cls._ALL:
+            valid, msg = getattr(cls, name)(config)
+            if not valid:
+                return False, code, msg
+        return True, '', ''
+
+
+def validate_gpu_selection(gpu_access, gpu_all, gpu_device_ids):
+    """Thin backward-compatible wrapper around ``GroupConfigValidator.validate_gpu``."""
+    return GroupConfigValidator.validate_gpu({
+        'gpu_access': gpu_access,
+        'gpu_all': gpu_all,
+        'gpu_device_ids': gpu_device_ids,
+    })
 
 
 def validate_docker_selection(docker_access, docker_limited, docker_privileged=False):
-    """Validate a group's Docker access choice. Returns (valid, error_message).
-
-    Within one group, normal access (raw socket - sees all, no quota) and limited
-    access (per-user ownership-filtering proxy) are mutually exclusive.
-
-    Docker (root) - the --privileged flag on the user container - is fully
-    orthogonal. A group may grant it with normal, with limited, or on its own.
-    Standalone "root" gives the user container --privileged but no Docker socket
-    of any kind; when combined with an access mode (same group or via another
-    group the user belongs to), it escalates that access mode at spawn time.
-    """
-    if docker_access and docker_limited:
-        return False, 'A group cannot grant both normal and limited Docker access - choose one.'
-    return True, ''
+    """Thin backward-compatible wrapper around ``GroupConfigValidator.validate_docker``."""
+    return GroupConfigValidator.validate_docker({
+        'docker_access': docker_access,
+        'docker_limited': docker_limited,
+        'docker_privileged': docker_privileged,
+    })
 
 
 def validate_group_name(name):

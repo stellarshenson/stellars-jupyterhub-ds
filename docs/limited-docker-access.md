@@ -103,15 +103,58 @@ flowchart TD
 
 ## Configuration
 
-One Dockerfile `ENV` and one Python-computed constant. Operators do nothing:
+### Platform settings
+
+Baked into the image as Dockerfile `ENV`s or computed in Python. Operators do nothing:
 
 | Setting | Where | Value | Purpose |
 |---|---|---|---|
 | `JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR` | `Dockerfile.jupyterhub` `ENV` | `/var/run/stellars-docker-proxy-sockets` | Path inside the hub container where the in-process proxy writes per-user listener sockets. Backed by a named docker volume - not a host path |
 | `JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME` | `config/jupyterhub_config.py` (computed) | `f"{COMPOSE_PROJECT_NAME}_jupyterhub_docker"` | Actual on-daemon name of the named docker volume that backs the socket directory. Not operator-configurable - computed to match compose's automatic project-prefix namespacing of the `jupyterhub_docker:` volume declared in `compose.yml`. Follows the same convention as `f"{COMPOSE_PROJECT_NAME}_jupyterhub_shared"` in `DOCKER_SPAWNER_VOLUMES`. The spawner subpath-mounts this volume into each lab so each lab sees only its own subdirectory |
+| `JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE` | `Dockerfile.jupyterhub` `ENV` | `{compose_project}_{username}_containers` | Python `str.format` template rendered into the per-user `com.docker.compose.project` label stamped on ad-hoc `docker run` containers when a docker-limited group enables enforcement (see below). Placeholders: `{compose_project}` (hub project) and `{username}` (lab owner) |
 | `COMPOSE_PROJECT_NAME` | compose-passthrough env | required, no default | Drives docker compose project label and volume namespacing. Empty raises `RuntimeError` at hub startup - silent fallback would mismatch compose's namespacing and fail spawns at Subpath resolution |
 
 Compose-side: a single named volume `jupyterhub_docker` is declared at the bottom of `compose.yml`; compose namespaces it on the daemon to `${COMPOSE_PROJECT_NAME}_jupyterhub_docker` and mounts it on the hub at the socket-dir path. No host bind, no second container, no token, no `.env` change. To wipe state, operator can `docker volume rm ${COMPOSE_PROJECT_NAME}_jupyterhub_docker` (must be down first).
+
+### Per-group docker-limited settings
+
+Stored in `groups_config.sqlite` per group, surfaced on `/hub/groups` for admin editing.
+
+| Field | Default | Purpose |
+|---|---|---|
+| `docker_limited` | `False` | Grants this group's users the per-user proxy socket |
+| `docker_limited_max_containers` / `_volumes` / `_networks` | 10 / 10 / 3 | Hard quotas - create rejected at the cap |
+| `docker_limited_max_storage_gb` | 50 | Soft budget - new creates blocked once measured usage exceeds it |
+| `docker_limited_cpu_cap_cores` / `_mem_cap_gb` | 2 / 8 | Per-container caps; applied as defaults and rejected when the user requests more |
+| `docker_limited_allow_dangerous_flags` | `False` | **Warning - escape-hatch grant.** When `True`, the proxy stops rejecting host bind mounts, host network/PID namespaces, added capabilities, and device passthrough on the user's sub-containers. Ownership labelling and quota caps still apply. Independent of `docker_privileged` - flipping that one does NOT imply this. Surfaced in the admin UI with a red warning. Use only when the user genuinely needs to mount host paths or kernel devices into a sub-container (e.g. 9P sidecar to an external mount) |
+| `docker_limited_user_compose_project_enabled` | `True` | When `True`, the proxy stamps the user's ad-hoc `docker run` containers with a per-user `com.docker.compose.project` label rendered from `JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE`, so each user's containers group under their own project in `docker compose ls` / Docker Desktop. When `False`, the hub's compose project applies (same bucket as the hub itself) |
+| `docker_limited_user_compose_project_allow_override` | `True` | When `True` and enforcement is on, a project label the user supplies via `docker compose -p <name>` is respected - the proxy only stamps containers that do not declare a project. When `False` (strict mode), the proxy REWRITES the user's label to the template-rendered name regardless of what the user typed |
+| `docker_limited_reveal_hub_network` | `True` | When `True`, the proxy reveals the hub's docker network (from `JUPYTERHUB_NETWORK_NAME`) in the user's `docker network ls` even though it is not owned by them. They can then `--network <hub-net>` a sidecar and resolve other containers (incl. the hub services) by DNS. List-only - container creates / attaches were already passing through; Docker itself enforces "network must exist". When `False`, the networks list stays strictly owner-scoped |
+| `docker_privileged` | `False` | Runs the user's own lab with `--privileged` (kernel-root inside the lab). Orthogonal to the access mode. When on, the proxy also accepts the `--privileged` flag on sub-containers the user spawns - their lab is already kernel-root, so a privileged sub-container grants nothing new. **Does NOT imply `docker_limited_allow_dangerous_flags`** - host binds and friends remain blocked unless that separate field is on |
+
+### Bypass semantics on the proxy side
+
+Mapped from the resolved group config to `ProxyConfig` in `_build_overrides`:
+
+- `ProxyConfig.allow_privileged` <- `resolved['docker_privileged']`. Skips ONLY the `Privileged` rejection in `dangerous_reason()`.
+- `ProxyConfig.allow_dangerous_flags` <- `resolved['docker_limited_allow_dangerous_flags']`. Skips host binds, host net/pid, cap-add, device passthrough.
+- `ProxyConfig.allow_compose_project_override` <- `resolved['docker_limited_user_compose_project_allow_override']`. Controls whether `inject_compose_project` REWRITES a user-provided project label.
+- `ProxyConfig.extra_visible_networks` <- `(hub_network_name,)` when `resolved['docker_limited_reveal_hub_network']` is True AND the hub knows its own network name; otherwise empty. The proxy buffers `GET /networks`, parses the JSON response, and emits networks where `Labels[stellars.owner]==user` OR `Name in extra_visible_networks`. Only the list endpoint is affected - container creates / attaches were already passing through unfiltered.
+
+All four are independent. Quota caps (`max_containers`, `max_volumes`, `max_networks`, `max_storage_gb`, `cpu_cap_cores`, `mem_cap_gb`), ownership labelling on every created resource, and list/prune filtering by `stellars.owner` are unaffected by any of these toggles.
+
+### Group config validation
+
+A single `GroupConfigValidator` class consolidates per-field coherence checks. The `/hub/groups` PUT handler calls `validate_all(merged)` and returns HTTP 400 with the failing error code on the first failure:
+
+| Method | Error code | Checks |
+|---|---|---|
+| `validate_gpu` | `invalid_gpu_selection` | GPU access on + not "all" + no specific device id is incoherent |
+| `validate_docker` | `invalid_docker_selection` | Normal + limited within one group is mutually exclusive; limited-quota fields must be numeric and non-negative |
+| `validate_cpu` | `invalid_cpu_limit` | When `cpu_limit_enabled`, `cpu_limit_cores` must be a positive number |
+| `validate_mem` | `invalid_mem_limit` | When `mem_limit_enabled`, `mem_limit_gb` must be a positive number |
+
+Free functions `validate_gpu_selection(...)` and `validate_docker_selection(...)` remain as thin backward-compatible wrappers for existing callers and tests.
 
 ## Caveats
 

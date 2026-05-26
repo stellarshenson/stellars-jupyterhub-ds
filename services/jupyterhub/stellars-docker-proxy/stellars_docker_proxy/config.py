@@ -42,6 +42,19 @@ class ProxyConfig:
     mem_cap_gb: float = 8.0
     image_allowlist: Tuple[str, ...] = field(default_factory=tuple)
     block_dangerous: bool = True
+    # Per-flag bypasses of dangerous_reason(). Quotas + labelling stay on.
+    allow_privileged: bool = False
+    allow_dangerous_flags: bool = False
+    # When False, the proxy REWRITES the user's com.docker.compose.project label
+    # to `compose_project` instead of leaving it alone. Strict mode for groups
+    # that want every container pinned to the per-user project.
+    allow_compose_project_override: bool = True
+    # Network names that should appear in `docker network ls` even though they
+    # are not owned by this user. Typical use: reveal the hub network so users
+    # can `--network <hub-net>` their sidecars and resolve other containers by
+    # DNS. The proxy reveals these in list responses only; creates/attaches
+    # already pass through unfiltered (Docker enforces "network must exist").
+    extra_visible_networks: Tuple[str, ...] = field(default_factory=tuple)
     # When set, ad-hoc `docker run` containers are grouped under this compose
     # project (Docker Desktop dashboard grouping). Empty = free-floating. A
     # container the user creates via `docker compose` (already carrying a

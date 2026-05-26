@@ -172,7 +172,11 @@ class ProxyApp:
 
         if kind == "containers":
             if self.config.block_dangerous:
-                reason = F.dangerous_reason(body)
+                reason = F.dangerous_reason(
+                    body,
+                    allow_privileged=self.config.allow_privileged,
+                    allow_dangerous_flags=self.config.allow_dangerous_flags,
+                )
                 if reason:
                     return _err(403, reason)
             cap_err = F.caps_violation(body, self.config.cpu_cap_cores, self.config.mem_cap_gb)
@@ -201,7 +205,11 @@ class ProxyApp:
         if kind == "containers":
             # Group ad-hoc containers under the configured project; user's own
             # compose containers keep their project and their compose-set name.
-            body = F.inject_compose_project(body, self.config.compose_project)
+            body = F.inject_compose_project(
+                body,
+                self.config.compose_project,
+                allow_override=self.config.allow_compose_project_override,
+            )
             body = F.apply_caps(body, self.config.cpu_cap_cores, self.config.mem_cap_gb)
             if not user_compose:
                 new_name = F.ensure_name_prefix(query.get("name"), self.config.name_prefix)
@@ -222,9 +230,47 @@ class ProxyApp:
         return await self._forward(request)
 
     async def _handle_list(self, request, owner, kind):
+        # Networks: when extras are configured (e.g. the hub's network), drop
+        # the upstream owner-label filter and post-filter in Python so the user
+        # sees BOTH their own networks AND the named extras. Avoids needing
+        # Docker filters with OR semantics (it only ANDs).
+        if kind == "networks" and self.config.extra_visible_networks:
+            return await self._list_networks_with_extras(request, owner)
         query = dict(request.rel_url.query)
         query["filters"] = F.merge_label_filter(query.get("filters"), owner)
         return await self._forward(request, query=query)
+
+    async def _list_networks_with_extras(self, request, owner):
+        """Buffered fetch of /networks, post-filter to owner + named extras."""
+        # Forward the user's own query params untouched (e.g. their `name=`
+        # filter), but DO NOT inject the owner label - we filter in Python.
+        params = dict(request.rel_url.query)
+        headers = {
+            k: v for k, v in request.headers.items()
+            if k.lower() not in _HOP_BY_HOP and k.lower() != "host"
+        }
+        upstream = await self.session.request(
+            "GET", "http://docker" + request.rel_url.path, params=params, headers=headers,
+        )
+        try:
+            raw = await upstream.read()
+        finally:
+            upstream.release()
+        if upstream.status != 200:
+            return web.Response(status=upstream.status, body=raw, content_type=upstream.headers.get("Content-Type", "application/json"))
+        try:
+            data = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            return web.Response(status=upstream.status, body=raw, content_type=upstream.headers.get("Content-Type", "application/json"))
+        if not isinstance(data, list):
+            return web.json_response(data, status=upstream.status)
+        extras = set(self.config.extra_visible_networks)
+        out = [
+            n for n in data
+            if isinstance(n, dict)
+            and (F.is_owned(n, owner) or n.get("Name") in extras)
+        ]
+        return web.json_response(out)
 
     async def _handle_prune(self, request, owner, kind):
         query = dict(request.rel_url.query)

@@ -19,6 +19,8 @@ def make_pre_spawn_hook(
     compose_project='',
     docker_proxy_socket_dir='/var/run/stellars-docker-proxy-sockets',
     docker_proxy_volume_name='jupyterhub_docker',
+    user_compose_project_template='',
+    hub_network_name='',
 ):
     """Create a pre_spawn_hook closure that captures branding + resolution context.
 
@@ -50,6 +52,11 @@ def make_pre_spawn_hook(
             volume into each lab as `/run/dockersock`. Empty disables
             limited-docker wiring entirely (the grant resolves but no
             socket is attached).
+        user_compose_project_template: Python str.format template with
+            {compose_project} and {username} placeholders, used to render
+            the per-user compose-project label when a group enables
+            docker_limited_user_compose_project_enabled. Default from
+            Dockerfile ENV JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE.
     """
 
     async def pre_spawn_hook(spawner):
@@ -101,6 +108,8 @@ def make_pre_spawn_hook(
                 resolved,
                 socket_dir=docker_proxy_socket_dir,
                 compose_project=compose_project,
+                user_compose_project_template=user_compose_project_template,
+                hub_network_name=hub_network_name,
             )
             spawner.extra_host_config.setdefault('mounts', []).append({
                 'Type': 'volume',
@@ -217,7 +226,9 @@ def make_pre_spawn_hook(
                 f"networks={resolved.get('docker_limited_max_networks')} "
                 f"storage_gb={resolved.get('docker_limited_max_storage_gb')} "
                 f"cpu={resolved.get('docker_limited_cpu_cap_cores')} "
-                f"mem_gb={resolved.get('docker_limited_mem_cap_gb')}"
+                f"mem_gb={resolved.get('docker_limited_mem_cap_gb')} "
+                f"allow_privileged={bool(resolved.get('docker_privileged'))} "
+                f"allow_dangerous_flags={bool(resolved.get('docker_limited_allow_dangerous_flags'))}"
             )
         else:
             docker_limits = '-'

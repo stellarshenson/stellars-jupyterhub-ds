@@ -51,8 +51,33 @@ def _socket_host_path(socket_dir, user):
     return os.path.join(socket_dir, user, "docker.sock")
 
 
-def _build_overrides(resolved, compose_project=''):
+def _render_user_compose_project(template, *, compose_project, username):
+    """Render the per-user compose-project template. Empty template -> ''."""
+    if not template:
+        return ''
+    try:
+        return template.format(compose_project=compose_project or '', username=username)
+    except (KeyError, IndexError) as e:
+        log.warning(
+            "user_compose_project_template render failed (%s); falling back to hub project",
+            e,
+        )
+        return compose_project or ''
+
+
+def _build_overrides(resolved, *, username, compose_project='',
+                     user_compose_project_template='', hub_network_name=''):
     """Map the group_resolver dict to ProxyConfig field names."""
+    enforce = bool(resolved.get('docker_limited_user_compose_project_enabled'))
+    allow_override = bool(resolved.get('docker_limited_user_compose_project_allow_override'))
+    if enforce:
+        effective_project = _render_user_compose_project(
+            user_compose_project_template,
+            compose_project=compose_project,
+            username=username,
+        )
+    else:
+        effective_project = compose_project
     overrides = {
         'max_containers': int(resolved.get('docker_limited_max_containers', 10)),
         'max_volumes': int(resolved.get('docker_limited_max_volumes', 10)),
@@ -60,32 +85,55 @@ def _build_overrides(resolved, compose_project=''):
         'max_storage_gb': float(resolved.get('docker_limited_max_storage_gb', 50.0)),
         'cpu_cap_cores': float(resolved.get('docker_limited_cpu_cap_cores', 2.0)),
         'mem_cap_gb': float(resolved.get('docker_limited_mem_cap_gb', 8.0)),
+        # allow_privileged from docker_privileged (lab is already kernel-root);
+        # allow_dangerous_flags from the independent limited toggle.
+        'allow_privileged': bool(resolved.get('docker_privileged')),
+        'allow_dangerous_flags': bool(resolved.get('docker_limited_allow_dangerous_flags')),
+        'allow_compose_project_override': allow_override,
     }
-    if compose_project:
-        overrides['compose_project'] = compose_project
+    if effective_project:
+        overrides['compose_project'] = effective_project
+    # Extra-visible networks: reveal the hub's docker network in `docker network
+    # ls` for users in a group that opts in. Hub network name comes from env;
+    # an empty value falls back to no extra reveal even when the toggle is on.
+    if resolved.get('docker_limited_reveal_hub_network') and hub_network_name:
+        overrides['extra_visible_networks'] = (hub_network_name,)
     return overrides
 
 
 async def register_user(username, resolved, *, socket_dir=DEFAULT_SOCKET_DIR,
-                        compose_project=''):
+                        compose_project='', user_compose_project_template='',
+                        hub_network_name=''):
     """Register a limited user - in-process. Idempotent: re-registers replace.
 
     Returns ``(socket_host_path, mount_dir, docker_host)`` so the spawn hook
     can wire `spawner.volumes` + `spawner.environment` directly. Raises on
     failure (caller logs + falls back to no docker access).
     """
-    overrides = _build_overrides(resolved, compose_project=compose_project)
+    overrides = _build_overrides(
+        resolved,
+        username=username,
+        compose_project=compose_project,
+        user_compose_project_template=user_compose_project_template,
+        hub_network_name=hub_network_name,
+    )
     mgr = get_manager(socket_dir)
     await mgr.register(username, overrides=overrides)
     socket_host_path = _socket_host_path(socket_dir, username)
     log.info(
         "registered docker-proxy for owner=%s socket=%s limits: containers=%s "
-        "volumes=%s networks=%s storage_gb=%s cpu=%s mem_gb=%s compose_project=%s",
+        "volumes=%s networks=%s storage_gb=%s cpu=%s mem_gb=%s "
+        "allow_privileged=%s allow_dangerous_flags=%s "
+        "compose_project=%s allow_compose_project_override=%s "
+        "extra_visible_networks=%s",
         username, socket_host_path,
         overrides['max_containers'], overrides['max_volumes'],
         overrides['max_networks'], overrides['max_storage_gb'],
         overrides['cpu_cap_cores'], overrides['mem_cap_gb'],
-        compose_project or '<none>',
+        overrides['allow_privileged'], overrides['allow_dangerous_flags'],
+        overrides.get('compose_project') or '<none>',
+        overrides['allow_compose_project_override'],
+        overrides.get('extra_visible_networks') or (),
     )
     return socket_host_path, SOCK_MOUNT_DIR, docker_host_url()
 
