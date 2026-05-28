@@ -101,7 +101,10 @@ class Manager:
             cfg_kwargs.update(overrides)
         cfg = ProxyConfig(**cfg_kwargs)
         app = await create_app(cfg)
-        runner = web.AppRunner(app)
+        # shutdown_timeout default 60s would block post_stop_hook waiting for
+        # long-poll requests (e.g. POST /containers/<id>/wait) to drain. The
+        # lab container is going away anyway - shed connections fast.
+        runner = web.AppRunner(app, shutdown_timeout=5.0)
         await runner.setup()
         site = web.UnixSite(runner, cfg.listen_socket)
         await site.start()
