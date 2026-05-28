@@ -526,66 +526,88 @@
       // Restart Server handler. The /api/users/<u>/restart-server endpoint
       // does container.restart() which blocks until Docker finishes the
       // restart, but JupyterLab inside the container needs additional time
-      // to boot and respond. So:
-      //   1. POST returns 200 once Docker is done (~10-60 sec).
-      //   2. Then poll the user API until `server.ready === true` (lab
-      //      booted, proxy route established, responding to traffic).
-      //   3. Only then reload the page. Reloading before step 2 lands the
-      //      user on a page that can't reach the lab yet (502s / redirects
-      //      back to spawn-pending).
+      // to boot and ACCEPT CONNECTIONS. Two-phase flow:
+      //
+      //   Phase 1: POST /api/users/<u>/restart-server. Returns when Docker
+      //   container.restart() completes (~10s). Then close the modal and
+      //   return to the home view. Don't make the user stare at a modal.
+      //
+      //   Phase 2: from the home view, disable the "Go to Server" link
+      //   (#start) and replace it with a "Lab is starting up..." spinner.
+      //   Poll the lab itself - NOT the hub's spawner.ready field, which
+      //   reports true before JupyterLab is actually accepting connections
+      //   (observed: hub said ready, then CHP returned 503 ECONNREFUSED
+      //   from the lab on the same second). Hit `/user/<u>/api` through
+      //   the public proxy: 502/503/504 = CHP cannot reach the lab; any
+      //   other status = lab is responding, restore the button.
       $('#confirm-restart-btn').on('click', function() {
           const apiUrl = `{{ base_url }}api/users/${username}/restart-server`;
           const $btn = $(this);
           const RESTART_POLL_INTERVAL_MS = 1500;
           const RESTART_POLL_MAX_MS = 5 * 60 * 1000;
-          let restartPollStartedAt = null;
           console.log('[Restart Server] Confirm button clicked');
 
-          // Disable button + spinner.
           $btn.prop('disabled', true).html(
               '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' +
               'Restarting container...'
           );
 
-          function isSpawnerReady(userJson) {
-              // Mirror of isSpawnerInactive's predicate but in the opposite
-              // direction: the server entry exists, is ready, and not pending
-              // any operation. Lab is responding to traffic.
-              if (!userJson || !userJson.servers) return false;
-              const server = userJson.servers[''];
-              if (!server) return false;
-              return server.ready === true && (server.pending === null || server.pending === undefined);
-          }
+          // Phase 2 helpers. Defined inside the click handler so they
+          // close over $start's saved original state.
+          let startBtnOriginalHtml = null;
+          let startBtnOriginalHref = null;
+          let labPollStartedAt = null;
 
-          function pollUntilReady() {
-              const elapsed = Date.now() - restartPollStartedAt;
-              if (elapsed > RESTART_POLL_MAX_MS) {
-                  console.warn('[Restart Server] Poll timeout after', Math.round(elapsed / 1000), 'sec - server still not ready');
-                  $btn.prop('disabled', false).text('Yes, Restart Server');
-                  const modal = bootstrap.Modal.getInstance(restartServerModalEl);
-                  if (modal) modal.hide();
-                  alert('Restart is taking longer than expected (> 5 min). The lab may still be coming back online. Refresh the page in a minute.');
-                  return;
-              }
+          function isLabResponding(callback) {
+              // Probe the lab via the public proxy. CHP returns 502/503/504
+              // when the upstream container is not accepting connections;
+              // any other response (including 302 OAuth redirects, 401, 200)
+              // means the lab process is up and the kernel is listening.
+              // Send credentials so OAuth cookies are included if any -
+              // means a follow-up redirect chain can resolve to 200 instead
+              // of looping. But we don't actually need the 200; even a 401
+              // from the lab itself proves the lab is up.
               $.ajax({
-                  url: '{{ base_url }}api/users/' + username,
+                  url: '{{ base_url }}user/' + username + '/api?_=' + Date.now(),
                   type: 'GET',
                   cache: false,
-                  headers: { 'X-XSRFToken': getCookie('_xsrf') },
-                  success: function(userJson) {
-                      if (isSpawnerReady(userJson)) {
-                          console.log('[Restart Server] Lab ready after', Math.round((Date.now() - restartPollStartedAt) / 1000), 'sec - reloading');
-                          location.reload();
-                      } else {
-                          setTimeout(pollUntilReady, RESTART_POLL_INTERVAL_MS);
+                  // jQuery treats redirect-followed 200 as success and other
+                  // statuses as error; either way we get xhr.status to read.
+                  complete: function(xhr) {
+                      // 502 (bad gateway), 503 (CHP ECONNREFUSED from container),
+                      // 504 (timeout) all mean the lab is NOT responding through
+                      // the proxy. Anything else = lab process is up.
+                      const blockedStatuses = [502, 503, 504, 0];  // 0 = network error
+                      callback(!blockedStatuses.includes(xhr.status));
+                  }
+              });
+          }
+
+          function pollLabUntilResponding() {
+              const elapsed = Date.now() - labPollStartedAt;
+              if (elapsed > RESTART_POLL_MAX_MS) {
+                  console.warn('[Restart Server] Lab probe timeout after', Math.round(elapsed / 1000), 'sec');
+                  alert('Lab is taking longer than expected to come back online (> 5 min). Try refreshing the page in a minute.');
+                  // Don't restore the button - leave it disabled to signal
+                  // something went wrong. User can refresh manually.
+                  return;
+              }
+              isLabResponding(function(responding) {
+                  if (responding) {
+                      console.log('[Restart Server] Lab is responding after', Math.round((Date.now() - labPollStartedAt) / 1000), 'sec - re-enabling Go to Server');
+                      const $start = $('#start');
+                      if (startBtnOriginalHtml !== null) {
+                          $start.html(startBtnOriginalHtml)
+                                .removeAttr('disabled')
+                                .css('pointer-events', '')
+                                .removeClass('disabled');
                       }
-                  },
-                  error: function(xhr) {
-                      // Network blip / hub busy: silently retry. Mid-restart
-                      // the proxy briefly returns 5xx while routes are
-                      // re-established, which is expected.
-                      console.debug('[Restart Server] Poll error (status=' + xhr.status + ', will retry)');
-                      setTimeout(pollUntilReady, RESTART_POLL_INTERVAL_MS);
+                      if (startBtnOriginalHref !== null) {
+                          $start.attr('href', startBtnOriginalHref);
+                      }
+                      $('#restart-server-btn').prop('disabled', false);
+                  } else {
+                      setTimeout(pollLabUntilResponding, RESTART_POLL_INTERVAL_MS);
                   }
               });
           }
@@ -595,16 +617,36 @@
               type: 'POST',
               headers: { 'X-XSRFToken': getCookie('_xsrf') },
               success: function(response) {
-                  console.log('[Restart Server] Container restart accepted; polling until lab is responding');
-                  // Switch the modal button to the "waiting for lab" phase.
-                  // Keep modal OPEN so the user sees the spinner and the
-                  // explanatory state.
-                  $btn.html(
-                      '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' +
-                      'Waiting for lab to come back online...'
-                  );
-                  restartPollStartedAt = Date.now();
-                  setTimeout(pollUntilReady, RESTART_POLL_INTERVAL_MS);
+                  console.log('[Restart Server] Container restart accepted - closing modal, returning to home, probing lab');
+                  // Phase 2: close the modal, disable Go to Server, poll
+                  // the lab itself.
+                  const modal = bootstrap.Modal.getInstance(restartServerModalEl);
+                  if (modal) modal.hide();
+                  // Re-arm the modal's confirm button so the operator can
+                  // open it again if needed (unlikely during this restart).
+                  $btn.prop('disabled', false).text('Yes, Restart Server');
+
+                  const $start = $('#start');
+                  if ($start.length) {
+                      // Save original button state so we can restore it
+                      // exactly when the lab is back.
+                      startBtnOriginalHtml = $start.html();
+                      startBtnOriginalHref = $start.attr('href');
+                      $start.html(
+                          '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' +
+                          'Lab is starting up...'
+                      )
+                            .attr('disabled', true)
+                            .addClass('disabled')
+                            .css('pointer-events', 'none')
+                            .attr('href', '#');
+                  }
+                  // Also disable Restart Server so user can't trigger a
+                  // second restart while one is in flight.
+                  $('#restart-server-btn').prop('disabled', true);
+
+                  labPollStartedAt = Date.now();
+                  setTimeout(pollLabUntilResponding, RESTART_POLL_INTERVAL_MS);
               },
               error: function(xhr) {
                   console.error('[Restart Server] API call failed:', xhr.status, xhr.responseText);
