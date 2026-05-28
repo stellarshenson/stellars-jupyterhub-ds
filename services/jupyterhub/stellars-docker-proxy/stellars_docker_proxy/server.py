@@ -373,12 +373,33 @@ class ProxyApp:
                 continue
             out.headers[k] = v
         await out.prepare(request)
+        # The client (docker CLI inside the user's lab) can disconnect at any
+        # time - common during long-poll endpoints like /containers/<id>/wait
+        # if the lab itself is being restarted or killed. Treat the resulting
+        # transport-closed write failure as a normal control-flow event:
+        # release the upstream response, stop streaming, return. Without this
+        # the exception bubbles to handle() and shows up as a full traceback
+        # in the hub log on every restart, which is just noise.
+        client_disconnected = False
         try:
             async for chunk in resp.content.iter_chunked(65536):
-                await out.write(chunk)
+                try:
+                    await out.write(chunk)
+                except (ConnectionResetError, ConnectionError) as e:
+                    log.debug(
+                        "client disconnected mid-stream on %s %s: %s",
+                        method, fwd_path, e,
+                    )
+                    client_disconnected = True
+                    break
         finally:
             resp.release()
-        await out.write_eof()
+        if not client_disconnected:
+            try:
+                await out.write_eof()
+            except (ConnectionResetError, ConnectionError):
+                # Same: client gone, nothing to send EOF to. Swallow.
+                pass
         return out
 
 
