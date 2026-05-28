@@ -227,8 +227,19 @@ def restore_one(
     prefix_active = f"{head} {C.cyan}{GLYPH_ACTIVE}{C.reset} {file_path.name} -> {volume}"
     prefix_done = f"{head} {C.green}{GLYPH_DONE}{C.reset} {file_path.name} -> {volume}"
 
-    sys.stdout.write(f"{prefix_active} ...\n")
-    sys.stdout.flush()
+    def _overall_line(current_frac: float) -> str:
+        overall_frac = ((idx - 1) + min(1.0, max(0.0, current_frac))) / total
+        opct = min(99, int(overall_frac * 100))
+        return (f"      {C.dim}Overall {fmt_bar(opct)} {opct:>3}%  "
+                f"({idx - 1}/{total} files done){C.reset}")
+
+    if show_progress:
+        # Reserve two lines (per-file + overall), park cursor at line A.
+        sys.stdout.write(f"{prefix_active} ...\n{_overall_line(0.0)}\x1b[1A\r")
+        sys.stdout.flush()
+    else:
+        sys.stdout.write(f"{prefix_active} ...\n")
+        sys.stdout.flush()
 
     start = time.monotonic()
     interrupted = False
@@ -274,17 +285,21 @@ def restore_one(
                         if now - last_update > 0.25:
                             pct = min(99, int(bytes_sent * 100 /
                                               max(1, total_bytes)))
-                            msg = (f"{prefix_active}  {fmt_bar(pct)} {pct:>3}%  "
-                                   f"{C.dim}{fmt_bytes(bytes_sent)} / "
-                                   f"{fmt_bytes(total_bytes)}{C.reset}")
-                            sys.stdout.write("\r\x1b[2K" + msg)
+                            per_msg = (f"{prefix_active}  {fmt_bar(pct)} "
+                                       f"{pct:>3}%  {C.dim}{fmt_bytes(bytes_sent)} / "
+                                       f"{fmt_bytes(total_bytes)}{C.reset}")
+                            overall_msg = _overall_line(bytes_sent / max(1, total_bytes))
+                            sys.stdout.write("\r\x1b[2K" + per_msg
+                                             + "\n\x1b[2K" + overall_msg + "\x1b[1A\r")
                             sys.stdout.flush()
                             last_update = now
                 proc.stdin.close()
             except BrokenPipeError:
                 pass
             rc = proc.wait()
-            sys.stdout.write("\r\x1b[2K")
+            # Clear both lines, return cursor to line A so done/aborted print
+            # overwrites the orphan banner.
+            sys.stdout.write("\r\x1b[2K\n\x1b[2K\x1b[1A\r")
             sys.stdout.flush()
         else:
             absdir = file_path.parent.resolve()
