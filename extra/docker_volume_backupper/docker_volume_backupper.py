@@ -257,6 +257,12 @@ def backup_one(
     start = time.monotonic()
     stop_flag = threading.Event()
 
+    def _overall_line(current_frac: float) -> str:
+        overall_frac = ((idx - 1) + min(1.0, max(0.0, current_frac))) / total
+        opct = min(99, int(overall_frac * 100))
+        return (f"      {C.dim}Overall {fmt_bar(opct)} {opct:>3}%  "
+                f"({idx - 1}/{total} volumes done){C.reset}")
+
     def poll():
         while not stop_flag.is_set():
             try:
@@ -265,19 +271,27 @@ def backup_one(
                 size = 0
             if estimated and estimated > 0:
                 pct = min(99, int(size * 100 / estimated))
-                msg = (f"{prefix_active}  {fmt_bar(pct)} {pct:>3}%  "
-                       f"{C.dim}{fmt_bytes(size)} / ~{fmt_bytes(estimated)}{C.reset}")
+                per_msg = (f"{prefix_active}  {fmt_bar(pct)} {pct:>3}%  "
+                           f"{C.dim}{fmt_bytes(size)} / ~{fmt_bytes(estimated)}{C.reset}")
+                overall_msg = _overall_line(size / estimated)
             else:
-                msg = f"{prefix_active}  {C.dim}{fmt_bytes(size)} written...{C.reset}"
-            sys.stdout.write("\r\x1b[2K" + msg)
+                per_msg = f"{prefix_active}  {C.dim}{fmt_bytes(size)} written...{C.reset}"
+                overall_msg = _overall_line(0.0)
+            # Two-line refresh: rewrite line A, newline, rewrite line B, move back up.
+            sys.stdout.write("\r\x1b[2K" + per_msg + "\n\x1b[2K" + overall_msg + "\x1b[1A\r")
             sys.stdout.flush()
             stop_flag.wait(0.25)
 
-    sys.stdout.write(f"{prefix_active} ...\n")
-    sys.stdout.flush()
     if show_progress:
+        # Reserve both lines (A: per-volume, B: overall), then move cursor back
+        # to line A so the first poll tick overwrites it cleanly.
+        sys.stdout.write(f"{prefix_active} ...\n{_overall_line(0.0)}\x1b[1A\r")
+        sys.stdout.flush()
         t = threading.Thread(target=poll, daemon=True)
         t.start()
+    else:
+        sys.stdout.write(f"{prefix_active} ...\n")
+        sys.stdout.flush()
 
     # Popen + wait() rather than subprocess.run(): run()'s internal KI handler
     # does process.kill()+process.wait() and can block indefinitely while the
@@ -293,7 +307,10 @@ def backup_one(
     finally:
         stop_flag.set()
         if show_progress:
-            sys.stdout.write("\r\x1b[2K")
+            # Clear line A, advance to line B, clear it, return to line A
+            # position - so the subsequent done/aborted print lands on line A
+            # and overwrites the orphaned banner.
+            sys.stdout.write("\r\x1b[2K\n\x1b[2K\x1b[1A\r")
             sys.stdout.flush()
 
     if interrupted:
