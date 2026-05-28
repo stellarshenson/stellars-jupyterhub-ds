@@ -563,65 +563,114 @@
           });
       });
 
-          // Add page refresh after Stop Server completes
-          // Watch for when JupyterHub's home.js modifies the DOM after stop
-          console.log('[Stop Server] Setting up DOM observer');
+          // Stop Server flow: poll the hub API until the spawner is actually
+          // inactive, THEN reload. The previous implementation reloaded 1 second
+          // after JupyterHub's home.js flipped the DOM, but DockerSpawner stop
+          // can take 60+ seconds on this deployment (volume unmounts, 9P
+          // teardown, per-user docker-proxy socket cleanup) - the reload fired
+          // long before the spawner finished, so `default_server.active` was
+          // still True at render time and the Stop button reappeared. Race +
+          // user-visible flicker. Replaced with a polling loop.
+          console.log('[Stop Server] Wiring stop-button handler');
 
-          const targetNode = document.querySelector('.text-center');
-          if (targetNode) {
-              const observer = new MutationObserver(function(mutations) {
-                  // Check if stop button was hidden (JupyterHub uses .hide() which sets display:none)
-                  const stopButton = document.getElementById('stop');
-                  const startButton = document.getElementById('start');
+          const STOP_POLL_INTERVAL_MS = 1500;   // poll cadence while waiting
+          const STOP_POLL_MAX_MS = 5 * 60 * 1000; // hard cap = 5 minutes
+          let stopPollTimer = null;
+          let stopPollStartedAt = null;
 
-                  // Check visibility using offsetParent (null = hidden)
-                  const stopVisible = stopButton && stopButton.offsetParent !== null;
-                  const startVisible = startButton && startButton.offsetParent !== null;
+          function isSpawnerInactive(userJson) {
+              // The user API returns {servers: {"": {ready, pending, ...}}}.
+              // Server-side considers the spawner inactive once the entry is
+              // either absent OR has ready=false AND pending=null (no operation
+              // in flight). Match the same definition the Jinja template uses
+              // for `default_server.active` so the post-reload render is
+              // guaranteed to show the Start button, not Stop.
+              if (!userJson || !userJson.servers) {
+                  return true;
+              }
+              const server = userJson.servers[''];
+              if (!server) {
+                  return true;
+              }
+              return server.ready === false && (server.pending === null || server.pending === undefined);
+          }
 
-                  console.log('[Stop Server] Mutation detected - stop visible:', stopVisible, 'start visible:', startVisible);
-
-                  if (!stopVisible && startVisible) {
-                      // Check if start button text was changed by JupyterHub (indicates stop completed)
-                      const startText = startButton.textContent.trim();
-                      console.log('[Stop Server] Start button text:', startText);
-
-                      if (startText === 'Start My Server') {
-                          console.log('[Stop Server] JupyterHub updated DOM after stop, updating UI and refreshing...');
-                          observer.disconnect();
-
-                          // Re-inject the play icon that JupyterHub removed
-                          const iconHtml = '<i class="fa fa-play" aria-hidden="true"></i> Start My Server';
-                          $(startButton).html(iconHtml);
-
-                          // Hide Restart Server button and show Manage Volumes button
-                          $('#restart-server-btn').hide();
-                          $('#manage-volumes-btn').show();
-                          console.log('[Stop Server] Updated button visibility - showing Manage Volumes');
-
-                          // Hide session timer bar
-                          if (typeof window.SessionTimer !== 'undefined') {
-                              SessionTimer.hide();
-                              console.log('[Stop Server] Session timer hidden');
-                          }
-
-                          setTimeout(function() {
-                              console.log('[Stop Server] Refreshing now');
-                              location.reload();
-                          }, 1000);  // Give user a moment to see the corrected button state
+          function pollSpawnerUntilInactive() {
+              const elapsed = Date.now() - stopPollStartedAt;
+              if (elapsed > STOP_POLL_MAX_MS) {
+                  console.warn('[Stop Server] Poll timeout after', Math.round(elapsed / 1000), 'sec - server still not inactive');
+                  // Don't reload - surface the issue so user can retry. The
+                  // existing JupyterHub DOM still shows the post-stop layout
+                  // (Start button), so the user can either try again or refresh
+                  // manually once they know stop is actually done.
+                  const $start = $('#start');
+                  if ($start.length) {
+                      $start.attr('title', 'Stop request timed out - server may still be stopping. Refresh manually in a minute.')
+                            .css('opacity', '0.6');
+                  }
+                  alert('Stop is taking longer than expected (> 5 min). The server may still be stopping in the background. Refresh the page in a minute to check; if it persists, contact the administrator.');
+                  return;
+              }
+              $.ajax({
+                  url: '{{ base_url }}api/users/' + username,
+                  type: 'GET',
+                  cache: false,
+                  // Network blip during the wait: keep trying. JupyterHub
+                  // briefly returns 5xx during proxy route changes; that is
+                  // expected mid-stop, not a fatal error.
+                  success: function(userJson) {
+                      if (isSpawnerInactive(userJson)) {
+                          console.log('[Stop Server] Spawner reported inactive after', Math.round((Date.now() - stopPollStartedAt) / 1000), 'sec - reloading');
+                          location.reload();
+                      } else {
+                          stopPollTimer = setTimeout(pollSpawnerUntilInactive, STOP_POLL_INTERVAL_MS);
                       }
+                  },
+                  error: function(xhr) {
+                      // Network blip / hub restart / proxy churn: silently retry
+                      // until the timeout cap. Logging at debug level only -
+                      // these are expected mid-stop, not user-actionable.
+                      console.debug('[Stop Server] Poll error (status=' + xhr.status + ', will retry)');
+                      stopPollTimer = setTimeout(pollSpawnerUntilInactive, STOP_POLL_INTERVAL_MS);
                   }
               });
-
-              observer.observe(targetNode, {
-                  childList: true,
-                  subtree: true,
-                  attributes: true,
-                  attributeFilter: ['style', 'class'],
-                  characterData: true
-              });
-
-              console.log('[Stop Server] Observer attached to button container');
           }
+
+          function beginStopPolling() {
+              if (stopPollStartedAt !== null) {
+                  // Already polling - someone double-clicked stop, ignore.
+                  return;
+              }
+              stopPollStartedAt = Date.now();
+
+              // Update the UI bits that don't depend on server-side state, so
+              // the page LOOKS right immediately. The reload at the end will
+              // re-render Jinja with the actual inactive state to make it
+              // canonical.
+              const $start = $('#start');
+              if ($start.length) {
+                  $start.html('<i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Stopping server...')
+                        .attr('disabled', true)
+                        .attr('href', '#')
+                        .css('pointer-events', 'none');
+              }
+              $('#stop').hide();
+              $('#restart-server-btn').hide();
+              // Don't surface Manage Volumes yet - it requires the lab to be
+              // fully stopped to read volume sizes accurately; the post-reload
+              // render handles that.
+              if (typeof window.SessionTimer !== 'undefined') {
+                  SessionTimer.hide();
+              }
+              console.log('[Stop Server] Polling /hub/api/users/' + username + ' every', STOP_POLL_INTERVAL_MS, 'ms (cap', STOP_POLL_MAX_MS / 1000, 'sec)');
+              stopPollTimer = setTimeout(pollSpawnerUntilInactive, STOP_POLL_INTERVAL_MS);
+          }
+
+          // Hook BEFORE the stock JupyterHub handler so we kick off polling
+          // for the same click. Stock home.js does its own DOM flip on
+          // success - we let it; the reload at the end of polling will
+          // reset everything to the canonical Jinja-rendered state.
+          $('#stop').on('click', beginStopPolling);
 
           // Debug: Check if buttons exist
           console.log('[Custom Handlers] Restart button exists:', $('#restart-server-btn').length > 0);
