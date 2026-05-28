@@ -65,9 +65,11 @@ def estimate_volume_bytes(volume: str) -> int | None:
         return None
 
 
-def curses_pick(volumes: list[str], dest: Path) -> list[str] | None:
+def curses_pick(
+    volumes: list[str], dest: Path, *, preselected: bool = True
+) -> list[str] | None:
     """Interactive multi-select. Returns chosen list or None on quit."""
-    selected = [True] * len(volumes)
+    selected = [preselected] * len(volumes)
 
     def run(stdscr) -> list[str] | None:
         curses.curs_set(0)
@@ -214,8 +216,9 @@ def build_parser() -> argparse.ArgumentParser:
         prog="docker_volume_backupper.py",
         description="Back up matching docker volumes to dated tar.gz files.",
     )
-    p.add_argument("patterns", nargs="+", metavar="pattern",
-                   help="regex(es) to match volume names (union)")
+    p.add_argument("patterns", nargs="*", metavar="pattern",
+                   help="regex(es) to match volume names (union); "
+                        "if omitted, picker opens with ALL volumes, none preselected")
     p.add_argument("-d", "--dir", default="./volumes",
                    help="backup directory (default: ./volumes)")
     p.add_argument("-y", "--yes", action="store_true",
@@ -240,14 +243,20 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: `docker volume ls` failed: {e}", file=sys.stderr)
         return 2
 
-    matched = match_patterns(all_volumes, args.patterns)
+    no_patterns = not args.patterns
+    if no_patterns:
+        matched = all_volumes
+    else:
+        matched = match_patterns(all_volumes, args.patterns)
     if not matched:
-        print("No volumes matched any pattern.", file=sys.stderr)
+        msg = "No docker volumes found." if no_patterns else "No volumes matched any pattern."
+        print(msg, file=sys.stderr)
         return 1
 
     backup_dir = Path(args.dir).expanduser().resolve()
 
-    print(f"Matched {len(matched)} volume(s):")
+    label = "All volumes" if no_patterns else "Matched"
+    print(f"{label} ({len(matched)}):")
     for v in matched:
         print(f"  {v}")
     print(f"Destination: {backup_dir}")
@@ -264,7 +273,7 @@ def main(argv: list[str] | None = None) -> int:
             print("ERROR: not a TTY; pass -y to back up without confirmation.",
                   file=sys.stderr)
             return 2
-        chosen = curses_pick(matched, backup_dir)
+        chosen = curses_pick(matched, backup_dir, preselected=not no_patterns)
         if chosen is None:
             print("Cancelled.")
             return 0
