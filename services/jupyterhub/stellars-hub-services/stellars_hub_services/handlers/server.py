@@ -1,5 +1,7 @@
 """Handler for restarting user servers."""
 
+import time
+
 import docker
 from jupyterhub.handlers import BaseHandler
 from tornado import web
@@ -46,7 +48,24 @@ class RestartServerHandler(BaseHandler):
 
         try:
             container = docker_client.containers.get(container_name)
-            container.restart(timeout=10)
+            # [Timing] probes around container.restart() so the operator can
+            # see in the hub log how long the Docker-side restart took. The
+            # full user-visible restart includes additional lab-boot time on
+            # top of this duration; the home.html poll observes that part.
+            self.log.info(
+                "[Timing] container.restart() called user=%s container=%s",
+                username,
+                container_name,
+            )
+            t0 = time.perf_counter()
+            try:
+                container.restart(timeout=10)
+            finally:
+                self.log.info(
+                    "[Timing] container.restart() returned in %.3fs user=%s",
+                    time.perf_counter() - t0,
+                    username,
+                )
             self.log.info(f"[Restart Server] Container {container_name} successfully restarted for user {username}")
             self.set_status(200)
             self.finish({"message": f"Container {container_name} successfully restarted"})

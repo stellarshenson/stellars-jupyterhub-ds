@@ -491,7 +491,12 @@ if JUPYTERHUB_SSL_ENABLED == 1:
     c.JupyterHub.ssl_key = '/mnt/certs/server.key'
 
 # ── Spawner ──
-c.JupyterHub.spawner_class = "dockerspawner.DockerSpawner"
+# TimingDockerSpawner is a thin subclass of DockerSpawner that logs
+# `[Timing]` lines around start/stop/remove_object/poll. Helpful for
+# diagnosing where time goes during stop/restart (Docker side vs hub
+# polling lag). Drop back to stock dockerspawner.DockerSpawner if you
+# want to silence the timing probes.
+c.JupyterHub.spawner_class = "stellars_hub_services.timing_spawner.TimingDockerSpawner"
 
 # Environment variables injected into every spawned JupyterLab container
 c.DockerSpawner.environment = {
