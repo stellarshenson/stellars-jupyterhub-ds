@@ -621,6 +621,13 @@
                   url: '{{ base_url }}api/users/' + username,
                   type: 'GET',
                   cache: false,
+                  // JupyterHub enforces XSRF on cookie-authenticated API calls
+                  // including GETs - without the header the hub returns 403
+                  // "'_xsrf' argument missing from GET" and the poll never
+                  // sees inactive state, so the page hangs on "Stopping..."
+                  // indefinitely. Sending the token from the _xsrf cookie
+                  // matches what JupyterHub's own JHAPI client does.
+                  headers: { 'X-XSRFToken': getCookie('_xsrf') },
                   success: function(userJson) {
                       if (isSpawnerInactive(userJson)) {
                           console.log('[Stop Server] Spawner reported inactive after', Math.round((Date.now() - stopPollStartedAt) / 1000), 'sec - reloading');
@@ -656,11 +663,18 @@
               $('#stop').hide();
               $('#start').hide();
               if (!$('#stop-spinner').length) {
+                  // Bootstrap spinner-border instead of FA fa-spin: FontAwesome
+                  // 7 disables .fa-spin entirely under
+                  // @media (prefers-reduced-motion: reduce) so the icon
+                  // appeared static for any user with that preference. The
+                  // Bootstrap spinner only slows its animation under the same
+                  // media query, never stops, so the user always sees the
+                  // operation is in progress.
                   $('#start').after(
                       '<a id="stop-spinner" role="button" ' +
                       'class="btn btn-lg btn-secondary disabled" ' +
                       'style="cursor: wait; pointer-events: none;" tabindex="-1">' +
-                      '<i class="fa fa-spinner fa-spin" aria-hidden="true"></i> ' +
+                      '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' +
                       'Stopping server...' +
                       '</a>'
                   );
@@ -693,6 +707,9 @@
                   url: '{{ base_url }}api/users/' + username,
                   type: 'GET',
                   cache: false,
+                  // Same XSRF requirement as the stop poll - GET on the user
+                  // API returns 403 without it.
+                  headers: { 'X-XSRFToken': getCookie('_xsrf') },
                   success: function(userJson) {
                       if (isSpawnerInactive(userJson)) {
                           console.warn('[Drift] Page rendered as active but server is now inactive - reloading');
