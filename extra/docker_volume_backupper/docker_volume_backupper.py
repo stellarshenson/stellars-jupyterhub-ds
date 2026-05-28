@@ -12,6 +12,7 @@ import curses
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -19,6 +20,54 @@ import time
 from datetime import date
 from pathlib import Path
 
+
+# ── Colour / glyph helpers ──────────────────────────────────────────────────
+
+def _supports_color() -> bool:
+    if os.environ.get("NO_COLOR"):
+        return False
+    if not sys.stdout.isatty():
+        return False
+    return os.environ.get("TERM", "") not in ("", "dumb")
+
+
+class _Style:
+    def __init__(self, enabled: bool) -> None:
+        self.enabled = enabled
+        self.bold = "\x1b[1m" if enabled else ""
+        self.dim = "\x1b[2m" if enabled else ""
+        self.cyan = "\x1b[36m" if enabled else ""
+        self.green = "\x1b[32m" if enabled else ""
+        self.yellow = "\x1b[33m" if enabled else ""
+        self.red = "\x1b[31m" if enabled else ""
+        self.reset = "\x1b[0m" if enabled else ""
+
+
+C = _Style(_supports_color())
+
+GLYPH_ACTIVE = "▸"
+GLYPH_DONE = "✓"
+GLYPH_FAIL = "✗"
+
+
+def fmt_bar(pct: int, width: int = 24) -> str:
+    pct = max(0, min(100, pct))
+    filled = int(pct * width / 100)
+    return "[" + "█" * filled + "░" * (width - filled) + "]"
+
+
+def hr() -> str:
+    cols = shutil.get_terminal_size((80, 24)).columns
+    return C.dim + "─" * min(cols, 80) + C.reset
+
+
+def clear_screen() -> None:
+    if sys.stdout.isatty():
+        sys.stdout.write("\x1b[H\x1b[2J")
+        sys.stdout.flush()
+
+
+# ── Docker helpers ──────────────────────────────────────────────────────────
 
 def list_docker_volumes() -> list[str]:
     out = subprocess.run(
@@ -40,16 +89,33 @@ def match_patterns(volumes: list[str], patterns: list[str]) -> list[str]:
                 matched.append(v)
     for p, rx in compiled:
         if not any(rx.search(v) for v in volumes):
-            print(f"WARNING: pattern matched nothing: {p}", file=sys.stderr)
+            print(f"{C.yellow}WARNING:{C.reset} pattern matched nothing: {p}",
+                  file=sys.stderr)
     return matched
 
 
-def fmt_bytes(n: int) -> str:
+def fmt_bytes(n: float) -> str:
     for unit in ("B", "KB", "MB", "GB", "TB"):
         if n < 1024 or unit == "TB":
-            return f"{n:.1f} {unit}" if unit != "B" else f"{n} B"
+            return f"{n:.1f} {unit}" if unit != "B" else f"{int(n)} B"
         n /= 1024
     return f"{n:.1f} TB"
+
+
+def _try_remove_partial(path: Path, retries: int = 10, delay: float = 0.3) -> bool:
+    """Best-effort unlink with retry. On Docker Desktop/WSL2 the daemon may
+    re-create the file briefly after container teardown (deferred 9P writes);
+    loop until removal actually sticks or we give up."""
+    for _ in range(retries):
+        if path.exists():
+            try:
+                path.unlink()
+            except OSError:
+                pass
+        time.sleep(delay)
+        if not path.exists():
+            return True
+    return not path.exists()
 
 
 def estimate_volume_bytes(volume: str) -> int | None:
@@ -65,6 +131,8 @@ def estimate_volume_bytes(volume: str) -> int | None:
         return None
 
 
+# ── Curses picker ───────────────────────────────────────────────────────────
+
 def curses_pick(
     volumes: list[str], dest: Path, *, preselected: bool = True
 ) -> list[str] | None:
@@ -74,16 +142,30 @@ def curses_pick(
     def run(stdscr) -> list[str] | None:
         curses.curs_set(0)
         stdscr.keypad(True)
+        try:
+            curses.start_color()
+            curses.use_default_colors()
+            curses.init_pair(1, curses.COLOR_CYAN, -1)
+            curses.init_pair(2, curses.COLOR_GREEN, -1)
+            curses.init_pair(3, curses.COLOR_YELLOW, -1)
+            color_title = curses.color_pair(1) | curses.A_BOLD
+            color_help = curses.color_pair(3)
+            color_check = curses.color_pair(2) | curses.A_BOLD
+        except curses.error:
+            color_title = curses.A_BOLD
+            color_help = curses.A_DIM
+            color_check = curses.A_BOLD
+
         cursor = 0
         top = 0
         while True:
             stdscr.erase()
             h, w = stdscr.getmaxyx()
             list_h = max(1, h - 5)
-            header1 = f"docker_volume_backupper.py - select volumes to back up ({len(volumes)} matched)"
-            header2 = "  UP/DOWN move   SPACE toggle   a all   n none   ENTER confirm   q quit"
-            stdscr.addnstr(0, 0, header1, w - 1)
-            stdscr.addnstr(1, 0, header2, w - 1)
+            title = f" docker_volume_backupper - select volumes ({len(volumes)} matched) "
+            help1 = "  UP/DOWN move   SPACE toggle   a all   n none   ENTER confirm   q quit"
+            stdscr.addnstr(0, 0, title, w - 1, color_title)
+            stdscr.addnstr(1, 0, help1, w - 1, color_help)
             if cursor < top:
                 top = cursor
             elif cursor >= top + list_h:
@@ -92,13 +174,19 @@ def curses_pick(
                 idx = top + row
                 if idx >= len(volumes):
                     break
-                mark = "x" if selected[idx] else " "
-                arrow = ">" if idx == cursor else " "
-                line = f"{arrow} [{mark}] {volumes[idx]}"
-                attr = curses.A_REVERSE if idx == cursor else curses.A_NORMAL
+                checked = selected[idx]
+                mark_glyph = GLYPH_DONE if checked else " "
+                arrow = "▶" if idx == cursor else " "
+                line = f" {arrow} [{mark_glyph}] {volumes[idx]}"
+                attr = curses.A_NORMAL
+                if idx == cursor:
+                    attr = curses.A_REVERSE
+                elif checked:
+                    attr = color_check
                 stdscr.addnstr(3 + row, 0, line, w - 1, attr)
-            footer = f"  {sum(selected)}/{len(volumes)} selected   dest: {dest}"
-            stdscr.addnstr(h - 1, 0, footer, w - 1)
+            sel = sum(selected)
+            footer = f"  {sel}/{len(volumes)} selected   dest: {dest}"
+            stdscr.addnstr(h - 1, 0, footer, w - 1, color_help)
             stdscr.refresh()
 
             ch = stdscr.getch()
@@ -133,6 +221,8 @@ def curses_pick(
         return None
 
 
+# ── Confirm + backup ────────────────────────────────────────────────────────
+
 def confirm(prompt: str) -> bool:
     try:
         ans = input(f"{prompt} [y/N]: ").strip().lower()
@@ -144,12 +234,15 @@ def confirm(prompt: str) -> bool:
 def backup_one(
     volume: str, backup_dir: Path, *, show_progress: bool, idx: int, total: int
 ) -> None:
-    """Run one docker tar backup. Aborts the program on failure."""
+    """Run one docker tar backup. On KeyboardInterrupt: remove container,
+    delete partial tarball, re-raise. On non-interrupt failure: sys.exit(1)."""
     today = date.today().isoformat()
     out_name = f"{volume}_{today}.tar.gz"
     out_path = backup_dir / out_name
     cname = f"backup_{int(time.time())}_{os.getpid()}_{idx}"
-    prefix = f"[{idx}/{total}] {volume}"
+    head = f"{C.bold}[{idx}/{total}]{C.reset}"
+    prefix_active = f"{head} {C.cyan}{GLYPH_ACTIVE}{C.reset} {volume}"
+    prefix_done = f"{head} {C.green}{GLYPH_DONE}{C.reset} {volume}"
 
     estimated = estimate_volume_bytes(volume) if show_progress else None
 
@@ -172,44 +265,74 @@ def backup_one(
                 size = 0
             if estimated and estimated > 0:
                 pct = min(99, int(size * 100 / estimated))
-                msg = f"{prefix}   {fmt_bytes(size)} / ~{fmt_bytes(estimated)} ({pct}%)"
+                msg = (f"{prefix_active}  {fmt_bar(pct)} {pct:>3}%  "
+                       f"{C.dim}{fmt_bytes(size)} / ~{fmt_bytes(estimated)}{C.reset}")
             else:
-                msg = f"{prefix}   {fmt_bytes(size)} written..."
+                msg = f"{prefix_active}  {C.dim}{fmt_bytes(size)} written...{C.reset}"
             sys.stdout.write("\r\x1b[2K" + msg)
             sys.stdout.flush()
             stop_flag.wait(0.25)
 
+    sys.stdout.write(f"{prefix_active} ...\n")
+    sys.stdout.flush()
     if show_progress:
-        sys.stdout.write(f"{prefix} ...\n")
-        sys.stdout.flush()
         t = threading.Thread(target=poll, daemon=True)
         t.start()
-    else:
-        sys.stdout.write(f"{prefix} ...\n")
-        sys.stdout.flush()
 
+    # Popen + wait() rather than subprocess.run(): run()'s internal KI handler
+    # does process.kill()+process.wait() and can block indefinitely while the
+    # docker client tries to gracefully tear down the container, preventing our
+    # cleanup from ever running.
+    proc = subprocess.Popen(cmd)
+    interrupted = False
+    proc_rc = -1
     try:
-        proc = subprocess.run(cmd, check=False)
+        proc_rc = proc.wait()
+    except KeyboardInterrupt:
+        interrupted = True
     finally:
         stop_flag.set()
         if show_progress:
             sys.stdout.write("\r\x1b[2K")
             sys.stdout.flush()
 
-    if proc.returncode != 0:
+    if interrupted:
+        # The docker container is owned by dockerd, not by our killed client;
+        # talk to the daemon directly to remove it.
+        subprocess.run(["docker", "rm", "-f", cname],
+                       check=False, capture_output=True, timeout=15)
+        try:
+            proc.kill()
+            proc.wait(timeout=5)
+        except Exception:
+            pass
+        # Small settle so the daemon flushes / releases its bind-mount handle
+        # before we try to delete the partial tarball.
+        removed = _try_remove_partial(out_path)
+        file_msg = ", partial file deleted" if removed else f", partial file kept: {out_path}"
+        print(f"{head} {C.yellow}{GLYPH_FAIL}{C.reset} {volume}  "
+              f"{C.yellow}aborted (container removed{file_msg}){C.reset}",
+              file=sys.stderr)
+        raise KeyboardInterrupt
+
+    if proc_rc != 0:
         subprocess.run(["docker", "rm", "-f", cname],
                        check=False, capture_output=True)
-        print(f"ERROR: backup failed for volume: {volume}", file=sys.stderr)
+        print(f"{head} {C.red}{GLYPH_FAIL}{C.reset} {volume}  "
+              f"{C.red}backup failed (rc={proc_rc}){C.reset}", file=sys.stderr)
         sys.exit(1)
 
     elapsed = time.monotonic() - start
     try:
         final_size = out_path.stat().st_size
-        size_str = f" ({fmt_bytes(final_size)} compressed)"
+        size_str = f" {C.dim}({fmt_bytes(final_size)} compressed){C.reset}"
     except FileNotFoundError:
         size_str = ""
-    print(f"{prefix}   done in {elapsed:.1f}s -> {out_path}{size_str}")
+    print(f"{prefix_done}  {C.dim}done in {elapsed:.1f}s -> {out_path}{C.reset}"
+          f"{size_str}")
 
+
+# ── Argparse / main ─────────────────────────────────────────────────────────
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
@@ -230,17 +353,31 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _print_listing(title: str, volumes: list[str], dest: Path) -> None:
+    print(f"{C.bold}{title} ({len(volumes)}){C.reset}")
+    for v in volumes:
+        print(f"  {C.dim}•{C.reset} {v}")
+    print(f"{C.dim}Destination:{C.reset} {dest}")
+
+
 def main(argv: list[str] | None = None) -> int:
+    # If invoked as a background job, bash may set SIGINT to SIG_IGN;
+    # Python inherits and won't override that, so Ctrl-C would be a no-op.
+    # Re-arm explicitly so KeyboardInterrupt always fires.
+    signal.signal(signal.SIGINT, signal.default_int_handler)
+
     args = build_parser().parse_args(argv)
 
     if not shutil.which("docker"):
-        print("ERROR: docker CLI not found in PATH", file=sys.stderr)
+        print(f"{C.red}ERROR:{C.reset} docker CLI not found in PATH",
+              file=sys.stderr)
         return 2
 
     try:
         all_volumes = list_docker_volumes()
     except subprocess.CalledProcessError as e:
-        print(f"ERROR: `docker volume ls` failed: {e}", file=sys.stderr)
+        print(f"{C.red}ERROR:{C.reset} `docker volume ls` failed: {e}",
+              file=sys.stderr)
         return 2
 
     no_patterns = not args.patterns
@@ -250,52 +387,61 @@ def main(argv: list[str] | None = None) -> int:
         matched = match_patterns(all_volumes, args.patterns)
     if not matched:
         msg = "No docker volumes found." if no_patterns else "No volumes matched any pattern."
-        print(msg, file=sys.stderr)
+        print(f"{C.yellow}{msg}{C.reset}", file=sys.stderr)
         return 1
 
     backup_dir = Path(args.dir).expanduser().resolve()
-
     label = "All volumes" if no_patterns else "Matched"
-    print(f"{label} ({len(matched)}):")
-    for v in matched:
-        print(f"  {v}")
-    print(f"Destination: {backup_dir}")
+    _print_listing(label, matched, backup_dir)
     print()
 
     if args.dry_run:
-        print("Dry run - nothing was backed up.")
+        print(f"{C.dim}Dry run - nothing was backed up.{C.reset}")
         return 0
 
     if args.yes:
         chosen = matched
     else:
         if not sys.stdin.isatty():
-            print("ERROR: not a TTY; pass -y to back up without confirmation.",
-                  file=sys.stderr)
+            print(f"{C.red}ERROR:{C.reset} not a TTY; pass -y to back up "
+                  "without confirmation.", file=sys.stderr)
             return 2
-        chosen = curses_pick(matched, backup_dir, preselected=not no_patterns)
+        try:
+            chosen = curses_pick(matched, backup_dir, preselected=not no_patterns)
+        except KeyboardInterrupt:
+            chosen = None
         if chosen is None:
             print("Cancelled.")
             return 0
         if not chosen:
             print("Nothing selected.")
             return 0
-        print(f"Selected {len(chosen)} volume(s):")
-        for v in chosen:
-            print(f"  {v}")
-        if not confirm(f"Back up {len(chosen)} volume(s) to {backup_dir}?"):
+        clear_screen()
+        _print_listing("Selected", chosen, backup_dir)
+        print()
+        if not confirm(f"Back up {len(chosen)} volume(s)?"):
             print("Cancelled.")
             return 0
 
     backup_dir.mkdir(parents=True, exist_ok=True)
 
-    show_progress = not args.no_progress
-    for i, v in enumerate(chosen, start=1):
-        backup_one(v, backup_dir, show_progress=show_progress,
-                   idx=i, total=len(chosen))
+    clear_screen()
+    print(f"{C.bold}Backing up {len(chosen)} volume(s) -> {backup_dir}{C.reset}")
+    print(hr())
 
-    print()
-    print(f"All done. {len(chosen)} volume(s) backed up to {backup_dir}")
+    show_progress = not args.no_progress
+    try:
+        for i, v in enumerate(chosen, start=1):
+            backup_one(v, backup_dir, show_progress=show_progress,
+                       idx=i, total=len(chosen))
+    except KeyboardInterrupt:
+        print(hr())
+        print(f"{C.yellow}Aborted by user.{C.reset}", file=sys.stderr)
+        return 130
+
+    print(hr())
+    print(f"{C.green}{GLYPH_DONE}{C.reset} {C.bold}All done.{C.reset} "
+          f"{len(chosen)} volume(s) backed up to {backup_dir}")
     return 0
 
 

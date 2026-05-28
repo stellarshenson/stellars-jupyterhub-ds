@@ -16,6 +16,7 @@ import curses
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -24,6 +25,54 @@ from pathlib import Path
 
 _DATE_RE = re.compile(r"[_-]\d{4}-\d{2}-\d{2}(?:[_-].*)?$")
 
+
+# ── Colour / glyph helpers ──────────────────────────────────────────────────
+
+def _supports_color() -> bool:
+    if os.environ.get("NO_COLOR"):
+        return False
+    if not sys.stdout.isatty():
+        return False
+    return os.environ.get("TERM", "") not in ("", "dumb")
+
+
+class _Style:
+    def __init__(self, enabled: bool) -> None:
+        self.enabled = enabled
+        self.bold = "\x1b[1m" if enabled else ""
+        self.dim = "\x1b[2m" if enabled else ""
+        self.cyan = "\x1b[36m" if enabled else ""
+        self.green = "\x1b[32m" if enabled else ""
+        self.yellow = "\x1b[33m" if enabled else ""
+        self.red = "\x1b[31m" if enabled else ""
+        self.reset = "\x1b[0m" if enabled else ""
+
+
+C = _Style(_supports_color())
+
+GLYPH_ACTIVE = "▸"
+GLYPH_DONE = "✓"
+GLYPH_FAIL = "✗"
+
+
+def fmt_bar(pct: int, width: int = 24) -> str:
+    pct = max(0, min(100, pct))
+    filled = int(pct * width / 100)
+    return "[" + "█" * filled + "░" * (width - filled) + "]"
+
+
+def hr() -> str:
+    cols = shutil.get_terminal_size((80, 24)).columns
+    return C.dim + "─" * min(cols, 80) + C.reset
+
+
+def clear_screen() -> None:
+    if sys.stdout.isatty():
+        sys.stdout.write("\x1b[H\x1b[2J")
+        sys.stdout.flush()
+
+
+# ── Helpers ─────────────────────────────────────────────────────────────────
 
 def extract_volume_name(path: Path) -> str:
     """Strip extension and trailing _YYYY-MM-DD[<suffix>] from a backup filename."""
@@ -43,6 +92,11 @@ def fmt_bytes(n: float) -> str:
     return f"{n:.1f} TB"
 
 
+def _force_remove_container(name: str) -> None:
+    subprocess.run(["docker", "rm", "-f", name],
+                   check=False, capture_output=True, timeout=15)
+
+
 def volume_exists(volume: str) -> bool:
     r = subprocess.run(
         ["docker", "volume", "inspect", volume],
@@ -50,6 +104,17 @@ def volume_exists(volume: str) -> bool:
     )
     return r.returncode == 0
 
+
+def _tar_extract_flag(path: Path) -> str:
+    name = path.name.lower()
+    if name.endswith(".tar.gz") or name.endswith(".tgz"):
+        return "xzf"
+    if name.endswith(".tar"):
+        return "xf"
+    return "xzf"
+
+
+# ── Curses picker ───────────────────────────────────────────────────────────
 
 def curses_pick(
     items: list[tuple[Path, str, int]],
@@ -60,16 +125,30 @@ def curses_pick(
     def run(stdscr) -> list[tuple[Path, str, int]] | None:
         curses.curs_set(0)
         stdscr.keypad(True)
+        try:
+            curses.start_color()
+            curses.use_default_colors()
+            curses.init_pair(1, curses.COLOR_CYAN, -1)
+            curses.init_pair(2, curses.COLOR_GREEN, -1)
+            curses.init_pair(3, curses.COLOR_YELLOW, -1)
+            color_title = curses.color_pair(1) | curses.A_BOLD
+            color_help = curses.color_pair(3)
+            color_check = curses.color_pair(2) | curses.A_BOLD
+        except curses.error:
+            color_title = curses.A_BOLD
+            color_help = curses.A_DIM
+            color_check = curses.A_BOLD
+
         cursor = 0
         top = 0
         while True:
             stdscr.erase()
             h, w = stdscr.getmaxyx()
             list_h = max(1, h - 5)
-            header1 = f"docker_volume_restore.py - select backups to restore ({len(items)} matched)"
-            header2 = "  UP/DOWN move   SPACE toggle   a all   n none   ENTER confirm   q quit"
-            stdscr.addnstr(0, 0, header1, w - 1)
-            stdscr.addnstr(1, 0, header2, w - 1)
+            title = f" docker_volume_restore - select backups ({len(items)} matched) "
+            help1 = "  UP/DOWN move   SPACE toggle   a all   n none   ENTER confirm   q quit"
+            stdscr.addnstr(0, 0, title, w - 1, color_title)
+            stdscr.addnstr(1, 0, help1, w - 1, color_help)
             if cursor < top:
                 top = cursor
             elif cursor >= top + list_h:
@@ -78,16 +157,21 @@ def curses_pick(
                 idx = top + row
                 if idx >= len(items):
                     break
-                mark = "x" if selected[idx] else " "
-                arrow = ">" if idx == cursor else " "
                 fp, vol, size = items[idx]
-                line = f"{arrow} [{mark}] {fp.name}  ({fmt_bytes(size)})  ->  {vol}"
-                attr = curses.A_REVERSE if idx == cursor else curses.A_NORMAL
+                checked = selected[idx]
+                mark_glyph = GLYPH_DONE if checked else " "
+                arrow = "▶" if idx == cursor else " "
+                line = f" {arrow} [{mark_glyph}] {fp.name}  ({fmt_bytes(size)})  ->  {vol}"
+                attr = curses.A_NORMAL
+                if idx == cursor:
+                    attr = curses.A_REVERSE
+                elif checked:
+                    attr = color_check
                 stdscr.addnstr(3 + row, 0, line, w - 1, attr)
             sel_count = sum(selected)
             sel_bytes = sum(s for sel, (_, _, s) in zip(selected, items) if sel)
             footer = f"  {sel_count}/{len(items)} selected ({fmt_bytes(sel_bytes)})"
-            stdscr.addnstr(h - 1, 0, footer, w - 1)
+            stdscr.addnstr(h - 1, 0, footer, w - 1, color_help)
             stdscr.refresh()
 
             ch = stdscr.getch()
@@ -122,6 +206,8 @@ def curses_pick(
         return None
 
 
+# ── Confirm + restore ───────────────────────────────────────────────────────
+
 def confirm(prompt: str) -> bool:
     try:
         ans = input(f"{prompt} [y/N]: ").strip().lower()
@@ -130,106 +216,128 @@ def confirm(prompt: str) -> bool:
     return ans in ("y", "yes")
 
 
-def _tar_extract_flag(path: Path) -> str:
-    name = path.name.lower()
-    if name.endswith(".tar.gz") or name.endswith(".tgz"):
-        return "xzf"
-    if name.endswith(".tar"):
-        return "xf"
-    return "xzf"
-
-
 def restore_one(
     file_path: Path, volume: str, *, show_progress: bool, idx: int, total: int
 ) -> None:
-    """Wipe the destination volume, then extract the backup. Aborts on failure.
-
-    With progress on: splits into two docker runs - a short wipe, then a
-    streamed extract via stdin so we can poll exact bytes-sent vs file size.
-
-    With --no-progress: a single combined run reads the tar directly from the
-    bind-mounted backup dir (no Python in the data path).
-    """
+    """Wipe + extract. On KeyboardInterrupt: kill containers, warn about
+    partial state, re-raise. On non-interrupt failure: sys.exit(1)."""
     cname = f"restore_{volume}_{int(time.time())}_{os.getpid()}_{idx}"
-    prefix = f"[{idx}/{total}] {file_path.name} -> {volume}"
+    wipe_cname = f"{cname}_wipe"
+    head = f"{C.bold}[{idx}/{total}]{C.reset}"
+    prefix_active = f"{head} {C.cyan}{GLYPH_ACTIVE}{C.reset} {file_path.name} -> {volume}"
+    prefix_done = f"{head} {C.green}{GLYPH_DONE}{C.reset} {file_path.name} -> {volume}"
 
-    start = time.monotonic()
-    sys.stdout.write(f"{prefix} ...\n")
+    sys.stdout.write(f"{prefix_active} ...\n")
     sys.stdout.flush()
 
-    if show_progress:
-        wipe_cname = f"{cname}_wipe"
-        wipe = subprocess.run(
-            ["docker", "run", "--rm", "--name", wipe_cname,
-             "-v", f"{volume}:/data", "alpine",
-             "sh", "-c", "cd /data && rm -rf ./* .??* 2>/dev/null || true"],
-            capture_output=True,
-        )
-        if wipe.returncode != 0:
-            subprocess.run(["docker", "rm", "-f", wipe_cname],
-                           check=False, capture_output=True)
-            print(f"ERROR: wipe failed for volume {volume}", file=sys.stderr)
-            sys.exit(1)
+    start = time.monotonic()
+    interrupted = False
+    rc = -1
 
-        flag = _tar_extract_flag(file_path)
-        proc = subprocess.Popen(
-            ["docker", "run", "--rm", "-i", "--name", cname,
-             "-v", f"{volume}:/data", "alpine",
-             "tar", flag, "-", "-C", "/data"],
-            stdin=subprocess.PIPE,
-        )
-        assert proc.stdin is not None
+    try:
+        if show_progress:
+            wipe = subprocess.run(
+                ["docker", "run", "--rm", "--name", wipe_cname,
+                 "-v", f"{volume}:/data", "alpine",
+                 "sh", "-c", "cd /data && rm -rf ./* .??* 2>/dev/null || true"],
+                capture_output=True,
+            )
+            if wipe.returncode != 0:
+                subprocess.run(["docker", "rm", "-f", wipe_cname],
+                               check=False, capture_output=True)
+                print(f"{head} {C.red}{GLYPH_FAIL}{C.reset} {volume}  "
+                      f"{C.red}wipe failed (rc={wipe.returncode}){C.reset}",
+                      file=sys.stderr)
+                sys.exit(1)
 
-        total_bytes = file_path.stat().st_size
-        bytes_sent = 0
-        last_update = 0.0
+            flag = _tar_extract_flag(file_path)
+            proc = subprocess.Popen(
+                ["docker", "run", "--rm", "-i", "--name", cname,
+                 "-v", f"{volume}:/data", "alpine",
+                 "tar", flag, "-", "-C", "/data"],
+                stdin=subprocess.PIPE,
+            )
+            assert proc.stdin is not None
+
+            total_bytes = file_path.stat().st_size
+            bytes_sent = 0
+            last_update = 0.0
+            try:
+                with open(file_path, "rb") as fh:
+                    while True:
+                        chunk = fh.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        proc.stdin.write(chunk)
+                        bytes_sent += len(chunk)
+                        now = time.monotonic()
+                        if now - last_update > 0.25:
+                            pct = min(99, int(bytes_sent * 100 /
+                                              max(1, total_bytes)))
+                            msg = (f"{prefix_active}  {fmt_bar(pct)} {pct:>3}%  "
+                                   f"{C.dim}{fmt_bytes(bytes_sent)} / "
+                                   f"{fmt_bytes(total_bytes)}{C.reset}")
+                            sys.stdout.write("\r\x1b[2K" + msg)
+                            sys.stdout.flush()
+                            last_update = now
+                proc.stdin.close()
+            except BrokenPipeError:
+                pass
+            rc = proc.wait()
+            sys.stdout.write("\r\x1b[2K")
+            sys.stdout.flush()
+        else:
+            absdir = file_path.parent.resolve()
+            flag = _tar_extract_flag(file_path)
+            inner = (
+                "set -e; cd /data; "
+                "rm -rf ./* .??* 2>/dev/null || true; "
+                f"tar {flag} \"/backup/{file_path.name}\" -C /data"
+            )
+            cmd = [
+                "docker", "run", "--rm", "--name", cname,
+                "-v", f"{volume}:/data",
+                "-v", f"{absdir}:/backup",
+                "alpine", "sh", "-c", inner,
+            ]
+            # Popen + wait() rather than subprocess.run(): run()'s internal KI
+            # handler blocks indefinitely on the docker client's graceful
+            # tear-down, preventing our cleanup branch from ever running.
+            proc = subprocess.Popen(cmd)
+            try:
+                rc = proc.wait()
+            except KeyboardInterrupt:
+                interrupted = True
+    except KeyboardInterrupt:
+        interrupted = True
+
+    if interrupted:
+        for c in (wipe_cname, cname):
+            _force_remove_container(c)
         try:
-            with open(file_path, "rb") as fh:
-                while True:
-                    chunk = fh.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    proc.stdin.write(chunk)
-                    bytes_sent += len(chunk)
-                    now = time.monotonic()
-                    if now - last_update > 0.25:
-                        pct = min(99, int(bytes_sent * 100 / max(1, total_bytes)))
-                        msg = (f"{prefix}   {fmt_bytes(bytes_sent)} / "
-                               f"{fmt_bytes(total_bytes)} ({pct}%)")
-                        sys.stdout.write("\r\x1b[2K" + msg)
-                        sys.stdout.flush()
-                        last_update = now
-            proc.stdin.close()
-        except BrokenPipeError:
+            if 'proc' in locals():
+                proc.kill()
+                proc.wait(timeout=5)
+        except Exception:
             pass
-        rc = proc.wait()
-        sys.stdout.write("\r\x1b[2K")
-        sys.stdout.flush()
-    else:
-        absdir = file_path.parent.resolve()
-        flag = _tar_extract_flag(file_path)
-        inner = (
-            "set -e; cd /data; "
-            "rm -rf ./* .??* 2>/dev/null || true; "
-            f"tar {flag} \"/backup/{file_path.name}\" -C /data"
-        )
-        cmd = [
-            "docker", "run", "--rm", "--name", cname,
-            "-v", f"{volume}:/data",
-            "-v", f"{absdir}:/backup",
-            "alpine", "sh", "-c", inner,
-        ]
-        rc = subprocess.run(cmd).returncode
+        # Brief settle for the daemon to flush container teardown (esp.
+        # Docker Desktop/WSL2 where bind-mount writes are 9P-deferred).
+        time.sleep(0.5)
+        print(f"{head} {C.yellow}{GLYPH_FAIL}{C.reset} {file_path.name}  "
+              f"{C.yellow}aborted (containers removed; volume contents "
+              f"PARTIAL - re-run restore to recover){C.reset}",
+              file=sys.stderr)
+        raise KeyboardInterrupt
 
     if rc != 0:
         subprocess.run(["docker", "rm", "-f", cname],
                        check=False, capture_output=True)
-        print(f"ERROR: restore failed for {file_path.name} -> {volume}",
-              file=sys.stderr)
+        print(f"{head} {C.red}{GLYPH_FAIL}{C.reset} {file_path.name}  "
+              f"{C.red}restore failed (rc={rc}){C.reset}", file=sys.stderr)
         sys.exit(1)
 
     elapsed = time.monotonic() - start
-    print(f"{prefix}   done in {elapsed:.1f}s")
+    print(f"{prefix_done}  {C.dim}done in {elapsed:.1f}s{C.reset}")
 
 
 def resolve_items(files: list[str]) -> list[tuple[Path, str, int]]:
@@ -240,19 +348,23 @@ def resolve_items(files: list[str]) -> list[tuple[Path, str, int]]:
     for f in files:
         p = Path(f)
         if not p.is_file():
-            print(f"SKIP: file not found: {f}", file=sys.stderr)
+            print(f"{C.yellow}SKIP:{C.reset} file not found: {f}",
+                  file=sys.stderr)
             continue
         vol = extract_volume_name(p)
         if not vol:
-            print(f"SKIP: could not infer volume name from {f}", file=sys.stderr)
+            print(f"{C.yellow}SKIP:{C.reset} could not infer volume name from {f}",
+                  file=sys.stderr)
             continue
         if not volume_exists(vol):
-            print(f"SKIP: docker volume does not exist: {vol}  (from {p.name})",
-                  file=sys.stderr)
+            print(f"{C.yellow}SKIP:{C.reset} docker volume does not exist: "
+                  f"{vol}  (from {p.name})", file=sys.stderr)
             continue
         items.append((p, vol, p.stat().st_size))
     return items
 
+
+# ── Argparse / main ─────────────────────────────────────────────────────────
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
@@ -275,58 +387,81 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _print_manifest(items: list[tuple[Path, str, int]], title: str) -> None:
     total = sum(s for _, _, s in items)
-    print(f"{title} ({len(items)} file(s), total {fmt_bytes(total)}):")
+    print(f"{C.bold}{title} ({len(items)} file(s), total "
+          f"{fmt_bytes(total)}){C.reset}")
     name_w = max(len(p.name) for p, _, _ in items)
     size_w = max(len(fmt_bytes(s)) for _, _, s in items)
     for p, vol, s in items:
-        print(f"  {p.name:<{name_w}}  {fmt_bytes(s):>{size_w}}  ->  {vol}")
+        print(f"  {C.dim}•{C.reset} {p.name:<{name_w}}  "
+              f"{fmt_bytes(s):>{size_w}}  -> {vol}")
 
 
 def main(argv: list[str] | None = None) -> int:
+    # If invoked as a background job, bash may set SIGINT to SIG_IGN;
+    # Python inherits and won't override that, so Ctrl-C would be a no-op.
+    # Re-arm explicitly so KeyboardInterrupt always fires.
+    signal.signal(signal.SIGINT, signal.default_int_handler)
+
     args = build_parser().parse_args(argv)
 
     if not shutil.which("docker"):
-        print("ERROR: docker CLI not found in PATH", file=sys.stderr)
+        print(f"{C.red}ERROR:{C.reset} docker CLI not found in PATH",
+              file=sys.stderr)
         return 2
 
     items = resolve_items(args.files)
     if not items:
-        print("No restorable backup files.", file=sys.stderr)
+        print(f"{C.yellow}No restorable backup files.{C.reset}", file=sys.stderr)
         return 1
 
     _print_manifest(items, "Found restorable backup(s)")
     print()
 
     if args.dry_run:
-        print("Dry run - nothing was restored.")
+        print(f"{C.dim}Dry run - nothing was restored.{C.reset}")
         return 0
 
     if args.yes:
         chosen = items
     else:
         if not sys.stdin.isatty():
-            print("ERROR: not a TTY; pass -y to restore without confirmation.",
-                  file=sys.stderr)
+            print(f"{C.red}ERROR:{C.reset} not a TTY; pass -y to restore "
+                  "without confirmation.", file=sys.stderr)
             return 2
-        chosen = curses_pick(items)
+        try:
+            chosen = curses_pick(items)
+        except KeyboardInterrupt:
+            chosen = None
         if chosen is None:
             print("Cancelled.")
             return 0
         if not chosen:
             print("Nothing selected.")
             return 0
+        clear_screen()
         _print_manifest(chosen, "Selected backup(s)")
-        print("WARNING: this WIPES the destination volume(s) before extracting.")
+        print(f"{C.yellow}WARNING:{C.reset} this WIPES the destination "
+              "volume(s) before extracting.")
         if not confirm(f"Restore {len(chosen)} backup(s)?"):
             print("Cancelled.")
             return 0
 
-    for i, (fp, vol, _) in enumerate(chosen, start=1):
-        restore_one(fp, vol, show_progress=not args.no_progress,
-                    idx=i, total=len(chosen))
+    clear_screen()
+    print(f"{C.bold}Restoring {len(chosen)} backup(s){C.reset}")
+    print(hr())
 
-    print()
-    print(f"All done. {len(chosen)} backup(s) restored.")
+    try:
+        for i, (fp, vol, _) in enumerate(chosen, start=1):
+            restore_one(fp, vol, show_progress=not args.no_progress,
+                        idx=i, total=len(chosen))
+    except KeyboardInterrupt:
+        print(hr())
+        print(f"{C.yellow}Aborted by user.{C.reset}", file=sys.stderr)
+        return 130
+
+    print(hr())
+    print(f"{C.green}{GLYPH_DONE}{C.reset} {C.bold}All done.{C.reset} "
+          f"{len(chosen)} backup(s) restored.")
     return 0
 
 
