@@ -523,37 +523,91 @@
           });
       });
 
-      // Restart Server handler
+      // Restart Server handler. The /api/users/<u>/restart-server endpoint
+      // does container.restart() which blocks until Docker finishes the
+      // restart, but JupyterLab inside the container needs additional time
+      // to boot and respond. So:
+      //   1. POST returns 200 once Docker is done (~10-60 sec).
+      //   2. Then poll the user API until `server.ready === true` (lab
+      //      booted, proxy route established, responding to traffic).
+      //   3. Only then reload the page. Reloading before step 2 lands the
+      //      user on a page that can't reach the lab yet (502s / redirects
+      //      back to spawn-pending).
       $('#confirm-restart-btn').on('click', function() {
           const apiUrl = `{{ base_url }}api/users/${username}/restart-server`;
           const $btn = $(this);
+          const RESTART_POLL_INTERVAL_MS = 1500;
+          const RESTART_POLL_MAX_MS = 5 * 60 * 1000;
+          let restartPollStartedAt = null;
           console.log('[Restart Server] Confirm button clicked');
-          console.log('[Restart Server] API URL:', apiUrl);
-          console.log('[Restart Server] CSRF Token:', getCookie('_xsrf') ? 'present' : 'missing');
 
-          // Disable button and show loading state
-          $btn.prop('disabled', true).text('Restarting...');
-          console.log('[Restart Server] Sending POST request...');
+          // Disable button + spinner.
+          $btn.prop('disabled', true).html(
+              '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' +
+              'Restarting container...'
+          );
+
+          function isSpawnerReady(userJson) {
+              // Mirror of isSpawnerInactive's predicate but in the opposite
+              // direction: the server entry exists, is ready, and not pending
+              // any operation. Lab is responding to traffic.
+              if (!userJson || !userJson.servers) return false;
+              const server = userJson.servers[''];
+              if (!server) return false;
+              return server.ready === true && (server.pending === null || server.pending === undefined);
+          }
+
+          function pollUntilReady() {
+              const elapsed = Date.now() - restartPollStartedAt;
+              if (elapsed > RESTART_POLL_MAX_MS) {
+                  console.warn('[Restart Server] Poll timeout after', Math.round(elapsed / 1000), 'sec - server still not ready');
+                  $btn.prop('disabled', false).text('Yes, Restart Server');
+                  const modal = bootstrap.Modal.getInstance(restartServerModalEl);
+                  if (modal) modal.hide();
+                  alert('Restart is taking longer than expected (> 5 min). The lab may still be coming back online. Refresh the page in a minute.');
+                  return;
+              }
+              $.ajax({
+                  url: '{{ base_url }}api/users/' + username,
+                  type: 'GET',
+                  cache: false,
+                  headers: { 'X-XSRFToken': getCookie('_xsrf') },
+                  success: function(userJson) {
+                      if (isSpawnerReady(userJson)) {
+                          console.log('[Restart Server] Lab ready after', Math.round((Date.now() - restartPollStartedAt) / 1000), 'sec - reloading');
+                          location.reload();
+                      } else {
+                          setTimeout(pollUntilReady, RESTART_POLL_INTERVAL_MS);
+                      }
+                  },
+                  error: function(xhr) {
+                      // Network blip / hub busy: silently retry. Mid-restart
+                      // the proxy briefly returns 5xx while routes are
+                      // re-established, which is expected.
+                      console.debug('[Restart Server] Poll error (status=' + xhr.status + ', will retry)');
+                      setTimeout(pollUntilReady, RESTART_POLL_INTERVAL_MS);
+                  }
+              });
+          }
 
           $.ajax({
               url: apiUrl,
               type: 'POST',
-              headers: {
-                  'X-XSRFToken': getCookie('_xsrf')
-              },
+              headers: { 'X-XSRFToken': getCookie('_xsrf') },
               success: function(response) {
-                  console.log('[Restart Server] API call successful');
-                  console.log('[Restart Server] Response:', response);
-                  const modal = bootstrap.Modal.getInstance(restartServerModalEl);
-                  if (modal) modal.hide();
-                  alert('Server successfully restarted. Page will refresh.');
-                  console.log('[Restart Server] Refreshing page...');
-                  location.reload();
+                  console.log('[Restart Server] Container restart accepted; polling until lab is responding');
+                  // Switch the modal button to the "waiting for lab" phase.
+                  // Keep modal OPEN so the user sees the spinner and the
+                  // explanatory state.
+                  $btn.html(
+                      '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' +
+                      'Waiting for lab to come back online...'
+                  );
+                  restartPollStartedAt = Date.now();
+                  setTimeout(pollUntilReady, RESTART_POLL_INTERVAL_MS);
               },
               error: function(xhr) {
-                  console.error('[Restart Server] API call failed');
-                  console.error('[Restart Server] Status:', xhr.status);
-                  console.error('[Restart Server] Response:', xhr.responseText);
+                  console.error('[Restart Server] API call failed:', xhr.status, xhr.responseText);
                   const modal = bootstrap.Modal.getInstance(restartServerModalEl);
                   if (modal) modal.hide();
                   const errorMsg = xhr.responseJSON?.message || xhr.statusText || 'Failed to restart server';
