@@ -565,7 +565,7 @@
               // every tick while the lab is still booting; this keeps the
               // browser console clean.
               $.ajax({
-                  url: '{{ base_url }}hub/api/users/' + username + '/lab-ready?_=' + Date.now(),
+                  url: '{{ base_url }}api/users/' + username + '/lab-ready?_=' + Date.now(),
                   type: 'GET',
                   cache: false,
                   headers: { 'X-XSRFToken': getCookie('_xsrf') },
