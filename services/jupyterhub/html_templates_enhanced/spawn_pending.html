@@ -103,7 +103,7 @@
       // endpoint; the moment it reports the lab is responding, force a
       // reload. JupyterHub then redirects to the running server.
       var LAB_READY_POLL_INTERVAL_MS = 2000;
-      var labReadyUrl = "{{ base_url }}hub/api/users/{{ user.name }}/lab-ready";
+      var labReadyUrl = "{{ base_url }}api/users/{{ user.name }}/lab-ready";
 
       function getXsrfCookie() {
         var match = document.cookie.match(/(^| )_xsrf=([^;]+)/);
