@@ -356,7 +356,11 @@ def restore_one(
         sys.exit(1)
 
     elapsed = time.monotonic() - start
-    print(f"{prefix_done}  {C.dim}done in {elapsed:.1f}s{C.reset}")
+    try:
+        size_str = f", {fmt_bytes(file_path.stat().st_size)} restored"
+    except FileNotFoundError:
+        size_str = ""
+    print(f"{prefix_done}  {C.dim}done in {elapsed:.1f}s{size_str}{C.reset}")
 
 
 def resolve_items(files: list[str]) -> list[tuple[Path, str, int]]:
