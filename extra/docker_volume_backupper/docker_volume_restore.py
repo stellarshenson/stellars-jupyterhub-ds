@@ -210,10 +210,10 @@ def curses_pick(
 
 def confirm(prompt: str) -> bool:
     try:
-        ans = input(f"{prompt} [y/N]: ").strip().lower()
+        ans = input(f"{prompt} [Y/n]: ").strip().lower()
     except EOFError:
         return False
-    return ans in ("y", "yes")
+    return ans not in ("n", "no")
 
 
 def restore_one(
@@ -230,12 +230,15 @@ def restore_one(
     def _overall_line(current_frac: float) -> str:
         overall_frac = ((idx - 1) + min(1.0, max(0.0, current_frac))) / total
         opct = min(99, int(overall_frac * 100))
-        return (f"      {C.dim}Overall {fmt_bar(opct)} {opct:>3}%  "
-                f"({idx - 1}/{total} files done){C.reset}")
+        return (f"{C.bold}{C.cyan}Overall{C.reset}  {C.cyan}{fmt_bar(opct)}{C.reset} "
+                f"{C.bold}{opct:>3}%{C.reset}  "
+                f"{C.green}{idx - 1}/{total}{C.reset} {C.dim}files done{C.reset}")
+
+    sep = hr()  # dim horizontal rule above the Overall line
 
     if show_progress:
-        # Reserve two lines (per-file + overall), park cursor at line A.
-        sys.stdout.write(f"{prefix_active} ...\n{_overall_line(0.0)}\x1b[1A\r")
+        # Reserve three lines (A: per-file, B: hr, C: overall), park cursor at A.
+        sys.stdout.write(f"{prefix_active} ...\n{sep}\n{_overall_line(0.0)}\x1b[2A\r")
         sys.stdout.flush()
     else:
         sys.stdout.write(f"{prefix_active} ...\n")
@@ -290,16 +293,17 @@ def restore_one(
                                        f"{fmt_bytes(total_bytes)}{C.reset}")
                             overall_msg = _overall_line(bytes_sent / max(1, total_bytes))
                             sys.stdout.write("\r\x1b[2K" + per_msg
-                                             + "\n\x1b[2K" + overall_msg + "\x1b[1A\r")
+                                             + "\n\x1b[2K" + sep
+                                             + "\n\x1b[2K" + overall_msg
+                                             + "\x1b[2A\r")
                             sys.stdout.flush()
                             last_update = now
                 proc.stdin.close()
             except BrokenPipeError:
                 pass
             rc = proc.wait()
-            # Clear both lines, return cursor to line A so done/aborted print
-            # overwrites the orphan banner.
-            sys.stdout.write("\r\x1b[2K\n\x1b[2K\x1b[1A\r")
+            # Clear all three lines (per-file, hr, overall), return to line A.
+            sys.stdout.write("\r\x1b[2K\n\x1b[2K\n\x1b[2K\x1b[2A\r")
             sys.stdout.flush()
         else:
             absdir = file_path.parent.resolve()
@@ -390,7 +394,8 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument("files", nargs="+", metavar="backup-file",
-                   help="backup file(s): .tar.gz / .tgz / .tar")
+                   help="one or more backup files (.tar.gz / .tgz / .tar) - "
+                        "each maps to its source volume by the filename")
     p.add_argument("-y", "--yes", action="store_true",
                    help="skip picker and final confirm; restore everything")
     p.add_argument("-n", "--dry-run", action="store_true",
