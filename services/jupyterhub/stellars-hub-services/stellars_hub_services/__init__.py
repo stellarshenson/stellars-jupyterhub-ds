@@ -7,7 +7,11 @@ from .branding import setup_branding
 from .docker_proxy import register_user, unregister_user
 from .events import register_events
 from .gpu import is_wsl2, resolve_gpu_mode
-from .hooks import make_pre_spawn_hook, schedule_startup_favicon_callback
+from .hooks import (
+    make_pre_spawn_hook,
+    schedule_startup_docker_proxy_callback,
+    schedule_startup_favicon_callback,
+)
 from .idle_culler import (
     calc_available_hours,
     calc_ceiling,
@@ -47,6 +51,7 @@ __all__ = [
     "make_pre_spawn_hook",
     "register_events",
     "resolve_gpu_mode",
+    "schedule_startup_docker_proxy_callback",
     "schedule_startup_favicon_callback",
     "setup_branding",
 ]
