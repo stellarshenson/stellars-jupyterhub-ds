@@ -559,26 +559,23 @@
           let labPollStartedAt = null;
 
           function isLabResponding(callback) {
-              // Probe the lab via the public proxy. CHP returns 502/503/504
-              // when the upstream container is not accepting connections;
-              // any other response (including 302 OAuth redirects, 401, 200)
-              // means the lab process is up and the kernel is listening.
-              // Send credentials so OAuth cookies are included if any -
-              // means a follow-up redirect chain can resolve to 200 instead
-              // of looping. But we don't actually need the 200; even a 401
-              // from the lab itself proves the lab is up.
+              // Hit the hub-side probe endpoint, which always returns 200
+              // with {ready: bool} - the actual lab probe happens server-side.
+              // Polling the lab directly would log a devtools-visible 5xx for
+              // every tick while the lab is still booting; this keeps the
+              // browser console clean.
               $.ajax({
-                  url: '{{ base_url }}user/' + username + '/api?_=' + Date.now(),
+                  url: '{{ base_url }}hub/api/users/' + username + '/lab-ready?_=' + Date.now(),
                   type: 'GET',
                   cache: false,
-                  // jQuery treats redirect-followed 200 as success and other
-                  // statuses as error; either way we get xhr.status to read.
-                  complete: function(xhr) {
-                      // 502 (bad gateway), 503 (CHP ECONNREFUSED from container),
-                      // 504 (timeout) all mean the lab is NOT responding through
-                      // the proxy. Anything else = lab process is up.
-                      const blockedStatuses = [502, 503, 504, 0];  // 0 = network error
-                      callback(!blockedStatuses.includes(xhr.status));
+                  headers: { 'X-XSRFToken': getCookie('_xsrf') },
+                  success: function(data) {
+                      callback(!!(data && data.ready));
+                  },
+                  error: function() {
+                      // Network blip or auth issue - treat as not-yet-ready,
+                      // the poll loop will retry.
+                      callback(false);
                   }
               });
           }

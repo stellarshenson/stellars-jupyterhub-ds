@@ -2,6 +2,7 @@
 
 from .volumes import ManageVolumesHandler
 from .server import RestartServerHandler
+from .lab_ready import LabReadyHandler
 from .notifications import NotificationsPageHandler, ActiveServersHandler, BroadcastNotificationHandler
 from .credentials import GetUserCredentialsHandler
 from .settings import SettingsPageHandler
@@ -17,6 +18,7 @@ from .groups import (
 __all__ = [
     "ManageVolumesHandler",
     "RestartServerHandler",
+    "LabReadyHandler",
     "NotificationsPageHandler",
     "ActiveServersHandler",
     "BroadcastNotificationHandler",

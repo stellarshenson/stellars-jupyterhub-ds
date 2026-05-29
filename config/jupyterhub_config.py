@@ -46,6 +46,7 @@ from stellars_hub_services.handlers import (
     ExtendSessionHandler,                   # POST /api/users/{user}/extend-session - add idle culler hours
     GetUserCredentialsHandler,              # GET  /api/admin/credentials - retrieve cached passwords
     HealthCheckHandler,                     # GET  /health - unauthenticated monitoring endpoint
+    LabReadyHandler,                        # GET  /api/users/{user}/lab-ready - silent lab readiness probe
     ManageVolumesHandler,                   # DELETE /api/users/{user}/manage-volumes - delete user volumes
     NotificationsPageHandler,               # GET  /notifications - admin broadcast UI
     RestartServerHandler,                   # POST /api/users/{user}/restart-server - Docker restart
@@ -688,6 +689,7 @@ c.JupyterHub.admin_access = True                                     # admins ca
 c.JupyterHub.extra_handlers = [
     (r'/api/users/([^/]+)/manage-volumes', ManageVolumesHandler),    # DELETE - reset user volumes
     (r'/api/users/([^/]+)/restart-server', RestartServerHandler),    # POST - Docker container restart
+    (r'/api/users/([^/]+)/lab-ready', LabReadyHandler),              # GET - silent lab readiness probe (always 200)
     (r'/api/users/([^/]+)/session-info', SessionInfoHandler),        # GET - idle culler status
     (r'/api/users/([^/]+)/extend-session', ExtendSessionHandler),    # POST - extend idle timeout
     (r'/api/notifications/active-servers', ActiveServersHandler),     # GET - list running servers

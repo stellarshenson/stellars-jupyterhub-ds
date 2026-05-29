@@ -99,6 +99,7 @@ def test_handlers():
     from stellars_hub_services.handlers import (
         ManageVolumesHandler,
         RestartServerHandler,
+        LabReadyHandler,
         NotificationsPageHandler,
         ActiveServersHandler,
         BroadcastNotificationHandler,
@@ -121,7 +122,7 @@ def test_handlers():
     )
     # Verify handler count matches expected
     from stellars_hub_services import handlers
-    assert len(handlers.__all__) == 21
+    assert len(handlers.__all__) == 22
 
 
 def test_auth():
