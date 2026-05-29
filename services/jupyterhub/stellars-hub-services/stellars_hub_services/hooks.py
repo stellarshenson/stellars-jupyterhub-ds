@@ -289,6 +289,14 @@ def make_pre_spawn_hook(
             if favicon_busy_target:
                 routespecs.append(f'{base}favicon-busy')
             for routespec in routespecs:
+                # Normalize to the trailing-slash form get_all_routes() returns
+                # (validate_routespec is what JupyterHub uses internally). Without
+                # this the extra_routes key lacks the slash that
+                # _routespec_from_chp_path always appends, so the periodic
+                # check_routes() sees the live route as stale and races to delete
+                # it in the same gather() as the re-add - the favicon flaps and
+                # the lab's stock icon leaks through during the gap.
+                routespec = app.proxy.validate_routespec(routespec)
                 await app.proxy.add_route(routespec, hub_target, {})
                 app.proxy.extra_routes[routespec] = hub_target
                 spawner.log.info(f"[Favicon] Added CHP route: {routespec} -> {hub_target}")
@@ -446,6 +454,10 @@ def schedule_startup_favicon_callback(favicon_uri='', favicon_busy_target=''):
                 if favicon_busy_target:
                     routespecs.append(f'{base}favicon-busy')
                 for routespec in routespecs:
+                    # See pre_spawn_hook: normalize to the trailing-slash form
+                    # get_all_routes() returns so check_routes() does not flap
+                    # this route.
+                    routespec = app.proxy.validate_routespec(routespec)
                     await app.proxy.add_route(routespec, hub_target, {})
                     app.proxy.extra_routes[routespec] = hub_target
                     app.log.info(f"[Favicon Startup] Added CHP route: {routespec} -> {hub_target}")
