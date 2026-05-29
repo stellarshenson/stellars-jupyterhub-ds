@@ -225,10 +225,10 @@ def curses_pick(
 
 def confirm(prompt: str) -> bool:
     try:
-        ans = input(f"{prompt} [y/N]: ").strip().lower()
+        ans = input(f"{prompt} [Y/n]: ").strip().lower()
     except EOFError:
         return False
-    return ans in ("y", "yes")
+    return ans not in ("n", "no")
 
 
 def backup_one(
@@ -260,8 +260,11 @@ def backup_one(
     def _overall_line(current_frac: float) -> str:
         overall_frac = ((idx - 1) + min(1.0, max(0.0, current_frac))) / total
         opct = min(99, int(overall_frac * 100))
-        return (f"      {C.dim}Overall {fmt_bar(opct)} {opct:>3}%  "
-                f"({idx - 1}/{total} volumes done){C.reset}")
+        return (f"{C.bold}{C.cyan}Overall{C.reset}  {C.cyan}{fmt_bar(opct)}{C.reset} "
+                f"{C.bold}{opct:>3}%{C.reset}  "
+                f"{C.green}{idx - 1}/{total}{C.reset} {C.dim}volumes done{C.reset}")
+
+    sep = hr()  # dim horizontal rule above the Overall line
 
     def poll():
         while not stop_flag.is_set():
@@ -277,15 +280,17 @@ def backup_one(
             else:
                 per_msg = f"{prefix_active}  {C.dim}{fmt_bytes(size)} written...{C.reset}"
                 overall_msg = _overall_line(0.0)
-            # Two-line refresh: rewrite line A, newline, rewrite line B, move back up.
-            sys.stdout.write("\r\x1b[2K" + per_msg + "\n\x1b[2K" + overall_msg + "\x1b[1A\r")
+            # Three-line refresh: per-vol, hr, overall. Then up two lines.
+            sys.stdout.write("\r\x1b[2K" + per_msg
+                             + "\n\x1b[2K" + sep
+                             + "\n\x1b[2K" + overall_msg
+                             + "\x1b[2A\r")
             sys.stdout.flush()
             stop_flag.wait(0.25)
 
     if show_progress:
-        # Reserve both lines (A: per-volume, B: overall), then move cursor back
-        # to line A so the first poll tick overwrites it cleanly.
-        sys.stdout.write(f"{prefix_active} ...\n{_overall_line(0.0)}\x1b[1A\r")
+        # Reserve three lines (A: per-vol, B: hr, C: overall), park cursor at A.
+        sys.stdout.write(f"{prefix_active} ...\n{sep}\n{_overall_line(0.0)}\x1b[2A\r")
         sys.stdout.flush()
         t = threading.Thread(target=poll, daemon=True)
         t.start()
@@ -307,10 +312,8 @@ def backup_one(
     finally:
         stop_flag.set()
         if show_progress:
-            # Clear line A, advance to line B, clear it, return to line A
-            # position - so the subsequent done/aborted print lands on line A
-            # and overwrites the orphaned banner.
-            sys.stdout.write("\r\x1b[2K\n\x1b[2K\x1b[1A\r")
+            # Clear all three lines (per-vol, hr, overall), return to line A.
+            sys.stdout.write("\r\x1b[2K\n\x1b[2K\n\x1b[2K\x1b[2A\r")
             sys.stdout.flush()
 
     if interrupted:
@@ -341,12 +344,10 @@ def backup_one(
 
     elapsed = time.monotonic() - start
     try:
-        final_size = out_path.stat().st_size
-        size_str = f" {C.dim}({fmt_bytes(final_size)} compressed){C.reset}"
+        size_str = f", {fmt_bytes(out_path.stat().st_size)} compressed"
     except FileNotFoundError:
         size_str = ""
-    print(f"{prefix_done}  {C.dim}done in {elapsed:.1f}s -> {out_path}{C.reset}"
-          f"{size_str}")
+    print(f"{prefix_done}  {C.dim}done in {elapsed:.1f}s{size_str}{C.reset}")
 
 
 # ── Argparse / main ─────────────────────────────────────────────────────────
@@ -357,7 +358,8 @@ def build_parser() -> argparse.ArgumentParser:
         description="Back up matching docker volumes to dated tar.gz files.",
     )
     p.add_argument("patterns", nargs="*", metavar="pattern",
-                   help="regex(es) to match volume names (union); "
+                   help="one or more regex patterns matched against volume names "
+                        "(a volume matches if ANY pattern matches); "
                         "if omitted, picker opens with ALL volumes, none preselected")
     p.add_argument("-d", "--dir", default="./volumes",
                    help="backup directory (default: ./volumes)")
