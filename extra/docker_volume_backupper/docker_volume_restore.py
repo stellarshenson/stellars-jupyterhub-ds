@@ -397,9 +397,15 @@ def build_parser() -> argparse.ArgumentParser:
             "WIPES the destination volume before extracting."
         ),
     )
-    p.add_argument("files", nargs="+", metavar="backup-file",
+    p.add_argument("files", nargs="*", metavar="backup-file",
                    help="one or more backup files (.tar.gz / .tgz / .tar) - "
-                        "each maps to its source volume by the filename")
+                        "each maps to its source volume by the filename; "
+                        "if omitted, auto-discovers from -d (or ./volumes, "
+                        "falling back to ./) and opens the picker")
+    p.add_argument("-d", "--dir", default=None,
+                   help="directory to auto-discover backups from when no "
+                        "files are listed (default: ./volumes, with fallback "
+                        "to current dir if it's empty/missing)")
     p.add_argument("-y", "--yes", action="store_true",
                    help="skip picker and final confirm; restore everything")
     p.add_argument("-n", "--dry-run", action="store_true",
@@ -407,6 +413,23 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-progress", action="store_true",
                    help="suppress per-file live progress (faster, single docker run)")
     return p
+
+
+def _discover_backups(explicit_dir: str | None) -> tuple[list[str], Path | None]:
+    """Auto-discover backup files. Returns (paths, source_dir_used)."""
+    if explicit_dir:
+        candidates = [Path(explicit_dir).expanduser()]
+    else:
+        candidates = [Path("./volumes"), Path(".")]
+    for d in candidates:
+        if not d.is_dir():
+            continue
+        found = sorted(
+            {p for ext in ("*.tar.gz", "*.tgz", "*.tar") for p in d.glob(ext)}
+        )
+        if found:
+            return [str(p) for p in found], d
+    return [], None
 
 
 def _print_manifest(items: list[tuple[Path, str, int]], title: str) -> None:
@@ -433,7 +456,19 @@ def main(argv: list[str] | None = None) -> int:
               file=sys.stderr)
         return 2
 
-    items = resolve_items(args.files)
+    files = args.files
+    discovered_from: Path | None = None
+    if not files:
+        files, discovered_from = _discover_backups(args.dir)
+        if not files:
+            searched = args.dir or "./volumes (with fallback ./)"
+            print(f"{C.yellow}No backup files found in {searched}.{C.reset}",
+                  file=sys.stderr)
+            return 1
+        print(f"{C.dim}Auto-discovered {len(files)} backup file(s) "
+              f"in {discovered_from}{C.reset}")
+
+    items = resolve_items(files)
     if not items:
         print(f"{C.yellow}No restorable backup files.{C.reset}", file=sys.stderr)
         return 1
