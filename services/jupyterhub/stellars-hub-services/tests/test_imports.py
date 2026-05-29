@@ -19,6 +19,7 @@ def test_top_level_imports():
     from stellars_hub_services import register_events
     from stellars_hub_services import resolve_gpu_mode
     from stellars_hub_services import make_pre_spawn_hook
+    from stellars_hub_services import schedule_startup_docker_proxy_callback
     from stellars_hub_services import schedule_startup_favicon_callback
     from stellars_hub_services import get_services_and_roles
     from stellars_hub_services import get_user_volume_suffixes
@@ -154,7 +155,13 @@ def test_hooks():
     import logging
     import types
 
-    from stellars_hub_services.hooks import make_pre_spawn_hook, schedule_startup_favicon_callback
+    from stellars_hub_services.hooks import (
+        make_pre_spawn_hook,
+        schedule_startup_docker_proxy_callback,
+        schedule_startup_favicon_callback,
+    )
+    assert callable(schedule_startup_docker_proxy_callback)
+    assert callable(schedule_startup_favicon_callback)
     branding = {'lab_main_icon_static': '', 'lab_main_icon_url': '', 'lab_splash_icon_static': '', 'lab_splash_icon_url': ''}
     hook = make_pre_spawn_hook(
         branding,

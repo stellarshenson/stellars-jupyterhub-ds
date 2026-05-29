@@ -44,6 +44,14 @@
       var progressBar = $("#progress-bar");
       var srProgress = $("#sr-progress");
       var progressLog = $("#progress-log");
+      var pageDone = false;
+
+      function reloadOnce() {
+        if (pageDone) return;
+        pageDone = true;
+        try { evtSource.close(); } catch (_) {}
+        window.location.reload();
+      }
 
       evtSource.onmessage = function(e) {
         var evt = JSON.parse(e.data);
@@ -72,10 +80,9 @@
         }
 
         if (evt.ready) {
-          evtSource.close();
           // reload the current page
           // which should result in a redirect to the running server
-          window.location.reload();
+          reloadOnce();
         }
 
         if (evt.failed) {
@@ -86,6 +93,43 @@
           $('#progress-details').prop('open', true);
         }
       };
+
+      // Belt-and-suspenders: the EventSource above hangs forever in one
+      // specific scenario - hub restarted, lab container is still alive
+      // and CHP route was re-synced, but spawner._spawn_pending is False
+      // (we never called spawner.start() for this lifecycle), so
+      // _generate_progress() yields no events and the page sits on the
+      // spinner indefinitely. Independently probe the hub-side /lab-ready
+      // endpoint; the moment it reports the lab is responding, force a
+      // reload. JupyterHub then redirects to the running server.
+      var LAB_READY_POLL_INTERVAL_MS = 2000;
+      var labReadyUrl = "{{ base_url }}hub/api/users/{{ user.name }}/lab-ready";
+
+      function getXsrfCookie() {
+        var match = document.cookie.match(/(^| )_xsrf=([^;]+)/);
+        return match ? match[2] : '';
+      }
+
+      function pollLabReady() {
+        if (pageDone) return;
+        $.ajax({
+          url: labReadyUrl + '?_=' + Date.now(),
+          type: 'GET',
+          cache: false,
+          headers: { 'X-XSRFToken': getXsrfCookie() },
+          success: function(data) {
+            if (data && data.ready) {
+              reloadOnce();
+            } else {
+              setTimeout(pollLabReady, LAB_READY_POLL_INTERVAL_MS);
+            }
+          },
+          error: function() {
+            setTimeout(pollLabReady, LAB_READY_POLL_INTERVAL_MS);
+          }
+        });
+      }
+      setTimeout(pollLabReady, LAB_READY_POLL_INTERVAL_MS);
 
       // signal that page has finished loading (mostly for tests)
       window._jupyterhub_page_loaded = true;

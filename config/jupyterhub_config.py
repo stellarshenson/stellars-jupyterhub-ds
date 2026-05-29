@@ -31,6 +31,7 @@ from stellars_hub_services import (
     make_pre_spawn_hook,                    # factory returning async hook for group perms, favicon, icons
     register_events,                        # attaches SQLAlchemy listeners for user rename/delete sync
     resolve_gpu_mode,                       # GPU detection: 0=off, 1=forced, 2=auto-detect via nvidia-smi
+    schedule_startup_docker_proxy_callback, # re-registers docker-proxy listeners for limited-docker users that survived a hub restart
     schedule_startup_favicon_callback,      # registers CHP favicon routes for already-running servers
     setup_branding,                         # processes logo/favicon/icon URIs, copies file:// to static dir
 )
@@ -735,6 +736,22 @@ if JUPYTERHUB_IDLE_CULLER_ENABLED == 1:
 schedule_startup_favicon_callback(
     favicon_uri=JUPYTERHUB_FAVICON_URI,
     favicon_busy_target=branding['favicon_busy_target'],
+)
+
+# Re-bind in-process docker-proxy listeners for limited-docker users whose
+# lab containers survived this hub restart. Manager._listeners is empty in the
+# fresh process; the per-user socket file persists in the named volume but no
+# UnixSite is accepting on it, so the lab gets ECONNREFUSED. Same rationale as
+# the favicon callback above: pre_spawn_hook does not fire for survivors.
+schedule_startup_docker_proxy_callback(
+    docker_proxy_socket_dir=JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR,
+    docker_proxy_volume_name=JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME,
+    gpu_available=bool(gpu_enabled),
+    reserved_env_var_names=RESERVED_ENV_VAR_NAMES,
+    reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,
+    compose_project=COMPOSE_PROJECT_NAME,
+    user_compose_project_template=JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE,
+    hub_network_name=JUPYTERHUB_NETWORK_NAME,
 )
 
 # EOF

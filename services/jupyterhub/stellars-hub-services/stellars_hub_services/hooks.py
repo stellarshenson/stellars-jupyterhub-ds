@@ -7,6 +7,12 @@ from .docker_proxy import register_user
 from .group_resolver import resolve_group_config
 from .groups_config import GroupsConfigManager
 
+__all__ = (
+    'make_pre_spawn_hook',
+    'schedule_startup_docker_proxy_callback',
+    'schedule_startup_favicon_callback',
+)
+
 
 def make_pre_spawn_hook(
     branding,
@@ -312,6 +318,89 @@ def make_pre_spawn_hook(
                 spawner.environment['JUPYTERLAB_SPLASH_ICON_URI'] = _splash_url
 
     return pre_spawn_hook
+
+
+def schedule_startup_docker_proxy_callback(
+    *,
+    docker_proxy_socket_dir='/var/run/jupyterhub-docker-proxy-sockets',
+    docker_proxy_volume_name='jupyterhub_docker',
+    gpu_available=False,
+    reserved_env_var_names=frozenset(),
+    reserved_env_var_prefixes=(),
+    compose_project='',
+    user_compose_project_template='',
+    hub_network_name='',
+):
+    """Re-register limited-docker users with the in-process docker-proxy after
+    a hub restart. The proxy lives inside the hub process: `Manager._listeners`
+    is empty on each fresh boot, but per-user socket FILES persist in the
+    backing volume from the previous run. A surviving lab container connects
+    to its `/run/dockersock/docker.sock` and gets ECONNREFUSED because no
+    `UnixSite` is bound. `pre_spawn_hook` only fires on a new spawn so it does
+    not heal this case; this callback does, by iterating active spawners,
+    re-resolving group config, and calling `register_user` for each one whose
+    group membership currently grants `docker_limited`. Arg semantics match
+    `make_pre_spawn_hook` (same resolver inputs, same proxy config).
+    """
+    if not docker_proxy_socket_dir or not docker_proxy_volume_name:
+        return
+
+    async def _register_proxy_for_active_servers():
+        from jupyterhub.app import JupyterHub
+        from jupyterhub import orm
+
+        app = JupyterHub.instance()
+
+        try:
+            all_configs = GroupsConfigManager.get_instance().get_all_configs()
+        except Exception as e:
+            app.log.error(f"[DockerProxy Startup] Failed to load group configs: {e}")
+            all_configs = []
+
+        count = 0
+        for orm_user in app.db.query(orm.User).all():
+            user = app.users.get(orm_user.name)
+            if not (user and user.spawner and user.spawner.active):
+                continue
+            username = user.name
+            user_group_names = [g.name for g in user.groups]
+            resolved = resolve_group_config(
+                user_group_names=user_group_names,
+                all_group_configs=all_configs,
+                gpu_available=gpu_available,
+                reserved_names=reserved_env_var_names,
+                reserved_prefixes=reserved_env_var_prefixes,
+            )
+            # docker_access (raw socket) supersedes proxy; nothing to re-register.
+            if resolved['docker_access'] or not resolved.get('docker_limited'):
+                continue
+            try:
+                await register_user(
+                    username,
+                    resolved,
+                    socket_dir=docker_proxy_socket_dir,
+                    compose_project=compose_project,
+                    user_compose_project_template=user_compose_project_template,
+                    hub_network_name=hub_network_name,
+                )
+                count += 1
+                app.log.info(
+                    f"[DockerProxy Startup] Re-registered user={username} "
+                    f"(container survived hub restart)"
+                )
+            except Exception as e:
+                app.log.error(
+                    f"[DockerProxy Startup] Failed to re-register user={username}: {e}"
+                )
+
+        if count:
+            app.log.info(
+                f"[DockerProxy Startup] Re-registered {count} limited-docker "
+                "user(s) with in-process proxy"
+            )
+
+    from tornado.ioloop import IOLoop
+    IOLoop.current().add_callback(_register_proxy_for_active_servers)
 
 
 def schedule_startup_favicon_callback(favicon_uri='', favicon_busy_target=''):
