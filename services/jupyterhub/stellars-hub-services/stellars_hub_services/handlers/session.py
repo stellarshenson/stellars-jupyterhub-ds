@@ -1,11 +1,13 @@
 """Handlers for session info and extension.
 
-The session-extension calculations live in `stellars_hub_services.idle_culler` (single
-source of truth shared with the in-hub culler).
+The session-extension calculations live in `stellars_hub_services.idle_culler`
+(single source of truth shared with the in-hub culler and the activity
+dashboard). The model is a ceiling-bounded cull deadline stored in
+`spawner.state['cull_at']`; see that module's docstring.
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from jupyterhub.handlers import BaseHandler
 from tornado import web
@@ -13,9 +15,8 @@ from tornado import web
 from stellars_hub_services.idle_culler import (
     calc_available_hours,
     calc_ceiling,
-    calc_effective_timeout,
-    calc_new_extensions,
-    calc_time_remaining,
+    calc_extended_remaining,
+    remaining_seconds_for,
 )
 
 __all__ = [
@@ -56,30 +57,20 @@ class SessionInfoHandler(BaseHandler):
         }
 
         if server_active and culler_enabled:
-            spawner_state = spawner.orm_spawner.state or {}
-            extensions_used_hours = spawner_state.get('extension_hours_used', 0)
-            effective = calc_effective_timeout(timeout_seconds, extensions_used_hours)
             ceiling = calc_ceiling(timeout_seconds, max_extension_hours)
+            now = datetime.now(timezone.utc)
+            remaining = remaining_seconds_for(spawner.orm_spawner, timeout_seconds, ceiling, now)
 
             last_activity = spawner.orm_spawner.last_activity if spawner.orm_spawner else None
-            if last_activity:
-                now = datetime.now(timezone.utc)
-                last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
-                elapsed_seconds = (now - last_activity_utc).total_seconds()
-                remaining = calc_time_remaining(effective, elapsed_seconds, ceiling)
-
-                response["last_activity"] = last_activity_utc.isoformat()
-                response["time_remaining_seconds"] = int(remaining)
-            else:
-                response["last_activity"] = None
-                response["time_remaining_seconds"] = int(calc_time_remaining(effective, 0, ceiling))
-
-            response["extensions_used_hours"] = extensions_used_hours
-            response["extensions_available_hours"] = calc_available_hours(ceiling, response["time_remaining_seconds"])
+            response["last_activity"] = (
+                (last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity).isoformat()
+                if last_activity else None
+            )
+            response["time_remaining_seconds"] = remaining
+            response["extensions_available_hours"] = calc_available_hours(remaining, ceiling)
         else:
             response["last_activity"] = None
             response["time_remaining_seconds"] = None
-            response["extensions_used_hours"] = 0
             response["extensions_available_hours"] = max_extension_hours
 
         self.finish(response)
@@ -90,7 +81,7 @@ class ExtendSessionHandler(BaseHandler):
 
     @web.authenticated
     async def post(self, username):
-        """Extend a user's session by adding hours to the extension allowance."""
+        """Extend a user's session by pushing the cull deadline out, capped at the ceiling."""
         current_user = self.current_user
         if current_user is None:
             raise web.HTTPError(403, "Not authenticated")
@@ -127,25 +118,13 @@ class ExtendSessionHandler(BaseHandler):
             self.set_status(400)
             return self.finish({"success": False, "error": "Server is not running"})
 
-        current_state = spawner.orm_spawner.state or {}
-        current_extensions = current_state.get('extension_hours_used', 0)
-
-        effective = calc_effective_timeout(timeout_seconds, current_extensions)
         ceiling = calc_ceiling(timeout_seconds, max_extension_hours)
-
-        last_activity = spawner.orm_spawner.last_activity if spawner.orm_spawner else None
-        if last_activity:
-            now_utc = datetime.now(timezone.utc)
-            last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
-            elapsed_seconds = (now_utc - last_activity_utc).total_seconds()
-            time_remaining = calc_time_remaining(effective, elapsed_seconds, ceiling)
-        else:
-            time_remaining = calc_time_remaining(effective, 0, ceiling)
-
-        available = calc_available_hours(ceiling, time_remaining)
+        now = datetime.now(timezone.utc)
+        remaining = remaining_seconds_for(spawner.orm_spawner, timeout_seconds, ceiling, now)
+        available = calc_available_hours(remaining, ceiling)
 
         if available <= 0:
-            self.log.warning(f"[Extend Session] {username}: DENIED - at ceiling (remaining={time_remaining/3600:.1f}h, ceiling={ceiling/3600:.0f}h)")
+            self.log.warning(f"[Extend Session] {username}: DENIED - at ceiling (remaining={remaining/3600:.1f}h, ceiling={ceiling/3600:.0f}h)")
             self.set_status(400)
             return self.finish({
                 "success": False,
@@ -158,34 +137,36 @@ class ExtendSessionHandler(BaseHandler):
             hours = available
             truncated = True
 
-        new_total_extensions = calc_new_extensions(current_extensions, hours)
+        # "Max means max": taking the full whole-hour offer lands remaining
+        # exactly on the ceiling (no sub-hour shortfall from the floored offer).
+        maxed = hours >= available
+        new_remaining = calc_extended_remaining(remaining, hours, ceiling, maxed)
 
-        new_state = dict(current_state)
-        new_state['extension_hours_used'] = new_total_extensions
+        # Persist the deadline; drop the legacy budget key so this server runs on
+        # the deadline model from now on.
+        new_state = dict(spawner.orm_spawner.state or {})
+        new_state['cull_at'] = (now + timedelta(seconds=new_remaining)).isoformat()
+        new_state.pop('extension_hours_used', None)
         spawner.orm_spawner.state = new_state
         self.db.commit()
 
-        new_effective = calc_effective_timeout(timeout_seconds, new_total_extensions)
-        if last_activity:
-            new_time_remaining = int(calc_time_remaining(new_effective, elapsed_seconds, ceiling))
+        new_available = calc_available_hours(new_remaining, ceiling)
+
+        self.log.info(f"[Extend Session] {username}: SUCCESS - added {hours}h, remaining={new_remaining/3600:.1f}h (ceiling={ceiling//3600}h)")
+
+        if maxed:
+            message = f"Session topped up to maximum ({ceiling // 3600}h)"
         else:
-            new_time_remaining = int(calc_time_remaining(new_effective, 0, ceiling))
-
-        new_available = calc_available_hours(ceiling, new_time_remaining)
-
-        self.log.info(f"[Extend Session] {username}: SUCCESS - added {hours}h, total extensions={new_total_extensions}h, remaining={new_time_remaining/3600:.1f}h")
-
-        message = f"Added {hours} hour(s) to session"
-        if truncated:
-            message += f" (requested {original_hours}h, limited to available {hours}h)"
+            message = f"Added {hours} hour(s) to session"
+            if truncated:
+                message += f" (requested {original_hours}h, limited to available {hours}h)"
 
         self.finish({
             "success": True,
             "message": message,
             "truncated": truncated,
             "session_info": {
-                "time_remaining_seconds": new_time_remaining,
-                "extensions_used_hours": new_total_extensions,
+                "time_remaining_seconds": new_remaining,
                 "extensions_available_hours": new_available,
             },
         })

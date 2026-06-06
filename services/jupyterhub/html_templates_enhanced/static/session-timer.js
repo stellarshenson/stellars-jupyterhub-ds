@@ -137,10 +137,14 @@
       return;
     }
 
+    // Bar is measured against the ceiling (base + max extension) - the absolute
+    // maximum remaining can ever be. So "at the ceiling" reads exactly 100%, and
+    // the bar fills toward 100% as the session is extended. A fresh, un-extended
+    // server reads base/ceiling (it has room to extend), which is intentional.
     var remaining   = Math.max(0, info.time_remaining_seconds || 0);
-    var effective   = (info.timeout_seconds || 0)
-                    + ((info.extensions_used_hours || 0) * 3600);
-    var pct         = effective > 0 ? Math.min(100, (remaining / effective) * 100) : 0;
+    var ceiling     = (info.timeout_seconds || 0)
+                    + ((info.max_extension_hours || 0) * 3600);
+    var pct         = ceiling > 0 ? Math.min(100, (remaining / ceiling) * 100) : 0;
 
     // progress bar
     $progressBar
@@ -231,7 +235,6 @@
               timeout_seconds: currentInfo ? currentInfo.timeout_seconds : 0,
               max_extension_hours: currentInfo ? currentInfo.max_extension_hours : 0,
               time_remaining_seconds: resp.session_info.time_remaining_seconds,
-              extensions_used_hours: resp.session_info.extensions_used_hours,
               extensions_available_hours: resp.session_info.extensions_available_hours
             });
           }
@@ -260,6 +263,13 @@
   // --------------------------------------------------- mobile extend
   function updateSliderLabel() {
     var val = parseInt($mobileSlider.val(), 10);
+    var max = parseInt($mobileSlider.attr('max'), 10);
+    // At the top of the scale, surface "max" - the backend tops the session up
+    // to the exact ceiling for this selection, not just +val whole hours.
+    if (!isNaN(max) && val >= max) {
+      $mobileValue.html('<strong>+' + val + 'h (max)</strong>');
+      return;
+    }
     var suffix = val === 1 ? 'hour' : 'hours';
     $mobileValue.html('<strong>+' + val + ' ' + suffix + '</strong>');
   }
@@ -286,11 +296,13 @@
 
     var max = Math.floor(avail);
     $mobileSlider.attr('max', max);
-    $mobileMax.text(max + 'h');
+    // Name the last point on the scale "max" rather than a bare hour count -
+    // selecting it tops the session up to the ceiling exactly.
+    $mobileMax.text('max');
     if (parseInt($mobileSlider.val(), 10) > max) {
       $mobileSlider.val(max);
-      updateSliderLabel();
     }
+    updateSliderLabel();
   }
 
   function handleMobileExtend() {
@@ -317,7 +329,6 @@
               timeout_seconds: currentInfo ? currentInfo.timeout_seconds : 0,
               max_extension_hours: currentInfo ? currentInfo.max_extension_hours : 0,
               time_remaining_seconds: resp.session_info.time_remaining_seconds,
-              extensions_used_hours: resp.session_info.extensions_used_hours,
               extensions_available_hours: resp.session_info.extensions_available_hours
             });
             updateMobileSliderMax();
@@ -364,9 +375,9 @@
 
       currentInfo.time_remaining_seconds = Math.max(0, currentInfo.time_remaining_seconds - 60);
       var remaining = currentInfo.time_remaining_seconds;
-      var effective = (currentInfo.timeout_seconds || 0)
-                    + ((currentInfo.extensions_used_hours || 0) * 3600);
-      var pct  = effective > 0 ? Math.min(100, (remaining / effective) * 100) : 0;
+      var ceiling = (currentInfo.timeout_seconds || 0)
+                  + ((currentInfo.max_extension_hours || 0) * 3600);
+      var pct  = ceiling > 0 ? Math.min(100, (remaining / ceiling) * 100) : 0;
 
       $progressBar.css('width', pct + '%').attr('aria-valuenow', Math.round(pct));
       applyColor(pct);

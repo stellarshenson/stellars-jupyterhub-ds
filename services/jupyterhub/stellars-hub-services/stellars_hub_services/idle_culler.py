@@ -5,83 +5,104 @@ countdown, the extend offer/apply logic, the admin activity dashboard, and the
 actual cull decision all use the pure functions below, so what a user is shown
 can never diverge from when the server is really stopped.
 
-Model (all time in seconds unless noted; the extend UI works in whole hours):
+Model - a ceiling-bounded cull deadline (all times in seconds unless noted; the
+extend UI works in whole hours):
 
     base_s      = idle timeout the server starts with
     max_ext_h   = maximum extension, whole hours
-    ceiling_s   = base_s + max_ext_h*3600          # absolute cap on *remaining*
-    ext_used_h  = granted extension hours (state['extension_hours_used'])
-    effective_s = base_s + ext_used_h*3600         # idle budget the culler enforces
-    elapsed_s   = now - last_activity
-    remaining_s = clamp(effective_s - elapsed_s, 0, ceiling_s)
-    offer_h     = floor((ceiling_s - remaining_s) / 3600)   # replenish + headroom
-    extend(h):  ext_used_h += h                     # h already clamped to offer_h
-    cull when:  elapsed_s >= effective_s   (or age >= max_age_s when max_age_s > 0)
+    ceiling_s   = base_s + max_ext_h*3600          # ABSOLUTE cap on remaining AND lifetime
+    reference   = last_activity or started
+    cull_at     = stored deadline timestamp (state['cull_at'])
+    remaining_s = clamp(max(cull_at - now, base_s - (now - reference)), 0, ceiling_s)
+    cull when   remaining_s <= 0   (or age >= max_age_s when max_age_s > 0)
+    offer_h     = floor((ceiling_s - remaining_s) / 3600)
+    extend(h):  remaining' = ceiling_s if h>=offer else min(remaining + h*3600, ceiling_s)
+                cull_at = now + remaining'                # capped at now+ceiling
 
-Replenish: idle time already spent shows up in `offer_h` (the gap from the
-current remaining up to the ceiling), so a user may opt to refill remaining all
-the way back to the ceiling. `ext_used_h` is allowed to exceed `max_ext_h` -
-that is what makes already-elapsed idle time recoverable - while `remaining_s`
-is clamped to the ceiling so it can never *display* more than the ceiling, even
-after activity resets `elapsed` to 0. The clamp is conservative: a server only
-ever lives at least as long as the displayed remaining, never less.
+The deadline is what makes the ceiling a REAL cap: `remaining` is bounded by the
+ceiling, and the deadline never sits more than `ceiling_s` ahead of `now`, so no
+sequence of extends can bank lifetime past the ceiling (the previous "growing
+budget" model could - extending repeatedly while idle inflated an uncapped
+effective timeout). The `base_s - (now - reference)` term is an activity floor:
+a freshly-active server always retains at least `base_s`, refreshed as real
+activity advances `last_activity`. Extending pushes the deadline out (replenish)
+up to - never past - the ceiling, so an idle server visibly counts down and
+"take the full offer" lands remaining exactly on the ceiling ("max means max").
+
+Legacy state used `state['extension_hours_used']`; `_cull_at` derives the
+equivalent deadline on the fly (`reference + min(base + ext*3600, ceiling)`) so
+existing servers display correctly with no migration pass - the first `extend`
+persists `cull_at` and drops the legacy key.
 
 Heavy imports (tornado, jupyterhub) are done inside the runtime functions so
 this module imports with only the standard library - the pure calculations stay
 trivially testable.
 """
 
-from datetime import timezone
+from datetime import datetime, timedelta, timezone
 
 
-# ── Pure calculations (stdlib only) ─────────────────────────────────────────
-
-def calc_effective_timeout(timeout_seconds, extensions_used_hours):
-    """Idle budget enforced by the culler: base timeout + granted extension hours."""
-    return timeout_seconds + extensions_used_hours * 3600
-
+# ── Pure calculations (stdlib only, seconds in / seconds out) ────────────────
 
 def calc_ceiling(timeout_seconds, max_extension_hours):
-    """Absolute cap on *remaining* time (base + max extension)."""
+    """Absolute cap on remaining time and lifetime (base + max extension)."""
     return timeout_seconds + max_extension_hours * 3600
 
 
-def calc_time_remaining(effective_timeout, elapsed_seconds, ceiling=None):
-    """Seconds until cull, floored at 0 and (when given) clamped to the ceiling.
+def calc_remaining(seconds_to_deadline, seconds_since_activity, base_seconds, ceiling_seconds):
+    """Seconds until cull: the later of the stored deadline and the activity
+    floor (`base - idle`), floored at 0 and clamped to the ceiling.
 
-    Clamping to the ceiling keeps a replenished session from ever displaying more
-    than the ceiling once activity resets elapsed to 0 - the effective budget may
-    legitimately exceed the ceiling after a replenish-while-idle extend.
+    `seconds_to_deadline` is `cull_at - now` (may be negative once past the
+    deadline). `seconds_since_activity` is `now - (last_activity or started)`,
+    never negative. The activity floor guarantees a freshly-active server keeps
+    at least `base`; the ceiling clamp guarantees remaining is never displayed -
+    or enforced - above the cap.
     """
-    remaining = effective_timeout - elapsed_seconds
+    activity_floor = base_seconds - seconds_since_activity
+    remaining = max(seconds_to_deadline, activity_floor)
     if remaining < 0:
         remaining = 0
-    if ceiling is not None and remaining > ceiling:
-        remaining = ceiling
+    if remaining > ceiling_seconds:
+        remaining = ceiling_seconds
     return remaining
 
 
-def calc_available_hours(ceiling, time_remaining):
+def calc_available_hours(remaining_seconds, ceiling_seconds):
     """Whole hours a user may add now: the gap from remaining up to the ceiling.
 
-    This is the replenish offer - it includes both unused extension headroom and
-    the idle time already elapsed (whatever drew remaining below the ceiling).
+    This is the replenish offer - the headroom between the current remaining and
+    the absolute ceiling. Floored to whole hours (the slider works in hours);
+    taking the full offer is topped up to the exact ceiling by the caller.
     """
-    gap = ceiling - time_remaining
+    gap = ceiling_seconds - remaining_seconds
     if gap < 0:
         gap = 0
     return int(gap / 3600)
 
 
-def calc_new_extensions(current_extensions, hours):
-    """Granted extension hours after adding `hours`.
+def calc_extended_remaining(remaining_seconds, hours, ceiling_seconds, maxed):
+    """Remaining after applying an extension of `hours`, capped at the ceiling.
 
-    `hours` is expected to be already clamped to the available offer by the
-    caller (which bounds remaining at the ceiling), so this is a plain sum and
-    may exceed max_extension - that is how already-elapsed idle time is
-    replenished.
+    `maxed` (the user took the full whole-hour offer) lands exactly on the
+    ceiling rather than up to 59m short from the offer's whole-hour flooring -
+    "max means max", now structural rather than a special-cased top-up.
     """
-    return current_extensions + hours
+    if maxed:
+        return ceiling_seconds
+    extended = remaining_seconds + hours * 3600
+    return ceiling_seconds if extended > ceiling_seconds else extended
+
+
+def should_cull(remaining_seconds, age_seconds, max_age_seconds=0):
+    """Cull when the ceiling-bounded remaining has run out, or - independently -
+    when the server's age has reached `max_age_seconds` (only when it is > 0).
+    """
+    if remaining_seconds <= 0:
+        return True
+    if max_age_seconds and age_seconds is not None and age_seconds >= max_age_seconds:
+        return True
+    return False
 
 
 def _as_utc(dt):
@@ -91,44 +112,55 @@ def _as_utc(dt):
     return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
 
 
-def should_cull(now, last_activity, started, effective_seconds, max_age_seconds=0):
-    """Decide whether a server should be stopped.
+# ── Runtime helpers (read orm state + datetime) ─────────────────────────────
 
-    Cull when inactivity (`now - last_activity`, falling back to age when there
-    is no recorded activity) has reached the effective idle budget, or -
-    independently - when the server's age has reached `max_age_seconds` (only
-    checked when it is > 0). Mirrors the stock jupyterhub-idle-culler semantics
-    but uses the per-server effective budget so granted extensions are honoured.
+def _cull_at(orm_spawner, reference, base_seconds, ceiling_seconds):
+    """The server's cull deadline as a tz-aware UTC datetime.
+
+    Prefers the persisted `state['cull_at']`; for legacy/fresh state derives the
+    equivalent ceiling-capped deadline from `extension_hours_used` (default 0),
+    so existing servers need no migration and a fresh server gets `base`.
     """
-    now = _as_utc(now)
-    last_activity = _as_utc(last_activity)
-    started = _as_utc(started)
+    state = orm_spawner.state or {}
+    raw = state.get("cull_at")
+    if raw:
+        try:
+            return _as_utc(datetime.fromisoformat(raw))
+        except (TypeError, ValueError):
+            pass
+    ext_h = state.get("extension_hours_used", 0)
+    budget = min(base_seconds + ext_h * 3600, ceiling_seconds)
+    return reference + timedelta(seconds=budget)
 
-    reference = last_activity if last_activity is not None else started
-    inactive = (now - reference).total_seconds() if reference is not None else None
 
-    should = inactive is not None and inactive >= effective_seconds
+def remaining_seconds_for(orm_spawner, base_seconds, ceiling_seconds, now):
+    """Single source of truth for a server's remaining seconds (display + cull).
 
-    if max_age_seconds and started is not None:
-        age = (now - started).total_seconds()
-        if age >= max_age_seconds:
-            should = True
-
-    return should
+    Folds `last_activity` / `started` / `state` into the deadline model and
+    returns an int in [0, ceiling]. Used by the session handler, the activity
+    dashboard, and the cull pass so they can never diverge.
+    """
+    reference = _as_utc(orm_spawner.last_activity) or _as_utc(orm_spawner.started)
+    if reference is None:
+        # No activity and no start time recorded yet - treat as full base budget.
+        return int(min(base_seconds, ceiling_seconds))
+    seconds_since_activity = (now - reference).total_seconds()
+    cull_at = _cull_at(orm_spawner, reference, base_seconds, ceiling_seconds)
+    seconds_to_deadline = (cull_at - now).total_seconds()
+    return int(calc_remaining(seconds_to_deadline, seconds_since_activity, base_seconds, ceiling_seconds))
 
 
 # ── In-hub cull runtime (heavy imports done lazily) ─────────────────────────
 
-async def run_cull_pass(base_seconds, max_age_seconds):
+async def run_cull_pass(base_seconds, ceiling_seconds, max_age_seconds):
     """One cull sweep over all active servers, run inside the hub process.
 
-    Reads each server's granted extension directly from `orm_spawner.state`
-    (the same store the UI handlers use) so per-user extensions actually delay
-    the cull - the external jupyterhub-idle-culler cannot see this state, since
-    the REST API exposes `spawner.get_state()` rather than the stored state.
-    Returns the number of servers culled.
+    Reads each server's deadline directly from `orm_spawner.state` (the same
+    store the UI handlers use) via `remaining_seconds_for`, so per-user
+    extensions actually delay the cull and the ceiling is a real lifetime cap -
+    the external jupyterhub-idle-culler can see neither. Returns the number of
+    servers culled.
     """
-    from datetime import datetime
     from jupyterhub import orm
     from jupyterhub.app import JupyterHub
 
@@ -149,20 +181,14 @@ async def run_cull_pass(base_seconds, max_age_seconds):
 
         try:
             orm_spawner = spawner.orm_spawner
-            state = orm_spawner.state or {}
-            ext_used_h = state.get("extension_hours_used", 0)
-            effective_s = calc_effective_timeout(base_seconds, ext_used_h)
+            remaining_s = remaining_seconds_for(orm_spawner, base_seconds, ceiling_seconds, now)
+            started = _as_utc(orm_spawner.started)
+            age_s = (now - started).total_seconds() if started is not None else None
 
-            if should_cull(
-                now,
-                orm_spawner.last_activity,
-                orm_spawner.started,
-                effective_s,
-                max_age_seconds,
-            ):
+            if should_cull(remaining_s, age_s, max_age_seconds):
                 app.log.info(
                     f"[Idle Culler] Culling {user.name} "
-                    f"(effective={effective_s}s, ext_used={ext_used_h}h)"
+                    f"(remaining={remaining_s}s, ceiling={ceiling_seconds}s)"
                 )
                 await user.stop("")
                 culled += 1
@@ -174,7 +200,7 @@ async def run_cull_pass(base_seconds, max_age_seconds):
     return culled
 
 
-def schedule_idle_culler(base_seconds, interval_seconds, max_age_seconds):
+def schedule_idle_culler(base_seconds, ceiling_seconds, interval_seconds, max_age_seconds):
     """Start the in-hub idle-culler periodic callback (replaces the external service).
 
     Call once at startup when culling is enabled. Schedules onto the running
@@ -185,7 +211,7 @@ def schedule_idle_culler(base_seconds, interval_seconds, max_age_seconds):
 
     async def _pass():
         try:
-            await run_cull_pass(base_seconds, max_age_seconds)
+            await run_cull_pass(base_seconds, ceiling_seconds, max_age_seconds)
         except Exception:
             from jupyterhub.app import JupyterHub
             JupyterHub.instance().log.exception("[Idle Culler] cull pass failed")
@@ -198,7 +224,8 @@ def schedule_idle_culler(base_seconds, interval_seconds, max_age_seconds):
         app._stellars_idle_culler_pc = pc  # keep a reference alive
         app.log.info(
             f"[Idle Culler] In-hub culler started - timeout={base_seconds}s, "
-            f"interval={interval_seconds}s, max_age={max_age_seconds}s"
+            f"ceiling={ceiling_seconds}s, interval={interval_seconds}s, "
+            f"max_age={max_age_seconds}s"
         )
 
     IOLoop.current().add_callback(_start)
