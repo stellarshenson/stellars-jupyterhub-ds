@@ -15,7 +15,7 @@ from ..activity.helpers import (
 )
 from ..docker_utils import encode_username_for_docker, get_container_stats_async
 from ..container_size_cache import get_container_sizes_with_refresh, ContainerSizeRefresher
-from ..idle_culler import calc_ceiling, calc_effective_timeout, calc_time_remaining
+from ..idle_culler import calc_ceiling, remaining_seconds_for
 from ..volume_cache import VolumeSizeRefresher, get_volume_sizes_with_refresh
 
 
@@ -129,12 +129,10 @@ class ActivityDataHandler(BaseHandler):
                     user_data["recently_active"] = server_active and elapsed_seconds <= inactive_threshold
 
                     if server_active and culler_enabled:
-                        spawner_state = spawner.orm_spawner.state or {}
-                        extensions_used_hours = spawner_state.get('extension_hours_used', 0)
                         ceiling = calc_ceiling(timeout_seconds, max_extension_hours)
-                        effective_timeout = calc_effective_timeout(timeout_seconds, extensions_used_hours)
-                        time_remaining_seconds = calc_time_remaining(effective_timeout, elapsed_seconds, ceiling)
-                        user_data["time_remaining_seconds"] = int(time_remaining_seconds)
+                        user_data["time_remaining_seconds"] = remaining_seconds_for(
+                            spawner.orm_spawner, timeout_seconds, ceiling, now
+                        )
 
             if server_active:
                 active_users.append((user, spawner, user_data))

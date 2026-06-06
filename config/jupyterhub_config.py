@@ -727,6 +727,7 @@ c.JupyterHub.load_roles = roles                              # service API token
 if JUPYTERHUB_IDLE_CULLER_ENABLED == 1:
     schedule_idle_culler(
         base_seconds=JUPYTERHUB_IDLE_CULLER_TIMEOUT,        # derived seconds (from _MINUTES)
+        ceiling_seconds=JUPYTERHUB_IDLE_CULLER_TIMEOUT + JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION * 3600,  # base + max extension = absolute cap on remaining/lifetime
         interval_seconds=JUPYTERHUB_IDLE_CULLER_INTERVAL,   # seconds between cull sweeps
         max_age_seconds=JUPYTERHUB_IDLE_CULLER_MAX_AGE,     # max server lifetime (0=unlimited)
     )

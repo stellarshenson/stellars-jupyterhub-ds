@@ -1,28 +1,31 @@
-"""Scenario tests for the idle-culler submodule.
+"""Scenario-matrix tests for the ceiling-bounded deadline idle-culler.
 
-Covers the session-extension math (effective budget, ceiling-clamped remaining,
-replenish offer, extend application) and the cull decision (`should_cull`),
-including end-to-end timelines. The same pure functions back the home-page
+The pure functions and the `remaining_seconds_for` helper back the home-page
 countdown, the extend handler, the admin dashboard, and the in-hub culler, so
-these scenarios pin the single source of truth.
+these scenarios pin the single source of truth. The matrices exercise the full
+lifecycle: fresh -> active -> idle -> extend/replenish -> cull, plus the legacy
+`extension_hours_used` migration and the hard ceiling cap.
 """
 
+import types
 from datetime import datetime, timedelta, timezone
+
+import pytest
 
 from stellars_hub_services.idle_culler import (
     calc_available_hours,
     calc_ceiling,
-    calc_effective_timeout,
-    calc_new_extensions,
-    calc_time_remaining,
+    calc_extended_remaining,
+    calc_remaining,
+    remaining_seconds_for,
     should_cull,
 )
 
-# Typical config: 24h base, 48h max extension, 72h ceiling
-BASE = 86400          # 24h, seconds
-MAX_EXT = 48          # hours
+# Live config: 24h base, 48h max extension, 72h ceiling.
+BASE = 86400                      # 24h, seconds
+MAX_EXT = 48                      # hours
 CEILING = BASE + MAX_EXT * 3600   # 259200s = 72h
-H = 3600              # one hour in seconds
+H = 3600
 
 NOW = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -31,20 +34,20 @@ def _ago(seconds):
     return NOW - timedelta(seconds=seconds)
 
 
-class TestCalcEffectiveTimeout:
-    def test_no_extensions(self):
-        assert calc_effective_timeout(BASE, 0) == BASE
+def _spawner(state=None, last_activity=None, started=None):
+    """Minimal stand-in for orm_spawner (only the attrs the helper reads)."""
+    return types.SimpleNamespace(
+        state=state or {},
+        last_activity=last_activity,
+        started=started,
+    )
 
-    def test_with_extensions(self):
-        assert calc_effective_timeout(BASE, 10) == BASE + 10 * H
 
-    def test_full_extensions(self):
-        assert calc_effective_timeout(BASE, MAX_EXT) == CEILING
+def _cull_at_iso(seconds_from_now):
+    return (NOW + timedelta(seconds=seconds_from_now)).isoformat()
 
-    def test_beyond_max_for_replenish(self):
-        # extension may exceed max_extension - that is how idle time is replenished
-        assert calc_effective_timeout(BASE, 56) == BASE + 56 * H  # 80h, > ceiling
 
+# ── calc_ceiling ────────────────────────────────────────────────────────────
 
 class TestCalcCeiling:
     def test_standard(self):
@@ -54,179 +57,158 @@ class TestCalcCeiling:
         assert calc_ceiling(BASE, 0) == BASE
 
 
-class TestCalcTimeRemaining:
-    def test_no_elapsed_unclamped(self):
-        assert calc_time_remaining(CEILING, 0) == CEILING
+# ── calc_remaining: deadline vs activity floor, clamped to [0, ceiling] ──────
 
-    def test_partial_elapsed(self):
-        assert calc_time_remaining(CEILING, H) == CEILING - H
-
-    def test_fully_elapsed(self):
-        assert calc_time_remaining(CEILING, CEILING + 1000) == 0
-
-    def test_never_negative(self):
-        assert calc_time_remaining(BASE, BASE * 2) == 0
-
-    def test_clamped_to_ceiling(self):
-        # effective 80h, no elapsed -> clamped to the 72h ceiling
-        assert calc_time_remaining(BASE + 56 * H, 0, CEILING) == CEILING
-
-    def test_below_ceiling_not_clamped(self):
-        assert calc_time_remaining(CEILING, H, CEILING) == CEILING - H
-
-    def test_no_ceiling_arg_means_no_clamp(self):
-        assert calc_time_remaining(BASE + 56 * H, 0) == BASE + 56 * H
+@pytest.mark.parametrize("to_deadline, since_activity, expected", [
+    # deadline dominates
+    (50 * H, 10 * H, 50 * H),
+    # activity floor dominates (recently active, deadline already low)
+    (2 * H, 0, BASE),                       # active -> floor base
+    (2 * H, 5 * H, 19 * H),                 # idle 5h, floor base-5h beats 2h deadline
+    # clamp to ceiling (deadline absurdly far)
+    (200 * H, 0, CEILING),
+    # floored at zero (past deadline AND idle beyond base)
+    (-8 * H, 80 * H, 0),
+    (-1, 100 * H, 0),
+    # exactly zero
+    (0, BASE, 0),
+])
+def test_calc_remaining_matrix(to_deadline, since_activity, expected):
+    assert calc_remaining(to_deadline, since_activity, BASE, CEILING) == expected
 
 
-class TestCalcAvailableHours:
-    def test_at_ceiling(self):
-        assert calc_available_hours(CEILING, CEILING) == 0
+# ── calc_available_hours: whole-hour replenish offer (floored) ──────────────
 
-    def test_fresh_server(self):
-        # 72h ceiling - 24h remaining = 48h offer
-        assert calc_available_hours(CEILING, BASE) == MAX_EXT
-
-    def test_one_hour(self):
-        assert calc_available_hours(CEILING, CEILING - H) == 1
-
-    def test_five_minutes_floors_to_zero(self):
-        assert calc_available_hours(CEILING, CEILING - 300) == 0
-
-    def test_partial_hour_floors(self):
-        assert calc_available_hours(CEILING, CEILING - 5400) == 1  # 1h30m -> 1h
-
-    def test_idle_8h_offers_replenish_plus_headroom(self):
-        remaining = BASE - 8 * H  # 16h
-        assert calc_available_hours(CEILING, remaining) == 56  # 48 headroom + 8 idle
-
-    def test_remaining_zero(self):
-        assert calc_available_hours(CEILING, 0) == int(CEILING / H)  # 72
-
-    def test_remaining_above_ceiling(self):
-        assert calc_available_hours(CEILING, CEILING + H) == 0
+@pytest.mark.parametrize("remaining, expected", [
+    (CEILING, 0),                  # at ceiling -> nothing to add
+    (CEILING - H, 1),
+    (CEILING - 5400, 1),           # 1h30m gap -> 1h (floored)
+    (CEILING - 300, 0),            # 5m gap -> 0
+    (BASE, MAX_EXT),               # fresh 24h -> 48h headroom
+    (0, CEILING // H),             # empty -> full 72h offer
+    (CEILING + H, 0),              # never negative
+])
+def test_calc_available_hours_matrix(remaining, expected):
+    assert calc_available_hours(remaining, CEILING) == expected
 
 
-class TestCalcNewExtensions:
-    def test_single_hour(self):
-        assert calc_new_extensions(0, 1) == 1
+# ── calc_extended_remaining: add hours, cap at ceiling, "max means max" ─────
 
-    def test_partial_adds(self):
-        assert calc_new_extensions(10, 5) == 15
+@pytest.mark.parametrize("remaining, hours, maxed, expected", [
+    (59 * H, 13, True, CEILING),                    # take full offer -> exact ceiling
+    (59 * H, 5, False, 64 * H),                     # partial add
+    (CEILING - 1800, 0, True, CEILING),             # 30m short, maxed -> exact ceiling (no shortfall)
+    (BASE, MAX_EXT, True, CEILING),                 # fresh, full offer -> ceiling
+    (BASE, 10, False, BASE + 10 * H),               # fresh, partial
+    (0, CEILING // H, True, CEILING),               # empty, full offer -> ceiling
+    (CEILING - H, 5, False, CEILING),               # partial overshoots -> capped
+])
+def test_calc_extended_remaining_matrix(remaining, hours, maxed, expected):
+    assert calc_extended_remaining(remaining, hours, CEILING, maxed) == expected
 
-    def test_can_exceed_max(self):
-        assert calc_new_extensions(0, 56) == 56  # > MAX_EXT, intended for replenish
-
-    def test_accumulates_beyond_max(self):
-        assert calc_new_extensions(48, 8) == 56
-
-
-class TestShouldCull:
-    def test_idle_past_effective_culls(self):
-        assert should_cull(NOW, _ago(BASE + 10), _ago(BASE + 10), BASE) is True
-
-    def test_within_budget_keeps(self):
-        assert should_cull(NOW, _ago(BASE - 10), _ago(BASE - 10), BASE) is False
-
-    def test_extension_pushes_cull_out(self):
-        # base 24h + 12h extension = 36h budget; idle 30h -> still alive
-        effective = calc_effective_timeout(BASE, 12)
-        assert should_cull(NOW, _ago(30 * H), _ago(30 * H), effective) is False
-
-    def test_without_extension_would_cull(self):
-        # same 30h idle, no extension (24h budget) -> culled
-        assert should_cull(NOW, _ago(30 * H), _ago(30 * H), BASE) is True
-
-    def test_max_age_forces_cull_even_when_active(self):
-        # active now, but server is 100h old and max_age is 72h
-        assert should_cull(NOW, NOW, _ago(100 * H), BASE, max_age_seconds=72 * H) is True
-
-    def test_max_age_zero_disables_age_check(self):
-        assert should_cull(NOW, NOW, _ago(100 * H), BASE, max_age_seconds=0) is False
-
-    def test_last_activity_none_falls_back_to_started(self):
-        assert should_cull(NOW, None, _ago(BASE + 10), BASE) is True
-
-    def test_last_activity_none_started_within_budget(self):
-        assert should_cull(NOW, None, _ago(BASE - 10), BASE) is False
-
-    def test_no_reference_never_culls(self):
-        assert should_cull(NOW, None, None, BASE) is False
-
-    def test_naive_datetime_treated_as_utc(self):
-        naive = (NOW - timedelta(seconds=BASE + 10)).replace(tzinfo=None)
-        assert should_cull(NOW, naive, naive, BASE) is True
+def test_extended_remaining_never_exceeds_ceiling():
+    # hard-cap regression: no (remaining, hours) combination banks past the ceiling
+    for remaining in range(0, CEILING + 1, 6 * H):
+        for hours in range(0, 200, 7):
+            assert calc_extended_remaining(remaining, hours, CEILING, False) <= CEILING
+            assert calc_extended_remaining(remaining, hours, CEILING, True) == CEILING
 
 
-class TestReplenishScenarios:
-    """End-to-end extend flows built from the pure functions."""
+# ── should_cull ─────────────────────────────────────────────────────────────
 
-    def test_fresh_server_full_extend_reaches_ceiling(self):
-        used, elapsed = 0, 0
-        ceiling = calc_ceiling(BASE, MAX_EXT)
-        remaining = calc_time_remaining(calc_effective_timeout(BASE, used), elapsed, ceiling)
-        assert remaining == BASE
-        available = calc_available_hours(ceiling, remaining)
-        assert available == MAX_EXT
-        new_used = calc_new_extensions(used, available)
-        new_remaining = calc_time_remaining(calc_effective_timeout(BASE, new_used), elapsed, ceiling)
-        assert new_remaining == CEILING
+@pytest.mark.parametrize("remaining, age, max_age, expected", [
+    (0, 1 * H, 0, True),               # out of time
+    (-5, 1 * H, 0, True),              # defensive: non-positive
+    (1, 100 * H, 72 * H, True),        # alive on time but past max_age
+    (100 * H, 10 * H, 72 * H, False),  # within both
+    (5 * H, 200 * H, 0, False),        # old but max_age disabled and time remains
+    (1, 71 * H, 72 * H, False),        # just under max_age, time remains
+])
+def test_should_cull_matrix(remaining, age, max_age, expected):
+    assert should_cull(remaining, age, max_age) is expected
 
-    def test_idle_8h_replenish_to_ceiling(self):
-        used, elapsed = 0, 8 * H
-        ceiling = calc_ceiling(BASE, MAX_EXT)
-        remaining = calc_time_remaining(calc_effective_timeout(BASE, used), elapsed, ceiling)
-        assert remaining == 16 * H
-        available = calc_available_hours(ceiling, remaining)
-        assert available == 56  # the worked example: 48 + 8
-        new_used = calc_new_extensions(used, available)
-        assert new_used == 56 and new_used > MAX_EXT  # exceeds max - replenished idle
-        new_remaining = calc_time_remaining(calc_effective_timeout(BASE, new_used), elapsed, ceiling)
-        assert new_remaining == CEILING  # full 72h restored
 
-    def test_partial_extend_adds_exactly_chosen_hours(self):
-        used, elapsed = 0, 8 * H
-        ceiling = calc_ceiling(BASE, MAX_EXT)
-        remaining = calc_time_remaining(calc_effective_timeout(BASE, used), elapsed, ceiling)
-        new_used = calc_new_extensions(used, 10)  # user opts for 10 of 56 available
-        new_remaining = calc_time_remaining(calc_effective_timeout(BASE, new_used), elapsed, ceiling)
-        assert new_remaining == remaining + 10 * H  # 16h -> 26h
+# ── remaining_seconds_for: full lifecycle matrix over real spawner state ────
 
-    def test_offer_is_zero_at_ceiling(self):
-        ceiling = calc_ceiling(BASE, MAX_EXT)
-        # remaining already at the ceiling
-        assert calc_available_hours(ceiling, ceiling) == 0
+@pytest.mark.parametrize("label, state, last_activity, started, expected", [
+    # fresh server (no extension state)
+    ("fresh-active",        {},               NOW,           _ago(0),        BASE),
+    ("fresh-idle-5h",       {},               _ago(5 * H),   _ago(5 * H),    19 * H),
+    ("fresh-idle-past",     {},               _ago(30 * H),  _ago(30 * H),   0),
+    ("never-active-idle-5h", {},              None,          _ago(5 * H),    19 * H),
+    ("no-reference",        {},               None,          None,           BASE),
+    # legacy extension_hours_used (derive-on-read, ceiling-capped)
+    ("legacy-ext0-idle-5h", {"extension_hours_used": 0},  _ago(5 * H),  _ago(5 * H),  19 * H),
+    ("legacy-ext48-active", {"extension_hours_used": 48}, NOW,          _ago(0),      CEILING),
+    ("legacy-ext48-idle-10h", {"extension_hours_used": 48}, _ago(10 * H), _ago(50 * H), 62 * H),
+    ("legacy-konrad-90-idle-13h", {"extension_hours_used": 90}, _ago(13 * H), _ago(60 * H), 59 * H),
+    ("legacy-konrad-capped-at-72h", {"extension_hours_used": 90}, _ago(80 * H), _ago(120 * H), 0),
+    # new model: stored cull_at deadline
+    ("deadline-idle-10h",   {"cull_at": _cull_at_iso(50 * H)}, _ago(10 * H), _ago(60 * H), 50 * H),
+    ("deadline-active-floor", {"cull_at": _cull_at_iso(2 * H)}, NOW,        _ago(0),       BASE),
+    ("deadline-past",       {"cull_at": _cull_at_iso(-1 * H)}, _ago(30 * H), _ago(30 * H), 0),
+    ("deadline-clamped-ceiling", {"cull_at": _cull_at_iso(500 * H)}, _ago(0), _ago(0),     CEILING),
+    ("deadline-garbage-falls-back", {"cull_at": "not-a-date"}, _ago(5 * H), _ago(5 * H),  19 * H),
+])
+def test_remaining_seconds_for_matrix(label, state, last_activity, started, expected):
+    sp = _spawner(state=state, last_activity=last_activity, started=started)
+    assert remaining_seconds_for(sp, BASE, CEILING, NOW) == expected
 
-    def test_activity_reset_clamps_display(self):
-        # extended to 80h effective, then activity resets elapsed to 0
-        ceiling = calc_ceiling(BASE, MAX_EXT)
-        effective = calc_effective_timeout(BASE, 56)  # 80h
-        assert calc_time_remaining(effective, 0, ceiling) == CEILING  # shows 72h, not 80h
 
-    def test_repeated_extend_never_shows_more_than_ceiling(self):
-        ceiling = calc_ceiling(BASE, MAX_EXT)
-        used = 0
-        # extend fully on a fresh server
-        used = calc_new_extensions(used, calc_available_hours(
-            ceiling, calc_time_remaining(calc_effective_timeout(BASE, used), 0, ceiling)))
-        for elapsed in (0, 10 * H, 30 * H):
-            remaining = calc_time_remaining(calc_effective_timeout(BASE, used), elapsed, ceiling)
+# ── Integration: extend lands exactly, never banks past ceiling ─────────────
+
+def _extend(remaining):
+    """Mirror the handler: offer, maxed, new remaining, new cull_at deadline."""
+    available = calc_available_hours(remaining, CEILING)
+    maxed = available > 0  # taking the full offer
+    new_remaining = calc_extended_remaining(remaining, available, CEILING, maxed)
+    return available, new_remaining
+
+
+class TestExtendLifecycle:
+    def test_konrad_idle_then_max_extend_hits_ceiling(self):
+        sp = _spawner(state={"extension_hours_used": 90}, last_activity=_ago(13 * H), started=_ago(60 * H))
+        remaining = remaining_seconds_for(sp, BASE, CEILING, NOW)
+        assert remaining == 59 * H            # counts down (was pinned at 72h before)
+        available, new_remaining = _extend(remaining)
+        assert available == 13
+        assert new_remaining == CEILING       # max means max - exactly 72h
+
+    def test_repeated_idle_extend_cycles_never_exceed_ceiling(self):
+        # The old model banked effective past the ceiling; the deadline model cannot.
+        remaining = BASE
+        for _ in range(20):
+            _, remaining = _extend(remaining)
             assert remaining <= CEILING
-            avail = calc_available_hours(ceiling, remaining)
-            used = calc_new_extensions(used, avail)  # top back up each time
-            topped = calc_time_remaining(calc_effective_timeout(BASE, used), elapsed, ceiling)
-            assert topped <= CEILING
+            # simulate 6h of idle before the next refill
+            remaining = max(0, remaining - 6 * H)
+        # after many cycles, a final max extend still tops out at exactly the ceiling
+        _, final = _extend(remaining)
+        assert final == CEILING
+
+    def test_at_ceiling_offers_nothing(self):
+        sp = _spawner(state={"cull_at": _cull_at_iso(CEILING)}, last_activity=NOW, started=_ago(0))
+        remaining = remaining_seconds_for(sp, BASE, CEILING, NOW)
+        assert remaining == CEILING
+        assert calc_available_hours(remaining, CEILING) == 0
 
 
-class TestModuleSurface:
-    def test_session_handler_reexports_same_objects(self):
-        from stellars_hub_services.handlers import session as s
-        from stellars_hub_services import idle_culler as ic
-        for name in (
-            "calc_available_hours", "calc_ceiling", "calc_effective_timeout",
-            "calc_new_extensions", "calc_time_remaining",
-        ):
-            assert getattr(s, name) is getattr(ic, name)
+# ── Cull decision wired through the helper ──────────────────────────────────
 
-    def test_runtime_entrypoints_present(self):
-        from stellars_hub_services import idle_culler as ic
-        assert callable(ic.run_cull_pass) and callable(ic.schedule_idle_culler)
+class TestCullDecision:
+    def test_idle_past_ceiling_is_culled(self):
+        sp = _spawner(state={"extension_hours_used": 90}, last_activity=_ago(80 * H), started=_ago(120 * H))
+        remaining = remaining_seconds_for(sp, BASE, CEILING, NOW)
+        assert remaining == 0
+        assert should_cull(remaining, 120 * H, 0) is True
+
+    def test_active_extended_server_not_culled(self):
+        sp = _spawner(state={"cull_at": _cull_at_iso(40 * H)}, last_activity=NOW, started=_ago(2 * H))
+        remaining = remaining_seconds_for(sp, BASE, CEILING, NOW)
+        assert remaining == 40 * H
+        assert should_cull(remaining, 2 * H, 72 * H) is False
+
+    def test_max_age_forces_cull_even_with_time_left(self):
+        sp = _spawner(state={"cull_at": _cull_at_iso(40 * H)}, last_activity=NOW, started=_ago(100 * H))
+        remaining = remaining_seconds_for(sp, BASE, CEILING, NOW)
+        assert should_cull(remaining, 100 * H, 72 * H) is True
