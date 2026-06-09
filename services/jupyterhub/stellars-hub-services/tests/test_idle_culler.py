@@ -16,6 +16,7 @@ from stellars_hub_services.idle_culler import (
     calc_available_hours,
     calc_ceiling,
     calc_extended_remaining,
+    calc_progress_pct,
     calc_remaining,
     remaining_seconds_for,
     should_cull,
@@ -90,6 +91,32 @@ def test_calc_remaining_matrix(to_deadline, since_activity, expected):
 ])
 def test_calc_available_hours_matrix(remaining, expected):
     assert calc_available_hours(remaining, CEILING) == expected
+
+
+# ── calc_progress_pct: bar fill on the normal-TTL (base) scale, clamped ─────
+
+@pytest.mark.parametrize("remaining, expected", [
+    (BASE, 100.0),                 # fresh/active -> full
+    (CEILING, 100.0),              # extended to ceiling (72h) -> clamped full
+    (BASE + 1, 100.0),             # just over base -> clamped full
+    (BASE // 2, 50.0),             # 12h of a 24h base -> half
+    (6 * H, 25.0),                 # 6h -> quarter
+    (int(BASE * 0.1), 10.0),       # 10% of base
+    (0, 0.0),                      # empty
+    (-5, 0.0),                     # defensive: never negative
+])
+def test_calc_progress_pct_matrix(remaining, expected):
+    assert calc_progress_pct(remaining, BASE) == expected
+
+
+def test_calc_progress_pct_zero_base():
+    assert calc_progress_pct(BASE, 0) == 0.0
+
+
+def test_calc_progress_pct_pinned_full_while_extended():
+    # Drains from ceiling (72h) down to base (24h): bar stays pinned at 100%.
+    for remaining in range(BASE, CEILING + 1, 6 * H):
+        assert calc_progress_pct(remaining, BASE) == 100.0
 
 
 # ── calc_extended_remaining: add hours, cap at ceiling, "max means max" ─────
