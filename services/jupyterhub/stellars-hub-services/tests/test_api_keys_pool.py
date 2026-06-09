@@ -17,7 +17,6 @@ from stellars_hub_services.api_keys_pool import (
     assignment_mask_str,
     env_for_slot,
     mask_last4,
-    mask_pool_in_config,
     merge_pool_on_save,
     normalize_pool,
     parse_pool_labels,
@@ -170,19 +169,19 @@ def test_parse_pool_labels(labels, expected):
     assert parse_pool_labels(labels) == expected
 
 
-# ── merge_pool_on_save (mask round-trip must not corrupt secrets) ────────────
+# ── merge_pool_on_save (admin UI stores full values; slot ids stay stable) ───
 
 class TestMergePoolOnSave:
     def _counter(self):
         seq = iter(['new1', 'new2', 'new3'])
         return lambda: next(seq)
 
-    def test_unchanged_masked_value_keeps_stored_secret(self):
+    def test_full_value_stored_verbatim(self):
         existing = {'mode': 'single', 'credentials': [{'slot': 's1', 'key': 'real-secret-1234'}]}
         incoming = {'enabled': True, 'mode': 'single', 'env_var_key': 'K',
-                    'credentials': [{'slot': 's1', 'key': mask_last4('real-secret-1234')}]}
+                    'credentials': [{'slot': 's1', 'key': 'real-secret-1234'}]}
         out = merge_pool_on_save(incoming, existing, self._counter())
-        assert out['credentials'] == [{'slot': 's1', 'key': 'real-secret-1234'}]
+        assert out['credentials'] == [{'slot': 's1', 'key': 'real-secret-1234', 'description': ''}]
 
     def test_real_new_value_replaces(self):
         existing = {'mode': 'single', 'credentials': [{'slot': 's1', 'key': 'old'}]}
@@ -197,41 +196,42 @@ class TestMergePoolOnSave:
         incoming = {'enabled': True, 'mode': 'single', 'env_var_key': 'K',
                     'credentials': [{'key': 'k-new'}]}
         out = merge_pool_on_save(incoming, existing, self._counter())
-        assert out['credentials'] == [{'slot': 'new1', 'key': 'k-new'}]
+        assert out['credentials'] == [{'slot': 'new1', 'key': 'k-new', 'description': ''}]
+
+    def test_stale_slot_is_reminted(self):
+        # a slot not in the stored set (e.g. client sent a bogus id) is re-minted
+        existing = {'mode': 'single', 'credentials': [{'slot': 's1', 'key': 'k1'}]}
+        incoming = {'enabled': True, 'mode': 'single', 'env_var_key': 'K',
+                    'credentials': [{'slot': 'ghost', 'key': 'k2'}]}
+        out = merge_pool_on_save(incoming, existing, self._counter())
+        assert out['credentials'][0]['slot'] == 'new1'
+
+    def test_description_stored_verbatim(self):
+        existing = {'mode': 'single', 'credentials': [{'slot': 's1', 'key': 'k1', 'description': 'prod key'}]}
+        incoming = {'enabled': True, 'mode': 'single', 'env_var_key': 'K', 'credentials': [
+            {'slot': 's1', 'key': 'k1', 'description': 'prod key'},
+            {'key': 'k2', 'description': 'dev key'}]}
+        out = merge_pool_on_save(incoming, existing, self._counter())
+        assert out['credentials'][0]['description'] == 'prod key'
+        assert out['credentials'][1]['description'] == 'dev key'
 
     def test_reorder_keeps_slot_ids(self):
         existing = {'mode': 'single', 'credentials': [
             {'slot': 's1', 'key': 'k1'}, {'slot': 's2', 'key': 'k2'}]}
         incoming = {'enabled': True, 'mode': 'single', 'env_var_key': 'K', 'credentials': [
-            {'slot': 's2', 'key': mask_last4('k2')},
-            {'slot': 's1', 'key': mask_last4('k1')}]}
+            {'slot': 's2', 'key': 'k2'},
+            {'slot': 's1', 'key': 'k1'}]}
         out = merge_pool_on_save(incoming, existing, self._counter())
         assert [c['slot'] for c in out['credentials']] == ['s2', 's1']
         assert [c['key'] for c in out['credentials']] == ['k2', 'k1']
 
-    def test_pair_round_trip(self):
+    def test_pair_values_stored(self):
         existing = {'mode': 'pair', 'credentials': [{'slot': 's1', 'id': 'id-aaaa', 'secret': 'sec-bbbb'}]}
         incoming = {'enabled': True, 'mode': 'pair', 'env_var_id': 'ID', 'env_var_secret': 'SEC',
-                    'credentials': [{'slot': 's1', 'id': mask_last4('id-aaaa'), 'secret': 'sec-NEW'}]}
+                    'credentials': [{'slot': 's1', 'id': 'id-aaaa', 'secret': 'sec-NEW'}]}
         out = merge_pool_on_save(incoming, existing, self._counter())
-        assert out['credentials'][0]['id'] == 'id-aaaa'       # unchanged kept
-        assert out['credentials'][0]['secret'] == 'sec-NEW'   # edited replaced
-
-
-# ── mask_pool_in_config (API boundary) ──────────────────────────────────────
-
-def test_mask_pool_in_config_masks_secrets():
-    config = {'api_keys_pool': {'enabled': True, 'mode': 'pair', 'credentials': [
-        {'slot': 's1', 'id': 'id-aaaa', 'secret': 'sec-bbbb'}]}}
-    out = mask_pool_in_config(config)
-    cred = out['api_keys_pool']['credentials'][0]
-    assert cred == {'slot': 's1', 'has_secret': True, 'id': '****aaaa', 'secret': '****bbbb'}
-    # original untouched (deep copy)
-    assert config['api_keys_pool']['credentials'][0]['secret'] == 'sec-bbbb'
-
-
-def test_mask_pool_in_config_no_pool_is_passthrough():
-    assert mask_pool_in_config({'gpu_access': True}) == {'gpu_access': True}
+        assert out['credentials'][0]['id'] == 'id-aaaa'
+        assert out['credentials'][0]['secret'] == 'sec-NEW'
 
 
 # ── PoolManager.assign / reconcile (stubbed observer, no Docker) ─────────────

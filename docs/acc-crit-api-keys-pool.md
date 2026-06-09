@@ -22,7 +22,7 @@ The pool is exclusive by design: each running container is assigned at most one 
 - **AC-3** Given `single` mode, when configuring the target variable, then the admin specifies one environment variable name for the api key
 - **AC-4** Given an enabled pool, when the admin adds credentials, then the list accepts an unlimited number of entries, each entry matching the pool mode (id+secret for `pair`, single value for `single`)
 - **AC-5** Given a stored pool, when the admin reorders or edits the credential list, then each existing credential keeps its stable slot identity so in-flight assignments remain valid
-- **AC-6** Given the group config persistence layer, when a pool is saved, then credential secrets are stored in the same protected store as other group config (`groups_config.sqlite`) and are never returned verbatim in API responses or rendered into page source - the editor shows only a masked representation (last 4 characters) for existing entries
+- **AC-6** Given the group config persistence layer, when a pool is saved, then credential secrets are stored in the same protected store as other group config (`groups_config.sqlite`). The groups page and its API are admin-only and return credentials in full (the admin manages them, so they are shown unmasked in the editor); obfuscation applies only to the logs (AC-26/AC-28)
 
 ## Validation
 
@@ -64,7 +64,7 @@ The pool must never rely on stop events alone. Containers can be stopped while t
 
 - **AC-26** Given a credential assignment, when it succeeds, then an event is logged to the JupyterHub log naming the user and pool, showing only the last 4 characters of the id and/or secret and/or api key - never the full value
 - **AC-27** Given pool exhaustion, when a container is assigned empty variables, then a warning-level event is logged
-- **AC-28** Given any logging path, when an assignment or exhaustion is recorded, then full credential values never appear in logs, API responses, page source, or container labels (markers carry slot identity, not the secret)
+- **AC-28** Given any logging path, when an assignment or exhaustion is recorded, then full credential values never appear in logs or in container labels (log lines carry last-4 only; labels carry slot identity, not the secret). Full values are exposed only through the admin-only groups API/editor (AC-6)
 
 ## Multiple groups
 
