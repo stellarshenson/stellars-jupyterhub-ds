@@ -449,6 +449,8 @@ services:
 
 **Session extension and replenish**: the absolute ceiling on a server's remaining time is `timeout + max_extension` (with both defaults, 24h + 24h = 48h). The extend control offers the full gap from the current remaining up to that ceiling - this includes both unused extension headroom and idle time already elapsed, so a user can opt to replenish time already spent idle and refill remaining back to the ceiling. Replenishment is opt-in: the user chooses how many hours to add, nothing is replenished automatically. Remaining can never be shown above the ceiling, and the calculations live in one place (`stellars_hub_services.idle_culler`) shared by the countdown, the extend handler, the admin dashboard, and the culler, so the displayed countdown matches the actual cull.
 
+The progress bar is scaled to the base timeout (the normal TTL), not the ceiling, so a fresh or active server reads full. Time banked above the base by extension keeps the bar pinned at full until it drains back below the base, at which point it counts down as the normal base-hour counter. Note replenishment behaviour: working in the server holds remaining at the base via the activity floor (`base - idle`); reaching the full ceiling is opt-in through the extend control, not automatic from activity.
+
 #### Activity Monitor
 
 Admin-only dashboard at `/hub/activity` showing real-time resource usage and user engagement metrics.
