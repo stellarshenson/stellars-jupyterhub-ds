@@ -81,6 +81,24 @@ def calc_available_hours(remaining_seconds, ceiling_seconds):
     return int(gap / 3600)
 
 
+def calc_progress_pct(remaining_seconds, base_seconds):
+    """Progress-bar fill percent on the *normal TTL* scale (base, not ceiling).
+
+    The bar measures remaining against the base timeout, not the ceiling, so a
+    fresh or active server reads full (100%) and only begins to drain inside the
+    final `base` window. Time banked above `base` by extension keeps the bar
+    pinned at 100% until it falls back below base, at which point it counts down
+    as the normal base-hour counter. Clamped to [0, 100]; `base_seconds <= 0`
+    yields 0. Mirrored verbatim in `session-timer.js` (updateUI + startCountdown).
+    """
+    if base_seconds <= 0:
+        return 0.0
+    pct = remaining_seconds / base_seconds * 100
+    if pct < 0:
+        return 0.0
+    return 100.0 if pct > 100 else pct
+
+
 def calc_extended_remaining(remaining_seconds, hours, ceiling_seconds, maxed):
     """Remaining after applying an extension of `hours`, capped at the ceiling.
 

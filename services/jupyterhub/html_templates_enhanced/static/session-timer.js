@@ -137,14 +137,14 @@
       return;
     }
 
-    // Bar is measured against the ceiling (base + max extension) - the absolute
-    // maximum remaining can ever be. So "at the ceiling" reads exactly 100%, and
-    // the bar fills toward 100% as the session is extended. A fresh, un-extended
-    // server reads base/ceiling (it has room to extend), which is intentional.
+    // Bar is measured against the *base* timeout (the normal TTL), NOT the
+    // ceiling. A fresh or active server reads full (100%); time banked above
+    // base by extension keeps the bar pinned at 100% until it falls back below
+    // base, at which point it counts down as the normal base-hour counter.
+    // Mirrors idle_culler.calc_progress_pct (the tested SSOT).
     var remaining   = Math.max(0, info.time_remaining_seconds || 0);
-    var ceiling     = (info.timeout_seconds || 0)
-                    + ((info.max_extension_hours || 0) * 3600);
-    var pct         = ceiling > 0 ? Math.min(100, (remaining / ceiling) * 100) : 0;
+    var base        = info.timeout_seconds || 0;
+    var pct         = base > 0 ? Math.min(100, (remaining / base) * 100) : 0;
 
     // progress bar
     $progressBar
@@ -375,9 +375,8 @@
 
       currentInfo.time_remaining_seconds = Math.max(0, currentInfo.time_remaining_seconds - 60);
       var remaining = currentInfo.time_remaining_seconds;
-      var ceiling = (currentInfo.timeout_seconds || 0)
-                  + ((currentInfo.max_extension_hours || 0) * 3600);
-      var pct  = ceiling > 0 ? Math.min(100, (remaining / ceiling) * 100) : 0;
+      var base = currentInfo.timeout_seconds || 0;
+      var pct  = base > 0 ? Math.min(100, (remaining / base) * 100) : 0;
 
       $progressBar.css('width', pct + '%').attr('aria-valuenow', Math.round(pct));
       applyColor(pct);
