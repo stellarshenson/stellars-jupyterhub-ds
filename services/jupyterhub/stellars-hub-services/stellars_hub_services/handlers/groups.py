@@ -6,6 +6,7 @@ import os
 from jupyterhub.handlers import BaseHandler
 from tornado import web
 
+from ..api_keys_pool import mask_pool_in_config, merge_pool_on_save
 from ..group_resolver import is_reserved_env_var
 from ..groups_config import (
     GroupConfigValidator,
@@ -78,7 +79,7 @@ class GroupsDataHandler(BaseHandler):
                 'priority': config['priority'],
                 'member_count': len(group.users),
                 'members': [u.name for u in group.users],
-                'config': config['config'],
+                'config': mask_pool_in_config(config['config']),
             })
 
         result.sort(key=lambda g: g['priority'], reverse=True)
@@ -156,6 +157,7 @@ class GroupsConfigHandler(BaseHandler):
 
         manager = GroupsConfigManager.get_instance()
         config = manager.ensure_config(group_name)
+        config['config'] = mask_pool_in_config(config['config'])
         self.finish(config)
 
     @web.authenticated
@@ -259,6 +261,42 @@ class GroupsConfigHandler(BaseHandler):
 
         # Merge with existing config to preserve unset fields
         existing = manager.ensure_config(group_name)
+
+        # API keys pool: reconcile incoming (masked) credentials against the
+        # stored ones by slot so an admin save never overwrites a real stored
+        # secret with its own mask; mint slot ids for new entries. Reserved
+        # target names are rejected the same way env_vars are.
+        if 'api_keys_pool' in body:
+            pool_in = body['api_keys_pool']
+            if not isinstance(pool_in, dict):
+                raise web.HTTPError(400, "api_keys_pool must be an object")
+            stellars_config = self.settings.get('stellars_config', {})
+            reserved_names = stellars_config.get('reserved_env_var_names', frozenset())
+            reserved_prefixes = stellars_config.get('reserved_env_var_prefixes', ())
+            pool_names = [
+                pool_in.get('env_var_id'),
+                pool_in.get('env_var_secret'),
+                pool_in.get('env_var_key'),
+            ]
+            rejected = [
+                n for n in pool_names
+                if n and is_reserved_env_var(n, reserved_names, reserved_prefixes)
+            ]
+            if pool_in.get('enabled') and rejected:
+                self.set_status(400)
+                self.finish({
+                    'error': 'reserved_env_var_names',
+                    'message': (
+                        "Reserved variable names cannot be used for the API keys pool: "
+                        + ", ".join(sorted(set(rejected)))
+                        + ". These are controlled by JupyterHub or the platform configuration."
+                    ),
+                    'rejected': sorted(set(rejected)),
+                })
+                return
+            existing_pool = existing['config'].get('api_keys_pool') or {}
+            config_dict['api_keys_pool'] = merge_pool_on_save(pool_in, existing_pool)
+
         merged = existing['config'].copy()
         merged.update(config_dict)
 
@@ -276,6 +314,7 @@ class GroupsConfigHandler(BaseHandler):
 
         self.log.info(f"[Groups] Admin {current_user.name} updated config for '{group_name}'")
         updated = manager.get_config(group_name)
+        updated['config'] = mask_pool_in_config(updated['config'])
         self.finish(updated)
 
 

@@ -2,6 +2,19 @@
 
 __version__ = "3.8.0"
 
+from .api_keys_pool import (
+    PoolManager,
+    env_for_slot,
+    mask_last4,
+    mask_pool_in_config,
+    merge_pool_on_save,
+    normalize_pool,
+    parse_pool_labels,
+    pick_free_slot,
+    pool_label_key,
+    schedule_api_keys_reconcile,
+    schedule_startup_api_keys_reconcile,
+)
 from .auth import StellarsNativeAuthenticator
 from .branding import setup_branding
 from .docker_proxy import register_user, unregister_user
@@ -31,7 +44,18 @@ from .volumes import (
 )
 
 __all__ = [
+    "PoolManager",
     "StellarsNativeAuthenticator",
+    "env_for_slot",
+    "mask_last4",
+    "mask_pool_in_config",
+    "merge_pool_on_save",
+    "normalize_pool",
+    "parse_pool_labels",
+    "pick_free_slot",
+    "pool_label_key",
+    "schedule_api_keys_reconcile",
+    "schedule_startup_api_keys_reconcile",
     "calc_available_hours",
     "calc_ceiling",
     "calc_extended_remaining",

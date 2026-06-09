@@ -176,6 +176,53 @@ def make_pre_spawn_hook(
         if resolved['env_vars']:
             spawner.environment.update(resolved['env_vars'])
 
+        # API keys pool: assign one credential per group pool so no two running
+        # containers share a key. The durable Docker label (set below via
+        # extra_create_kwargs) carries the slot id - never the secret; the in-use
+        # set is rebuilt from running containers, so missed stop events self-heal.
+        # Explicit group env_vars win over a pool injecting the same name.
+        pools = resolved.get('api_key_pools') or []
+        if pools:
+            from .api_keys_pool import PoolManager
+            try:
+                pool_result = await PoolManager.get_instance().assign(username, pools)
+            except Exception as e:
+                spawner.log.error("[ApiKeys] assignment failed for %s: %s", username, e)
+                pool_result = {'env': {}, 'env_sources': {}, 'labels': {}, 'assignments': []}
+            # Resolve a pool-var vs plain-env-var clash by group order, not by
+            # kind: the value set by the group higher in the ordered list wins
+            # (lower index = higher priority). env_var_source carries the index
+            # of the group that set each plain env var; env_sources carries the
+            # pool's group index. On a tie the plain env var (explicit) wins.
+            _env_src = resolved.get('env_var_source', {})
+            for _name, _val in pool_result['env'].items():
+                _plain_idx = _env_src.get(_name)
+                _pool_idx = pool_result.get('env_sources', {}).get(_name, 0)
+                if _plain_idx is not None and _plain_idx <= _pool_idx:
+                    spawner.log.info(
+                        "[ApiKeys] var %s set by higher-priority group env_vars; pool value not applied", _name
+                    )
+                    continue
+                if _name in resolved['env_vars']:
+                    spawner.log.info("[ApiKeys] var %s from pool shadows a lower-priority group env_var", _name)
+                spawner.environment[_name] = _val
+            if pool_result['labels']:
+                _kwargs = dict(spawner.extra_create_kwargs or {})
+                _labels = dict(_kwargs.get('labels') or {})
+                _labels.update(pool_result['labels'])
+                _kwargs['labels'] = _labels
+                spawner.extra_create_kwargs = _kwargs
+            for _a in pool_result['assignments']:
+                if _a['slot'] is None:
+                    spawner.log.warning(
+                        "[ApiKeys] pool=%s user=%s EXHAUSTED - env vars set empty", _a['pool_id'], username
+                    )
+                else:
+                    spawner.log.info(
+                        "[ApiKeys] assigned user=%s pool=%s slot=%s %s",
+                        username, _a['pool_id'], _a['slot'], _a['masked'],
+                    )
+
         # Memory limit: resolved GB -> bytes for Docker HostConfig.Memory.
         # Swap policy: when the winning group disables swap, pin memswap_limit to
         # the memory limit so total (RAM+swap) == RAM, i.e. zero swap allowance
