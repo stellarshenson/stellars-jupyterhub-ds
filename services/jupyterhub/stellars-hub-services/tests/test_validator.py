@@ -128,3 +128,44 @@ class TestValidateAll:
         c = {'mem_limit_enabled': True, 'mem_limit_gb': 0}
         valid, code, _ = GroupConfigValidator.validate_all(c)
         assert valid is False and code == 'invalid_mem_limit'
+
+
+class TestValidateApiKeysPool:
+    def test_disabled_is_valid(self):
+        assert GroupConfigValidator.validate_api_keys_pool({'api_keys_pool': {'enabled': False}})[0] is True
+
+    def test_no_mode_is_invalid(self):
+        c = {'api_keys_pool': {'enabled': True, 'mode': ''}}
+        valid, msg = GroupConfigValidator.validate_api_keys_pool(c)
+        assert valid is False and 'mode' in msg.lower()
+
+    def test_single_missing_var_is_invalid(self):
+        c = {'api_keys_pool': {'enabled': True, 'mode': 'single', 'env_var_key': ''}}
+        valid, msg = GroupConfigValidator.validate_api_keys_pool(c)
+        assert valid is False and 'api-key' in msg.lower()
+
+    def test_pair_missing_var_is_invalid(self):
+        c = {'api_keys_pool': {'enabled': True, 'mode': 'pair', 'env_var_id': 'ID', 'env_var_secret': ''}}
+        valid, msg = GroupConfigValidator.validate_api_keys_pool(c)
+        assert valid is False and 'pair' in msg.lower()
+
+    def test_pair_half_credential_is_invalid(self):
+        c = {'api_keys_pool': {'enabled': True, 'mode': 'pair', 'env_var_id': 'ID', 'env_var_secret': 'SEC',
+                               'credentials': [{'slot': 's1', 'id': 'i1'}]}}
+        valid, msg = GroupConfigValidator.validate_api_keys_pool(c)
+        assert valid is False and 'secret' in msg.lower()
+
+    def test_single_empty_credential_is_invalid(self):
+        c = {'api_keys_pool': {'enabled': True, 'mode': 'single', 'env_var_key': 'K',
+                               'credentials': [{'slot': 's1', 'key': ''}]}}
+        assert GroupConfigValidator.validate_api_keys_pool(c)[0] is False
+
+    def test_valid_single_pool(self):
+        c = {'api_keys_pool': {'enabled': True, 'mode': 'single', 'env_var_key': 'K',
+                               'credentials': [{'slot': 's1', 'key': 'k1'}]}}
+        assert GroupConfigValidator.validate_api_keys_pool(c)[0] is True
+
+    def test_error_code_via_validate_all(self):
+        c = {'api_keys_pool': {'enabled': True, 'mode': ''}}
+        valid, code, _ = GroupConfigValidator.validate_all(c)
+        assert valid is False and code == 'invalid_api_keys_pool'

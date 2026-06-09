@@ -420,6 +420,63 @@
           </div>
         </div>
 
+        <hr>
+
+        <!-- API Keys Pool -->
+        <div class="mb-4">
+          <h6 class="text-uppercase text-muted mb-2">
+            <i class="fa fa-key" aria-hidden="true"></i> API Keys Pool
+          </h6>
+          <p class="text-muted small mb-2">A finite set of credentials handed out one per running container, so no two members share a key. Keys return to the pool on stop; if the pool runs dry, the variables are still set but empty. Stored secrets are shown masked (last 4 characters) - leave a masked value unchanged to keep it.</p>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="config-apikeys-enabled">
+            <label class="form-check-label" for="config-apikeys-enabled">
+              Enable API keys pool
+            </label>
+          </div>
+          <div id="config-apikeys-config" class="ms-4 mt-2">
+            <div class="mb-2">
+              <label class="form-label small mb-1" for="config-apikeys-mode">Credential type</label>
+              <select class="form-select form-select-sm" id="config-apikeys-mode" style="max-width: 22rem;">
+                <option value="">- select -</option>
+                <option value="single">Single API key</option>
+                <option value="pair">Key ID + Key Secret pair</option>
+              </select>
+            </div>
+            <div id="apikeys-single-vars" class="mb-2" style="display: none;">
+              <label class="form-label small mb-1" for="config-apikeys-var-key">API key variable name</label>
+              <input type="text" class="form-control form-control-sm apikeys-var" id="config-apikeys-var-key" placeholder="e.g. OPENAI_API_KEY" style="max-width: 22rem;">
+            </div>
+            <div id="apikeys-pair-vars" class="mb-2" style="display: none;">
+              <div class="row g-2" style="max-width: 30rem;">
+                <div class="col">
+                  <label class="form-label small mb-1" for="config-apikeys-var-id">Key ID variable name</label>
+                  <input type="text" class="form-control form-control-sm apikeys-var" id="config-apikeys-var-id" placeholder="e.g. AWS_ACCESS_KEY_ID">
+                </div>
+                <div class="col">
+                  <label class="form-label small mb-1" for="config-apikeys-var-secret">Key secret variable name</label>
+                  <input type="text" class="form-control form-control-sm apikeys-var" id="config-apikeys-var-secret" placeholder="e.g. AWS_SECRET_ACCESS_KEY">
+                </div>
+              </div>
+            </div>
+            <table class="table table-sm table-bordered" id="apikeys-creds-table">
+              <thead>
+                <tr>
+                  <th id="apikeys-col-a">API Key</th>
+                  <th id="apikeys-col-b" style="display: none;">Key Secret</th>
+                  <th style="width: 40px;"></th>
+                </tr>
+              </thead>
+              <tbody id="apikeys-creds-body">
+                <!-- Populated by JavaScript -->
+              </tbody>
+            </table>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="add-apikey-btn">
+              <i class="fa fa-plus" aria-hidden="true"></i> Add Key
+            </button>
+          </div>
+        </div>
+
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
@@ -518,6 +575,29 @@ require(["jquery"], function($) {
     updateDockerControls();
   });
 
+  // API keys pool: the whole sub-panel is enabled only when the pool is on; the
+  // credential-type select drives which variable-name inputs show and whether
+  // the credentials table has a secret column.
+  function updateApiKeysControls() {
+    var enabled = $('#config-apikeys-enabled').is(':checked');
+    $('#config-apikeys-config').find('input, select, button')
+      .not('#config-apikeys-enabled').prop('disabled', !enabled);
+    var mode = $('#config-apikeys-mode').val();
+    var pair = (mode === 'pair');
+    $('#apikeys-pair-vars').toggle(pair);
+    $('#apikeys-single-vars').toggle(mode === 'single');
+    $('#apikeys-col-b').toggle(pair);
+    $('.apikeys-col-b-cell').toggle(pair);
+    $('#apikeys-col-a').text(pair ? 'Key ID' : 'API Key');
+  }
+  $('#config-apikeys-enabled').on('change', updateApiKeysControls);
+  $('#config-apikeys-mode').on('change', updateApiKeysControls);
+  $('#add-apikey-btn').on('click', function() { addApiKeyRow('', '', ''); });
+  // Variable names are env var names - sanitize POSIX-style on blur, like env_vars
+  $(document).on('blur', '.apikeys-var', function() {
+    $(this).val(sanitizeEnvVarName($(this).val()));
+  });
+
   // ── Data Loading ──
 
   function loadGroups(callback) {
@@ -573,6 +653,10 @@ require(["jquery"], function($) {
       }
       if (group.config.cpu_limit_enabled && group.config.cpu_limit_cores > 0) {
         features.push('CPU');
+      }
+      if (group.config.api_keys_pool && group.config.api_keys_pool.enabled) {
+        var keyCount = (group.config.api_keys_pool.credentials && group.config.api_keys_pool.credentials.length) || 0;
+        features.push(keyCount + ' Key' + (keyCount !== 1 ? 's' : ''));
       }
 
       var featureBadges = features.length
@@ -817,6 +901,30 @@ require(["jquery"], function($) {
           });
         }
 
+        // API keys pool (credentials arrive masked - last 4 chars only)
+        var pool = config.api_keys_pool || {};
+        var poolMode = pool.mode || '';
+        $('#config-apikeys-enabled').prop('checked', !!pool.enabled);
+        $('#config-apikeys-mode').val(poolMode);
+        $('#config-apikeys-var-key').val(pool.env_var_key || '');
+        $('#config-apikeys-var-id').val(pool.env_var_id || '');
+        $('#config-apikeys-var-secret').val(pool.env_var_secret || '');
+        var credsBody = $('#apikeys-creds-body');
+        credsBody.empty();
+        var creds = pool.credentials || [];
+        if (creds.length === 0) {
+          addApiKeyRow('', '', '');
+        } else {
+          creds.forEach(function(c) {
+            if (poolMode === 'pair') {
+              addApiKeyRow(c.slot || '', c.id || '', c.secret || '');
+            } else {
+              addApiKeyRow(c.slot || '', c.key || '', '');
+            }
+          });
+        }
+        updateApiKeysControls();
+
         new bootstrap.Modal(document.getElementById('config-group-modal')).show();
       },
       error: function() {
@@ -837,6 +945,22 @@ require(["jquery"], function($) {
       $(this).val(sanitizeEnvVarName($(this).val()));
     });
     $('#env-vars-body').append(row);
+  }
+
+  // One pool credential row. `slot` is the stable id of an existing credential
+  // (data-slot); new rows carry none so the backend mints one on save. `a`/`b`
+  // are the masked stored values (single: a=key; pair: a=id, b=secret) - leaving
+  // a masked value unchanged tells the backend to keep the stored secret.
+  function addApiKeyRow(slot, a, b) {
+    var row = $('<tr>' +
+      '<td><input type="text" class="form-control form-control-sm cred-a" value="' + escapeAttr(a) + '" placeholder="value"></td>' +
+      '<td class="apikeys-col-b-cell" style="display: none;"><input type="text" class="form-control form-control-sm cred-b" value="' + escapeAttr(b) + '" placeholder="secret"></td>' +
+      '<td><button type="button" class="btn btn-outline-danger btn-sm btn-remove-cred" title="Remove"><i class="fa fa-times"></i></button></td>' +
+    '</tr>');
+    if (slot) row.attr('data-slot', slot);
+    row.find('.btn-remove-cred').on('click', function() { row.remove(); });
+    $('#apikeys-creds-body').append(row);
+    updateApiKeysControls();  // sync new row's secret-column visibility + disabled state
   }
 
   // ── Sanitizers (applied silently on blur) ──
@@ -899,6 +1023,47 @@ require(["jquery"], function($) {
       return;
     }
 
+    // API keys pool: collect credentials (masked unchanged values pass through;
+    // the backend keeps the stored secret for a known slot). Skip empty new rows.
+    var apEnabled = $('#config-apikeys-enabled').is(':checked');
+    var apMode = $('#config-apikeys-mode').val();
+    var apVarId = $('#config-apikeys-var-id').val().trim();
+    var apVarSecret = $('#config-apikeys-var-secret').val().trim();
+    var apVarKey = $('#config-apikeys-var-key').val().trim();
+    if (apEnabled) {
+      if (apMode !== 'pair' && apMode !== 'single') {
+        $('#config-error').text('Select an API keys pool credential type.').show();
+        $('#config-error')[0].scrollIntoView({behavior: 'smooth', block: 'center'});
+        return;
+      }
+      if (apMode === 'pair' && (!apVarId || !apVarSecret)) {
+        $('#config-error').text('Pair mode requires both a key-id and a key-secret variable name.').show();
+        $('#config-error')[0].scrollIntoView({behavior: 'smooth', block: 'center'});
+        return;
+      }
+      if (apMode === 'single' && !apVarKey) {
+        $('#config-error').text('Single mode requires an api-key variable name.').show();
+        $('#config-error')[0].scrollIntoView({behavior: 'smooth', block: 'center'});
+        return;
+      }
+    }
+    var apiCreds = [];
+    $('#apikeys-creds-body tr').each(function() {
+      var slot = $(this).attr('data-slot');
+      var a = $(this).find('.cred-a').val().trim();
+      var b = $(this).find('.cred-b').val().trim();
+      var cred;
+      if (apMode === 'pair') {
+        if (!slot && !a && !b) return;  // empty new row
+        cred = { id: a, secret: b };
+      } else {
+        if (!slot && !a) return;
+        cred = { key: a };
+      }
+      if (slot) cred.slot = slot;
+      apiCreds.push(cred);
+    });
+
     var payload = {
       description: $('#config-description').val().trim(),
       env_vars: envVars,
@@ -922,7 +1087,15 @@ require(["jquery"], function($) {
       mem_limit_gb: parseFloat($('#config-mem-limit-gb').val()) || 0,
       mem_swap_disabled: $('#config-mem-swap-disabled').is(':checked'),
       cpu_limit_enabled: $('#config-cpu-limit-enabled').is(':checked'),
-      cpu_limit_cores: parseFloat($('#config-cpu-limit-cores').val()) || 0
+      cpu_limit_cores: parseFloat($('#config-cpu-limit-cores').val()) || 0,
+      api_keys_pool: {
+        enabled: apEnabled,
+        mode: apMode,
+        env_var_id: apVarId,
+        env_var_secret: apVarSecret,
+        env_var_key: apVarKey,
+        credentials: apiCreds
+      }
     };
 
     $('#save-config-btn').prop('disabled', true);

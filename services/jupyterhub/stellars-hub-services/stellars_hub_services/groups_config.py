@@ -78,6 +78,19 @@ def default_config():
         'mem_swap_disabled': False,
         'cpu_limit_enabled': False,
         'cpu_limit_cores': 0,
+        # API keys pool: a finite set of credentials handed out one-per-running-
+        # container (see api_keys_pool.py). mode 'pair' uses env_var_id +
+        # env_var_secret; mode 'single' uses env_var_key. Each credential carries
+        # a stable `slot` id; secrets are stored verbatim here and masked at the
+        # API boundary.
+        'api_keys_pool': {
+            'enabled': False,
+            'mode': '',               # '' | 'pair' | 'single'
+            'env_var_id': '',
+            'env_var_secret': '',
+            'env_var_key': '',
+            'credentials': [],        # [{slot, id, secret}] (pair) | [{slot, key}] (single)
+        },
     }
 
 
@@ -169,11 +182,41 @@ class GroupConfigValidator:
             return False, 'Memory limit (GB) must be greater than zero when enabled.'
         return True, ''
 
+    @classmethod
+    def validate_api_keys_pool(cls, config):
+        """When the API keys pool is enabled, a mode is required and the matching
+        target variable names plus complete credentials must be present. Reserved
+        target names are rejected separately by the handler (same as env_vars).
+
+        ``code = 'invalid_api_keys_pool'`` on failure.
+        """
+        pool = config.get('api_keys_pool') or {}
+        if not pool.get('enabled'):
+            return True, ''
+        mode = pool.get('mode')
+        if mode not in ('pair', 'single'):
+            return False, 'Select an API keys pool mode: key-id/secret pair or single api key.'
+        creds = pool.get('credentials') or []
+        if mode == 'pair':
+            if not (pool.get('env_var_id') or '').strip() or not (pool.get('env_var_secret') or '').strip():
+                return False, 'Pair mode requires both a key-id and a key-secret variable name.'
+            for c in creds:
+                if not (c.get('id') or '').strip() or not (c.get('secret') or '').strip():
+                    return False, 'Every pair credential needs both an id and a secret.'
+        else:
+            if not (pool.get('env_var_key') or '').strip():
+                return False, 'Single mode requires an api-key variable name.'
+            for c in creds:
+                if not (c.get('key') or '').strip():
+                    return False, 'Every single credential needs a key value.'
+        return True, ''
+
     _ALL = (
         ('invalid_gpu_selection', 'validate_gpu'),
         ('invalid_docker_selection', 'validate_docker'),
         ('invalid_cpu_limit', 'validate_cpu'),
         ('invalid_mem_limit', 'validate_mem'),
+        ('invalid_api_keys_pool', 'validate_api_keys_pool'),
     )
 
     @classmethod

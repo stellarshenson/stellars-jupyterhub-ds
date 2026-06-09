@@ -31,10 +31,13 @@ from stellars_hub_services import (
     make_pre_spawn_hook,                    # factory returning async hook for group perms, favicon, icons
     register_events,                        # attaches SQLAlchemy listeners for user rename/delete sync
     resolve_gpu_mode,                       # GPU detection: 0=off, 1=forced, 2=auto-detect via nvidia-smi
+    schedule_api_keys_reconcile,            # periodic api-keys-pool reconcile (rebuilds in-use set from running containers)
+    schedule_startup_api_keys_reconcile,    # startup api-keys-pool reconcile (survivors of a hub restart)
     schedule_startup_docker_proxy_callback, # re-registers docker-proxy listeners for limited-docker users that survived a hub restart
     schedule_startup_favicon_callback,      # registers CHP favicon routes for already-running servers
     setup_branding,                         # processes logo/favicon/icon URIs, copies file:// to static dir
 )
+from stellars_hub_services.api_keys_pool import PoolManager  # singleton arbiter of api-key slot assignments (post-stop release)
 
 # Tornado request handlers - registered via c.JupyterHub.extra_handlers
 from stellars_hub_services.handlers import (
@@ -640,6 +643,13 @@ async def _post_stop_cleanup(spawner):
         await unregister_user(spawner.user.name, socket_dir=JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR)
     except Exception as e:  # never block a stop on cleanup
         spawner.log.warning("[Groups] docker-proxy unregister failed: %s", e)
+    # Release any in-flight api-key reservation for this user (best-effort; the
+    # real release is the container leaving the running set, picked up by the
+    # periodic reconcile - stop events are never the source of truth).
+    try:
+        PoolManager.get_instance().release_tentative(spawner.user.name)
+    except Exception as e:
+        spawner.log.warning("[ApiKeys] tentative release failed: %s", e)
 
 
 c.DockerSpawner.post_stop_hook = _post_stop_cleanup
@@ -753,6 +763,15 @@ schedule_startup_docker_proxy_callback(
     compose_project=COMPOSE_PROJECT_NAME,
     user_compose_project_template=JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE,
     hub_network_name=JUPYTERHUB_NETWORK_NAME,
+)
+
+# API keys pool: rebuild the in-use set from running containers on startup
+# (survivors of a hub restart), then reconcile periodically so a stop missed
+# while the hub was down self-heals. The in-use set is always derived from
+# container labels, so this is resilient to events being lost.
+schedule_startup_api_keys_reconcile()
+schedule_api_keys_reconcile(
+    interval_seconds=JUPYTERHUB_IDLE_CULLER_INTERVAL,   # reuse the cull cadence (default 600s)
 )
 
 # EOF

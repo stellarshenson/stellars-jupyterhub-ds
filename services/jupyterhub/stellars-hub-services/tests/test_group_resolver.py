@@ -380,3 +380,40 @@ class TestDockerSelectionValidation:
         valid, msg = validate_docker_selection(True, True, docker_privileged=True)
         assert valid is False
         assert "both" in msg.lower()
+
+
+class TestApiKeyPools:
+    """The resolver collects pools as a priority-ordered LIST (not merged)."""
+
+    def _pool_cfg(self, key_var, *keys):
+        return {
+            'enabled': True, 'mode': 'single', 'env_var_key': key_var,
+            'credentials': [{'slot': f's{i}', 'key': k} for i, k in enumerate(keys)],
+        }
+
+    def test_no_pool_contributes_nothing(self):
+        cfgs = [_grp("a", env_vars=[{'name': 'X', 'value': '1'}])]
+        assert _resolve(["a"], cfgs)["api_key_pools"] == []
+
+    def test_single_group_one_pool(self):
+        cfgs = [_grp("a", api_keys_pool=self._pool_cfg('OPENAI_API_KEY', 'k0', 'k1'))]
+        pools = _resolve(["a"], cfgs)["api_key_pools"]
+        assert len(pools) == 1
+        assert pools[0]['pool_id'] == 'a'
+        assert pools[0]['env_var_key'] == 'OPENAI_API_KEY'
+        assert pools[0]['slot_ids'] == ['s0', 's1']
+
+    def test_two_groups_two_pools_priority_ordered(self):
+        # all_group_configs is priority-descending; resolver preserves that order
+        cfgs = [
+            _grp("hi", api_keys_pool=self._pool_cfg('KEY_HI', 'h0')),
+            _grp("lo", api_keys_pool=self._pool_cfg('KEY_LO', 'l0')),
+        ]
+        pools = _resolve(["hi", "lo"], cfgs)["api_key_pools"]
+        assert [p['pool_id'] for p in pools] == ['hi', 'lo']
+
+    def test_disabled_pool_excluded(self):
+        cfg = self._pool_cfg('K', 'k0')
+        cfg['enabled'] = False
+        cfgs = [_grp("a", api_keys_pool=cfg)]
+        assert _resolve(["a"], cfgs)["api_key_pools"] == []

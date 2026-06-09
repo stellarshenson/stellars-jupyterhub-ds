@@ -23,7 +23,13 @@ Resolution rules:
 - RESERVED NAMES: env vars with reserved names are stripped and reported in
   skipped_env_vars. The handler is expected to reject at save time; this is
   defence-in-depth.
+- API KEYS POOLS: collected as a priority-ordered LIST (not scalar-merged) -
+  one entry per matched group with an enabled pool. Each pool assigns
+  independently at spawn; on target-var-name collision the higher-priority pool
+  wins (first in the list), consistent with the env-vars rule.
 """
+
+from .api_keys_pool import normalize_pool
 
 
 # Fallback per-group limited-Docker quota/caps when a granting group stored a
@@ -115,8 +121,13 @@ def resolve_group_config(
     mem_limit_gb = None
     mem_swap_disabled = False
     cpu_limit_cores = None
+    api_key_pools = []
+    # name -> index in `matched` (lower = higher priority) of the group that set
+    # it. Lets the spawn-time apply resolve a plain-env-var vs pool-var clash by
+    # group order, not by kind. Pools carry their own group_index for the same.
+    env_var_source = {}
 
-    for cfg in matched:
+    for idx, cfg in enumerate(matched):
         inner = cfg.get('config') or {}
         if inner.get('gpu_access'):
             gpu_requested = True
@@ -191,6 +202,15 @@ def resolve_group_config(
                 continue
             value = entry.get('value', '')
             env_vars[name] = '' if value is None else str(value)
+            env_var_source[name] = idx
+
+        # API keys pool (per-group, NOT merged): collect priority-ordered so the
+        # spawn-time apply makes the higher-priority pool win on a var collision.
+        pool = normalize_pool(inner.get('api_keys_pool'))
+        if pool is not None:
+            pool['pool_id'] = cfg.get('group_name')
+            pool['group_index'] = idx
+            api_key_pools.append(pool)
 
     # Defensive: a grant with neither "all" nor specific ids falls back to all.
     if gpu_requested and not gpu_all and not gpu_device_ids:
@@ -233,6 +253,8 @@ def resolve_group_config(
         'mem_limit_gb': mem_limit_gb,
         'mem_swap_disabled': mem_swap_disabled,
         'cpu_limit_cores': cpu_limit_cores,
+        'api_key_pools': api_key_pools,
+        'env_var_source': env_var_source,
         'matched_groups': [c['group_name'] for c in matched],
         'skipped_env_vars': skipped,
     }
