@@ -6,7 +6,7 @@ import os
 from jupyterhub.handlers import BaseHandler
 from tornado import web
 
-from ..api_keys_pool import mask_pool_in_config, merge_pool_on_save
+from ..api_keys_pool import merge_pool_on_save
 from ..group_resolver import is_reserved_env_var
 from ..groups_config import (
     GroupConfigValidator,
@@ -79,7 +79,7 @@ class GroupsDataHandler(BaseHandler):
                 'priority': config['priority'],
                 'member_count': len(group.users),
                 'members': [u.name for u in group.users],
-                'config': mask_pool_in_config(config['config']),
+                'config': config['config'],
             })
 
         result.sort(key=lambda g: g['priority'], reverse=True)
@@ -157,7 +157,6 @@ class GroupsConfigHandler(BaseHandler):
 
         manager = GroupsConfigManager.get_instance()
         config = manager.ensure_config(group_name)
-        config['config'] = mask_pool_in_config(config['config'])
         self.finish(config)
 
     @web.authenticated
@@ -314,7 +313,6 @@ class GroupsConfigHandler(BaseHandler):
 
         self.log.info(f"[Groups] Admin {current_user.name} updated config for '{group_name}'")
         updated = manager.get_config(group_name)
-        updated['config'] = mask_pool_in_config(updated['config'])
         self.finish(updated)
 
 

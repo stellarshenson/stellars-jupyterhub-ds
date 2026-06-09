@@ -164,43 +164,29 @@ def assignment_mask_str(pool, slot_id):
 
 
 def merge_pool_on_save(incoming, existing, slot_factory=None):
-    """Reconcile an incoming pool (from the admin UI) against the stored one.
+    """Shape an incoming pool (from the admin UI) for storage.
 
-    The editor only ever sees masked last-4 values, so on save an unchanged
-    credential arrives either with no value or with the masked sentinel for its
-    `slot`. In that case the stored secret is kept; a real new value replaces
-    it. New entries (unknown/absent slot) get a freshly minted slot id. This is
-    what prevents an admin save from corrupting every stored secret into its own
-    mask.
+    The groups page is admin-only and shows credentials in full, so a save
+    carries the real values back and they are stored verbatim. Existing
+    credentials keep their stable `slot` id (so a running container's durable
+    label stays valid); new entries get a freshly minted slot. Secrets are only
+    ever obfuscated in logs (last-4), never in this admin-facing store/UI path.
     """
     if slot_factory is None:
         slot_factory = new_slot
     incoming = incoming or {}
     existing = existing or {}
     mode = incoming.get('mode', '') or ''
-
-    existing_by_slot = {}
-    for c in (existing.get('credentials') or []):
-        s = c.get('slot')
-        if s:
-            existing_by_slot[s] = c
-
+    existing_slots = {c.get('slot') for c in (existing.get('credentials') or []) if c.get('slot')}
     fields = ('id', 'secret') if mode == 'pair' else ('key',)
+
     out_creds = []
     for c in (incoming.get('credentials') or []):
         slot = c.get('slot')
-        stored = existing_by_slot.get(slot) if slot else None
-        new_c = {'slot': slot if (slot and stored) else slot_factory()}
+        new_c = {'slot': slot if (slot and slot in existing_slots) else slot_factory()}
         for f in fields:
-            incoming_val = c.get(f)
-            if stored is not None and (
-                incoming_val is None
-                or incoming_val == ''
-                or incoming_val == mask_last4(stored.get(f))
-            ):
-                new_c[f] = stored.get(f, '')
-            else:
-                new_c[f] = incoming_val if incoming_val is not None else ''
+            new_c[f] = c.get(f) or ''
+        new_c['description'] = c.get('description') or ''
         out_creds.append(new_c)
 
     return {
@@ -211,32 +197,6 @@ def merge_pool_on_save(incoming, existing, slot_factory=None):
         'env_var_key': (incoming.get('env_var_key') or '').strip(),
         'credentials': out_creds,
     }
-
-
-def mask_pool_in_config(config):
-    """Return a copy of a group's inner config with pool secrets masked.
-
-    Applied at the API boundary (handlers) so the admin UI only ever receives
-    last-4 representations. The server-side resolver path uses the unmasked
-    store directly and never goes through this.
-    """
-    import copy
-    config = copy.deepcopy(config or {})
-    pool = config.get('api_keys_pool')
-    if isinstance(pool, dict):
-        masked = []
-        for c in (pool.get('credentials') or []):
-            mc = {'slot': c.get('slot'), 'has_secret': True}
-            if 'id' in c:
-                mc['id'] = mask_last4(c.get('id'))
-            if 'secret' in c:
-                mc['secret'] = mask_last4(c.get('secret'))
-            if 'key' in c:
-                mc['key'] = mask_last4(c.get('key'))
-            masked.append(mc)
-        pool['credentials'] = masked
-        config['api_keys_pool'] = pool
-    return config
 
 
 # ── Runtime observation layer (heavy imports done lazily) ────────────────────

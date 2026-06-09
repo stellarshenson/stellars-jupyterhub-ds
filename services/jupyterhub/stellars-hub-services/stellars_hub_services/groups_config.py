@@ -89,7 +89,7 @@ def default_config():
             'env_var_id': '',
             'env_var_secret': '',
             'env_var_key': '',
-            'credentials': [],        # [{slot, id, secret}] (pair) | [{slot, key}] (single)
+            'credentials': [],        # [{slot, id, secret, description}] (pair) | [{slot, key, description}] (single)
         },
     }
 

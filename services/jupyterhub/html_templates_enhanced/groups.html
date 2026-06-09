@@ -427,7 +427,7 @@
           <h6 class="text-uppercase text-muted mb-2">
             <i class="fa fa-key" aria-hidden="true"></i> API Keys Pool
           </h6>
-          <p class="text-muted small mb-2">A finite set of credentials handed out one per running container, so no two members share a key. Keys return to the pool on stop; if the pool runs dry, the variables are still set but empty. Stored secrets are shown masked (last 4 characters) - leave a masked value unchanged to keep it.</p>
+          <p class="text-muted small mb-2">A finite set of credentials handed out one per running container, so no two members share a key. Keys return to the pool on stop; if the pool runs dry, the variables are still set but empty. Values are shown in full on this admin-only page; only the hub logs obfuscate them (last 4 characters).</p>
           <div class="form-check">
             <input class="form-check-input" type="checkbox" id="config-apikeys-enabled">
             <label class="form-check-label" for="config-apikeys-enabled">
@@ -464,6 +464,7 @@
                 <tr>
                   <th id="apikeys-col-a">API Key</th>
                   <th id="apikeys-col-b" style="display: none;">Key Secret</th>
+                  <th>Description</th>
                   <th style="width: 40px;"></th>
                 </tr>
               </thead>
@@ -592,7 +593,7 @@ require(["jquery"], function($) {
   }
   $('#config-apikeys-enabled').on('change', updateApiKeysControls);
   $('#config-apikeys-mode').on('change', updateApiKeysControls);
-  $('#add-apikey-btn').on('click', function() { addApiKeyRow('', '', ''); });
+  $('#add-apikey-btn').on('click', function() { addApiKeyRow('', '', '', ''); });
   // Variable names are env var names - sanitize POSIX-style on blur, like env_vars
   $(document).on('blur', '.apikeys-var', function() {
     $(this).val(sanitizeEnvVarName($(this).val()));
@@ -655,8 +656,7 @@ require(["jquery"], function($) {
         features.push('CPU');
       }
       if (group.config.api_keys_pool && group.config.api_keys_pool.enabled) {
-        var keyCount = (group.config.api_keys_pool.credentials && group.config.api_keys_pool.credentials.length) || 0;
-        features.push(keyCount + ' Key' + (keyCount !== 1 ? 's' : ''));
+        features.push('Keys');
       }
 
       var featureBadges = features.length
@@ -913,13 +913,13 @@ require(["jquery"], function($) {
         credsBody.empty();
         var creds = pool.credentials || [];
         if (creds.length === 0) {
-          addApiKeyRow('', '', '');
+          addApiKeyRow('', '', '', '');
         } else {
           creds.forEach(function(c) {
             if (poolMode === 'pair') {
-              addApiKeyRow(c.slot || '', c.id || '', c.secret || '');
+              addApiKeyRow(c.slot || '', c.id || '', c.secret || '', c.description || '');
             } else {
-              addApiKeyRow(c.slot || '', c.key || '', '');
+              addApiKeyRow(c.slot || '', c.key || '', '', c.description || '');
             }
           });
         }
@@ -949,12 +949,13 @@ require(["jquery"], function($) {
 
   // One pool credential row. `slot` is the stable id of an existing credential
   // (data-slot); new rows carry none so the backend mints one on save. `a`/`b`
-  // are the masked stored values (single: a=key; pair: a=id, b=secret) - leaving
-  // a masked value unchanged tells the backend to keep the stored secret.
-  function addApiKeyRow(slot, a, b) {
+  // are the credential values in full (single: a=key; pair: a=id, b=secret) -
+  // this admin-only page shows them unmasked. `description` is a plain label.
+  function addApiKeyRow(slot, a, b, description) {
     var row = $('<tr>' +
       '<td><input type="text" class="form-control form-control-sm cred-a" value="' + escapeAttr(a) + '" placeholder="value"></td>' +
       '<td class="apikeys-col-b-cell" style="display: none;"><input type="text" class="form-control form-control-sm cred-b" value="' + escapeAttr(b) + '" placeholder="secret"></td>' +
+      '<td><input type="text" class="form-control form-control-sm cred-desc" value="' + escapeAttr(description) + '" placeholder="description"></td>' +
       '<td><button type="button" class="btn btn-outline-danger btn-sm btn-remove-cred" title="Remove"><i class="fa fa-times"></i></button></td>' +
     '</tr>');
     if (slot) row.attr('data-slot', slot);
@@ -1052,14 +1053,16 @@ require(["jquery"], function($) {
       var slot = $(this).attr('data-slot');
       var a = $(this).find('.cred-a').val().trim();
       var b = $(this).find('.cred-b').val().trim();
+      var desc = $(this).find('.cred-desc').val().trim();
       var cred;
       if (apMode === 'pair') {
-        if (!slot && !a && !b) return;  // empty new row
+        if (!slot && !a && !b && !desc) return;  // empty new row
         cred = { id: a, secret: b };
       } else {
-        if (!slot && !a) return;
+        if (!slot && !a && !desc) return;
         cred = { key: a };
       }
+      cred.description = desc;
       if (slot) cred.slot = slot;
       apiCreds.push(cred);
     });
