@@ -495,3 +495,56 @@ class TestVolumeMounts:
         ]
         r = _resolve(["a", "b"], cfgs)
         assert len(r["volume_mounts"]) == 1
+
+
+class TestSectionActiveFlags:
+    """Section active flags: an inactive section reads as unconfigured at
+    resolve time even though its data is present; a missing flag (legacy dict
+    that bypassed _row_to_dict inference) defaults to active."""
+
+    def test_inactive_env_vars_contribute_nothing(self):
+        cfgs = [_grp("a", env_vars_active=False,
+                     env_vars=[{"name": "FOO", "value": "1"}])]
+        assert _resolve(["a"], cfgs)["env_vars"] == {}
+
+    def test_active_env_vars_apply(self):
+        cfgs = [_grp("a", env_vars_active=True,
+                     env_vars=[{"name": "FOO", "value": "1"}])]
+        assert _resolve(["a"], cfgs)["env_vars"] == {"FOO": "1"}
+
+    def test_missing_env_flag_defaults_active(self):
+        cfgs = [_grp("a", env_vars=[{"name": "FOO", "value": "1"}])]
+        assert _resolve(["a"], cfgs)["env_vars"] == {"FOO": "1"}
+
+    def test_inactive_docker_grants_nothing(self):
+        cfgs = [_grp("a", docker_active=False, docker_access=True,
+                     docker_limited=False, docker_privileged=True)]
+        resolved = _resolve(["a"], cfgs)
+        assert resolved["docker_access"] is False
+        assert resolved["docker_privileged"] is False
+
+    def test_inactive_docker_limited_grants_nothing(self):
+        cfgs = [_grp("a", docker_active=False, docker_limited=True,
+                     docker_limited_max_containers=99)]
+        assert _resolve(["a"], cfgs)["docker_limited"] is False
+
+    def test_inactive_volume_mounts_mount_nothing(self):
+        cfgs = [_grp("a", volume_mounts_active=False,
+                     volume_mounts=[{"volume": "v", "mountpoint": "/mnt/x"}])]
+        assert _resolve(["a"], cfgs)["volume_mounts"] == []
+
+    def test_mixed_groups_only_active_section_applies(self):
+        cfgs = [
+            _grp("on", env_vars_active=True,
+                 env_vars=[{"name": "A", "value": "1"}]),
+            _grp("off", env_vars_active=False,
+                 env_vars=[{"name": "B", "value": "2"}]),
+        ]
+        assert _resolve(["on", "off"], cfgs)["env_vars"] == {"A": "1"}
+
+    def test_inactive_docker_does_not_revoke_other_groups_grant(self):
+        cfgs = [
+            _grp("grants", docker_active=True, docker_access=True),
+            _grp("folded", docker_active=False, docker_access=True),
+        ]
+        assert _resolve(["grants", "folded"], cfgs)["docker_access"] is True

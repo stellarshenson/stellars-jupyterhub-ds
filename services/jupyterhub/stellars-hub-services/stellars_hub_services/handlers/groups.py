@@ -212,6 +212,12 @@ class GroupsConfigHandler(BaseHandler):
                 return
             config_dict['env_vars'] = env_vars
 
+        # Section active flags: off = section reads as unconfigured at resolve
+        # time, but its data persists and re-enabling restores it
+        for _key in ('env_vars_active', 'docker_active', 'volume_mounts_active'):
+            if _key in body:
+                config_dict[_key] = bool(body[_key])
+
         if 'gpu_access' in body:
             config_dict['gpu_access'] = bool(body['gpu_access'])
         if 'gpu_all' in body:

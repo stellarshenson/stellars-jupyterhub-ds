@@ -616,6 +616,8 @@ Admin-only dashboard at `/hub/groups` for creating, deleting, prioritising, and 
 
 **Per-group configuration**:
 
+Each section in the config modal carries an on/off switch in its header and opens folded. Switched off, the section is folded away and **ignored at spawn time** - but its configuration is kept and restored when the switch is flipped back on, so a grant can be suspended without re-entering it. Sections with existing configuration open switched on and unfolded.
+
 - **Environment Variables**: Name / value / description rows. Reserved names (`JUPYTERHUB_*`, `JPY_*`, `MEM_*`, `CPU_*` prefixes plus every platform-managed variable) are rejected at save time with an inline error banner showing which names were refused
 - **GPU Access**: Single toggle. Grants nvidia `device_requests` on spawn. Only effective if GPU hardware is detected on the host
 - **Memory**: Optional limit in GB. Enforced by Docker via `HostConfig.Memory`. Optional **Disable swap (hard cap)** checkbox pins `memswap_limit` to the memory limit so the container is OOM-killed at the limit instead of spilling to disk swap (default leaves Docker's 2x swap allowance)

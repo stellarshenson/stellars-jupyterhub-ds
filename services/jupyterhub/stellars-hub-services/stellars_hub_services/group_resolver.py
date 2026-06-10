@@ -134,6 +134,12 @@ def resolve_group_config(
 
     for idx, cfg in enumerate(matched):
         inner = cfg.get('config') or {}
+        # Section active flags: an inactive section reads as unconfigured while
+        # its data persists in the DB. Missing flag (legacy dict that bypassed
+        # _row_to_dict inference) defaults to active to preserve behaviour.
+        env_vars_active = inner.get('env_vars_active', True)
+        docker_active = inner.get('docker_active', True)
+        volume_mounts_active = inner.get('volume_mounts_active', True)
         if inner.get('gpu_access'):
             gpu_requested = True
             # all-GPUs is most permissive and wins; otherwise union device ids
@@ -142,9 +148,9 @@ def resolve_group_config(
             else:
                 for did in (inner.get('gpu_device_ids') or []):
                     gpu_device_ids.add(str(did))
-        if inner.get('docker_access'):
+        if docker_active and inner.get('docker_access'):
             docker_access = True
-        if inner.get('docker_limited'):
+        if docker_active and inner.get('docker_limited'):
             # Limited (proxy) access: granted if any group grants it; quota/caps
             # are the most-generous (max) across the granting groups.
             docker_limited = True
@@ -169,7 +175,7 @@ def resolve_group_config(
                 docker_limited_user_compose_project_allow_override = True
             if inner.get('docker_limited_hub_network_access'):
                 docker_limited_hub_network_access = True
-        if inner.get('docker_privileged'):
+        if docker_active and inner.get('docker_privileged'):
             docker_privileged = True
 
         # Memory limit: biggest enabled value wins; disabled groups do not un-cap.
@@ -194,7 +200,7 @@ def resolve_group_config(
             if cval > 0:
                 cpu_limit_cores = cval if cpu_limit_cores is None else max(cpu_limit_cores, cval)
 
-        for entry in (inner.get('env_vars') or []):
+        for entry in (inner.get('env_vars') or []) if env_vars_active else []:
             name = (entry.get('name') or '').strip()
             if not name:
                 continue
@@ -221,7 +227,7 @@ def resolve_group_config(
         # priority group keeps a contested mountpoint, the shadowed entry is
         # reported. Defense in depth: the save-time blacklist is re-checked here
         # so a stale/legacy config row can never mount over a protected path.
-        for entry in (inner.get('volume_mounts') or []):
+        for entry in (inner.get('volume_mounts') or []) if volume_mounts_active else []:
             volume = (entry.get('volume') or '').strip()
             mountpoint = (entry.get('mountpoint') or '').strip()
             if not volume or not mountpoint or not mountpoint.startswith('/'):

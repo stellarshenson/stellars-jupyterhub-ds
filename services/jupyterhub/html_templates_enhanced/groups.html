@@ -155,9 +155,16 @@
 
         <!-- Environment Variables -->
         <div class="mb-4">
-          <h6 class="text-uppercase text-muted mb-2">
-            <i class="fa fa-code" aria-hidden="true"></i> Environment Variables
-          </h6>
+          <div class="d-flex align-items-center mb-2">
+            <div class="form-check form-switch mb-0 me-2">
+              <input class="form-check-input section-toggle" type="checkbox" id="config-env-vars-active"
+                     data-target="#section-env-vars" aria-label="Enable environment variables section">
+            </div>
+            <h6 class="text-uppercase text-muted mb-0">
+              <i class="fa fa-code" aria-hidden="true"></i> Environment Variables
+            </h6>
+          </div>
+          <div id="section-env-vars" style="display: none;">
           <p class="text-muted small mb-2">Variables injected into containers for users in this group</p>
           <table class="table table-sm table-bordered" id="env-vars-table">
             <thead>
@@ -175,16 +182,29 @@
           <button type="button" class="btn btn-outline-secondary btn-sm" id="add-env-var-btn">
             <i class="fa fa-plus" aria-hidden="true"></i> Add Variable
           </button>
+          </div>
         </div>
 
         <hr>
 
         <!-- GPU Access -->
         <div class="mb-4">
-          <h6 class="text-uppercase text-muted mb-2">
-            <i class="fa fa-microchip" aria-hidden="true"></i> GPU Access
-          </h6>
+          <div class="d-flex align-items-center mb-2">
+            <div class="form-check form-switch mb-0 me-2">
+              <input class="form-check-input section-toggle" type="checkbox" id="config-gpu-access"
+                     data-target="#section-gpu" aria-label="Enable GPU access section"
+                     {% if not gpus %}disabled{% endif %}>
+            </div>
+            <h6 class="text-uppercase text-muted mb-0">
+              <i class="fa fa-microchip" aria-hidden="true"></i> GPU Access
+            </h6>
+          </div>
+          {% if not gpus %}
+          <div class="form-text text-warning">No GPUs detected on this host - GPU options are disabled.</div>
+          {% endif %}
+          <div id="section-gpu" style="display: none;">
           {% if gpus %}
+          <div class="form-text mb-2">Passes the selected GPU devices to spawned containers via device_requests.</div>
           {% if not gpu_isolation_enforced %}
           <div class="alert alert-warning py-2 px-2 small mb-2" role="alert">
             <i class="fa fa-triangle-exclamation" aria-hidden="true"></i>
@@ -193,13 +213,6 @@
             workloads default to the selected GPUs but a user can override that.
           </div>
           {% endif %}
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="config-gpu-access">
-            <label class="form-check-label" for="config-gpu-access">
-              Enable GPU access for this group
-            </label>
-            <div class="form-text">Passes GPU devices to spawned containers via device_requests</div>
-          </div>
           <div class="form-check mt-2">
             <input class="form-check-input" type="checkbox" id="config-gpu-all" checked disabled>
             <label class="form-check-label" for="config-gpu-all">
@@ -218,33 +231,27 @@
             </div>
             {% endfor %}
           </div>
-          {% else %}
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="config-gpu-access" disabled>
-            <label class="form-check-label text-muted" for="config-gpu-access">
-              Enable GPU access for this group
-            </label>
-          </div>
-          <div class="form-text text-warning">No GPUs detected on this host - GPU options are disabled.</div>
           {% endif %}
+          </div>
         </div>
 
         <hr>
 
         <!-- Memory Limit -->
         <div class="mb-4">
-          <h6 class="text-uppercase text-muted mb-2">
-            <i class="fa fa-memory" aria-hidden="true"></i> Memory
-          </h6>
-          <div class="form-check mb-2">
-            <input class="form-check-input" type="checkbox" id="config-mem-limit-enabled">
-            <label class="form-check-label" for="config-mem-limit-enabled">
-              Enable memory limit for this group
-            </label>
-            <div class="form-text">
-              When a user belongs to multiple groups, the largest limit wins.
-              Groups with this disabled do not remove an existing limit.
+          <div class="d-flex align-items-center mb-2">
+            <div class="form-check form-switch mb-0 me-2">
+              <input class="form-check-input section-toggle" type="checkbox" id="config-mem-limit-enabled"
+                     data-target="#section-mem" aria-label="Enable memory limit section">
             </div>
+            <h6 class="text-uppercase text-muted mb-0">
+              <i class="fa fa-memory" aria-hidden="true"></i> Memory
+            </h6>
+          </div>
+          <div id="section-mem" style="display: none;">
+          <div class="form-text mb-2">
+            Memory limit for member containers. When a user belongs to multiple groups,
+            the largest limit wins. Groups with this off do not remove an existing limit.
           </div>
           <div class="input-group input-group-sm" style="max-width: 15em;">
             <input type="number" class="form-control" id="config-mem-limit-gb"
@@ -261,25 +268,27 @@
               Otherwise Docker allows swap up to the same size as the limit.
             </div>
           </div>
+          </div>
         </div>
 
         <hr>
 
         <!-- CPU Limit -->
         <div class="mb-4">
-          <h6 class="text-uppercase text-muted mb-2">
-            <i class="fa fa-microchip" aria-hidden="true"></i> CPU
-          </h6>
-          <div class="form-check mb-2">
-            <input class="form-check-input" type="checkbox" id="config-cpu-limit-enabled">
-            <label class="form-check-label" for="config-cpu-limit-enabled">
-              Enable CPU limit for this group
-            </label>
-            <div class="form-text">
-              When a user belongs to multiple groups, the largest limit wins.
-              Groups with this disabled do not remove an existing limit.
-              The value is rounded up to whole cores at spawn (never below 1 core).
+          <div class="d-flex align-items-center mb-2">
+            <div class="form-check form-switch mb-0 me-2">
+              <input class="form-check-input section-toggle" type="checkbox" id="config-cpu-limit-enabled"
+                     data-target="#section-cpu" aria-label="Enable CPU limit section">
             </div>
+            <h6 class="text-uppercase text-muted mb-0">
+              <i class="fa fa-microchip" aria-hidden="true"></i> CPU
+            </h6>
+          </div>
+          <div id="section-cpu" style="display: none;">
+          <div class="form-text mb-2">
+            CPU limit for member containers. When a user belongs to multiple groups,
+            the largest limit wins. Groups with this off do not remove an existing limit.
+            The value is rounded up to whole cores at spawn (never below 1 core).
           </div>
           <div class="input-group input-group-sm" style="max-width: 15em;">
             <input type="number" class="form-control" id="config-cpu-limit-cores"
@@ -287,15 +296,23 @@
             <span class="input-group-text">cores</span>
           </div>
           <div class="form-text">This host has {{ host_cpu_count }} core(s) available.</div>
+          </div>
         </div>
 
         <hr>
 
         <!-- Docker Access -->
         <div class="mb-4">
-          <h6 class="text-uppercase text-muted mb-2">
-            <i class="fab fa-docker" aria-hidden="true"></i> Docker Access
-          </h6>
+          <div class="d-flex align-items-center mb-2">
+            <div class="form-check form-switch mb-0 me-2">
+              <input class="form-check-input section-toggle" type="checkbox" id="config-docker-active"
+                     data-target="#section-docker" aria-label="Enable Docker access section">
+            </div>
+            <h6 class="text-uppercase text-muted mb-0">
+              <i class="fab fa-docker" aria-hidden="true"></i> Docker Access
+            </h6>
+          </div>
+          <div id="section-docker" style="display: none;">
           <div class="small text-muted mb-2">
             Across groups: <strong>most permissive wins</strong>. Toggles OR-accumulate (any group on &rarr; on); quotas max-win. Standard supersedes Limited; Privileged is orthogonal.
           </div>
@@ -418,15 +435,23 @@
             </label>
             <div class="form-text">Runs the user container with --privileged (kernel-root inside the container). Orthogonal to the access mode - granted on its own this group gives root with no Docker socket; combined with normal or limited (same group or another group the user is in) it escalates that access. Any group on &rarr; on. Does NOT imply "Allow dangerous Docker flags".</div>
           </div>
+          </div>
         </div>
 
         <hr>
 
         <!-- Volume Mounts -->
         <div class="mb-4">
-          <h6 class="text-uppercase text-muted mb-2">
-            <i class="fa fa-hdd-o" aria-hidden="true"></i> Volume Mounts
-          </h6>
+          <div class="d-flex align-items-center mb-2">
+            <div class="form-check form-switch mb-0 me-2">
+              <input class="form-check-input section-toggle" type="checkbox" id="config-volume-mounts-active"
+                     data-target="#section-volumes" aria-label="Enable volume mounts section">
+            </div>
+            <h6 class="text-uppercase text-muted mb-0">
+              <i class="fa fa-hdd-o" aria-hidden="true"></i> Volume Mounts
+            </h6>
+          </div>
+          <div id="section-volumes" style="display: none;">
           <p class="text-muted small mb-2">Named Docker volumes mounted into member containers at spawn. The platform shared volume is no longer mounted automatically - grant it here. Missing volumes are auto-created by Docker on first spawn. Mounting onto protected system paths (<code>/etc</code>, <code>/usr</code>, <code>/home</code>, <code>/opt</code>, ...) is rejected - use <code>/mnt</code> or <code>/data</code>.</p>
           <table class="table table-sm table-bordered" id="volume-mounts-table">
             <thead>
@@ -446,23 +471,25 @@
           <button type="button" class="btn btn-outline-secondary btn-sm" id="add-shared-volume-btn" style="display: none;">
             <i class="fa fa-share-alt" aria-hidden="true"></i> Add standard shared volume (/mnt/shared)
           </button>
+          </div>
         </div>
 
         <hr>
 
         <!-- API Keys Pool -->
         <div class="mb-4">
-          <h6 class="text-uppercase text-muted mb-2">
-            <i class="fa fa-key" aria-hidden="true"></i> API Keys Pool
-          </h6>
-          <p class="text-muted small mb-2">A finite set of credentials handed out one per running container, so no two members share a key. Keys return to the pool on stop; if the pool runs dry, the variables are still set but empty. Values are shown in full on this admin-only page; only the hub logs obfuscate them (last 4 characters).</p>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="config-apikeys-enabled">
-            <label class="form-check-label" for="config-apikeys-enabled">
-              Enable API keys pool
-            </label>
+          <div class="d-flex align-items-center mb-2">
+            <div class="form-check form-switch mb-0 me-2">
+              <input class="form-check-input section-toggle" type="checkbox" id="config-apikeys-enabled"
+                     data-target="#section-apikeys" aria-label="Enable API keys pool section">
+            </div>
+            <h6 class="text-uppercase text-muted mb-0">
+              <i class="fa fa-key" aria-hidden="true"></i> API Keys Pool
+            </h6>
           </div>
-          <div id="config-apikeys-config" class="ms-4 mt-2">
+          <div id="section-apikeys" style="display: none;">
+          <p class="text-muted small mb-2">A finite set of credentials handed out one per running container, so no two members share a key. Keys return to the pool on stop; if the pool runs dry, the variables are still set but empty. Values are shown in full on this admin-only page; only the hub logs obfuscate them (last 4 characters).</p>
+          <div id="config-apikeys-config">
             <div class="mb-2">
               <label class="form-label small mb-1" for="config-apikeys-mode">Credential type</label>
               <select class="form-select form-select-sm" id="config-apikeys-mode" style="max-width: 22rem;">
@@ -503,6 +530,7 @@
             <button type="button" class="btn btn-outline-secondary btn-sm" id="add-apikey-btn">
               <i class="fa fa-plus" aria-hidden="true"></i> Add Key
             </button>
+          </div>
           </div>
         </div>
 
@@ -562,6 +590,16 @@ require(["jquery"], function($) {
   });
 
   $('#save-config-btn').on('click', saveConfig);
+
+  // Section folding: every config section has a header switch; off = body
+  // folded and the section is ignored at spawn time, but its data persists
+  // (re-enabling restores the previous configuration).
+  function updateSectionFolds() {
+    $('.section-toggle').each(function() {
+      $($(this).data('target')).toggle(this.checked);
+    });
+  }
+  $('.section-toggle').on('change', updateSectionFolds);
 
   // Memory limit: disable the GB input + swap checkbox whenever the enable checkbox is off
   $('#config-mem-limit-enabled').on('change', function() {
@@ -692,9 +730,12 @@ require(["jquery"], function($) {
 
       var features = [];
       var envCount = (group.config.env_vars && group.config.env_vars.length) || 0;
-      if (envCount > 0) features.push(envCount + ' Var' + (envCount !== 1 ? 's' : ''));
+      if (group.config.env_vars_active && envCount > 0) {
+        features.push(envCount + ' Var' + (envCount !== 1 ? 's' : ''));
+      }
       if (group.config.gpu_access) features.push('GPU');
-      if (group.config.docker_access || group.config.docker_limited || group.config.docker_privileged) {
+      if (group.config.docker_active &&
+          (group.config.docker_access || group.config.docker_limited || group.config.docker_privileged)) {
         features.push('Docker');
       }
       if (group.config.mem_limit_enabled && group.config.mem_limit_gb > 0) {
@@ -706,7 +747,8 @@ require(["jquery"], function($) {
       if (group.config.api_keys_pool && group.config.api_keys_pool.enabled) {
         features.push('Keys');
       }
-      if (group.config.volume_mounts && group.config.volume_mounts.length > 0) {
+      if (group.config.volume_mounts_active &&
+          group.config.volume_mounts && group.config.volume_mounts.length > 0) {
         features.push('Volumes');
       }
 
@@ -911,6 +953,9 @@ require(["jquery"], function($) {
       success: function(data) {
         var config = data.config || {};
         $('#config-description').val(data.description || '');
+        $('#config-env-vars-active').prop('checked', !!config.env_vars_active);
+        $('#config-docker-active').prop('checked', !!config.docker_active);
+        $('#config-volume-mounts-active').prop('checked', !!config.volume_mounts_active);
         $('#config-gpu-access').prop('checked', config.gpu_access || false);
         $('#config-gpu-all').prop('checked', config.gpu_all !== false);  // default all
         var selIds = config.gpu_device_ids || [];
@@ -983,6 +1028,7 @@ require(["jquery"], function($) {
           addVolumeMountRow(m.volume || '', m.mountpoint || '');
         });
         updateSharedVolumeButton();
+        updateSectionFolds();
 
         new bootstrap.Modal(document.getElementById('config-group-modal')).show();
       },
@@ -1083,12 +1129,18 @@ require(["jquery"], function($) {
       return;
     }
 
+    // Section active flags - inactive sections still ship their data (it
+    // persists in the DB) but skip client-side coherence checks.
+    var envVarsActive = $('#config-env-vars-active').is(':checked');
+    var dockerActive = $('#config-docker-active').is(':checked');
+    var volumeMountsActive = $('#config-volume-mounts-active').is(':checked');
+
     // Docker access: normal and limited are mutually exclusive within one group.
     // Docker (root) is orthogonal - standalone OK (privileged with no socket).
     var dockerAccess = $('#config-docker-access').is(':checked');
     var dockerLimited = $('#config-docker-limited').is(':checked');
     var dockerPrivileged = $('#config-docker-privileged').is(':checked');
-    if (dockerAccess && dockerLimited) {
+    if (dockerActive && dockerAccess && dockerLimited) {
       $('#config-error').text('A group cannot grant both normal and limited Docker access - choose one.').show();
       $('#config-error')[0].scrollIntoView({behavior: 'smooth', block: 'center'});
       return;
@@ -1149,7 +1201,7 @@ require(["jquery"], function($) {
       if (mp.charAt(0) !== '/') { volMountError = 'Mountpoint "' + mp + '" must be an absolute path.'; return; }
       volumeMounts.push({ volume: vol, mountpoint: mp });
     });
-    if (volMountError) {
+    if (volumeMountsActive && volMountError) {
       $('#config-error').text(volMountError).show();
       $('#config-error')[0].scrollIntoView({behavior: 'smooth', block: 'center'});
       return;
@@ -1157,6 +1209,9 @@ require(["jquery"], function($) {
 
     var payload = {
       description: $('#config-description').val().trim(),
+      env_vars_active: envVarsActive,
+      docker_active: dockerActive,
+      volume_mounts_active: volumeMountsActive,
       env_vars: envVars,
       volume_mounts: volumeMounts,
       gpu_access: gpuAccess,
