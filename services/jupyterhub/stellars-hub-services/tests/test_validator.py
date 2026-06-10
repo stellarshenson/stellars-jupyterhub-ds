@@ -240,3 +240,82 @@ class TestValidateVolumeMounts:
         c = {'volume_mounts': [{'volume': 'v', 'mountpoint': '/etc/x'}]}
         valid, code, _ = GroupConfigValidator.validate_all(c)
         assert valid is False and code == 'invalid_volume_mounts'
+
+
+class TestSectionActiveValidatorGating:
+    """Inactive sections (explicit active flag = False) skip validation so
+    stale data in a folded section never blocks saving; the flag absent or
+    True validates as before."""
+
+    def test_inactive_docker_skips_exclusivity_check(self):
+        c = {'docker_active': False, 'docker_access': True, 'docker_limited': True}
+        assert GroupConfigValidator.validate_docker(c)[0] is True
+
+    def test_active_docker_still_fails_exclusivity(self):
+        c = {'docker_active': True, 'docker_access': True, 'docker_limited': True}
+        assert GroupConfigValidator.validate_docker(c)[0] is False
+
+    def test_missing_docker_flag_still_validates(self):
+        c = {'docker_access': True, 'docker_limited': True}
+        assert GroupConfigValidator.validate_docker(c)[0] is False
+
+    def test_inactive_volume_mounts_skip_blacklist(self):
+        c = {'volume_mounts_active': False,
+             'volume_mounts': [{'volume': 'v', 'mountpoint': '/etc/x'}]}
+        assert GroupConfigValidator.validate_volume_mounts(c)[0] is True
+
+    def test_active_volume_mounts_still_fail_blacklist(self):
+        c = {'volume_mounts_active': True,
+             'volume_mounts': [{'volume': 'v', 'mountpoint': '/etc/x'}]}
+        assert GroupConfigValidator.validate_volume_mounts(c)[0] is False
+
+    def test_missing_volume_mounts_flag_still_validates(self):
+        c = {'volume_mounts': [{'volume': 'v', 'mountpoint': '/etc/x'}]}
+        assert GroupConfigValidator.validate_volume_mounts(c)[0] is False
+
+
+class TestInferActiveFlags:
+    """Legacy rows (flags absent from stored JSON) infer the section-active
+    flags from the data; explicitly stored flags are authoritative."""
+
+    def _merged(self, stored):
+        from stellars_hub_services.groups_config import default_config, infer_active_flags
+        config = default_config()
+        config.update(stored)
+        return infer_active_flags(config, stored)
+
+    def test_empty_legacy_row_all_inactive(self):
+        c = self._merged({})
+        assert c['env_vars_active'] is False
+        assert c['docker_active'] is False
+        assert c['volume_mounts_active'] is False
+
+    def test_legacy_env_vars_infer_active(self):
+        c = self._merged({'env_vars': [{'name': 'X', 'value': '1'}]})
+        assert c['env_vars_active'] is True
+
+    def test_legacy_docker_infers_active_from_any_toggle(self):
+        for key in ('docker_access', 'docker_limited', 'docker_privileged'):
+            c = self._merged({key: True})
+            assert c['docker_active'] is True, key
+
+    def test_legacy_volume_mounts_infer_active(self):
+        c = self._merged({'volume_mounts': [{'volume': 'v', 'mountpoint': '/mnt/x'}]})
+        assert c['volume_mounts_active'] is True
+
+    def test_explicit_false_with_data_stays_inactive(self):
+        c = self._merged({
+            'env_vars_active': False,
+            'env_vars': [{'name': 'X', 'value': '1'}],
+            'docker_active': False,
+            'docker_limited': True,
+            'volume_mounts_active': False,
+            'volume_mounts': [{'volume': 'v', 'mountpoint': '/mnt/x'}],
+        })
+        assert c['env_vars_active'] is False
+        assert c['docker_active'] is False
+        assert c['volume_mounts_active'] is False
+
+    def test_explicit_true_without_data_stays_active(self):
+        c = self._merged({'docker_active': True})
+        assert c['docker_active'] is True

@@ -55,6 +55,14 @@ class GroupConfig(GroupsConfigBase):
 def default_config():
     """Return default empty group configuration."""
     return {
+        # Section active flags: when False the resolver treats the section as
+        # unconfigured but its data persists (re-enabling restores it). GPU,
+        # memory, CPU and API-keys sections reuse their own enable flags
+        # (gpu_access / mem_limit_enabled / cpu_limit_enabled /
+        # api_keys_pool.enabled) for the same semantics.
+        'env_vars_active': False,
+        'docker_active': False,
+        'volume_mounts_active': False,
         'env_vars': [],
         'gpu_access': False,
         'gpu_all': True,          # all GPUs (default); when False, gpu_device_ids applies
@@ -119,6 +127,27 @@ def default_config():
     }
 
 
+def infer_active_flags(config, stored):
+    """Fill missing section-active flags on legacy rows by inferring from data.
+
+    ``config`` is the merged dict (defaults + stored), mutated in place;
+    ``stored`` is the raw dict loaded from the DB. A flag explicitly present
+    in ``stored`` is authoritative (a deactivated section keeps its data but
+    stays off). A flag absent from ``stored`` predates the feature - infer it
+    so existing groups keep working: active iff the section carries config.
+    """
+    if 'env_vars_active' not in stored:
+        config['env_vars_active'] = bool(config.get('env_vars'))
+    if 'docker_active' not in stored:
+        config['docker_active'] = bool(
+            config.get('docker_access') or config.get('docker_limited')
+            or config.get('docker_privileged')
+        )
+    if 'volume_mounts_active' not in stored:
+        config['volume_mounts_active'] = bool(config.get('volume_mounts'))
+    return config
+
+
 class GroupConfigValidator:
     """Field-level validators for group config dicts.
 
@@ -153,8 +182,14 @@ class GroupConfigValidator:
         limited-Docker quotas. Docker (root) is orthogonal - allowed standalone
         OR combined with either access mode.
 
+        Skipped when the Docker section is inactive (``docker_active`` falsy
+        and the flag explicitly present) - inactive means unconfigured, so
+        stale data in a folded section never blocks saving.
+
         ``code = 'invalid_docker_selection'`` on failure.
         """
+        if 'docker_active' in config and not config.get('docker_active'):
+            return True, ''
         docker_access = config.get('docker_access')
         docker_limited = config.get('docker_limited')
         if docker_access and docker_limited:
@@ -243,8 +278,13 @@ class GroupConfigValidator:
         The PROTECTED_MOUNTPOINTS blacklist is enforced here, i.e. at save time
         - a config that mounts over a system dir never reaches the database.
 
+        Skipped when the section is inactive (``volume_mounts_active`` falsy
+        and the flag explicitly present) - same rationale as Docker above.
+
         ``code = 'invalid_volume_mounts'`` on failure.
         """
+        if 'volume_mounts_active' in config and not config.get('volume_mounts_active'):
+            return True, ''
         mounts = config.get('volume_mounts') or []
         seen_mountpoints = set()
         seen_volumes = set()
@@ -447,6 +487,7 @@ class GroupsConfigManager:
         try:
             stored = json.loads(row.config or '{}')
             config.update(stored)
+            infer_active_flags(config, stored)
         except (json.JSONDecodeError, TypeError):
             pass
         return {
