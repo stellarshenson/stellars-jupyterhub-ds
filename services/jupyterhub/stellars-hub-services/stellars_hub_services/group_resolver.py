@@ -30,6 +30,7 @@ Resolution rules:
 """
 
 from .api_keys_pool import normalize_pool
+from .groups_config import is_protected_mountpoint
 
 
 # Fallback per-group limited-Docker quota/caps when a granting group stored a
@@ -122,6 +123,10 @@ def resolve_group_config(
     mem_swap_disabled = False
     cpu_limit_cores = None
     api_key_pools = []
+    # mountpoint -> volume name; highest-priority group wins on a mountpoint
+    # conflict (same rule as env vars). Shadowed entries land in skipped_volume_mounts.
+    volume_mounts = {}
+    skipped_volume_mounts = []
     # name -> index in `matched` (lower = higher priority) of the group that set
     # it. Lets the spawn-time apply resolve a plain-env-var vs pool-var clash by
     # group order, not by kind. Pools carry their own group_index for the same.
@@ -212,6 +217,33 @@ def resolve_group_config(
             pool['group_index'] = idx
             api_key_pools.append(pool)
 
+        # Volume mounts: union across groups keyed by mountpoint; the higher-
+        # priority group keeps a contested mountpoint, the shadowed entry is
+        # reported. Defense in depth: the save-time blacklist is re-checked here
+        # so a stale/legacy config row can never mount over a protected path.
+        for entry in (inner.get('volume_mounts') or []):
+            volume = (entry.get('volume') or '').strip()
+            mountpoint = (entry.get('mountpoint') or '').strip()
+            if not volume or not mountpoint or not mountpoint.startswith('/'):
+                continue
+            norm = '/' + mountpoint.strip('/')
+            if is_protected_mountpoint(norm):
+                skipped_volume_mounts.append({'volume': volume, 'mountpoint': norm,
+                                              'group': cfg.get('group_name'), 'reason': 'protected'})
+                continue
+            if norm in volume_mounts:
+                if volume_mounts[norm] != volume:
+                    skipped_volume_mounts.append({'volume': volume, 'mountpoint': norm,
+                                                  'group': cfg.get('group_name'), 'reason': 'shadowed'})
+                continue
+            # Docker mounts are keyed by volume name - a volume already claimed
+            # at another mountpoint by a higher-priority group cannot re-mount.
+            if volume in volume_mounts.values():
+                skipped_volume_mounts.append({'volume': volume, 'mountpoint': norm,
+                                              'group': cfg.get('group_name'), 'reason': 'shadowed'})
+                continue
+            volume_mounts[norm] = volume
+
     # Defensive: a grant with neither "all" nor specific ids falls back to all.
     if gpu_requested and not gpu_all and not gpu_device_ids:
         gpu_all = True
@@ -254,6 +286,8 @@ def resolve_group_config(
         'mem_swap_disabled': mem_swap_disabled,
         'cpu_limit_cores': cpu_limit_cores,
         'api_key_pools': api_key_pools,
+        'volume_mounts': [{'volume': v, 'mountpoint': m} for m, v in volume_mounts.items()],
+        'skipped_volume_mounts': skipped_volume_mounts,
         'env_var_source': env_var_source,
         'matched_groups': [c['group_name'] for c in matched],
         'skipped_env_vars': skipped,

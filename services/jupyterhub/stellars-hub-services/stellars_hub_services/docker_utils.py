@@ -59,6 +59,26 @@ async def get_container_stats_async(username):
     return await loop.run_in_executor(_docker_executor, get_container_stats, username)
 
 
+def volume_exists(volume_name):
+    """True when a Docker volume with this exact name exists (blocking)."""
+    try:
+        import docker
+        docker_client = docker.from_env()
+        try:
+            docker_client.volumes.get(volume_name)
+            return True
+        finally:
+            docker_client.close()
+    except Exception:
+        return False
+
+
+async def volume_exists_async(volume_name):
+    """Async wrapper - runs in thread pool to avoid blocking the hub loop."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_docker_executor, volume_exists, volume_name)
+
+
 
 
 def get_executor():

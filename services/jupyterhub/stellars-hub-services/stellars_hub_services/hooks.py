@@ -176,6 +176,25 @@ def make_pre_spawn_hook(
         if resolved['env_vars']:
             spawner.environment.update(resolved['env_vars'])
 
+        # Group volume mounts: named Docker volumes -> container mountpoints.
+        # Spawner objects persist across spawns, so first pop whatever this hook
+        # added last time (tracked on the spawner) - leaving a group actually
+        # unmounts on the next spawn. Missing volumes are auto-created by Docker.
+        for _key in getattr(spawner, '_stellars_group_volume_keys', ()):
+            spawner.volumes.pop(_key, None)
+        _added_volume_keys = []
+        for _vm in resolved.get('volume_mounts') or []:
+            spawner.volumes[_vm['volume']] = _vm['mountpoint']
+            _added_volume_keys.append(_vm['volume'])
+            spawner.log.info("[GroupVolumes] mount user=%s volume=%s -> %s",
+                             username, _vm['volume'], _vm['mountpoint'])
+        spawner._stellars_group_volume_keys = _added_volume_keys
+        for _sk in resolved.get('skipped_volume_mounts') or []:
+            spawner.log.warning(
+                "[GroupVolumes] skipped user=%s volume=%s mountpoint=%s group=%s reason=%s",
+                username, _sk['volume'], _sk['mountpoint'], _sk['group'], _sk['reason'],
+            )
+
         # API keys pool: assign one credential per group pool so no two running
         # containers share a key. The durable Docker label (set below via
         # extra_create_kwargs) carries the slot id - never the secret; the in-use

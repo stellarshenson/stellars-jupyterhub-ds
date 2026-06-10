@@ -89,7 +89,7 @@ services:
       - JUPYTERHUB_RATELIMIT_AVERAGE=${JUPYTERHUB_RATELIMIT_AVERAGE:-100} # requests per period per source IP (0=disable rate limiting)
       - JUPYTERHUB_RATELIMIT_BURST=${JUPYTERHUB_RATELIMIT_BURST:-200} # burst allowance above average
       - JUPYTERHUB_RATELIMIT_PERIOD=${JUPYTERHUB_RATELIMIT_PERIOD:-1s} # rate measurement period
-      - JUPYTERHUB_RATELIMIT_XFF_DEPTH=${JUPYTERHUB_RATELIMIT_XFF_DEPTH:-0} # X-Forwarded-For depth for real client IP (set 1 behind an external proxy)
+      - JUPYTERHUB_RATELIMIT_XFF_DEPTH=${JUPYTERHUB_RATELIMIT_XFF_DEPTH:-1} # X-Forwarded-For depth for real client IP (1=one trusted proxy in front; 0 for direct exposure)
       - JUPYTERHUB_CONCURRENT_SPAWN_LIMIT=100 # max simultaneous user-server spawns (spawn-storm protection)
       - JUPYTERHUB_ACTIVE_SERVER_LIMIT=0 # max total running user servers (0=unlimited)
       - JUPYTERHUB_LOGIN_MAX_FAILED_ATTEMPTS=5 # failed logins before lockout (0=lockout disabled)
@@ -138,7 +138,7 @@ services:
       - "traefik.http.middlewares.jupyterhub-ratelimit.ratelimit.average=${JUPYTERHUB_RATELIMIT_AVERAGE:-100}"
       - "traefik.http.middlewares.jupyterhub-ratelimit.ratelimit.burst=${JUPYTERHUB_RATELIMIT_BURST:-200}"
       - "traefik.http.middlewares.jupyterhub-ratelimit.ratelimit.period=${JUPYTERHUB_RATELIMIT_PERIOD:-1s}"
-      - "traefik.http.middlewares.jupyterhub-ratelimit.ratelimit.sourcecriterion.ipstrategy.depth=${JUPYTERHUB_RATELIMIT_XFF_DEPTH:-0}"
+      - "traefik.http.middlewares.jupyterhub-ratelimit.ratelimit.sourcecriterion.ipstrategy.depth=${JUPYTERHUB_RATELIMIT_XFF_DEPTH:-1}"
       - "traefik.http.routers.jupyterhub-rtr.middlewares=jupyterhub-ratelimit"
     networks:
       - jupyterhub_network

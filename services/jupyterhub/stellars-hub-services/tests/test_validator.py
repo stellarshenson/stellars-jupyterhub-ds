@@ -169,3 +169,74 @@ class TestValidateApiKeysPool:
         c = {'api_keys_pool': {'enabled': True, 'mode': ''}}
         valid, code, _ = GroupConfigValidator.validate_all(c)
         assert valid is False and code == 'invalid_api_keys_pool'
+
+
+class TestValidateVolumeMounts:
+    def _check(self, mounts):
+        return GroupConfigValidator.validate_volume_mounts({'volume_mounts': mounts})
+
+    def test_empty_list_is_valid(self):
+        assert self._check([])[0] is True
+
+    def test_valid_single_mount(self):
+        assert self._check([{'volume': 'proj_shared', 'mountpoint': '/mnt/shared'}])[0] is True
+
+    def test_valid_multi_mount(self):
+        mounts = [
+            {'volume': 'proj_shared', 'mountpoint': '/mnt/shared'},
+            {'volume': 'datasets', 'mountpoint': '/data/sets'},
+        ]
+        assert self._check(mounts)[0] is True
+
+    def test_missing_volume_name_is_invalid(self):
+        valid, msg = self._check([{'volume': '', 'mountpoint': '/mnt/x'}])
+        assert valid is False and 'both' in msg.lower()
+
+    def test_missing_mountpoint_is_invalid(self):
+        valid, msg = self._check([{'volume': 'v', 'mountpoint': ''}])
+        assert valid is False and 'both' in msg.lower()
+
+    def test_relative_mountpoint_is_invalid(self):
+        valid, msg = self._check([{'volume': 'v', 'mountpoint': 'mnt/x'}])
+        assert valid is False and 'absolute' in msg.lower()
+
+    def test_bad_volume_name_chars_invalid(self):
+        valid, msg = self._check([{'volume': 'bad name!', 'mountpoint': '/mnt/x'}])
+        assert valid is False and 'volume name' in msg.lower()
+
+    def test_volume_name_cannot_start_with_dash(self):
+        assert self._check([{'volume': '-v', 'mountpoint': '/mnt/x'}])[0] is False
+
+    def test_root_mountpoint_is_protected(self):
+        valid, msg = self._check([{'volume': 'v', 'mountpoint': '/'}])
+        assert valid is False and 'protected' in msg.lower()
+
+    def test_protected_system_dirs_rejected(self):
+        for path in ('/etc', '/usr/local', '/home', '/home/lab/workspace', '/opt/conda', '/var/lib', '/tmp'):
+            valid, msg = self._check([{'volume': 'v', 'mountpoint': path}])
+            assert valid is False and 'protected' in msg.lower(), path
+
+    def test_prefix_match_is_not_substring_match(self):
+        # /homestead is NOT under /home - blacklist uses path-segment prefixes
+        assert self._check([{'volume': 'v', 'mountpoint': '/homestead'}])[0] is True
+
+    def test_duplicate_mountpoint_is_invalid(self):
+        mounts = [
+            {'volume': 'a', 'mountpoint': '/mnt/x'},
+            {'volume': 'b', 'mountpoint': '/mnt/x/'},
+        ]
+        valid, msg = self._check(mounts)
+        assert valid is False and 'duplicate' in msg.lower()
+
+    def test_duplicate_volume_is_invalid(self):
+        mounts = [
+            {'volume': 'a', 'mountpoint': '/mnt/x'},
+            {'volume': 'a', 'mountpoint': '/mnt/y'},
+        ]
+        valid, msg = self._check(mounts)
+        assert valid is False and 'twice' in msg.lower()
+
+    def test_error_code_via_validate_all(self):
+        c = {'volume_mounts': [{'volume': 'v', 'mountpoint': '/etc/x'}]}
+        valid, code, _ = GroupConfigValidator.validate_all(c)
+        assert valid is False and code == 'invalid_volume_mounts'
