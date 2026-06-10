@@ -23,7 +23,11 @@ def test_top_level_imports():
     from stellars_hub_services import schedule_startup_favicon_callback
     from stellars_hub_services import get_services_and_roles
     from stellars_hub_services import get_user_volume_suffixes
+    from stellars_hub_services import apply_abuse_protection
+    from stellars_hub_services import build_app_protection
+    from stellars_hub_services import ratelimit_disabled
     assert callable(get_user_volume_suffixes)
+    assert callable(apply_abuse_protection)
 
 
 def test_volumes():

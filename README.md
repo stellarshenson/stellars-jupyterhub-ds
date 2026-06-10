@@ -28,6 +28,7 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 - **Activity Monitor**: Admin-only dashboard showing real-time CPU/memory usage, volume sizes with per-volume breakdown, 3-state status indicator (active/inactive/offline), and historical activity scoring with exponential decay
 - **Mobile Interface**: Server management from mobile devices - status strip with pulsating indicator and uptime, inline session extension slider, admin activity monitor with card-based layout, health check with auto-reload on state change. No JupyterLab navigation - start/stop/restart only
 - **Health Check Endpoint**: Unauthenticated `GET /hub/health` returning JSON with hub status, uptime, version, and active server count. Rate-limited to 1 req/s per IP. Designed for Zabbix, Prometheus, or other monitoring agents
+- **Abuse Protection**: Env-driven L7 defence covering hub and all labs at the single Traefik ingress - per-IP request rate limiting (WebSocket-safe), concurrent-spawn and active-server caps against spawn-storms, and login brute-force lockout via NativeAuthenticator
 - **Standalone Compose**: `compose.yml` runs without any extra files - the image ships a working built-in config. Drop your own `jupyterhub_config.py` into `./config/` (plus optional helper modules) to override, or your TLS yml + cert/key into `./certs/`; missing or empty folders fall back to the built-in config and an auto-generated self-signed cert. See [docs/configuration.md](docs/configuration.md) and [docs/certificates.md](docs/certificates.md)
 - **Custom Busy Favicon**: Optional `JUPYTERHUB_FAVICON_BUSY_URI` brands the kernel-busy favicon frames in JupyterLab; empty keeps JupyterLab's default busy animation
 - **Production Ready**: Traefik reverse proxy with TLS termination, automatic container updates via Watchtower
@@ -450,6 +451,42 @@ services:
 **Session extension and replenish**: the absolute ceiling on a server's remaining time is `timeout + max_extension` (with both defaults, 24h + 24h = 48h). The extend control offers the full gap from the current remaining up to that ceiling - this includes both unused extension headroom and idle time already elapsed, so a user can opt to replenish time already spent idle and refill remaining back to the ceiling. Replenishment is opt-in: the user chooses how many hours to add, nothing is replenished automatically. Remaining can never be shown above the ceiling, and the calculations live in one place (`stellars_hub_services.idle_culler`) shared by the countdown, the extend handler, the admin dashboard, and the culler, so the displayed countdown matches the actual cull.
 
 The progress bar is scaled to the base timeout (the normal TTL), not the ceiling, so a fresh or active server reads full. Time banked above the base by extension keeps the bar pinned at full until it drains back below the base, at which point it counts down as the normal base-hour counter. Note replenishment behaviour: working in the server holds remaining at the base via the activity floor (`base - idle`); reaching the full ceiling is opt-in through the extend control, not automatic from activity.
+
+#### Abuse Protection
+
+Application-layer (L7) protection against HTTP floods, spawn-storms, and login brute-force. The hub and all spawned labs ingress through a single Traefik router (everything routes via CHP on the hub's port 8000), so one middleware covers the entire platform. All knobs are env-driven; defaults are generous enough not to affect real users.
+
+```yaml
+services:
+  jupyterhub:
+    environment:
+      - JUPYTERHUB_RATELIMIT_AVERAGE=100        # requests per period per source IP (0=disable)
+      - JUPYTERHUB_RATELIMIT_BURST=200          # burst allowance above average
+      - JUPYTERHUB_RATELIMIT_PERIOD=1s          # rate measurement period
+      - JUPYTERHUB_RATELIMIT_XFF_DEPTH=0        # X-Forwarded-For depth (set 1 behind an external proxy)
+      - JUPYTERHUB_CONCURRENT_SPAWN_LIMIT=100   # max simultaneous user-server spawns
+      - JUPYTERHUB_ACTIVE_SERVER_LIMIT=0        # max total running servers (0=unlimited)
+      - JUPYTERHUB_LOGIN_MAX_FAILED_ATTEMPTS=5  # failed logins before lockout (0=disable)
+      - JUPYTERHUB_LOGIN_LOCKOUT_SECONDS=600    # lockout window in seconds
+```
+
+**Two layers**:
+- **Ingress rate limiting** (Traefik `rateLimit` middleware): bounds request velocity per source IP for hub and labs alike. WebSocket-safe - a kernel or terminal connection counts once when opened, so long-lived lab features are never severed; the worst case is a transient HTTP 429 on a genuine burst, which clients retry. The `JUPYTERHUB_RATELIMIT_*` values are interpolated into Traefik labels at compose time, so set them in `.env` or `compose_override.yml`. `JUPYTERHUB_RATELIMIT_AVERAGE=0` disables the limiter
+- **Hub limits** (`stellars_hub_services.abuse_protection`): `concurrent_spawn_limit` throttles spawn-storms (container spawns are expensive), `active_server_limit` caps total capacity, and NativeAuthenticator login lockout blocks an account for `JUPYTERHUB_LOGIN_LOCKOUT_SECONDS` after too many failed attempts
+
+**Proxied deployments**: when the platform sits behind an external reverse proxy, the rate limiter sees the proxy's IP for every request and would throttle all users as one client. Set `JUPYTERHUB_RATELIMIT_XFF_DEPTH=1` (one trusted proxy) so it keys on the real client IP from `X-Forwarded-For`.
+
+**Optional - connection-concurrency limiting**: Traefik's `inFlightReq` middleware (caps simultaneous in-flight requests per IP, the slowloris lever) is deliberately not enabled - JupyterLab legitimately holds many concurrent long-lived connections (kernels, terminals, comms, polling), and users behind shared NAT multiply that, so a per-IP concurrency cap can stall real usage. Operators who understand the tradeoff can add it via `compose_override.yml`:
+
+```yaml
+services:
+  jupyterhub:
+    labels:
+      - "traefik.http.middlewares.jupyterhub-inflight.inflightreq.amount=400"
+      - "traefik.http.routers.jupyterhub-rtr.middlewares=jupyterhub-ratelimit,jupyterhub-inflight"
+```
+
+**Caveats**: this is L7 protection only - true volumetric L3/L4 DDoS (SYN floods, amplification) must be absorbed upstream (Cloudflare, ISP scrubbing); a single host cannot defend against it. For behavioural banning (credential stuffing, scanner detection, community blocklists), a CrowdSec sidecar with the Traefik bouncer plugin is the natural next step - it requires Traefik access logs, which are not currently enabled.
 
 #### Activity Monitor
 

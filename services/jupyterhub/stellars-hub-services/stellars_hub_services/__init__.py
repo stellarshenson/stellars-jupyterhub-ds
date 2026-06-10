@@ -2,6 +2,12 @@
 
 __version__ = "3.8.0"
 
+from .abuse_protection import (
+    apply_abuse_protection,
+    build_app_protection,
+    parse_int,
+    ratelimit_disabled,
+)
 from .api_keys_pool import (
     PoolManager,
     env_for_slot,
@@ -44,6 +50,10 @@ from .volumes import (
 
 __all__ = [
     "PoolManager",
+    "apply_abuse_protection",
+    "build_app_protection",
+    "parse_int",
+    "ratelimit_disabled",
     "StellarsNativeAuthenticator",
     "env_for_slot",
     "mask_last4",
