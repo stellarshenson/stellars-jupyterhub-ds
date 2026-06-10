@@ -85,6 +85,15 @@ services:
       - JUPYTERHUB_IDLE_CULLER_INTERVAL=600 # check interval in seconds (default 10min)
       - JUPYTERHUB_IDLE_CULLER_MAX_AGE=0 # max server age in seconds (0=unlimited)
       - JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION_MINUTES=1440 # max extension minutes per session (default 24h; extend UI works in whole hours)
+      # Abuse protection - Layer A (Traefik rateLimit, consumed by labels below) + Layer B (hub limits)
+      - JUPYTERHUB_RATELIMIT_AVERAGE=${JUPYTERHUB_RATELIMIT_AVERAGE:-100} # requests per period per source IP (0=disable rate limiting)
+      - JUPYTERHUB_RATELIMIT_BURST=${JUPYTERHUB_RATELIMIT_BURST:-200} # burst allowance above average
+      - JUPYTERHUB_RATELIMIT_PERIOD=${JUPYTERHUB_RATELIMIT_PERIOD:-1s} # rate measurement period
+      - JUPYTERHUB_RATELIMIT_XFF_DEPTH=${JUPYTERHUB_RATELIMIT_XFF_DEPTH:-0} # X-Forwarded-For depth for real client IP (set 1 behind an external proxy)
+      - JUPYTERHUB_CONCURRENT_SPAWN_LIMIT=100 # max simultaneous user-server spawns (spawn-storm protection)
+      - JUPYTERHUB_ACTIVE_SERVER_LIMIT=0 # max total running user servers (0=unlimited)
+      - JUPYTERHUB_LOGIN_MAX_FAILED_ATTEMPTS=5 # failed logins before lockout (0=lockout disabled)
+      - JUPYTERHUB_LOGIN_LOCKOUT_SECONDS=600 # lockout window after exceeding failed attempts
       # Docker
       - JUPYTERHUB_DOCKER_TIMEOUT=360 # Docker API timeout in seconds
       - JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB=10 # max container writable layer in GB before warning
@@ -122,6 +131,15 @@ services:
       - "traefik.http.routers.jupyterhub-rtr.tls=true"
       - "traefik.http.services.jupyterhub-svc.loadbalancer.server.scheme=http"
       - "traefik.http.services.jupyterhub-svc.loadbalancer.server.port=8000"
+
+      # 🛡 Abuse protection - per-IP request rate limiting for hub AND all labs
+      # (everything ingresses through CHP on :8000 behind this router). WebSocket-safe:
+      # a kernel/terminal upgrade counts once at open; held connections are not re-counted.
+      - "traefik.http.middlewares.jupyterhub-ratelimit.ratelimit.average=${JUPYTERHUB_RATELIMIT_AVERAGE:-100}"
+      - "traefik.http.middlewares.jupyterhub-ratelimit.ratelimit.burst=${JUPYTERHUB_RATELIMIT_BURST:-200}"
+      - "traefik.http.middlewares.jupyterhub-ratelimit.ratelimit.period=${JUPYTERHUB_RATELIMIT_PERIOD:-1s}"
+      - "traefik.http.middlewares.jupyterhub-ratelimit.ratelimit.sourcecriterion.ipstrategy.depth=${JUPYTERHUB_RATELIMIT_XFF_DEPTH:-0}"
+      - "traefik.http.routers.jupyterhub-rtr.middlewares=jupyterhub-ratelimit"
     networks:
       - jupyterhub_network
     ports:

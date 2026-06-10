@@ -19,6 +19,7 @@ import nativeauthenticator      # __file__ for template path resolution
 # stellars_hub_services core functions - pure logic, no side effects on import
 from stellars_hub_services import (
     StellarsNativeAuthenticator,            # parent class for the inline BootstrapAdminAuthenticator
+    apply_abuse_protection,                 # abuse protection: maps env -> spawn/active caps + login lockout onto c.*
     configure_volume_cache,                 # one-time init: feeds canonical volume-name templates to the activity-monitor sizes cache
     get_services_and_roles,                 # builds JupyterHub services list (activity sampler)
     schedule_idle_culler,                   # in-hub idle culler (honours per-user session extensions)
@@ -89,7 +90,6 @@ JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION_MINUTES = int(os.environ.get("JUPYTERHUB_ID
 # Derived internal units: culler service + handlers consume seconds; extend UI operates in whole hours
 JUPYTERHUB_IDLE_CULLER_TIMEOUT = JUPYTERHUB_IDLE_CULLER_TIMEOUT_MINUTES * 60               # seconds before cull
 JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION = JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION_MINUTES // 60  # whole hours users can extend
-
 # Activity monitor - engagement scoring via periodic sampling
 ACTIVITYMON_TARGET_HOURS = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_TARGET_HOURS', 8))        # scoring window in hours
 ACTIVITYMON_SAMPLE_INTERVAL = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL', 600))  # sampling interval in seconds (10min)
@@ -694,6 +694,11 @@ c.NativeAuthenticator.open_signup = False                            # other use
 c.Authenticator.allow_all = True                                     # all authorized users may login
 c.Authenticator.post_auth_hook = _admin_post_auth_hook               # grant admin role at login (replaces the old eager admin_users that auto-created the User and triggered the random-password trap)
 c.JupyterHub.admin_access = True                                     # admins can access user servers
+
+# ── Abuse protection (Layer B) ──
+# Env-mapped in the library: spawn-storm / capacity caps + NativeAuth login lockout.
+# Layer A (Traefik rateLimit) is configured in compose.yml via JUPYTERHUB_RATELIMIT_*.
+apply_abuse_protection(c)
 
 # ── Extra handlers ──
 # Custom API endpoints and admin pages (routes are relative to /hub/)
