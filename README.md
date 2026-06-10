@@ -18,12 +18,12 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 - **Notification Broadcast**: Admin broadcast to all active servers via `/hub/notifications`. Supports six notification types, 140-character limit. Requires [jupyterlab_notifications_extension](https://github.com/stellarshenson/jupyterlab_notifications_extension)
 - **User Self-Service**: Users can restart their JupyterLab containers and selectively reset persistent volumes (home/workspace/cache) without admin intervention
 - **Admin Volume Management**: Admins can manage any user's volumes directly from the admin panel via database icon button in each user row
-- **Group Configuration**: Dedicated `/hub/groups` admin page managing user groups with per-group configuration: custom environment variables, GPU access, three Docker access modes (Standard / Limited / Privileged), memory limit in GB (with optional swap-disable for a hard cap), CPU limit in cores, and an API keys pool (a finite set of credentials handed out one per running container so no two members share a key). User access is resolved at spawn time by collapsing all of the user's groups - grants (GPU / Docker / privileged) OR-accumulate, env vars use highest-priority wins on conflict, memory and CPU limits use biggest-value wins (disabled groups do not un-cap). Reserved env var names (`JUPYTERHUB_*` / `JPY_*` / `MEM_*` / `CPU_*` plus platform defaults) are rejected with an inline error message. Drag-and-drop row reorder plus move-up / move-down buttons set the priority. Group membership managed via the stock JupyterHub admin panel now shows a post-Apply confirmation modal listing added and removed users per group
+- **Group Configuration**: Dedicated `/hub/groups` admin page managing user groups with per-group configuration: custom environment variables, GPU access, three Docker access modes (Standard / Limited / Privileged), memory limit in GB (with optional swap-disable for a hard cap), CPU limit in cores, an API keys pool (a finite set of credentials handed out one per running container so no two members share a key), and volume mounts (named Docker volumes - including the platform shared volume - mounted at chosen mountpoints, with protected system paths blacklisted). User access is resolved at spawn time by collapsing all of the user's groups - grants (GPU / Docker / privileged) OR-accumulate, env vars use highest-priority wins on conflict, memory and CPU limits use biggest-value wins (disabled groups do not un-cap). Reserved env var names (`JUPYTERHUB_*` / `JPY_*` / `MEM_*` / `CPU_*` plus platform defaults) are rejected with an inline error message. Drag-and-drop row reorder plus move-up / move-down buttons set the priority. Group membership managed via the stock JupyterHub admin panel now shows a post-Apply confirmation modal listing added and removed users per group
 - **Docker Access Control**: Three mutually-coordinated modes per group - **Standard** (raw `/var/run/docker.sock` mount, full host control), **Limited** (per-user filtered socket served by an in-process proxy with hard quotas on containers / volumes / networks / storage / CPU / memory, ownership labelling, list-scope narrowing, and optional toggles for dangerous flags, per-user compose project enforcement, compose project override, and end-to-end hub-network access - see [docs/limited-docker-access.md](docs/limited-docker-access.md)), and **Privileged Docker (root)** (orthogonal `--privileged` lab grant). All four toggles configured via the Groups admin page
 - **Isolated Environments**: Each user gets dedicated JupyterLab container with persistent volumes via DockerSpawner
 - **Native Authentication**: Built-in user management with NativeAuthenticator supporting optional self-registration (`JUPYTERHUB_SIGNUP_ENABLED`) and admin approval. Authorization page protects existing users from accidental discard - only pending signup requests can be discarded
 - **Admin User Creation**: Batch user creation from admin panel with auto-generated mnemonic passwords (e.g., `storm-apple-ocean`). Credentials modal with copy/download options
-- **Shared Storage**: Optional CIFS/NAS mount support for shared datasets across all users
+- **Shared Storage**: Optional CIFS/NAS-backed shared volume, granted per group via the Volume Mounts group config (no longer auto-mounted into every container); groups can also mount any admin-created Docker volume at a chosen mountpoint
 - **Idle Server Culler**: Automatic shutdown of inactive servers after configurable timeout (default: 24 hours). Frees resources when users leave servers running
 - **Activity Monitor**: Admin-only dashboard showing real-time CPU/memory usage, volume sizes with per-volume breakdown, 3-state status indicator (active/inactive/offline), and historical activity scoring with exponential decay
 - **Mobile Interface**: Server management from mobile devices - status strip with pulsating indicator and uptime, inline session extension slider, admin activity monitor with card-based layout, health check with auto-reload on state change. No JupyterLab navigation - start/stop/restart only
@@ -463,7 +463,7 @@ services:
       - JUPYTERHUB_RATELIMIT_AVERAGE=100        # requests per period per source IP (0=disable)
       - JUPYTERHUB_RATELIMIT_BURST=200          # burst allowance above average
       - JUPYTERHUB_RATELIMIT_PERIOD=1s          # rate measurement period
-      - JUPYTERHUB_RATELIMIT_XFF_DEPTH=0        # X-Forwarded-For depth (set 1 behind an external proxy)
+      - JUPYTERHUB_RATELIMIT_XFF_DEPTH=1        # X-Forwarded-For depth (1=one trusted proxy; 0 for direct exposure)
       - JUPYTERHUB_CONCURRENT_SPAWN_LIMIT=100   # max simultaneous user-server spawns
       - JUPYTERHUB_ACTIVE_SERVER_LIMIT=0        # max total running servers (0=unlimited)
       - JUPYTERHUB_LOGIN_MAX_FAILED_ATTEMPTS=5  # failed logins before lockout (0=disable)
@@ -474,7 +474,7 @@ services:
 - **Ingress rate limiting** (Traefik `rateLimit` middleware): bounds request velocity per source IP for hub and labs alike. WebSocket-safe - a kernel or terminal connection counts once when opened, so long-lived lab features are never severed; the worst case is a transient HTTP 429 on a genuine burst, which clients retry. The `JUPYTERHUB_RATELIMIT_*` values are interpolated into Traefik labels at compose time, so set them in `.env` or `compose_override.yml`. `JUPYTERHUB_RATELIMIT_AVERAGE=0` disables the limiter
 - **Hub limits** (`stellars_hub_services.abuse_protection`): `concurrent_spawn_limit` throttles spawn-storms (container spawns are expensive), `active_server_limit` caps total capacity, and NativeAuthenticator login lockout blocks an account for `JUPYTERHUB_LOGIN_LOCKOUT_SECONDS` after too many failed attempts
 
-**Proxied deployments**: when the platform sits behind an external reverse proxy, the rate limiter sees the proxy's IP for every request and would throttle all users as one client. Set `JUPYTERHUB_RATELIMIT_XFF_DEPTH=1` (one trusted proxy) so it keys on the real client IP from `X-Forwarded-For`.
+**Proxied deployments**: when the platform sits behind an external reverse proxy, the rate limiter sees the proxy's IP for every request and would throttle all users as one client. The default `JUPYTERHUB_RATELIMIT_XFF_DEPTH=1` (one trusted proxy in front) keys on the real client IP from `X-Forwarded-For`. Caveat: clients hitting Traefik directly without an `X-Forwarded-For` header resolve to an empty client IP and share a single rate bucket - set `0` for direct-exposure deployments.
 
 **Optional - connection-concurrency limiting**: Traefik's `inFlightReq` middleware (caps simultaneous in-flight requests per IP, the slowloris lever) is deliberately not enabled - JupyterLab legitimately holds many concurrent long-lived connections (kernels, terminals, comms, polling), and users behind shared NAT multiply that, so a per-IP concurrency cap can stall real usage. Operators who understand the tradeoff can add it via `compose_override.yml`:
 
@@ -588,6 +588,9 @@ The default path `/mnt/shared/start-platform.d` resides on the shared volume, al
 
 #### Enable shared CIFS mount
 
+> [!IMPORTANT]
+> The shared volume is no longer mounted into every user container automatically. Mounting is granted per group via the **Volume Mounts** section of the [Groups Admin Page](#groups-admin-page) - the modal offers a one-click "standard shared volume at `/mnt/shared`" entry. The hub container still mounts the shared volume itself, so admin-staged content (e.g. `JUPYTERLAB_AUX_SCRIPTS_PATH=/mnt/shared/start-platform.d` startup scripts and custom menus) remains manageable - but it only takes effect in labs whose group mounts the volume.
+
 Changes in your `compose_override.yml`:
 ```yaml
   jupyterhub:
@@ -605,17 +608,7 @@ volumes:
       o: username=xxxx,password=yyyy,uid=1000,gid=1000
 ```
 
-If you also need to override the volume map in your own config file, drop a `jupyterhub_config.py` into `./config/` (see [docs/configuration.md](docs/configuration.md)) and refer to the CIFS volume by its name `jupyterhub_shared_nas`:
-
-```python
-# User mounts in the spawned container
-c.DockerSpawner.volumes = {
-    "jupyterlab-{username}_home": "/home",
-    "jupyterlab-{username}_workspace": DOCKER_NOTEBOOK_DIR,
-    "jupyterlab-{username}_cache": "/home/lab/.cache",
-    "jupyterhub_shared_nas": "/mnt/shared"
-}
-```
+To expose the CIFS volume to user containers, add it in the **Volume Mounts** section of a group's config, referring to it by its Docker name (`jupyterhub_shared_nas` -> `/mnt/shared`). Members of that group get the mount on next spawn - no config-file override needed.
 
 #### Groups Admin Page
 
@@ -632,6 +625,7 @@ Admin-only dashboard at `/hub/groups` for creating, deleting, prioritising, and 
   - **Limited Docker Access**: per-user filtered socket served by an in-process proxy. Sees only the user's own containers / volumes / networks; quota and cap fields (max containers / volumes / networks / storage GB / CPU cores / memory GB) and four toggles (`allow_dangerous_flags`, `user_compose_project_enabled`, `user_compose_project_allow_override`, `hub_network_access`) are surfaced in the same Docker section of the group config modal. Resources stamped with `jupyterhub.docker.proxy.owner=<user>` / `.managed=true` (prefix configurable via `JUPYTERHUB_DOCKER_PROXY_LABEL_PREFIX`). See [docs/limited-docker-access.md](docs/limited-docker-access.md) for proxy internals, bypass semantics, and the full env-var contract
   - **Privileged Docker (root)**: orthogonal to the access mode. Runs the user's own lab with `--privileged` (kernel-root inside the lab). When combined with limited access, it also lets the user spawn `--privileged` sub-containers through the proxy; it does NOT bypass other dangerous-flag checks (host binds, host net/pid, cap-add, device passthrough remain blocked unless `allow_dangerous_flags` is on)
 - **API Keys Pool**: a finite set of API credentials handed out one per running container so no two members share a key. Choose a credential type - **single api key** (one variable name) or **key-id / key-secret pair** (two variable names) - and add any number of credentials. On spawn the platform assigns a free credential and injects it into the configured env vars; when the container stops the credential returns to the pool. Assignment is recorded as a durable Docker label carrying only the slot id, so the in-use set is rebuilt by inspecting running containers - a container stopped while the hub was down or started by a previous hub version self-heals on the next reconcile (startup + periodic). If the pool runs dry the variables are still set but empty and a warning is logged; assignments are logged with last-4 masking only. The groups page is admin-only, so credentials are shown in full there - only the logs obfuscate them. See [docs/acc-crit-api-keys-pool.md](docs/acc-crit-api-keys-pool.md) for the full acceptance criteria
+- **Volume Mounts**: named Docker volumes mounted into member containers at spawn, each as a volume-name / mountpoint row. The shared volume is **no longer mounted into every container** - grant it per group; the modal offers a one-click "Add standard shared volume (`/mnt/shared`)" button when the platform shared volume exists on the host. Any other admin-created volume can be added by name; missing volumes are auto-created by Docker on first spawn. Mounting onto protected system paths (`/`, `/etc`, `/usr`, `/home`, `/opt`, `/var`, ...) is rejected at save time and re-checked at spawn (defense in depth) - mount under `/mnt` or `/data`
 
 **Resolution rules** (when a user belongs to multiple groups):
 
@@ -640,11 +634,12 @@ Admin-only dashboard at `/hub/groups` for creating, deleting, prioritising, and 
 - Memory limit: **biggest value wins** - among groups with the flag enabled. A group with the flag disabled does NOT un-cap. The swap policy travels with the winning limit - the group that owns the largest cap also decides whether swap is allowed
 - CPU limit: **biggest value wins** - same rule as memory
 - Env var name conflicts (a plain env var or an API keys pool target variable) resolve by **group order** - the group higher in the ordered list wins and the shadowed value is logged. Each group's pool assigns independently, so a user in several groups draws one credential from each pool
+- Volume mounts: **union across groups**; on a mountpoint conflict (or the same volume claimed at two mountpoints) the higher-priority group wins and the shadowed entry is logged
 
 **UI features**:
 
 - Priority order set via drag-and-drop rows or move-up / move-down buttons
-- Features column shows badges for configured features (`GPU`, `Docker`, `Privileged`, `Mem`, `CPU`, `N Vars`, `N Keys`)
+- Features column shows badges for configured features (`GPU`, `Docker`, `Privileged`, `Mem`, `CPU`, `N Vars`, `Keys`, `Volumes`)
 - Members column lists users added to the group, max two names per line in tooltip
 - Group name is sanitised on blur to the `[A-Za-z][A-Za-z0-9_-]*` shape (spaces become underscores); env var names are sanitised to the POSIX `[A-Z_][A-Z0-9_]*` convention
 

@@ -21,6 +21,26 @@ GroupsConfigBase = declarative_base()
 # Valid group name: starts with letter, then letters/digits/hyphens/underscores
 _GROUP_NAME_RE = re.compile(r'^[a-zA-Z][a-zA-Z0-9_-]*$')
 
+# Valid Docker volume name (Docker's own constraint)
+_VOLUME_NAME_RE = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9_.-]*$')
+
+# Mountpoint blacklist: container paths a group volume may never mount onto.
+# Prefix semantics - a mountpoint equal to OR under any of these is rejected
+# (mounting over system dirs, the conda env, or the per-user /home tree would
+# break or hijack the lab). Admin-managed mounts belong under /mnt, /data etc.
+PROTECTED_MOUNTPOINTS = (
+    '/bin', '/boot', '/dev', '/etc', '/home', '/lib', '/lib64', '/opt',
+    '/proc', '/root', '/run', '/sbin', '/srv', '/sys', '/tmp', '/usr', '/var',
+)
+
+
+def is_protected_mountpoint(path):
+    """True when ``path`` is ``/``, a protected dir, or nested under one."""
+    norm = '/' + (path or '').strip().strip('/')
+    if norm == '/':
+        return True
+    return any(norm == p or norm.startswith(p + '/') for p in PROTECTED_MOUNTPOINTS)
+
 
 class GroupConfig(GroupsConfigBase):
     """Persistent configuration for a JupyterHub group."""
@@ -91,6 +111,11 @@ def default_config():
             'env_var_key': '',
             'credentials': [],        # [{slot, id, secret, description}] (pair) | [{slot, key, description}] (single)
         },
+        # Volume mounts: named Docker volumes mounted into member containers
+        # at spawn. OFF by default (empty) - the platform shared volume is no
+        # longer auto-mounted; admins grant it per group. Missing volumes are
+        # auto-created by Docker on first spawn (same as per-user volumes).
+        'volume_mounts': [],          # [{volume: <docker volume name>, mountpoint: <absolute path>}]
     }
 
 
@@ -211,12 +236,46 @@ class GroupConfigValidator:
                     return False, 'Every single credential needs a key value.'
         return True, ''
 
+    @classmethod
+    def validate_volume_mounts(cls, config):
+        """Each volume mount needs a valid Docker volume name and an absolute,
+        non-protected mountpoint; mountpoints must be unique within the group.
+        The PROTECTED_MOUNTPOINTS blacklist is enforced here, i.e. at save time
+        - a config that mounts over a system dir never reaches the database.
+
+        ``code = 'invalid_volume_mounts'`` on failure.
+        """
+        mounts = config.get('volume_mounts') or []
+        seen_mountpoints = set()
+        seen_volumes = set()
+        for entry in mounts:
+            volume = (entry.get('volume') or '').strip()
+            mountpoint = (entry.get('mountpoint') or '').strip()
+            if not volume or not mountpoint:
+                return False, 'Every volume mount needs both a volume name and a mountpoint.'
+            if not _VOLUME_NAME_RE.match(volume):
+                return False, f'Invalid volume name "{volume}" - use letters, digits, ".", "_" or "-".'
+            if not mountpoint.startswith('/'):
+                return False, f'Mountpoint "{mountpoint}" must be an absolute path.'
+            if is_protected_mountpoint(mountpoint):
+                return False, f'Mountpoint "{mountpoint}" is a protected location - mount under /mnt or /data instead.'
+            norm = '/' + mountpoint.strip('/')
+            if norm in seen_mountpoints:
+                return False, f'Duplicate mountpoint "{norm}" - each mountpoint can hold one volume.'
+            # Docker mounts are keyed by volume name - one volume, one mountpoint
+            if volume in seen_volumes:
+                return False, f'Volume "{volume}" is listed twice - a volume can be mounted at one mountpoint only.'
+            seen_mountpoints.add(norm)
+            seen_volumes.add(volume)
+        return True, ''
+
     _ALL = (
         ('invalid_gpu_selection', 'validate_gpu'),
         ('invalid_docker_selection', 'validate_docker'),
         ('invalid_cpu_limit', 'validate_cpu'),
         ('invalid_mem_limit', 'validate_mem'),
         ('invalid_api_keys_pool', 'validate_api_keys_pool'),
+        ('invalid_volume_mounts', 'validate_volume_mounts'),
     )
 
     @classmethod

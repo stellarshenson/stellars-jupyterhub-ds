@@ -184,11 +184,12 @@ USER_VOLUMES = load_merged_user_volumes(
     COMPOSE_PROJECT_NAME,
 )
 
-# DockerSpawner needs the flat {name: mount} shape. Built from USER_VOLUMES
-# plus the shared volume (read-write across all users; can be CIFS via override).
+# DockerSpawner needs the flat {name: mount} shape. Built from USER_VOLUMES only.
+# The shared volume ({COMPOSE_PROJECT_NAME}_jupyterhub_shared) is NO LONGER
+# auto-mounted into every container - it is granted per group via the Volume
+# Mounts section of the Groups admin page (applied in pre_spawn_hook).
 DOCKER_SPAWNER_VOLUMES = {
-    **{pattern: data['mount'] for pattern, data in USER_VOLUMES.items()},
-    f"{COMPOSE_PROJECT_NAME}_jupyterhub_shared": "/mnt/shared",
+    pattern: data['mount'] for pattern, data in USER_VOLUMES.items()
 }
 
 # Derived: extract user-resettable volume suffixes ['home', 'workspace', 'cache'] from volumes dict
@@ -587,6 +588,7 @@ c.JupyterHub.tornado_settings = {
         'memory_max_usage_mb': JUPYTERHUB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning
         'reserved_env_var_names': RESERVED_ENV_VAR_NAMES,                              # names groups cannot override
         'reserved_env_var_prefixes': RESERVED_ENV_VAR_PREFIXES,                        # prefixes reserved for JupyterHub/platform
+        'shared_volume_name': f"{COMPOSE_PROJECT_NAME}_jupyterhub_shared",             # standard shared volume offered by the groups volume-mounts UI
     }
 }
 

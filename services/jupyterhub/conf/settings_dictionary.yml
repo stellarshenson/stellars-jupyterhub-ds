@@ -132,8 +132,8 @@ Abuse Protection:
     default: "1s"
 
   - name: JUPYTERHUB_RATELIMIT_XFF_DEPTH
-    description: X-Forwarded-For depth for real client IP (1 behind an external proxy)
-    default: "0"
+    description: X-Forwarded-For depth for real client IP (0 for direct exposure)
+    default: "1"
 
   - name: JUPYTERHUB_CONCURRENT_SPAWN_LIMIT
     description: Max simultaneous user-server spawns

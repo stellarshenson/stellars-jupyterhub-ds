@@ -422,6 +422,34 @@
 
         <hr>
 
+        <!-- Volume Mounts -->
+        <div class="mb-4">
+          <h6 class="text-uppercase text-muted mb-2">
+            <i class="fa fa-hdd-o" aria-hidden="true"></i> Volume Mounts
+          </h6>
+          <p class="text-muted small mb-2">Named Docker volumes mounted into member containers at spawn. The platform shared volume is no longer mounted automatically - grant it here. Missing volumes are auto-created by Docker on first spawn. Mounting onto protected system paths (<code>/etc</code>, <code>/usr</code>, <code>/home</code>, <code>/opt</code>, ...) is rejected - use <code>/mnt</code> or <code>/data</code>.</p>
+          <table class="table table-sm table-bordered" id="volume-mounts-table">
+            <thead>
+              <tr>
+                <th style="width: 45%;">Volume name</th>
+                <th>Mountpoint</th>
+                <th style="width: 40px;"></th>
+              </tr>
+            </thead>
+            <tbody id="volume-mounts-body">
+              <!-- Populated by JavaScript -->
+            </tbody>
+          </table>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="add-volume-mount-btn">
+            <i class="fa fa-plus" aria-hidden="true"></i> Add Volume
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="add-shared-volume-btn" style="display: none;">
+            <i class="fa fa-share-alt" aria-hidden="true"></i> Add standard shared volume (/mnt/shared)
+          </button>
+        </div>
+
+        <hr>
+
         <!-- API Keys Pool -->
         <div class="mb-4">
           <h6 class="text-uppercase text-muted mb-2">
@@ -496,6 +524,7 @@ require(["jquery"], function($) {
   var baseUrl = '{{ base_url }}';
   var currentGroups = [];
   var currentConfigGroup = null;
+  var sharedVolume = { name: '', exists: false };
 
   // Initial fetch
   loadGroups();
@@ -599,6 +628,24 @@ require(["jquery"], function($) {
     $(this).val(sanitizeEnvVarName($(this).val()));
   });
 
+  // Volume mounts: quick-add for the standard shared volume is offered only
+  // when the volume exists on the host (server-side docker check) and no row
+  // already uses it.
+  function updateSharedVolumeButton() {
+    if (!sharedVolume.exists) { $('#add-shared-volume-btn').hide(); return; }
+    var used = false;
+    $('#volume-mounts-body tr').each(function() {
+      if ($(this).find('.vol-name').val().trim() === sharedVolume.name) used = true;
+    });
+    $('#add-shared-volume-btn').toggle(!used);
+  }
+  $('#add-volume-mount-btn').on('click', function() { addVolumeMountRow('', ''); });
+  $('#add-shared-volume-btn').on('click', function() {
+    addVolumeMountRow(sharedVolume.name, '/mnt/shared');
+    updateSharedVolumeButton();
+  });
+  $(document).on('input', '#volume-mounts-body .vol-name', updateSharedVolumeButton);
+
   // ── Data Loading ──
 
   function loadGroups(callback) {
@@ -608,6 +655,7 @@ require(["jquery"], function($) {
       headers: { 'X-XSRFToken': getCookie('_xsrf') },
       success: function(data) {
         currentGroups = data.groups || [];
+        sharedVolume = data.shared_volume || { name: '', exists: false };
         renderTable();
         if (callback) callback();
       },
@@ -657,6 +705,9 @@ require(["jquery"], function($) {
       }
       if (group.config.api_keys_pool && group.config.api_keys_pool.enabled) {
         features.push('Keys');
+      }
+      if (group.config.volume_mounts && group.config.volume_mounts.length > 0) {
+        features.push('Volumes');
       }
 
       var featureBadges = features.length
@@ -925,6 +976,14 @@ require(["jquery"], function($) {
         }
         updateApiKeysControls();
 
+        // Populate volume mounts table
+        var mountsBody = $('#volume-mounts-body');
+        mountsBody.empty();
+        (config.volume_mounts || []).forEach(function(m) {
+          addVolumeMountRow(m.volume || '', m.mountpoint || '');
+        });
+        updateSharedVolumeButton();
+
         new bootstrap.Modal(document.getElementById('config-group-modal')).show();
       },
       error: function() {
@@ -962,6 +1021,17 @@ require(["jquery"], function($) {
     row.find('.btn-remove-cred').on('click', function() { row.remove(); });
     $('#apikeys-creds-body').append(row);
     updateApiKeysControls();  // sync new row's secret-column visibility + disabled state
+  }
+
+  // One volume mount row: a named Docker volume and its container mountpoint.
+  function addVolumeMountRow(volume, mountpoint) {
+    var row = $('<tr>' +
+      '<td><input type="text" class="form-control form-control-sm vol-name" value="' + escapeAttr(volume) + '" placeholder="volume_name"></td>' +
+      '<td><input type="text" class="form-control form-control-sm vol-mountpoint" value="' + escapeAttr(mountpoint) + '" placeholder="/mnt/data"></td>' +
+      '<td><button type="button" class="btn btn-outline-danger btn-sm btn-remove-mount" title="Remove"><i class="fa fa-times"></i></button></td>' +
+    '</tr>');
+    row.find('.btn-remove-mount').on('click', function() { row.remove(); updateSharedVolumeButton(); });
+    $('#volume-mounts-body').append(row);
   }
 
   // ── Sanitizers (applied silently on blur) ──
@@ -1067,9 +1137,28 @@ require(["jquery"], function($) {
       apiCreds.push(cred);
     });
 
+    // Volume mounts: skip fully-empty rows; require both fields + absolute
+    // mountpoint client-side (the save-time validator is authoritative).
+    var volumeMounts = [];
+    var volMountError = '';
+    $('#volume-mounts-body tr').each(function() {
+      var vol = $(this).find('.vol-name').val().trim();
+      var mp = $(this).find('.vol-mountpoint').val().trim();
+      if (!vol && !mp) return;  // empty row
+      if (!vol || !mp) { volMountError = 'Every volume mount needs both a volume name and a mountpoint.'; return; }
+      if (mp.charAt(0) !== '/') { volMountError = 'Mountpoint "' + mp + '" must be an absolute path.'; return; }
+      volumeMounts.push({ volume: vol, mountpoint: mp });
+    });
+    if (volMountError) {
+      $('#config-error').text(volMountError).show();
+      $('#config-error')[0].scrollIntoView({behavior: 'smooth', block: 'center'});
+      return;
+    }
+
     var payload = {
       description: $('#config-description').val().trim(),
       env_vars: envVars,
+      volume_mounts: volumeMounts,
       gpu_access: gpuAccess,
       gpu_all: gpuAll,
       gpu_device_ids: gpuDeviceIds,

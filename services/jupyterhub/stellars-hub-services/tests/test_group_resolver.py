@@ -417,3 +417,81 @@ class TestApiKeyPools:
         cfg['enabled'] = False
         cfgs = [_grp("a", api_keys_pool=cfg)]
         assert _resolve(["a"], cfgs)["api_key_pools"] == []
+
+
+class TestVolumeMounts:
+    def test_no_groups_yields_empty(self):
+        r = _resolve([], [])
+        assert r["volume_mounts"] == [] and r["skipped_volume_mounts"] == []
+
+    def test_single_group_passthrough(self):
+        cfgs = [_grp("a", volume_mounts=[{"volume": "shared", "mountpoint": "/mnt/shared"}])]
+        r = _resolve(["a"], cfgs)
+        assert r["volume_mounts"] == [{"volume": "shared", "mountpoint": "/mnt/shared"}]
+
+    def test_union_across_groups(self):
+        cfgs = [
+            _grp("a", volume_mounts=[{"volume": "shared", "mountpoint": "/mnt/shared"}]),
+            _grp("b", volume_mounts=[{"volume": "datasets", "mountpoint": "/data"}]),
+        ]
+        r = _resolve(["a", "b"], cfgs)
+        assert {m["volume"] for m in r["volume_mounts"]} == {"shared", "datasets"}
+
+    def test_mountpoint_conflict_higher_priority_wins(self):
+        # configs arrive priority-descending: group "a" outranks "b"
+        cfgs = [
+            _grp("a", volume_mounts=[{"volume": "vol_a", "mountpoint": "/mnt/shared"}]),
+            _grp("b", volume_mounts=[{"volume": "vol_b", "mountpoint": "/mnt/shared"}]),
+        ]
+        r = _resolve(["a", "b"], cfgs)
+        assert r["volume_mounts"] == [{"volume": "vol_a", "mountpoint": "/mnt/shared"}]
+        assert r["skipped_volume_mounts"] == [
+            {"volume": "vol_b", "mountpoint": "/mnt/shared", "group": "b", "reason": "shadowed"}
+        ]
+
+    def test_same_volume_same_mountpoint_dedupes_silently(self):
+        cfgs = [
+            _grp("a", volume_mounts=[{"volume": "shared", "mountpoint": "/mnt/shared"}]),
+            _grp("b", volume_mounts=[{"volume": "shared", "mountpoint": "/mnt/shared"}]),
+        ]
+        r = _resolve(["a", "b"], cfgs)
+        assert len(r["volume_mounts"]) == 1 and r["skipped_volume_mounts"] == []
+
+    def test_same_volume_other_mountpoint_is_shadowed(self):
+        # docker mounts are keyed by volume name - the higher-priority claim wins
+        cfgs = [
+            _grp("a", volume_mounts=[{"volume": "shared", "mountpoint": "/mnt/shared"}]),
+            _grp("b", volume_mounts=[{"volume": "shared", "mountpoint": "/mnt/other"}]),
+        ]
+        r = _resolve(["a", "b"], cfgs)
+        assert r["volume_mounts"] == [{"volume": "shared", "mountpoint": "/mnt/shared"}]
+        assert r["skipped_volume_mounts"][0]["reason"] == "shadowed"
+
+    def test_protected_mountpoint_skipped_defense_in_depth(self):
+        # a stale/legacy DB row mounting over /etc never reaches the spawner
+        cfgs = [_grp("a", volume_mounts=[{"volume": "v", "mountpoint": "/etc/evil"}])]
+        r = _resolve(["a"], cfgs)
+        assert r["volume_mounts"] == []
+        assert r["skipped_volume_mounts"][0]["reason"] == "protected"
+
+    def test_half_entries_ignored(self):
+        cfgs = [_grp("a", volume_mounts=[
+            {"volume": "", "mountpoint": "/mnt/x"},
+            {"volume": "v", "mountpoint": ""},
+            {"volume": "v2", "mountpoint": "relative/path"},
+        ])]
+        r = _resolve(["a"], cfgs)
+        assert r["volume_mounts"] == []
+
+    def test_mountpoint_normalised_trailing_slash(self):
+        cfgs = [_grp("a", volume_mounts=[{"volume": "v", "mountpoint": "/mnt/data/"}])]
+        r = _resolve(["a"], cfgs)
+        assert r["volume_mounts"] == [{"volume": "v", "mountpoint": "/mnt/data"}]
+
+    def test_group_without_mounts_contributes_nothing(self):
+        cfgs = [
+            _grp("a"),
+            _grp("b", volume_mounts=[{"volume": "v", "mountpoint": "/mnt/x"}]),
+        ]
+        r = _resolve(["a", "b"], cfgs)
+        assert len(r["volume_mounts"]) == 1

@@ -83,8 +83,20 @@ class GroupsDataHandler(BaseHandler):
             })
 
         result.sort(key=lambda g: g['priority'], reverse=True)
+
+        # Standard shared volume: the UI offers a one-click "/mnt/shared" mount
+        # only when the volume actually exists on the host. Docker errors fail
+        # safe (exists=False -> quick-add hidden; manual rows still work).
+        stellars_config = self.settings.get('stellars_config') or {}
+        shared_name = stellars_config.get('shared_volume_name', '')
+        from ..docker_utils import volume_exists_async
+        shared_exists = bool(shared_name) and await volume_exists_async(shared_name)
+
         self.log.info(f"[Groups Data] Returning {len(result)} group(s)")
-        self.finish({'groups': result})
+        self.finish({
+            'groups': result,
+            'shared_volume': {'name': shared_name, 'exists': shared_exists},
+        })
 
 
 class GroupsCreateHandler(BaseHandler):
@@ -295,6 +307,20 @@ class GroupsConfigHandler(BaseHandler):
                 return
             existing_pool = existing['config'].get('api_keys_pool') or {}
             config_dict['api_keys_pool'] = merge_pool_on_save(pool_in, existing_pool)
+
+        if 'volume_mounts' in body:
+            mounts_in = body['volume_mounts']
+            if not isinstance(mounts_in, list):
+                raise web.HTTPError(400, "volume_mounts must be a list")
+            # Normalise; protection (blacklist, name/path validity, duplicates)
+            # is imposed at save time by validate_volume_mounts in validate_all.
+            config_dict['volume_mounts'] = [
+                {
+                    'volume': (m.get('volume') or '').strip(),
+                    'mountpoint': (m.get('mountpoint') or '').strip(),
+                }
+                for m in mounts_in if isinstance(m, dict)
+            ]
 
         merged = existing['config'].copy()
         merged.update(config_dict)
