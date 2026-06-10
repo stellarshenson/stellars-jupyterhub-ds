@@ -30,6 +30,9 @@
       <button class="btn btn-outline-danger btn-sm me-2 mobile-hidden" id="reset-btn">
         <i class="fa fa-trash" aria-hidden="true"></i> Reset
       </button>
+      <button class="btn btn-outline-secondary btn-sm me-2" id="report-btn" title="Download activity report as HTML">
+        <i class="fa fa-download" aria-hidden="true"></i> Report
+      </button>
       <button class="btn btn-outline-secondary btn-sm" id="refresh-btn">
         <i class="fa fa-refresh" aria-hidden="true"></i> Refresh
       </button>
@@ -83,6 +86,7 @@ require(["jquery"], function($) {
 
   var autoRefreshInterval = null;
   var currentUsersData = [];  // Store data for re-sorting
+  var lastDataTimestamp = null;  // Server timestamp of last fetch (for report)
   var sortColumn = null;      // Current sort column
   var sortDirection = null;   // 'asc', 'desc', or null
 
@@ -152,6 +156,121 @@ require(["jquery"], function($) {
     });
   });
 
+  // Report download button - self-contained HTML snapshot of current data
+  $('#report-btn').on('click', function() {
+    if (currentUsersData.length === 0) {
+      alert('No activity data to report yet');
+      return;
+    }
+    var now = new Date();
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+    var stamp = now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) +
+                '-' + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
+    var blob = new Blob([buildReportHtml()], { type: 'text/html' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'activity-report-' + stamp + '.html';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  function buildReportHtml() {
+    var users = sortUsersForDisplay(currentUsersData.slice());
+    var generated = lastDataTimestamp ? new Date(lastDataTimestamp) : new Date();
+
+    var activeCount = users.filter(function(u) { return u.server_active && u.recently_active; }).length;
+    var idleCount = users.filter(function(u) { return u.server_active && !u.recently_active; }).length;
+    var offlineCount = users.filter(function(u) { return !u.server_active; }).length;
+
+    function reportStatus(u) {
+      if (u.server_active && u.recently_active) return '<span style="color:#28a745;">Active</span>';
+      if (u.server_active) return '<span style="color:#b8860b;">Idle</span>';
+      return '<span style="color:#dc3545;">Offline</span>';
+    }
+
+    function reportSize(mb, maxMb, prefix) {
+      if (mb === null || mb === undefined || mb === 0) return '--';
+      var display = (prefix || '') + formatSizeShort(mb);
+      if (maxMb > 0 && mb > maxMb) {
+        return '<span style="color:#dc3545;" title="Exceeds ' + formatSizeShort(maxMb) + ' quota">' + display + ' !</span>';
+      }
+      return display;
+    }
+
+    function reportMemory(u) {
+      if (u.memory_mb === null || u.memory_mb === undefined) return '--';
+      var display = formatSizeShort(u.memory_mb);
+      if (u.memory_percent != null) display += ' (' + u.memory_percent.toFixed(1) + '%)';
+      if (memoryMaxUsageMb > 0 && u.memory_mb > memoryMaxUsageMb) {
+        return '<span style="color:#dc3545;" title="Exceeds ' + formatSizeShort(memoryMaxUsageMb) + ' quota">' + display + ' !</span>';
+      }
+      return display;
+    }
+
+    function reportVolumes(u) {
+      var cell = reportSize(u.volume_size_mb, volumeMaxTotalSizeMb);
+      var breakdown = u.volume_breakdown || {};
+      var keys = Object.keys(breakdown).sort();
+      if (keys.length > 0) {
+        var parts = keys.map(function(k) { return escapeHtml(k) + ': ' + formatSizeShort(breakdown[k]); });
+        cell += '<br><small style="color:#6c757d;">' + parts.join(', ') + '</small>';
+      }
+      return cell;
+    }
+
+    function reportTimeLeft(seconds) {
+      if (seconds === null || seconds === undefined) return '--';
+      if (seconds <= 0) return 'Expiring';
+      return formatTimeRemaining(seconds);
+    }
+
+    function reportActivity(u) {
+      if (u.activity_score === null || u.activity_score === undefined) return '--';
+      var normalized = Math.round(u.activity_score / normalizationFactor);
+      if (u.sample_count >= minSamplesFor24h) return normalized + '%';
+      var hoursCollected = Math.round((u.sample_count * sampleInterval) / 3600);
+      return normalized + '% <small style="color:#6c757d;">(' + hoursCollected + 'h of 24h sampled)</small>';
+    }
+
+    var rows = users.map(function(u) {
+      return '<tr>' +
+        '<td><strong>' + escapeHtml(u.username) + '</strong></td>' +
+        '<td style="text-align:center;">' + (u.is_authorized ? 'Yes' : 'No') + '</td>' +
+        '<td style="text-align:center;">' + reportStatus(u) + '</td>' +
+        '<td style="text-align:right;">' + formatCpu(u.cpu_percent).replace(/<[^>]*>/g, '') + '</td>' +
+        '<td style="text-align:right;">' + reportMemory(u) + '</td>' +
+        '<td style="text-align:right;">' + reportVolumes(u) + '</td>' +
+        '<td style="text-align:right;">' + reportSize(u.container_size_rw_mb, containerMaxExtraSpaceMb, '+') + '</td>' +
+        '<td style="text-align:right;">' + reportTimeLeft(u.time_remaining_seconds) + '</td>' +
+        '<td>' + (u.last_activity ? new Date(u.last_activity).toLocaleString() : '--') + '</td>' +
+        '<td style="text-align:right;">' + reportActivity(u) + '</td>' +
+        '</tr>';
+    }).join('\n');
+
+    return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n' +
+      '<title>User Activity Report - ' + generated.toLocaleString() + '</title>\n' +
+      '<style>\n' +
+      'body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 2em; color: #212529; }\n' +
+      'h1 { font-size: 1.5em; margin-bottom: 0.25em; }\n' +
+      '.meta { color: #6c757d; margin-bottom: 1.5em; }\n' +
+      'table { border-collapse: collapse; width: 100%; font-size: 0.875em; }\n' +
+      'th, td { border: 1px solid #dee2e6; padding: 0.4em 0.6em; }\n' +
+      'th { background: #212529; color: #fff; text-align: left; }\n' +
+      'tr:nth-child(even) { background: #f8f9fa; }\n' +
+      '</style>\n</head>\n<body>\n' +
+      '<h1>User Activity Report</h1>\n' +
+      '<p class="meta">Generated: ' + generated.toLocaleString() + '<br>' +
+      users.length + ' user' + (users.length !== 1 ? 's' : '') +
+      ' (' + activeCount + ' active, ' + idleCount + ' idle, ' + offlineCount + ' offline)</p>\n' +
+      '<table>\n<thead><tr>' +
+      '<th>User</th><th>Auth</th><th>Status</th><th>CPU</th><th>Memory</th>' +
+      '<th>Volumes</th><th>System</th><th>Time Left</th><th>Last Active</th><th>Activity</th>' +
+      '</tr></thead>\n<tbody>\n' + rows + '\n</tbody>\n</table>\n</body>\n</html>\n';
+  }
+
   function fetchActivityData(callback) {
     $.ajax({
       url: '{{ base_url }}api/activity',
@@ -208,6 +327,7 @@ require(["jquery"], function($) {
 
     // Store data for sorting
     currentUsersData = users;
+    lastDataTimestamp = data.timestamp || null;
 
     if (isMobileView) {
       $('#mobile-activity-cards-container').show();
@@ -219,12 +339,7 @@ require(["jquery"], function($) {
     }
   }
 
-  function renderTableRows() {
-    if (currentUsersData.length === 0) return;
-
-    // Copy array for sorting
-    var users = currentUsersData.slice();
-
+  function sortUsersForDisplay(users) {
     // Helper to get sortable value for a column
     function getSortValue(user, column, direction) {
       // Status sorting: active > inactive > offline (higher = better)
@@ -282,6 +397,14 @@ require(["jquery"], function($) {
 
       return result;
     });
+
+    return users;
+  }
+
+  function renderTableRows() {
+    if (currentUsersData.length === 0) return;
+
+    var users = sortUsersForDisplay(currentUsersData.slice());
 
     // Build table rows
     var tbody = $('#activity-table-body');
