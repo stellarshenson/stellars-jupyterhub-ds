@@ -1,6 +1,6 @@
 [project]
 name = "stellars-jupyterhub-ds"
-version = "3.11.4"
+version = "3.11.5"
 description = """\
 Multi-user JupyterHub 4 deployment platform with a data science stack, GPU auto-detection, NativeAuthenticator, and per-user JupyterLab environments spawned via DockerSpawner.
 
@@ -10,4 +10,4 @@ authors = [{name = "Konrad Jelen", email = "konrad.jelen+github@gmail.com"}]
 
 [tool.stellars]
 cuda = "13.0.2"
-jupyterhub = "5.4.2"
+jupyterhub = "5.5.0"
