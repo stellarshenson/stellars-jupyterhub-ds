@@ -30,7 +30,7 @@ RUN uv pip install /dist/stellars_docker_proxy-*.whl pytest pytest-asyncio \
 
 ##############################################################################################
 
-FROM jupyterhub/jupyterhub:5.4.2 AS target
+FROM jupyterhub/jupyterhub:latest AS target
 
 # Build arguments
 ARG VERSION=dev
@@ -100,9 +100,22 @@ EOF
 #  INSTALL PLATFORM PACKAGE AND RESOURCES              #
 ########################################################
 
+## upgrade jupyterhub to the latest version (dockerhub image may not be latest)
+RUN <<-EOF
+    echo "upgrading jupyterhub to latest"
+    pip install -U --no-cache-dir jupyterhub
+EOF
+
+
 ## install stellars_hub_services + stellars-docker-proxy packages (carry all pip dependencies)
 COPY --from=builder /dist/*.whl /tmp/
-RUN pip install -U --no-cache-dir /tmp/stellars_hub_services-*.whl /tmp/stellars_docker_proxy-*.whl && rm -f /tmp/*.whl
+RUN <<-EOF
+    echo "installing platform packages"
+    pip install -U --no-cache-dir \
+	/tmp/stellars_hub_services-*.whl \
+	/tmp/stellars_docker_proxy-*.whl \
+    && rm -f /tmp/*.whl
+EOF
 
 ## copy resources (shell scripts, startup scripts, templates, config, settings)
 COPY --chmod=755  services/jupyterhub/conf/bin/*.sh /
