@@ -19,9 +19,12 @@ Two handlers:
   tornado handler (no auth) so it also blocks the unauthenticated public
   share link.
 - FilesGuardHandler: mixed inline+download prefixes (files/*, nbconvert/*).
-  Blocks when the request carries a truthy `download` arg (the only thing that
-  makes jupyter_server emit Content-Disposition: attachment on these paths),
-  otherwise reverse-proxies to the container so inline content keeps working.
+  Blocks download / open-to-save requests, reverse-proxies inline subresource
+  renders so embedded content keeps working. The decision is NOT the `?download`
+  arg alone (JupyterLab's Download button omits it and saves client-side via
+  <a download>) - it is `Sec-Fetch-Dest`: empty/document/absent -> save -> block;
+  image/video/audio/font/style/object/embed/iframe -> inline -> allow. A truthy
+  `?download` arg still always blocks (nbconvert download, legacy links).
 """
 
 import json
@@ -52,6 +55,49 @@ def _is_download_arg(value):
     if value is None:
         return False
     return value.strip().lower() not in ('', '0', 'false', 'no', 'off')
+
+
+# Sec-Fetch-Dest values that mean "the browser is rendering this inline as an
+# embedded subresource" - markdown/notebook images, audio/video, fonts, CSS,
+# iframe/embed/object viewers. These are the legitimate inline uses of /files/
+# that must keep working for a download-blocked user.
+_INLINE_FETCH_DESTS = frozenset({
+    'image', 'video', 'audio', 'font', 'style', 'script',
+    'object', 'embed', 'iframe', 'frame', 'track', 'manifest',
+})
+
+
+def _is_download_request(handler):
+    """True when a files/ or nbconvert/ GET is a download / open-to-save vector
+    rather than an inline subresource render.
+
+    The `?download` query arg is NOT sufficient: JupyterLab's Download command
+    fetches `/files/<path>?_xsrf=...` with NO download arg and saves it
+    client-side via an `<a download>` element, so jupyter_server serves it 200
+    inline and the browser writes it to disk anyway. The reliable signal is the
+    browser's `Sec-Fetch-Dest` request header (sent on HTTPS / localhost):
+
+      - empty    -> fetch() or <a download> click  -> SAVE   -> block
+      - document -> top-level navigation / open URL -> SAVE   -> block
+      - image/video/audio/font/style/object/embed/iframe/... -> inline -> allow
+
+    Order: a truthy `?download` arg always blocks (covers nbconvert download and
+    legacy direct links). Otherwise classify by Sec-Fetch-Dest. A missing header
+    (non-browser client, or a plain-HTTP context that omits fetch-metadata) is
+    treated as a download - fail-closed so the policy is honoured.
+    """
+    if _is_download_arg(handler.get_argument('download', None)):
+        return True
+    # The Sec-Fetch-Dest classification only makes sense for the methods a
+    # browser uses to fetch/download/open a file (GET/HEAD). A POST here is an
+    # inline conversion call (e.g. nbconvert posting notebook JSON), never an
+    # `<a download>`, so leave it on the download-arg check above.
+    if handler.request.method not in ('GET', 'HEAD'):
+        return False
+    dest = handler.request.headers.get('Sec-Fetch-Dest')
+    if dest is None:
+        return True
+    return dest.strip().lower() not in _INLINE_FETCH_DESTS
 
 
 def _wants_html(request):
@@ -202,12 +248,13 @@ class FilesGuardHandler(web.RequestHandler):
     Mounted at /user/{u}/... where the hub login cookie (scoped to /hub/) is
     never sent - so hub-side @web.authenticated is impossible here: it would
     302 to /hub/login, which (already authenticated there) 302s back to the
-    file, looping forever (ERR_TOO_MANY_REDIRECTS). Instead block a truthy
-    `download` arg (the only trigger for Content-Disposition: attachment on
-    these paths) and reverse-proxy everything else to the user's container,
-    forwarding the request cookies so the single-user server does its own auth.
-    Cross-user access is structurally prevented: the browser only sends the
-    /user/{u}/ cookie to that user's own prefix.
+    file, looping forever (ERR_TOO_MANY_REDIRECTS). Instead classify the request
+    (see _is_download_request): a download / open-to-save vector gets a 403 +
+    notify + audit; an inline subresource render (markdown image, media, viewer)
+    is reverse-proxied to the user's container, forwarding the request cookies
+    so the single-user server does its own auth. Cross-user access is
+    structurally prevented: the browser only sends the /user/{u}/ cookie to that
+    user's own prefix.
     """
 
     def initialize(self, **kwargs):
@@ -218,11 +265,16 @@ class FilesGuardHandler(web.RequestHandler):
         from jupyterhub.app import JupyterHub
         app = JupyterHub.instance()
 
-        if _is_download_arg(self.get_argument('download', None)):
+        if _is_download_request(self):
             filename = _filename_from_path(subpath)
+            if _is_download_arg(self.get_argument('download', None)):
+                via = 'download-arg'
+            else:
+                via = 'sec-fetch-dest=%s' % (
+                    self.request.headers.get('Sec-Fetch-Dest') or 'absent')
             app.log.warning(
-                "[Downloads] BLOCKED user=%s path=%s via=download-arg",
-                username, subpath,
+                "[Downloads] BLOCKED user=%s path=%s via=%s",
+                username, subpath, via,
             )
             _schedule_notify(username, filename)
             self.set_status(403)
