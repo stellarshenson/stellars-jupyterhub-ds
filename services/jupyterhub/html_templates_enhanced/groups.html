@@ -165,7 +165,7 @@
             </h6>
           </div>
           <div id="section-env-vars" style="display: none;">
-          <p class="text-muted small mb-2">Variables injected into containers for users in this group</p>
+          <p class="text-muted small mb-2">Environment variables set in members' containers. On a name clash across groups, the highest-priority group wins.</p>
           <table class="table table-sm table-bordered" id="env-vars-table">
             <thead>
               <tr>
@@ -204,7 +204,7 @@
           {% endif %}
           <div id="section-gpu" style="display: none;">
           {% if gpus %}
-          <div class="form-text mb-2">Passes the selected GPU devices to spawned containers via device_requests.</div>
+          <div class="form-text mb-2">Gives members the selected GPU devices in their containers.</div>
           {% if not gpu_isolation_enforced %}
           <div class="alert alert-warning py-2 px-2 small mb-2" role="alert">
             <i class="fa fa-triangle-exclamation" aria-hidden="true"></i>
@@ -250,8 +250,7 @@
           </div>
           <div id="section-mem" style="display: none;">
           <div class="form-text mb-2">
-            Memory limit for member containers. When a user belongs to multiple groups,
-            the largest limit wins. Groups with this off do not remove an existing limit.
+            Caps memory for members' containers. Across a member's groups the largest limit wins; section off sets nothing.
           </div>
           <div class="input-group input-group-sm" style="max-width: 15em;">
             <input type="number" class="form-control" id="config-mem-limit-gb"
@@ -286,9 +285,7 @@
           </div>
           <div id="section-cpu" style="display: none;">
           <div class="form-text mb-2">
-            CPU limit for member containers. When a user belongs to multiple groups,
-            the largest limit wins. Groups with this off do not remove an existing limit.
-            The value is rounded up to whole cores at spawn (never below 1 core).
+            Caps CPU for members' containers. Across a member's groups the largest limit wins; section off sets nothing. Rounded up to whole cores, minimum one.
           </div>
           <div class="input-group input-group-sm" style="max-width: 15em;">
             <input type="number" class="form-control" id="config-cpu-limit-cores"
@@ -396,7 +393,7 @@
                   <td>
                     <strong>Enforce per-user compose project</strong>
                     <div class="text-muted small">
-                      Group each user's <code>docker run</code> containers under their own compose project so they show up together in <code>docker compose ls</code> / Docker Desktop. The project name comes from the platform env <code>JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE</code> (default <code>{username}_containers</code>). Off = ad-hoc containers belong to no compose project (free-floating); the user's own <code>docker compose</code> projects are unaffected either way. Any group on &rarr; on.
+                      Group each user's <code>docker run</code> containers under their own compose project so they show up together in <code>docker compose ls</code> / Docker Desktop. Off = ad-hoc containers belong to no compose project; the user's own <code>docker compose</code> projects are unaffected either way. Any group on &rarr; on.
                     </div>
                   </td>
                   <td class="text-center">
@@ -407,7 +404,7 @@
                   <td>
                     <strong>Allow override of compose project</strong>
                     <div class="text-muted small">
-                      Respect a project name the user supplies via <code>docker compose -p &lt;name&gt;</code> OR <code>COMPOSE_PROJECT_NAME=&lt;name&gt;</code> instead of rewriting it (both produce the same <code>com.docker.compose.project</code> label on the create body). Off = strict mode: the proxy pins every container to the per-user project regardless of what the user typed. Any group on &rarr; on.
+                      Respect a project name the user supplies via <code>docker compose -p &lt;name&gt;</code> instead of rewriting it. Off = every container is pinned to the per-user project regardless of what the user typed. Any group on &rarr; on.
                     </div>
                   </td>
                   <td class="text-center">
@@ -418,7 +415,7 @@
                   <td>
                     <strong>Access hub network</strong>
                     <div class="text-muted small">
-                      Grant access to the hub's docker network (<code>JUPYTERHUB_NETWORK_NAME</code>): visible in <code>docker network ls</code>, containers can attach with <code>--network &lt;hub-net&gt;</code>, and <code>docker network connect &lt;hub-net&gt;</code> works - so user containers can resolve hub services and other containers by DNS. Off = the hub network is hidden and inaccessible: list omits it, container creates referencing it are rejected, and connect/disconnect actions return 404. Any group on &rarr; on.
+                      Grant access to the hub's docker network so user containers can reach hub services and other containers by DNS. Off = the hub network is hidden and inaccessible. Any group on &rarr; on.
                     </div>
                   </td>
                   <td class="text-center">
@@ -448,11 +445,11 @@
                      data-target="#section-volumes" aria-label="Enable volume mounts section">
             </div>
             <h6 class="text-uppercase text-muted mb-0">
-              <i class="fa fa-hdd-o" aria-hidden="true"></i> Volume Mounts
+              <i class="fa fa-hard-drive" aria-hidden="true"></i> Volume Mounts
             </h6>
           </div>
           <div id="section-volumes" style="display: none;">
-          <p class="text-muted small mb-2">Named Docker volumes mounted into member containers at spawn. The platform shared volume is no longer mounted automatically - grant it here. Missing volumes are auto-created by Docker on first spawn. Mounting onto protected system paths (<code>/etc</code>, <code>/usr</code>, <code>/home</code>, <code>/opt</code>, ...) is rejected - use <code>/mnt</code> or <code>/data</code>.</p>
+          <p class="text-muted small mb-2">Mounts named Docker volumes into members' containers - use to share datasets or scratch space. System paths (<code>/etc</code>, <code>/usr</code>, <code>/home</code>, ...) are rejected; use <code>/mnt</code> or <code>/data</code>.</p>
           <table class="table table-sm table-bordered" id="volume-mounts-table">
             <thead>
               <tr>
@@ -488,7 +485,7 @@
             </h6>
           </div>
           <div id="section-apikeys" style="display: none;">
-          <p class="text-muted small mb-2">A finite set of credentials handed out one per running container, so no two members share a key. Keys return to the pool on stop; if the pool runs dry, the variables are still set but empty. Values are shown in full on this admin-only page; only the hub logs obfuscate them (last 4 characters).</p>
+          <p class="text-muted small mb-2">Hands out one credential per running container so no two members share a key - for per-seat or rate-limited API keys. Keys return to the pool on stop; an empty pool sets the variables blank.</p>
           <div id="config-apikeys-config">
             <div class="mb-2">
               <label class="form-label small mb-1" for="config-apikeys-mode">Credential type</label>
@@ -548,7 +545,7 @@
             </h6>
           </div>
           <div id="section-downloads" style="display: none;">
-          <p class="text-muted small mb-2">Explicitly set whether members may download files from their lab via the browser. When this section is off the group does not configure downloads. If several of a user's groups configure it, the highest-priority group wins; if none do, the platform default <code>JUPYTERHUB_BLOCK_FILE_DOWNLOADS</code> applies. Best-effort policy with a blocked-download notification; it does not prevent exfiltration through a terminal or kernel. Takes effect on the member's next server start.</p>
+          <p class="text-muted small mb-2">Allow or block members from downloading files out of their lab through the browser - used to keep data on the platform. Section off means this group does not set the policy; among groups that do, the highest-priority one wins, otherwise the platform default applies. Best-effort - does not stop transfers via a terminal or kernel.</p>
           <div class="form-check form-switch">
             <input class="form-check-input" type="checkbox" id="config-downloads-allow">
             <label class="form-check-label" for="config-downloads-allow">Allow downloads for members</label>
@@ -570,7 +567,7 @@
             </h6>
           </div>
           <div id="section-sudo" style="display: none;">
-          <p class="text-muted small mb-2">Explicitly set whether members get sudo in their lab (injected as <code>JUPYTERLAB_SUDO_ENABLE</code>). When this section is off the group does not configure sudo. If several of a user's groups configure it, the highest-priority group wins; if none do, the platform default <code>JUPYTERHUB_LAB_SUDO_ENABLE_DEFAULT</code> applies. Takes effect on the member's next server start.</p>
+          <p class="text-muted small mb-2">Grant or deny members root via sudo inside their lab - needed to install system packages. Section off means this group does not set sudo; among groups that do, the highest-priority one wins, otherwise the platform default applies.</p>
           <div class="form-check form-switch">
             <input class="form-check-input" type="checkbox" id="config-sudo-enable">
             <label class="form-check-label" for="config-sudo-enable">Enable sudo for members</label>

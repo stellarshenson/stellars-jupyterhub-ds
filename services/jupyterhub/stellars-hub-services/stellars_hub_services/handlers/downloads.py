@@ -27,7 +27,6 @@ Two handlers:
 import json
 import time
 
-from jupyterhub.handlers import BaseHandler
 from tornado import web
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest
 
@@ -197,24 +196,31 @@ _HOP_BY_HOP = {
 }
 
 
-class FilesGuardHandler(BaseHandler):
+class FilesGuardHandler(web.RequestHandler):
     """Guard files/* and nbconvert/* for a download-blocked user.
 
-    A truthy `download` arg is the only thing that makes jupyter_server attach
-    these as a download, so block exactly that and reverse-proxy everything
-    else (inline viewers, markdown image refs) to the container untouched.
-    Owner-or-admin check preserves per-user isolation now that the bytes flow
-    through the hub.
+    Mounted at /user/{u}/... where the hub login cookie (scoped to /hub/) is
+    never sent - so hub-side @web.authenticated is impossible here: it would
+    302 to /hub/login, which (already authenticated there) 302s back to the
+    file, looping forever (ERR_TOO_MANY_REDIRECTS). Instead block a truthy
+    `download` arg (the only trigger for Content-Disposition: attachment on
+    these paths) and reverse-proxy everything else to the user's container,
+    forwarding the request cookies so the single-user server does its own auth.
+    Cross-user access is structurally prevented: the browser only sends the
+    /user/{u}/ cookie to that user's own prefix.
     """
 
+    def initialize(self, **kwargs):
+        # username and subpath come from the route capture groups.
+        pass
+
     async def _guard(self, username, subpath):
-        current_user = self.current_user
-        if not (current_user.admin or current_user.name == username):
-            raise web.HTTPError(403, "Forbidden")
+        from jupyterhub.app import JupyterHub
+        app = JupyterHub.instance()
 
         if _is_download_arg(self.get_argument('download', None)):
             filename = _filename_from_path(subpath)
-            self.log.warning(
+            app.log.warning(
                 "[Downloads] BLOCKED user=%s path=%s via=download-arg",
                 username, subpath,
             )
@@ -238,7 +244,9 @@ class FilesGuardHandler(BaseHandler):
         unexpectedly returns an attachment, convert it to a block before any
         body reaches the client.
         """
-        user = self.find_user(username)
+        from jupyterhub.app import JupyterHub
+        app = JupyterHub.instance()
+        user = app.users.get(username) if app.users else None
         spawner = user.spawner if user else None
         if not (spawner and spawner.active and spawner.server):
             raise web.HTTPError(503, "Server not available")
@@ -312,15 +320,15 @@ class FilesGuardHandler(BaseHandler):
         try:
             await AsyncHTTPClient().fetch(request, raise_error=False)
         except Exception as e:
-            self.log.error("[Downloads] proxy error user=%s path=%s: %s",
-                           username, subpath, e)
+            app.log.error("[Downloads] proxy error user=%s path=%s: %s",
+                          username, subpath, e)
             if not state['status_set']:
                 raise web.HTTPError(502, "Upstream error")
             return
 
         if state['blocked']:
             filename = _filename_from_path(subpath)
-            self.log.warning(
+            app.log.warning(
                 "[Downloads] BLOCKED user=%s path=%s via=attachment-header",
                 username, subpath,
             )
@@ -331,14 +339,11 @@ class FilesGuardHandler(BaseHandler):
             return
         self.finish()
 
-    @web.authenticated
     async def get(self, username, subpath):
         await self._guard(username, subpath)
 
-    @web.authenticated
     async def head(self, username, subpath):
         await self._guard(username, subpath)
 
-    @web.authenticated
     async def post(self, username, subpath):
         await self._guard(username, subpath)
