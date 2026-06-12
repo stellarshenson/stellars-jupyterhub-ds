@@ -36,8 +36,9 @@ Best-effort, hub-side blocking of browser file downloads from spawned labs. Sect
 
 ## Enforcement (hub overlay)
 
-- [x] **Vector inventory** - verified against the deployed image: block surfaces are `files/` (download-param), `nbconvert/` (download-param), `jupyterlab-export-markdown-extension/export/` (POST, always attachment), `jupyterlab-share-files-extension/public/share/` (GET, unauthenticated public link). Not vectors: export-svg-as-png (client-side), jupyterlab_zip (POST create only), jupyter-archive (absent)
+- [x] **Vector inventory** - verified against the deployed image: block surfaces are `files/` (download / open-to-save), `nbconvert/` (download / open-to-save), `jupyterlab-export-markdown-extension/export/` (POST, always attachment), `jupyterlab-share-files-extension/public/share/` (GET, unauthenticated public link). Not vectors: export-svg-as-png (client-side), jupyterlab_zip (POST create only), jupyter-archive (absent)
   - log: 2026-06-12 implemented (v3.11.5) - probed inside the running container source
+  - log: 2026-06-12 corrected - the JupyterLab Download button saves client-side via `<a download>` against `files/<path>` with NO `?download` arg, so jupyter_server serves it 200 inline and the browser writes it to disk - the query arg alone never fired (Playwright-confirmed as `konrad.jelen`)
 - [x] **Route overlay** - for blocked users `pre_spawn_hook` registers one CHP route per surface to the hub, recorded in `app.proxy.extra_routes` so `check_routes()` does not reap them
   - log: 2026-06-12 implemented (v3.11.5) - `hooks.py` `_register_download_block`
 - [x] **Survivor re-registration** - `schedule_startup_downloads_callback` re-applies block routes for labs still running after a hub restart
@@ -50,18 +51,22 @@ Best-effort, hub-side blocking of browser file downloads from spawned labs. Sect
   - log: 2026-06-12 added - hook gates on `block_file_downloads or downloads_allow is not None`
 - [x] **Pure-download block** - `DownloadBlockHandler` 403s the export-markdown and share-files prefixes unconditionally (no auth, so it also blocks the unauthenticated public share link); GET/POST/HEAD
   - log: 2026-06-12 implemented (v3.11.5)
-- [x] **Download-intent block** - `FilesGuardHandler` 403s `files/`/`nbconvert/` when the `download` query arg is truthy (the only trigger for `Content-Disposition: attachment` on these paths, verified in jupyter_server source)
+- [x] **Download-intent block** - `FilesGuardHandler._is_download_request` 403s `files/`/`nbconvert/` when the request is a save / open vector: a truthy `?download` arg, OR `Sec-Fetch-Dest` of `empty` (fetch / `<a download>`), `document` (top-level navigation / open-in-tab), or absent (non-browser / plain-HTTP - fail-closed)
+  - log: 2026-06-12 implemented (v3.11.5) - originally download-arg only
+  - log: 2026-06-12 reworked to `Sec-Fetch-Dest` discriminator - empirically captured per vector via Playwright over HTTPS (img=image, fetch=empty, open-tab=document, `<a download>` saves with no arg); the query arg alone missed the Download button
+- [x] **Inline pass-through** - `files/`/`nbconvert/` requests whose `Sec-Fetch-Dest` is an inline subresource render (`image`, `video`, `audio`, `font`, `style`, `script`, `object`, `embed`, `iframe`, `frame`, `track`, `manifest`) reverse-proxy to the container, forwarding the `Range` header and relaying status/headers/body (markdown/notebook images, embedded media, in-lab viewers keep working)
   - log: 2026-06-12 implemented (v3.11.5)
-- [x] **Inline pass-through** - non-download `files/`/`nbconvert/` requests reverse-proxy to the container, forwarding the `Range` header and relaying the container's status/headers/body (markdown images, file/PDF viewers keep working)
-  - log: 2026-06-12 implemented (v3.11.5)
+  - log: 2026-06-12 narrowed from "any non-download request" to the inline-dest allowlist
 - [x] **Defense in depth** - if a proxied inline response unexpectedly carries `Content-Disposition: attachment`, it is converted to a 403 before any body reaches the client
   - log: 2026-06-12 implemented (v3.11.5)
-- [x] **Owner isolation** - `FilesGuardHandler` is `@web.authenticated` and requires owner-or-admin, so proxying user content through the hub never crosses users
-  - log: 2026-06-12 implemented (v3.11.5)
+- [x] **Owner isolation** - `FilesGuardHandler` is a plain `tornado.web.RequestHandler` (hub login cookie is scoped to `/hub/` and never reaches `/user/...`, so `@web.authenticated` there loops to login); isolation holds because the inline proxy forwards the request's `/user/{u}/` cookie to that user's own container and the browser only sends that cookie to the user's own prefix
+  - log: 2026-06-12 implemented (v3.11.5) - was `@web.authenticated` owner-or-admin
+  - log: 2026-06-12 reworked - `@web.authenticated` at `/user/...` caused an `ERR_TOO_MANY_REDIRECTS` login loop; switched to forwarded-cookie isolation
 - [x] **Block response** - 403 with an HTML page for top-level navigation (Accept: text/html), JSON `{"error":"downloads_blocked"}` otherwise
   - log: 2026-06-12 implemented (v3.11.5)
-- [x] **Audit log** - every block logs username, path, and the trigger (`via=pure-download|download-arg|attachment-header`)
+- [x] **Audit log** - every block logs username, path, and the trigger (`via=pure-download|download-arg|sec-fetch-dest=<v>|attachment-header`)
   - log: 2026-06-12 implemented (v3.11.5)
+  - log: 2026-06-12 added the `sec-fetch-dest=<v>` trigger
 
 ## Must not break
 
@@ -115,10 +120,11 @@ Best-effort, hub-side blocking of browser file downloads from spawned labs. Sect
 
 - [x] **Resolver tests** - `TestDownloadsAllow`: no group configures -> None, section-off -> None, single allow/block, higher-priority wins, higher-off+lower-on decides, only-matched-groups-count
   - log: 2026-06-12 reworked to tri-state priority-wins - `tests/test_group_resolver.py`
-- [x] **Discriminator tests** - `TestIsDownloadArg` / `TestFilenameFromPath` cover the block/allow decision and toast naming
+- [x] **Discriminator tests** - `TestIsDownloadArg` / `TestIsDownloadRequest` / `TestFilenameFromPath` cover the block/allow decision and toast naming; `TestIsDownloadRequest` asserts inline dests allowed, empty/document/absent blocked, `?download` wins
   - log: 2026-06-12 implemented (v3.11.5) - `tests/test_downloads_guard.py`
-- [ ] **Live end-to-end** - post-restart probe as `konrad.jelen`: download-arg -> 403 + toast + audit, inline -> 200 via proxy, export-markdown POST -> 403, granting group -> downloads succeed; contents API / kernels / terminals unaffected
-  - log: 2026-06-12 pending operator-initiated hub rebuild/restart
+  - log: 2026-06-12 added `TestIsDownloadRequest` for the `Sec-Fetch-Dest` discriminator (build-gated by the Dockerfile pytest step)
+- [ ] **Live end-to-end** - post-rebuild probe as `konrad.jelen`: Download button (`<a download>`, no arg) -> 403 + toast + audit, `?download=1` -> 403, open-in-tab -> 403, inline markdown image -> 200 via proxy, export-markdown POST -> 403, granting group -> downloads succeed; contents API / kernels / terminals unaffected
+  - log: 2026-06-12 pending operator-initiated hub rebuild (Playwright already confirmed the per-vector `Sec-Fetch-Dest` values the discriminator keys off)
 
 ## Documentation
 
@@ -132,6 +138,6 @@ Best-effort, hub-side blocking of browser file downloads from spawned labs. Sect
 
 ## API
 
-- Blocked vectors (blocked users): `GET|HEAD /user/{u}/files/*?download=<truthy>`, `GET|HEAD /user/{u}/nbconvert/*?download=<truthy>`, `POST /user/{u}/jupyterlab-export-markdown-extension/export/*`, `GET /user/{u}/jupyterlab-share-files-extension/public/share/*` -> `403` (HTML or `{"error":"downloads_blocked"}`); inline `files/`/`nbconvert/` -> proxied 200/206
+- Blocked vectors (blocked users): `GET|HEAD /user/{u}/files/*` and `/nbconvert/*` when `?download` is truthy OR `Sec-Fetch-Dest` ∈ {`empty`, `document`, absent}, `POST /user/{u}/jupyterlab-export-markdown-extension/export/*`, `GET /user/{u}/jupyterlab-share-files-extension/public/share/*` -> `403` (HTML or `{"error":"downloads_blocked"}`); inline `files/`/`nbconvert/` with a media `Sec-Fetch-Dest` -> proxied 200/206
 - `PUT /hub/api/admin/groups/{group}/config` body gains optional booleans `downloads_active`, `downloads_allow`
 - Env: `JUPYTERHUB_BLOCK_FILE_DOWNLOADS` (`0`/`1`, default `0`) - platform default when no group configures
