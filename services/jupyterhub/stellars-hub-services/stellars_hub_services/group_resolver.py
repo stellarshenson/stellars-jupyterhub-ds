@@ -97,6 +97,7 @@ def resolve_group_config(
           'mem_limit_gb': float | None,  # biggest enabled value, None if no cap
           'mem_swap_disabled': bool,     # swap policy of the winning mem-limit group
           'cpu_limit_cores': float | None,  # biggest enabled value, None if no cap
+          'downloads_allowed': bool,     # True iff any group grants downloads
           'matched_groups': list[str],   # ordered by priority desc
           'skipped_env_vars': list[str], # names stripped because reserved
         }
@@ -122,6 +123,10 @@ def resolve_group_config(
     mem_limit_gb = None
     mem_swap_disabled = False
     cpu_limit_cores = None
+    # File downloads: grant-style OR across groups. True iff ANY matched group
+    # has downloads_active. Absent key = not granted (this flag IS the grant,
+    # not a section gate), so it never defaults active.
+    downloads_allowed = False
     api_key_pools = []
     # mountpoint -> volume name; highest-priority group wins on a mountpoint
     # conflict (same rule as env vars). Shadowed entries land in skipped_volume_mounts.
@@ -177,6 +182,11 @@ def resolve_group_config(
                 docker_limited_hub_network_access = True
         if docker_active and inner.get('docker_privileged'):
             docker_privileged = True
+
+        # File downloads grant: OR across groups. The flag is its own grant
+        # (no section-gate), so read it directly without an active-flag guard.
+        if inner.get('downloads_active'):
+            downloads_allowed = True
 
         # Memory limit: biggest enabled value wins; disabled groups do not un-cap.
         # The swap policy follows the winning limit - the group that owns the
@@ -291,6 +301,7 @@ def resolve_group_config(
         'mem_limit_gb': mem_limit_gb,
         'mem_swap_disabled': mem_swap_disabled,
         'cpu_limit_cores': cpu_limit_cores,
+        'downloads_allowed': downloads_allowed,
         'api_key_pools': api_key_pools,
         'volume_mounts': [{'volume': v, 'mountpoint': m} for m, v in volume_mounts.items()],
         'skipped_volume_mounts': skipped_volume_mounts,

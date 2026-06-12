@@ -548,3 +548,35 @@ class TestSectionActiveFlags:
             _grp("folded", docker_active=False, docker_access=True),
         ]
         assert _resolve(["grants", "folded"], cfgs)["docker_access"] is True
+
+
+class TestDownloadsAllowed:
+    """File-downloads grant: OR across groups. The flag IS the grant (not a
+    section gate), so an absent key reads as not granted - distinct from the
+    *_active flags that default active when absent."""
+
+    def test_no_grant_by_default(self):
+        cfgs = [_grp("a")]
+        assert _resolve(["a"], cfgs)["downloads_allowed"] is False
+
+    def test_explicit_false_is_not_granted(self):
+        cfgs = [_grp("a", downloads_active=False)]
+        assert _resolve(["a"], cfgs)["downloads_allowed"] is False
+
+    def test_granted_when_active(self):
+        cfgs = [_grp("a", downloads_active=True)]
+        assert _resolve(["a"], cfgs)["downloads_allowed"] is True
+
+    def test_or_across_groups(self):
+        cfgs = [
+            _grp("a", downloads_active=False),
+            _grp("b", downloads_active=True),
+        ]
+        assert _resolve(["a", "b"], cfgs)["downloads_allowed"] is True
+
+    def test_only_matched_groups_count(self):
+        cfgs = [
+            _grp("mine", downloads_active=False),
+            _grp("other", downloads_active=True),
+        ]
+        assert _resolve(["mine"], cfgs)["downloads_allowed"] is False

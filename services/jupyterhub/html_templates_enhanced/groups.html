@@ -534,6 +534,24 @@
           </div>
         </div>
 
+        <hr>
+
+        <!-- File Downloads -->
+        <div class="mb-4">
+          <div class="d-flex align-items-center mb-2">
+            <div class="form-check form-switch mb-0 me-2">
+              <input class="form-check-input section-toggle" type="checkbox" id="config-downloads-active"
+                     data-target="#section-downloads" aria-label="Enable file downloads section">
+            </div>
+            <h6 class="text-uppercase text-muted mb-0">
+              <i class="fa fa-download" aria-hidden="true"></i> File Downloads
+            </h6>
+          </div>
+          <div id="section-downloads" style="display: none;">
+          <p class="text-muted small mb-2">Allow members to download files from their lab via the browser. Effective only when the platform <code>JUPYTERHUB_BLOCK_FILE_DOWNLOADS</code> switch is on - then a user is blocked unless one of their groups has this enabled. Best-effort policy with a blocked-download notification; it does not prevent exfiltration through a terminal or kernel. Takes effect on the member's next server start.</p>
+          </div>
+        </div>
+
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
@@ -751,6 +769,7 @@ require(["jquery"], function($) {
           group.config.volume_mounts && group.config.volume_mounts.length > 0) {
         features.push('Volumes');
       }
+      if (group.config.downloads_active) features.push('Downloads');
 
       var featureBadges = features.length
         ? features.map(function(s) { return '<span class="badge bg-secondary me-1">' + escapeHtml(s) + '</span>'; }).join('')
@@ -956,6 +975,7 @@ require(["jquery"], function($) {
         $('#config-env-vars-active').prop('checked', !!config.env_vars_active);
         $('#config-docker-active').prop('checked', !!config.docker_active);
         $('#config-volume-mounts-active').prop('checked', !!config.volume_mounts_active);
+        $('#config-downloads-active').prop('checked', !!config.downloads_active);
         $('#config-gpu-access').prop('checked', config.gpu_access || false);
         $('#config-gpu-all').prop('checked', config.gpu_all !== false);  // default all
         var selIds = config.gpu_device_ids || [];
@@ -1134,6 +1154,7 @@ require(["jquery"], function($) {
     var envVarsActive = $('#config-env-vars-active').is(':checked');
     var dockerActive = $('#config-docker-active').is(':checked');
     var volumeMountsActive = $('#config-volume-mounts-active').is(':checked');
+    var downloadsActive = $('#config-downloads-active').is(':checked');
 
     // Docker access: normal and limited are mutually exclusive within one group.
     // Docker (root) is orthogonal - standalone OK (privileged with no socket).
@@ -1212,6 +1233,7 @@ require(["jquery"], function($) {
       env_vars_active: envVarsActive,
       docker_active: dockerActive,
       volume_mounts_active: volumeMountsActive,
+      downloads_active: downloadsActive,
       env_vars: envVars,
       volume_mounts: volumeMounts,
       gpu_access: gpuAccess,
