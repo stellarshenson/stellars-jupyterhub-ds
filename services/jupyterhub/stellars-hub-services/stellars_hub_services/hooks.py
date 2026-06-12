@@ -86,6 +86,7 @@ def make_pre_spawn_hook(
     user_compose_project_template='',
     hub_network_name='',
     block_file_downloads=0,
+    lab_sudo_enable_default=1,
 ):
     """Create a pre_spawn_hook closure that captures branding + resolution context.
 
@@ -122,10 +123,17 @@ def make_pre_spawn_hook(
             the per-user compose-project label when a group enables
             docker_limited_user_compose_project_enabled. Default from
             Dockerfile ENV JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE.
-        block_file_downloads: platform master switch (0/1). When 1, a user whose
-            groups do not grant downloads (resolved downloads_allowed False) gets
-            per-user CHP block routes overlaid onto their lab's download surfaces.
-            When 0 the feature is dormant - no routes, no handlers, no change.
+        block_file_downloads: platform default (0/1) for member downloads,
+            applied only when no group configures downloads (resolved
+            downloads_allow is None). 1 = block by default, 0 = allow by default.
+            A group whose File Downloads section is on overrides this for its
+            members (highest-priority configuring group wins) and can block even
+            when this is 0 or allow even when it is 1. The feature is dormant -
+            no routes, no handlers - only when this is 0 AND no group configures
+            downloads.
+        lab_sudo_enable_default: platform default (0/1) for member sudo, applied
+            when no group configures it (resolved sudo_enable is None). Injected
+            into every spawn as JUPYTERLAB_SUDO_ENABLE for the image to consume.
     """
 
     async def pre_spawn_hook(spawner):
@@ -234,6 +242,17 @@ def make_pre_spawn_hook(
             spawner.environment.pop('CUDA_VISIBLE_DEVICES', None)
             spawner.environment['ENABLE_GPU_SUPPORT'] = '0'
             spawner.environment['ENABLE_GPUSTAT'] = '0'
+
+        # Sudo access: resolved value (highest-priority configuring group) when
+        # set, else the platform default. Always injected so the image gets an
+        # explicit JUPYTERLAB_SUDO_ENABLE every spawn.
+        if resolved.get('sudo_enable') is not None:
+            sudo_enabled = resolved['sudo_enable']
+            sudo_source = 'group'
+        else:
+            sudo_enabled = bool(lab_sudo_enable_default)
+            sudo_source = 'default'
+        spawner.environment['JUPYTERLAB_SUDO_ENABLE'] = '1' if sudo_enabled else '0'
 
         # Inject user-defined env vars from groups (reserved names already filtered)
         if resolved['env_vars']:
@@ -370,7 +389,7 @@ def make_pre_spawn_hook(
         spawner.log.info(
             "[Groups] user=%s groups=%s docker=%s docker_limited=%s docker_limits=[%s] "
             "privileged=%s gpu=%s gpu_sel=%s mem_limit_gb=%s swap_off=%s cpu_limit=%s "
-            "env_vars=%d skipped=%s compose_project=%s",
+            "sudo=%s/%s env_vars=%d skipped=%s compose_project=%s",
             username,
             resolved['matched_groups'],
             resolved['docker_access'],
@@ -382,6 +401,8 @@ def make_pre_spawn_hook(
             resolved.get('mem_limit_gb'),
             bool(resolved.get('mem_swap_disabled')),
             spawner.cpu_limit,
+            '1' if sudo_enabled else '0',
+            sudo_source,
             len(resolved['env_vars']),
             resolved['skipped_env_vars'],
             compose_project or '-',
@@ -430,23 +451,31 @@ def make_pre_spawn_hook(
                 app.proxy.extra_routes[routespec] = hub_target
                 spawner.log.info(f"[Favicon] Added CHP route: {routespec} -> {hub_target}")
 
-        # File-download policy (best-effort, hub-side). Only when the platform
-        # master switch is on: a user whose groups grant downloads gets any
-        # stale block routes removed (covers a group-membership change between
-        # spawns); a user without the grant gets the block routes overlaid and
-        # the guard handlers injected. Master off -> this whole block is skipped
-        # and traffic flows straight to the container as before.
-        if block_file_downloads:
+        # File-download policy (best-effort, hub-side). Section-gated, priority-
+        # wins: the highest-priority group whose File Downloads section is on
+        # decides (downloads_allow True=allow/False=block); if no group
+        # configures it the platform default (block_file_downloads) applies.
+        # A blocked user gets per-user CHP block routes overlaid and the guard
+        # handlers injected; an allowed user gets any stale routes removed
+        # (covers a membership change between spawns). The whole block is skipped
+        # only when the default is allow AND no group configures it - then
+        # traffic flows straight to the container.
+        downloads_allow = resolved.get('downloads_allow')
+        if block_file_downloads or downloads_allow is not None:
+            if downloads_allow is not None:
+                user_blocked = not downloads_allow
+            else:
+                user_blocked = bool(block_file_downloads)
             from jupyterhub.app import JupyterHub
             app = JupyterHub.instance()
-            if resolved.get('downloads_allowed'):
-                await _unregister_download_block(app, username)
-            else:
+            if user_blocked:
                 parsed = urlparse(app.hub.url)
                 hub_target = f'{parsed.scheme}://{parsed.netloc}'
                 _inject_download_handlers(app)
                 await _register_download_block(app, username, hub_target)
                 spawner.log.info("[Downloads] block routes registered for user=%s", username)
+            else:
+                await _unregister_download_block(app, username)
 
         # JupyterLab icon URIs - resolve static filenames to fully qualified URLs
         _main_static = branding.get('lab_main_icon_static', '')
@@ -568,29 +597,35 @@ def schedule_startup_downloads_callback(
     restart. pre_spawn_hook only fires on new spawns, so a lab still running
     after a restart would otherwise lose its block overlay (the routes live in
     the hub's in-memory extra_routes, rebuilt only here). For each active user
-    we re-resolve group membership and either register the block routes
-    (downloads_allowed False) or clear any stale ones (now allowed). No-op when
-    the master switch is off - check_routes() then reaps any leftover routes
+    we re-resolve group membership and either register the block routes (the
+    section-gated/priority-wins decision resolves to block, or no group
+    configures it and the platform default blocks) or clear any stale ones.
+    Dormant - no handlers, no iteration - only when the default is allow AND no
+    group configures downloads; check_routes() then reaps any leftover routes
     because they are no longer in extra_routes.
     """
-    if not block_file_downloads:
-        return
-
     async def _register_downloads_for_active_servers():
         from jupyterhub.app import JupyterHub
         from jupyterhub import orm
 
         app = JupyterHub.instance()
-        _inject_download_handlers(app)
-
-        parsed = urlparse(app.hub.url)
-        hub_target = f'{parsed.scheme}://{parsed.netloc}'
 
         try:
             all_configs = GroupsConfigManager.get_instance().get_all_configs()
         except Exception as e:
             app.log.error(f"[Downloads Startup] Failed to load group configs: {e}")
             all_configs = []
+
+        # Dormant unless the default blocks or some group configures downloads.
+        any_configures = any(
+            (c.get('config') or {}).get('downloads_active') for c in all_configs
+        )
+        if not block_file_downloads and not any_configures:
+            return
+
+        _inject_download_handlers(app)
+        parsed = urlparse(app.hub.url)
+        hub_target = f'{parsed.scheme}://{parsed.netloc}'
 
         count = 0
         for orm_user in app.db.query(orm.User).all():
@@ -604,11 +639,16 @@ def schedule_startup_downloads_callback(
                 reserved_names=reserved_env_var_names,
                 reserved_prefixes=reserved_env_var_prefixes,
             )
-            if resolved.get('downloads_allowed'):
-                await _unregister_download_block(app, user.name)
+            downloads_allow = resolved.get('downloads_allow')
+            if downloads_allow is not None:
+                user_blocked = not downloads_allow
             else:
+                user_blocked = bool(block_file_downloads)
+            if user_blocked:
                 await _register_download_block(app, user.name, hub_target)
                 count += 1
+            else:
+                await _unregister_download_block(app, user.name)
 
         if count:
             app.log.info(

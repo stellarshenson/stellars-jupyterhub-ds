@@ -1,10 +1,11 @@
 """Hub-side file-download blocking (best-effort policy + notify + audit).
 
-When the platform JUPYTERHUB_BLOCK_FILE_DOWNLOADS master switch is on, users
-whose groups do not grant downloads (resolved downloads_allowed=False) have
-per-user CHP routes overlaid onto their lab's download surfaces, sending those
-prefixes to the hub instead of the container (same mechanism as the favicon
-routes). These handlers act on the overlaid traffic.
+A user whose effective download policy is "block" - the highest-priority group
+whose File Downloads section is on resolved to block, or no group configures it
+and the platform JUPYTERHUB_BLOCK_FILE_DOWNLOADS default blocks - has per-user
+CHP routes overlaid onto their lab's download surfaces, sending those prefixes
+to the hub instead of the container (same mechanism as the favicon routes).
+These handlers act on the overlaid traffic.
 
 This is NOT a security boundary: the lab user is root in their container with
 open egress, so a terminal/kernel `curl`/`scp` over an encrypted channel

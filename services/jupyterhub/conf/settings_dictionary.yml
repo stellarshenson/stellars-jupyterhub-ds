@@ -152,7 +152,7 @@ Abuse Protection:
     default: "600"
 
   - name: JUPYTERHUB_BLOCK_FILE_DOWNLOADS
-    description: Block browser file downloads from labs (0=allow, 1=block) - a group's downloads_active flag grants its members an exemption; best-effort policy with user notification, not full exfiltration prevention
+    description: Default browser file-download policy for members (0=allow, 1=block) - applied only when no group configures downloads via its File Downloads section; a configuring group overrides this (highest-priority wins). Best-effort policy with user notification, not full exfiltration prevention
     default: "0"
 
 Activity Monitor:
@@ -200,6 +200,10 @@ User Environment:
   - name: JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE
     description: Path inside the hub container to an operator user-volume descriptions overlay YAML (suffix-keyed, with mount/description); merges over /srv/jupyterhub/volumes_dictionary.yml, operator fields win
     default: ""
+
+  - name: JUPYTERHUB_LAB_SUDO_ENABLE_DEFAULT
+    description: Default sudo for members (0=off, 1=on) - injected as JUPYTERLAB_SUDO_ENABLE into each lab when no group configures sudo via its Sudo Access section; a configuring group overrides this
+    default: "1"
 
 Branding:
   - name: JUPYTERLAB_SYSTEM_NAME

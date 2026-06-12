@@ -124,6 +124,11 @@ JUPYTERHUB_MEMORY_MAX_USAGE_MB = _resolve_memory_quota_mb(JUPYTERHUB_MEMORY_MAX_
 # does not prevent a determined terminal/kernel exfiltration.
 JUPYTERHUB_BLOCK_FILE_DOWNLOADS = int(os.environ.get("JUPYTERHUB_BLOCK_FILE_DOWNLOADS", 0))
 
+# Member sudo default. Injected into every spawn as JUPYTERLAB_SUDO_ENABLE
+# (consumed by the lab image) when no group configures sudo via its per-group
+# Sudo Access section; a configuring group overrides this per the priority rule.
+JUPYTERHUB_LAB_SUDO_ENABLE_DEFAULT = int(os.environ.get("JUPYTERHUB_LAB_SUDO_ENABLE_DEFAULT", 1))
+
 # Misc
 TF_CPP_MIN_LOG_LEVEL = int(os.environ.get("TF_CPP_MIN_LOG_LEVEL", 3))                          # suppress TensorFlow logging in spawned containers
 JUPYTERHUB_TIMEZONE = os.environ.get("JUPYTERHUB_TIMEZONE", "Etc/UTC")                          # IANA timezone (e.g. Europe/Warsaw), applied to hub + spawned containers
@@ -640,6 +645,7 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     user_compose_project_template=JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE,  # rendered per-user when a docker-limited group enables it
     hub_network_name=JUPYTERHUB_NETWORK_NAME,                     # revealed in user's `docker network ls` when their group enables it (default on)
     block_file_downloads=JUPYTERHUB_BLOCK_FILE_DOWNLOADS,        # master switch: overlay per-user download-block CHP routes for non-granted users
+    lab_sudo_enable_default=JUPYTERHUB_LAB_SUDO_ENABLE_DEFAULT,  # default JUPYTERLAB_SUDO_ENABLE when no group configures sudo
 )
 
 

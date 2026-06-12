@@ -1,11 +1,12 @@
 # Acceptance Criteria - Group-Gated File Downloads
 
-Best-effort, hub-side blocking of browser file downloads from spawned labs. A platform master switch (`JUPYTERHUB_BLOCK_FILE_DOWNLOADS`) turns it on; a per-group `downloads_active` flag grants members an exemption (any granting group wins). For a blocked user, `pre_spawn_hook` overlays per-user CHP routes (favicon-route mechanism) onto the lab's download surfaces, sending them to hub guard handlers that 403 genuine downloads and reverse-proxy inline content. Every block fires a throttled "blocked by policy" toast and an audit log line. This is policy + notification + audit, NOT exfiltration prevention - the lab user is root with open egress, so a terminal/kernel transfer over an encrypted channel is out of reach by design.
+Best-effort, hub-side blocking of browser file downloads from spawned labs. Section-gated and priority-wins: a group whose File Downloads section (`downloads_active`) is on explicitly configures member downloads to allow or block (`downloads_allow`); among a user's configuring groups the highest-priority one wins; if no group configures it, the platform default `JUPYTERHUB_BLOCK_FILE_DOWNLOADS` applies. For a blocked user, `pre_spawn_hook` overlays per-user CHP routes (favicon-route mechanism) onto the lab's download surfaces, sending them to hub guard handlers that 403 genuine downloads and reverse-proxy inline content. Every block fires a throttled "blocked by policy" toast and an audit log line. This is policy + notification + audit, NOT exfiltration prevention - the lab user is root with open egress, so a terminal/kernel transfer over an encrypted channel is out of reach by design.
 
 ## Platform setting
 
-- [x] **Master switch** - `JUPYTERHUB_BLOCK_FILE_DOWNLOADS` (`0`/`1`, default `0`); `0` = dormant, no routes/handlers registered, zero change for existing deployments
+- [x] **Default policy** - `JUPYTERHUB_BLOCK_FILE_DOWNLOADS` (`0`/`1`, default `0`) is the fallback applied only when no group configures downloads; dormant (no routes/handlers) when the default is allow AND no group configures it - zero change for existing deployments
   - log: 2026-06-12 implemented (v3.11.5) - read in `config/jupyterhub_config.py`, threaded into `make_pre_spawn_hook` and `schedule_startup_downloads_callback`
+  - log: 2026-06-12 reworked to default-fallback (section-gated/priority-wins) - a configuring group overrides it and can block even when default is allow
 - [x] **Settings page** - listed in `settings_dictionary.yml` (Abuse Protection category) so it shows on the admin Settings page
   - log: 2026-06-12 implemented (v3.11.5)
 - [x] **Startup log** - hub prints the policy state (BLOCK/ALLOW) once at config load
@@ -13,17 +14,24 @@ Best-effort, hub-side blocking of browser file downloads from spawned labs. A pl
 
 ## Group config (admin)
 
-- [x] **Section** - foldable "File Downloads" section in the group modal with header switch `config-downloads-active` (default off), following the `*_active` section pattern
+- [x] **Section** - foldable "File Downloads" section with header switch `config-downloads-active` (default off), following the `*_active` section pattern
   - log: 2026-06-12 implemented (v3.11.5) - `groups.html`
-- [x] **Persistence** - `downloads_active` in `default_config()` (False); legacy rows default off (no inference - it is a grant, not a section gate, so absent = not granted)
+- [x] **Value control** - when the section is on, toggle `config-downloads-allow` chooses allow (1) or block (0) for members
+  - log: 2026-06-12 added - `groups.html`
+- [x] **Persistence** - `downloads_active: False`, `downloads_allow: True` in `default_config()`; section folded off persists data and restores on re-enable; legacy rows default off (no inference - section off = not configured)
   - log: 2026-06-12 implemented (v3.11.5) - `groups_config.py`
-- [x] **API accept** - `GroupsConfigHandler.put` accepts the boolean `downloads_active` body key
+  - log: 2026-06-12 added `downloads_allow` value field
+- [x] **API accept** - `GroupsConfigHandler.put` accepts boolean body keys `downloads_active` and `downloads_allow`
   - log: 2026-06-12 implemented (v3.11.5)
-- [x] **Badge** - groups table shows a `Downloads` badge when `downloads_active` is on
+- [x] **Badge** - groups table shows `Downloads on` or `Downloads off` (reflecting the configured value) when `downloads_active` is on; no badge when the section is off
   - log: 2026-06-12 implemented (v3.11.5)
-- [x] **Resolver grant** - `resolve_group_config` returns `downloads_allowed` True iff ANY of the user's groups has `downloads_active` (OR across groups); no groups / all off -> blocked
-  - log: 2026-06-12 implemented (v3.11.5) - `group_resolver.py`, covered by `TestDownloadsAllowed`
-- [x] **No admin exemption** - admins are blocked like any user unless in a granting group (no implicit bypass)
+- [x] **Section-gated** - a group with `downloads_active` false does NOT configure downloads (its `downloads_allow` is ignored); only sections explicitly on are considered
+  - log: 2026-06-12 added - `group_resolver.py`
+- [x] **Priority-wins** - among configuring groups the highest-priority `downloads_allow` wins (priority-descending walk, first configuring group decides) - not OR, not biggest-wins
+  - log: 2026-06-12 reworked from grant-style OR to section-gated priority-wins
+- [x] **Resolved value** - `resolve_group_config` returns `downloads_allow` as `True`/`False` when some group configures it, else `None`; the hook applies the platform default when `None`
+  - log: 2026-06-12 added - covered by `TestDownloadsAllow`
+- [x] **No admin exemption** - admins follow the same resolution as any user (no implicit bypass)
   - log: 2026-06-12 implemented (v3.11.5) - confirmed with operator
 
 ## Enforcement (hub overlay)
@@ -36,8 +44,10 @@ Best-effort, hub-side blocking of browser file downloads from spawned labs. A pl
   - log: 2026-06-12 implemented (v3.11.5)
 - [x] **Grant change removes routes** - a user resolved as allowed has any stale block routes deleted on next spawn (`_unregister_download_block`); symmetric add/remove
   - log: 2026-06-12 implemented (v3.11.5)
-- [x] **Exempt = no overlay** - granted users get no routes; traffic flows browser -> CHP -> container with zero added hops
+- [x] **Allowed = no overlay** - users resolved to allow get no routes; traffic flows browser -> CHP -> container with zero added hops
   - log: 2026-06-12 implemented (v3.11.5)
+- [x] **Group blocks regardless of default** - a configuring group resolving to block overlays routes even when the platform default is allow; a group resolving to allow removes them even when the default is block
+  - log: 2026-06-12 added - hook gates on `block_file_downloads or downloads_allow is not None`
 - [x] **Pure-download block** - `DownloadBlockHandler` 403s the export-markdown and share-files prefixes unconditionally (no auth, so it also blocks the unauthenticated public share link); GET/POST/HEAD
   - log: 2026-06-12 implemented (v3.11.5)
 - [x] **Download-intent block** - `FilesGuardHandler` 403s `files/`/`nbconvert/` when the `download` query arg is truthy (the only trigger for `Content-Disposition: attachment` on these paths, verified in jupyter_server source)
@@ -79,30 +89,32 @@ Best-effort, hub-side blocking of browser file downloads from spawned labs. A pl
 
 ## Lifecycle
 
-- [x] **Group change** - adding/removing a user from a granting group, or toggling `downloads_active`, takes effect at the user's next server start
+- [x] **Group change** - adding/removing a user from a configuring group, or toggling `downloads_active`/`downloads_allow`, takes effect at the user's next server start
   - log: 2026-06-12 implemented (v3.11.5)
-- [x] **Feature toggle** - flipping the master switch requires a hub restart; the survivor callback applies the new state to running labs (master off -> `check_routes()` reaps leftover routes since they are no longer in `extra_routes`)
+- [x] **Feature toggle** - flipping the platform default requires a hub restart; the survivor callback applies the new state to running labs (dormant default off + no configuring group -> `check_routes()` reaps leftover routes since they are no longer in `extra_routes`)
   - log: 2026-06-12 implemented (v3.11.5)
 
 ## Edge cases
 
-- [x] **Edge: user in no groups** - blocked when the master switch is on
+- [x] **Edge: user in no groups** - no group configures -> platform default applies
   - log: 2026-06-12 implemented (v3.11.5)
-- [x] **Edge: multiple groups, one granting** - allowed; any granting group wins
-  - log: 2026-06-12 implemented (v3.11.5)
+- [x] **Edge: configuring groups disagree** - highest-priority configuring group wins regardless of the others
+  - log: 2026-06-12 added
+- [x] **Edge: higher-priority section OFF, lower-priority ON** - the lower-priority group (the only one configuring) decides
+  - log: 2026-06-12 added
 - [x] **Edge: `?download=0` / falsy** - not treated as a download; passes through (`_is_download_arg`)
   - log: 2026-06-12 implemented (v3.11.5)
 - [x] **Edge: burst of blocked clicks** - one throttled toast, not a storm
   - log: 2026-06-12 implemented (v3.11.5)
-- [x] **Edge: master switch off** - no routes, no handlers; downloads work for everyone regardless of group config
+- [x] **Edge: default allow, no group configures** - no routes, no handlers; downloads work for everyone
   - log: 2026-06-12 implemented (v3.11.5)
-- [ ] **Edge: group deleted while member's lab runs** - lab keeps spawn-time behaviour until restart, then resolves as blocked
+- [ ] **Edge: group deleted while member's lab runs** - lab keeps spawn-time behaviour until restart, then re-resolves
   - log: 2026-06-12 criterion holds by construction (routes set at spawn / survivor callback); not separately tested
 
 ## Tests
 
-- [x] **Resolver tests** - `TestDownloadsAllowed`: no groups -> blocked, explicit false -> blocked, one granting -> allowed, OR across groups, only-matched-groups-count
-  - log: 2026-06-12 implemented (v3.11.5) - `tests/test_group_resolver.py`
+- [x] **Resolver tests** - `TestDownloadsAllow`: no group configures -> None, section-off -> None, single allow/block, higher-priority wins, higher-off+lower-on decides, only-matched-groups-count
+  - log: 2026-06-12 reworked to tri-state priority-wins - `tests/test_group_resolver.py`
 - [x] **Discriminator tests** - `TestIsDownloadArg` / `TestFilenameFromPath` cover the block/allow decision and toast naming
   - log: 2026-06-12 implemented (v3.11.5) - `tests/test_downloads_guard.py`
 - [ ] **Live end-to-end** - post-restart probe as `konrad.jelen`: download-arg -> 403 + toast + audit, inline -> 200 via proxy, export-markdown POST -> 403, granting group -> downloads succeed; contents API / kernels / terminals unaffected
@@ -110,7 +122,7 @@ Best-effort, hub-side blocking of browser file downloads from spawned labs. A pl
 
 ## Documentation
 
-- [x] **README** - Groups section documents the File Downloads switch and the master env var; states it is browser-download policy with notification, not full DLP
+- [x] **README** - Groups section documents the File Downloads switch, the allow/block value, the priority-wins/default-fallback rule, and the platform default env var; states it is browser-download policy with notification, not full DLP
   - log: 2026-06-12 implemented (v3.11.5)
 
 ## Out of scope
@@ -120,6 +132,6 @@ Best-effort, hub-side blocking of browser file downloads from spawned labs. A pl
 
 ## API
 
-- Blocked vectors (blocked users, master on): `GET|HEAD /user/{u}/files/*?download=<truthy>`, `GET|HEAD /user/{u}/nbconvert/*?download=<truthy>`, `POST /user/{u}/jupyterlab-export-markdown-extension/export/*`, `GET /user/{u}/jupyterlab-share-files-extension/public/share/*` -> `403` (HTML or `{"error":"downloads_blocked"}`); inline `files/`/`nbconvert/` -> proxied 200/206
-- `PUT /hub/api/admin/groups/{group}/config` body gains optional boolean `downloads_active`
-- Env: `JUPYTERHUB_BLOCK_FILE_DOWNLOADS` (`0`/`1`, default `0`)
+- Blocked vectors (blocked users): `GET|HEAD /user/{u}/files/*?download=<truthy>`, `GET|HEAD /user/{u}/nbconvert/*?download=<truthy>`, `POST /user/{u}/jupyterlab-export-markdown-extension/export/*`, `GET /user/{u}/jupyterlab-share-files-extension/public/share/*` -> `403` (HTML or `{"error":"downloads_blocked"}`); inline `files/`/`nbconvert/` -> proxied 200/206
+- `PUT /hub/api/admin/groups/{group}/config` body gains optional booleans `downloads_active`, `downloads_allow`
+- Env: `JUPYTERHUB_BLOCK_FILE_DOWNLOADS` (`0`/`1`, default `0`) - platform default when no group configures

@@ -63,15 +63,25 @@ def default_config():
         'env_vars_active': False,
         'docker_active': False,
         'volume_mounts_active': False,
-        # File downloads grant (best-effort, hub-side). When True, members may
-        # download files from their lab via the browser. With the platform
-        # JUPYTERHUB_BLOCK_FILE_DOWNLOADS master switch on, a user is blocked
-        # unless ANY of their groups has this True (grant-style OR, surfaced as
-        # downloads_allowed by the resolver). Default off = blocked when the
-        # master switch is on. Unlike the section-gating *_active flags this is
-        # itself the grant, so an absent key reads as NOT granted (no inference
-        # for legacy rows, no validator - it is an always-valid boolean).
+        # File downloads (best-effort, hub-side): section-gated, priority-wins.
+        # When downloads_active is on the group explicitly configures member
+        # downloads to downloads_allow (True=allow/False=block) and the highest-
+        # priority configuring group wins; section off = does not configure
+        # (resolver returns None, the hook applies the platform default derived
+        # from JUPYTERHUB_BLOCK_FILE_DOWNLOADS). downloads_allow defaults True so
+        # a freshly-enabled section allows downloads until explicitly blocked.
+        # No inference for legacy rows (absent active flag = not configured),
+        # no validator - both are always-valid booleans.
         'downloads_active': False,
+        'downloads_allow': True,
+        # Sudo access: section-gated, priority-wins. When sudo_active is on the
+        # group explicitly configures member sudo to sudo_enable (True=1/False=0)
+        # and the highest-priority configuring group wins; section off = does
+        # not configure (resolver returns None, the hook applies the platform
+        # JUPYTERHUB_LAB_SUDO_ENABLE_DEFAULT). sudo_enable defaults True so a
+        # freshly-enabled section grants sudo until explicitly disabled.
+        'sudo_active': False,
+        'sudo_enable': True,
         'env_vars': [],
         'gpu_access': False,
         'gpu_all': True,          # all GPUs (default); when False, gpu_device_ids applies
