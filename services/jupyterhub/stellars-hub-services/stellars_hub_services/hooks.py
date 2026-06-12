@@ -10,8 +10,66 @@ from .groups_config import GroupsConfigManager
 __all__ = (
     'make_pre_spawn_hook',
     'schedule_startup_docker_proxy_callback',
+    'schedule_startup_downloads_callback',
     'schedule_startup_favicon_callback',
 )
+
+
+# Per-user CHP route prefixes overlaid onto a download-blocked user's lab so
+# the download surfaces route to the hub instead of the container. files/ and
+# nbconvert/ are mixed inline+download (FilesGuardHandler proxies the inline
+# part); the two extension prefixes are pure downloads (DownloadBlockHandler
+# 403s them). Suffixes are relative to `{base_url}user/{username}/`.
+_DOWNLOAD_BLOCK_SUFFIXES = (
+    'files/',
+    'nbconvert/',
+    'jupyterlab-export-markdown-extension/export/',
+    'jupyterlab-share-files-extension/public/share/',
+)
+
+
+def _inject_download_handlers(app):
+    """Inject the download-guard Tornado handlers once, outside the /hub/
+    prefix (same technique as the favicon handler). Idempotent via a flag on
+    the app."""
+    if getattr(app, '_downloads_handlers_injected', False):
+        return
+    from tornado.web import url
+    from .handlers.downloads import DownloadBlockHandler, FilesGuardHandler
+
+    rules = [
+        url(app.base_url + r'user/([^/]+)/(files/.*)', FilesGuardHandler),
+        url(app.base_url + r'user/([^/]+)/(nbconvert/.*)', FilesGuardHandler),
+        url(app.base_url + r'user/([^/]+)/(jupyterlab-export-markdown-extension/export/.*)',
+            DownloadBlockHandler),
+        url(app.base_url + r'user/([^/]+)/(jupyterlab-share-files-extension/public/share/.*)',
+            DownloadBlockHandler),
+    ]
+    for rule in rules:
+        app.tornado_application.wildcard_router.rules.insert(0, rule)
+    app._downloads_handlers_injected = True
+    app.log.info("[Downloads] Injected download-guard handlers")
+
+
+async def _register_download_block(app, username, hub_target):
+    """Overlay the per-user download-block CHP routes (idempotent). Registered
+    in extra_routes so the periodic check_routes() does not reap them."""
+    for suffix in _DOWNLOAD_BLOCK_SUFFIXES:
+        routespec = app.proxy.validate_routespec(f'{app.base_url}user/{username}/{suffix}')
+        await app.proxy.add_route(routespec, hub_target, {})
+        app.proxy.extra_routes[routespec] = hub_target
+
+
+async def _unregister_download_block(app, username):
+    """Remove any per-user download-block CHP routes (e.g. the user moved into
+    a downloads-allowed group). Best-effort - a missing route is fine."""
+    for suffix in _DOWNLOAD_BLOCK_SUFFIXES:
+        routespec = app.proxy.validate_routespec(f'{app.base_url}user/{username}/{suffix}')
+        app.proxy.extra_routes.pop(routespec, None)
+        try:
+            await app.proxy.delete_route(routespec)
+        except Exception:
+            pass
 
 
 def make_pre_spawn_hook(
@@ -27,6 +85,7 @@ def make_pre_spawn_hook(
     docker_proxy_volume_name='jupyterhub_docker',
     user_compose_project_template='',
     hub_network_name='',
+    block_file_downloads=0,
 ):
     """Create a pre_spawn_hook closure that captures branding + resolution context.
 
@@ -63,6 +122,10 @@ def make_pre_spawn_hook(
             the per-user compose-project label when a group enables
             docker_limited_user_compose_project_enabled. Default from
             Dockerfile ENV JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE.
+        block_file_downloads: platform master switch (0/1). When 1, a user whose
+            groups do not grant downloads (resolved downloads_allowed False) gets
+            per-user CHP block routes overlaid onto their lab's download surfaces.
+            When 0 the feature is dormant - no routes, no handlers, no change.
     """
 
     async def pre_spawn_hook(spawner):
@@ -367,6 +430,24 @@ def make_pre_spawn_hook(
                 app.proxy.extra_routes[routespec] = hub_target
                 spawner.log.info(f"[Favicon] Added CHP route: {routespec} -> {hub_target}")
 
+        # File-download policy (best-effort, hub-side). Only when the platform
+        # master switch is on: a user whose groups grant downloads gets any
+        # stale block routes removed (covers a group-membership change between
+        # spawns); a user without the grant gets the block routes overlaid and
+        # the guard handlers injected. Master off -> this whole block is skipped
+        # and traffic flows straight to the container as before.
+        if block_file_downloads:
+            from jupyterhub.app import JupyterHub
+            app = JupyterHub.instance()
+            if resolved.get('downloads_allowed'):
+                await _unregister_download_block(app, username)
+            else:
+                parsed = urlparse(app.hub.url)
+                hub_target = f'{parsed.scheme}://{parsed.netloc}'
+                _inject_download_handlers(app)
+                await _register_download_block(app, username, hub_target)
+                spawner.log.info("[Downloads] block routes registered for user=%s", username)
+
         # JupyterLab icon URIs - resolve static filenames to fully qualified URLs
         _main_static = branding.get('lab_main_icon_static', '')
         _main_url = branding.get('lab_main_icon_url', '')
@@ -475,6 +556,68 @@ def schedule_startup_docker_proxy_callback(
 
     from tornado.ioloop import IOLoop
     IOLoop.current().add_callback(_register_proxy_for_active_servers)
+
+
+def schedule_startup_downloads_callback(
+    block_file_downloads=0,
+    gpu_available=False,
+    reserved_env_var_names=frozenset(),
+    reserved_env_var_prefixes=(),
+):
+    """Re-apply download-block CHP routes for servers that survived a hub
+    restart. pre_spawn_hook only fires on new spawns, so a lab still running
+    after a restart would otherwise lose its block overlay (the routes live in
+    the hub's in-memory extra_routes, rebuilt only here). For each active user
+    we re-resolve group membership and either register the block routes
+    (downloads_allowed False) or clear any stale ones (now allowed). No-op when
+    the master switch is off - check_routes() then reaps any leftover routes
+    because they are no longer in extra_routes.
+    """
+    if not block_file_downloads:
+        return
+
+    async def _register_downloads_for_active_servers():
+        from jupyterhub.app import JupyterHub
+        from jupyterhub import orm
+
+        app = JupyterHub.instance()
+        _inject_download_handlers(app)
+
+        parsed = urlparse(app.hub.url)
+        hub_target = f'{parsed.scheme}://{parsed.netloc}'
+
+        try:
+            all_configs = GroupsConfigManager.get_instance().get_all_configs()
+        except Exception as e:
+            app.log.error(f"[Downloads Startup] Failed to load group configs: {e}")
+            all_configs = []
+
+        count = 0
+        for orm_user in app.db.query(orm.User).all():
+            user = app.users.get(orm_user.name)
+            if not (user and user.spawner and user.spawner.active):
+                continue
+            resolved = resolve_group_config(
+                user_group_names=[g.name for g in user.groups],
+                all_group_configs=all_configs,
+                gpu_available=gpu_available,
+                reserved_names=reserved_env_var_names,
+                reserved_prefixes=reserved_env_var_prefixes,
+            )
+            if resolved.get('downloads_allowed'):
+                await _unregister_download_block(app, user.name)
+            else:
+                await _register_download_block(app, user.name, hub_target)
+                count += 1
+
+        if count:
+            app.log.info(
+                f"[Downloads Startup] Re-registered block routes for {count} "
+                "surviving server(s)"
+            )
+
+    from tornado.ioloop import IOLoop
+    IOLoop.current().add_callback(_register_downloads_for_active_servers)
 
 
 def schedule_startup_favicon_callback(favicon_uri='', favicon_busy_target=''):

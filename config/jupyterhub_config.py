@@ -35,6 +35,7 @@ from stellars_hub_services import (
     schedule_api_keys_reconcile,            # periodic api-keys-pool reconcile (rebuilds in-use set from running containers)
     schedule_startup_api_keys_reconcile,    # startup api-keys-pool reconcile (survivors of a hub restart)
     schedule_startup_docker_proxy_callback, # re-registers docker-proxy listeners for limited-docker users that survived a hub restart
+    schedule_startup_downloads_callback,    # re-registers download-block CHP routes for blocked users that survived a hub restart
     schedule_startup_favicon_callback,      # registers CHP favicon routes for already-running servers
     setup_branding,                         # processes logo/favicon/icon URIs, copies file:// to static dir
 )
@@ -115,6 +116,13 @@ def _resolve_memory_quota_mb(fraction):
 
 
 JUPYTERHUB_MEMORY_MAX_USAGE_MB = _resolve_memory_quota_mb(JUPYTERHUB_MEMORY_MAX_USAGE_FRACTION)
+
+# File downloads (best-effort policy). 0=allow everywhere (dormant, no routes),
+# 1=block browser downloads from labs unless a user's group grants it via the
+# per-group downloads_active flag. Not a security boundary - the lab has a root
+# shell with egress, so this stops the download affordances and audits them, it
+# does not prevent a determined terminal/kernel exfiltration.
+JUPYTERHUB_BLOCK_FILE_DOWNLOADS = int(os.environ.get("JUPYTERHUB_BLOCK_FILE_DOWNLOADS", 0))
 
 # Misc
 TF_CPP_MIN_LOG_LEVEL = int(os.environ.get("TF_CPP_MIN_LOG_LEVEL", 3))                          # suppress TensorFlow logging in spawned containers
@@ -631,6 +639,7 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     docker_proxy_volume_name=JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME,      # named docker volume; the spawner subpath-mounts this into each lab
     user_compose_project_template=JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE,  # rendered per-user when a docker-limited group enables it
     hub_network_name=JUPYTERHUB_NETWORK_NAME,                     # revealed in user's `docker network ls` when their group enables it (default on)
+    block_file_downloads=JUPYTERHUB_BLOCK_FILE_DOWNLOADS,        # master switch: overlay per-user download-block CHP routes for non-granted users
 )
 
 
@@ -770,6 +779,17 @@ schedule_startup_docker_proxy_callback(
     compose_project=COMPOSE_PROJECT_NAME,
     user_compose_project_template=JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE,
     hub_network_name=JUPYTERHUB_NETWORK_NAME,
+)
+
+# Re-apply per-user download-block CHP routes for labs that survived this hub
+# restart (pre_spawn_hook does not fire for survivors). No-op when the master
+# switch is off.
+print(f"[Config] File-download policy: {'BLOCK (per-group downloads_active grants)' if JUPYTERHUB_BLOCK_FILE_DOWNLOADS else 'ALLOW (dormant)'}")
+schedule_startup_downloads_callback(
+    block_file_downloads=JUPYTERHUB_BLOCK_FILE_DOWNLOADS,
+    gpu_available=bool(gpu_enabled),
+    reserved_env_var_names=RESERVED_ENV_VAR_NAMES,
+    reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,
 )
 
 # API keys pool: rebuild the in-use set from running containers on startup

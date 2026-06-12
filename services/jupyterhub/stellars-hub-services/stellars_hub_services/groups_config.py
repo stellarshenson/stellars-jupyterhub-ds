@@ -63,6 +63,15 @@ def default_config():
         'env_vars_active': False,
         'docker_active': False,
         'volume_mounts_active': False,
+        # File downloads grant (best-effort, hub-side). When True, members may
+        # download files from their lab via the browser. With the platform
+        # JUPYTERHUB_BLOCK_FILE_DOWNLOADS master switch on, a user is blocked
+        # unless ANY of their groups has this True (grant-style OR, surfaced as
+        # downloads_allowed by the resolver). Default off = blocked when the
+        # master switch is on. Unlike the section-gating *_active flags this is
+        # itself the grant, so an absent key reads as NOT granted (no inference
+        # for legacy rows, no validator - it is an always-valid boolean).
+        'downloads_active': False,
         'env_vars': [],
         'gpu_access': False,
         'gpu_all': True,          # all GPUs (default); when False, gpu_device_ids applies

@@ -28,6 +28,7 @@ from .gpu import is_wsl2, resolve_gpu_mode
 from .hooks import (
     make_pre_spawn_hook,
     schedule_startup_docker_proxy_callback,
+    schedule_startup_downloads_callback,
     schedule_startup_favicon_callback,
 )
 from .idle_culler import (
@@ -81,6 +82,7 @@ __all__ = [
     "is_wsl2",
     "load_merged_user_volumes",
     "make_pre_spawn_hook",
+    "schedule_startup_downloads_callback",
     "register_events",
     "resolve_gpu_mode",
     "schedule_startup_docker_proxy_callback",
