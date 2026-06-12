@@ -550,33 +550,90 @@ class TestSectionActiveFlags:
         assert _resolve(["grants", "folded"], cfgs)["docker_access"] is True
 
 
-class TestDownloadsAllowed:
-    """File-downloads grant: OR across groups. The flag IS the grant (not a
-    section gate), so an absent key reads as not granted - distinct from the
-    *_active flags that default active when absent."""
+class TestDownloadsAllow:
+    """File downloads: section-gated, priority-wins. None until a configuring
+    group (downloads_active on) is seen; the first such group (priority-
+    descending) wins. A section-off group does not configure it; the hook
+    applies the platform default when the resolved value is None."""
 
-    def test_no_grant_by_default(self):
+    def test_none_when_no_group_configures(self):
         cfgs = [_grp("a")]
-        assert _resolve(["a"], cfgs)["downloads_allowed"] is False
+        assert _resolve(["a"], cfgs)["downloads_allow"] is None
 
-    def test_explicit_false_is_not_granted(self):
-        cfgs = [_grp("a", downloads_active=False)]
-        assert _resolve(["a"], cfgs)["downloads_allowed"] is False
+    def test_section_off_does_not_configure(self):
+        cfgs = [_grp("a", downloads_active=False, downloads_allow=True)]
+        assert _resolve(["a"], cfgs)["downloads_allow"] is None
 
-    def test_granted_when_active(self):
-        cfgs = [_grp("a", downloads_active=True)]
-        assert _resolve(["a"], cfgs)["downloads_allowed"] is True
+    def test_single_group_allow(self):
+        cfgs = [_grp("a", downloads_active=True, downloads_allow=True)]
+        assert _resolve(["a"], cfgs)["downloads_allow"] is True
 
-    def test_or_across_groups(self):
+    def test_single_group_block(self):
+        cfgs = [_grp("a", downloads_active=True, downloads_allow=False)]
+        assert _resolve(["a"], cfgs)["downloads_allow"] is False
+
+    def test_higher_priority_wins(self):
         cfgs = [
-            _grp("a", downloads_active=False),
-            _grp("b", downloads_active=True),
+            _grp("hi", downloads_active=True, downloads_allow=False),
+            _grp("lo", downloads_active=True, downloads_allow=True),
         ]
-        assert _resolve(["a", "b"], cfgs)["downloads_allowed"] is True
+        assert _resolve(["hi", "lo"], cfgs)["downloads_allow"] is False
+
+    def test_higher_priority_off_lower_configures(self):
+        cfgs = [
+            _grp("hi", downloads_active=False, downloads_allow=True),
+            _grp("lo", downloads_active=True, downloads_allow=False),
+        ]
+        assert _resolve(["hi", "lo"], cfgs)["downloads_allow"] is False
 
     def test_only_matched_groups_count(self):
         cfgs = [
             _grp("mine", downloads_active=False),
-            _grp("other", downloads_active=True),
+            _grp("other", downloads_active=True, downloads_allow=False),
         ]
-        assert _resolve(["mine"], cfgs)["downloads_allowed"] is False
+        assert _resolve(["mine"], cfgs)["downloads_allow"] is None
+
+
+class TestSudoAccess:
+    """Sudo access: section-gated, priority-wins. The resolver returns
+    True/False when a group configures it (sudo_active on) and None when none
+    do - the hook then applies the platform default. `all_configs` is passed
+    priority-descending, so the first configuring group decides."""
+
+    def test_unconfigured_returns_none(self):
+        cfgs = [_grp("a")]
+        assert _resolve(["a"], cfgs)["sudo_enable"] is None
+
+    def test_section_off_does_not_configure(self):
+        cfgs = [_grp("a", sudo_active=False, sudo_enable=False)]
+        assert _resolve(["a"], cfgs)["sudo_enable"] is None
+
+    def test_single_configuring_group_enable(self):
+        cfgs = [_grp("a", sudo_active=True, sudo_enable=True)]
+        assert _resolve(["a"], cfgs)["sudo_enable"] is True
+
+    def test_single_configuring_group_disable(self):
+        cfgs = [_grp("a", sudo_active=True, sudo_enable=False)]
+        assert _resolve(["a"], cfgs)["sudo_enable"] is False
+
+    def test_higher_priority_wins(self):
+        # all_configs is priority-descending; "hi" is higher priority than "lo".
+        cfgs = [
+            _grp("hi", sudo_active=True, sudo_enable=False),
+            _grp("lo", sudo_active=True, sudo_enable=True),
+        ]
+        assert _resolve(["hi", "lo"], cfgs)["sudo_enable"] is False
+
+    def test_higher_priority_off_lower_on_decides(self):
+        cfgs = [
+            _grp("hi", sudo_active=False, sudo_enable=True),
+            _grp("lo", sudo_active=True, sudo_enable=False),
+        ]
+        assert _resolve(["hi", "lo"], cfgs)["sudo_enable"] is False
+
+    def test_only_matched_groups_count(self):
+        cfgs = [
+            _grp("mine", sudo_active=False),
+            _grp("other", sudo_active=True, sudo_enable=False),
+        ]
+        assert _resolve(["mine"], cfgs)["sudo_enable"] is None

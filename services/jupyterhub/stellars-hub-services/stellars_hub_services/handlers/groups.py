@@ -213,10 +213,11 @@ class GroupsConfigHandler(BaseHandler):
             config_dict['env_vars'] = env_vars
 
         # Section active flags: off = section reads as unconfigured at resolve
-        # time, but its data persists and re-enabling restores it.
-        # downloads_active is a grant (not a section gate) but uses the same
-        # boolean accept/merge path.
-        for _key in ('env_vars_active', 'docker_active', 'volume_mounts_active', 'downloads_active'):
+        # time, but its data persists and re-enabling restores it. downloads and
+        # sudo additionally carry a value flag (downloads_allow / sudo_enable)
+        # via the same boolean accept/merge path.
+        for _key in ('env_vars_active', 'docker_active', 'volume_mounts_active',
+                     'downloads_active', 'downloads_allow', 'sudo_active', 'sudo_enable'):
             if _key in body:
                 config_dict[_key] = bool(body[_key])
 
