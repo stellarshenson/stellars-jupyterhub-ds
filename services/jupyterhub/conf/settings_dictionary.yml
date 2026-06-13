@@ -41,15 +41,15 @@ Docker:
     description: Docker API timeout in seconds (for volume size fetch, etc.)
     default: "360"
 
-  - name: JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB
+  - name: JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB
     description: Max container writable layer in GB before warning (0=disabled)
     default: "10"
 
-  - name: JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE_GB
+  - name: JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB
     description: Max total volume size in GB before warning (0=disabled)
     default: "50"
 
-  - name: JUPYTERHUB_MEMORY_MAX_USAGE_FRACTION
+  - name: JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION
     description: Per-user memory warning threshold as fraction of host RAM (e.g. 0.25 = 25%)
     default: "0.25"
 
@@ -67,7 +67,7 @@ Docker Proxy (limited-docker users):
     default: jupyterhub.docker.proxy
 
 Docker Spawner:
-  - name: JUPYTERHUB_NOTEBOOK_IMAGE
+  - name: JUPYTERHUB_LAB_IMAGE
     description: User container image
     default: stellars/stellars-jupyterlab-ds:latest
 
@@ -85,15 +85,15 @@ GPU:
     default: nvidia/cuda:13.0.2-base-ubuntu24.04
 
 Services:
-  - name: JUPYTERHUB_SERVICE_MLFLOW
+  - name: JUPYTERHUB_LAB_SERVICE_MLFLOW
     description: MLflow service (0=disabled, 1=enabled)
     default: "1"
 
-  - name: JUPYTERHUB_SERVICE_RESOURCES_MONITOR
+  - name: JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR
     description: Resources monitor service (0=disabled, 1=enabled)
     default: "1"
 
-  - name: JUPYTERHUB_SERVICE_TENSORBOARD
+  - name: JUPYTERHUB_LAB_SERVICE_TENSORBOARD
     description: TensorBoard service (0=disabled, 1=enabled)
     default: "1"
 
@@ -151,8 +151,8 @@ Abuse Protection:
     description: Lockout window in seconds after failed attempts
     default: "600"
 
-  - name: JUPYTERHUB_BLOCK_FILE_DOWNLOADS
-    description: Default browser file-download policy for members (0=allow, 1=block) - applied only when no group configures downloads via its File Downloads section; a configuring group overrides this (highest-priority wins). Best-effort policy with user notification, not full exfiltration prevention
+  - name: JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS
+    description: Default member file-download policy (0=allow, 1=block); per-group setting overrides
     default: "0"
 
 Activity Monitor:
@@ -201,8 +201,8 @@ User Environment:
     description: Path inside the hub container to an operator user-volume descriptions overlay YAML (suffix-keyed, with mount/description); merges over /srv/jupyterhub/volumes_dictionary.yml, operator fields win
     default: ""
 
-  - name: JUPYTERHUB_LAB_SUDO_ENABLE_DEFAULT
-    description: Default sudo for members (0=off, 1=on) - injected as JUPYTERLAB_SUDO_ENABLE into each lab when no group configures sudo via its Sudo Access section; a configuring group overrides this
+  - name: JUPYTERHUB_LAB_SUDO_ENABLE
+    description: Default member sudo (0=off, 1=on); per-group setting overrides
     default: "1"
 
 Branding:

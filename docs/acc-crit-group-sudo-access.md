@@ -1,14 +1,14 @@
 # Acceptance Criteria - Group Sudo Access Control
 
-A foldable "Sudo Access" group config section that explicitly sets whether members get sudo in their lab. When the section is on, the group configures sudo (enable or disable); `pre_spawn_hook` injects `JUPYTERLAB_SUDO_ENABLE=0|1` into the spawned container, which the image consumes. Resolution is section-gated and priority-wins: among the groups that configure it, the highest-priority group's value applies; if no group configures it, the platform default `JUPYTERHUB_LAB_SUDO_ENABLE_DEFAULT` applies. Hub-side only - the hub injects the env var; enforcing sudo from it is the image's job.
+A foldable "Sudo Access" group config section that explicitly sets whether members get sudo in their lab. When the section is on, the group configures sudo (enable or disable); `pre_spawn_hook` injects `JUPYTERLAB_SUDO_ENABLE=0|1` into the spawned container, which the image consumes. Resolution is section-gated and priority-wins: among the groups that configure it, the highest-priority group's value applies; if no group configures it, the platform default `JUPYTERHUB_LAB_SUDO_ENABLE` applies. Hub-side only - the hub injects the env var; enforcing sudo from it is the image's job.
 
 ## Platform default
 
-- [x] **Default env** - `JUPYTERHUB_LAB_SUDO_ENABLE_DEFAULT` (compose, `0`/`1`, default `1`) sets the value used when no group configures sudo
+- [x] **Default env** - `JUPYTERHUB_LAB_SUDO_ENABLE` (compose, `0`/`1`, default `1`) sets the value used when no group configures sudo
   - log: 2026-06-12 implemented (v3.11.5)
 - [x] **Settings page** - listed in `settings_dictionary.yml` so it appears on the admin Settings page
   - log: 2026-06-12 implemented (v3.11.5)
-- [x] **Compose default** - `JUPYTERHUB_LAB_SUDO_ENABLE_DEFAULT=1` present in `compose.yml` jupyterhub service environment
+- [x] **Compose default** - `JUPYTERHUB_LAB_SUDO_ENABLE=1` present in `compose.yml` jupyterhub service environment
   - log: 2026-06-12 implemented (v3.11.5)
 
 ## Group config (admin)
@@ -34,7 +34,7 @@ A foldable "Sudo Access" group config section that explicitly sets whether membe
   - log: 2026-06-12 implemented (v3.11.5)
 - [x] **Resolved value** - resolver returns `sudo_enable` as `True`/`False` when configured by some group, or `None` when no group configures it
   - log: 2026-06-12 implemented (v3.11.5)
-- [x] **Default fallback** - the spawn-time value is the resolved `sudo_enable` when not `None`, else `JUPYTERHUB_LAB_SUDO_ENABLE_DEFAULT` (resolver stays pure; the hook applies the default)
+- [x] **Default fallback** - the spawn-time value is the resolved `sudo_enable` when not `None`, else `JUPYTERHUB_LAB_SUDO_ENABLE` (resolver stays pure; the hook applies the default)
   - log: 2026-06-12 implemented (v3.11.5)
 
 ## Spawn injection
@@ -81,4 +81,4 @@ A foldable "Sudo Access" group config section that explicitly sets whether membe
 
 - `PUT /hub/api/admin/groups/{group}/config` body gains optional booleans `sudo_active`, `sudo_enable`
 - Env into container: `JUPYTERLAB_SUDO_ENABLE` (`0`/`1`)
-- Platform env: `JUPYTERHUB_LAB_SUDO_ENABLE_DEFAULT` (`0`/`1`, default `1`)
+- Platform env: `JUPYTERHUB_LAB_SUDO_ENABLE` (`0`/`1`, default `1`)

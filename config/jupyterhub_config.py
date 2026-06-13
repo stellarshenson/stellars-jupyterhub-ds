@@ -76,9 +76,9 @@ c = get_config()  # noqa: F821  - JupyterHub injects get_config() into config fi
 # Core platform toggles (0=disabled, 1=enabled)
 JUPYTERHUB_SSL_ENABLED = int(os.environ.get("JUPYTERHUB_SSL_ENABLED", 1))                      # direct SSL termination (disable when behind reverse proxy)
 JUPYTERHUB_GPU_ENABLED = int(os.environ.get("JUPYTERHUB_GPU_ENABLED", 2))                      # 0=off, 1=forced, 2=auto-detect
-JUPYTERHUB_SERVICE_MLFLOW = int(os.environ.get("JUPYTERHUB_SERVICE_MLFLOW", 1))                 # MLflow tracking in spawned containers
-JUPYTERHUB_SERVICE_RESOURCES_MONITOR = int(os.environ.get("JUPYTERHUB_SERVICE_RESOURCES_MONITOR", 1))  # resource monitor widget
-JUPYTERHUB_SERVICE_TENSORBOARD = int(os.environ.get("JUPYTERHUB_SERVICE_TENSORBOARD", 1))       # TensorBoard in spawned containers
+JUPYTERHUB_LAB_SERVICE_MLFLOW = int(os.environ.get("JUPYTERHUB_LAB_SERVICE_MLFLOW", 1))                 # MLflow tracking in spawned containers
+JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR = int(os.environ.get("JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR", 1))  # resource monitor widget
+JUPYTERHUB_LAB_SERVICE_TENSORBOARD = int(os.environ.get("JUPYTERHUB_LAB_SERVICE_TENSORBOARD", 1))       # TensorBoard in spawned containers
 JUPYTERHUB_SIGNUP_ENABLED = int(os.environ.get("JUPYTERHUB_SIGNUP_ENABLED", 1))                 # user self-registration (0=admin-only)
 
 # Idle culler - automatic server shutdown after inactivity
@@ -97,9 +97,9 @@ ACTIVITYMON_SAMPLE_INTERVAL = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_SAMPLE_
 
 # Docker
 JUPYTERHUB_DOCKER_TIMEOUT = int(os.environ.get("JUPYTERHUB_DOCKER_TIMEOUT", 360))               # Docker API timeout in seconds
-JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB = int(os.environ.get("JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB", 10))  # max writable layer in GB before warning
-JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE_GB = int(os.environ.get("JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE_GB", 50))        # max total volume size in GB before warning
-JUPYTERHUB_MEMORY_MAX_USAGE_FRACTION = float(os.environ.get("JUPYTERHUB_MEMORY_MAX_USAGE_FRACTION", 0.25))  # per-user memory warning threshold as fraction of host RAM (default 25%)
+JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB = int(os.environ.get("JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB", 10))  # max writable layer in GB before warning
+JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB = int(os.environ.get("JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB", 50))        # max total volume size in GB before warning
+JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION = float(os.environ.get("JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION", 0.25))  # per-user memory warning threshold as fraction of host RAM (default 25%)
 
 
 def _resolve_memory_quota_mb(fraction):
@@ -115,19 +115,19 @@ def _resolve_memory_quota_mb(fraction):
     return 4096  # fallback: 4 GB if /proc/meminfo unavailable
 
 
-JUPYTERHUB_MEMORY_MAX_USAGE_MB = _resolve_memory_quota_mb(JUPYTERHUB_MEMORY_MAX_USAGE_FRACTION)
+JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB = _resolve_memory_quota_mb(JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION)
 
 # File downloads (best-effort policy). 0=allow everywhere (dormant, no routes),
 # 1=block browser downloads from labs unless a user's group grants it via the
 # per-group downloads_active flag. Not a security boundary - the lab has a root
 # shell with egress, so this stops the download affordances and audits them, it
 # does not prevent a determined terminal/kernel exfiltration.
-JUPYTERHUB_BLOCK_FILE_DOWNLOADS = int(os.environ.get("JUPYTERHUB_BLOCK_FILE_DOWNLOADS", 0))
+JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS = int(os.environ.get("JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS", 0))
 
 # Member sudo default. Injected into every spawn as JUPYTERLAB_SUDO_ENABLE
 # (consumed by the lab image) when no group configures sudo via its per-group
 # Sudo Access section; a configuring group overrides this per the priority rule.
-JUPYTERHUB_LAB_SUDO_ENABLE_DEFAULT = int(os.environ.get("JUPYTERHUB_LAB_SUDO_ENABLE_DEFAULT", 1))
+JUPYTERHUB_LAB_SUDO_ENABLE = int(os.environ.get("JUPYTERHUB_LAB_SUDO_ENABLE", 1))
 
 # Misc
 TF_CPP_MIN_LOG_LEVEL = int(os.environ.get("TF_CPP_MIN_LOG_LEVEL", 3))                          # suppress TensorFlow logging in spawned containers
@@ -136,7 +136,7 @@ JUPYTERHUB_TIMEZONE = os.environ.get("JUPYTERHUB_TIMEZONE", "Etc/UTC")          
 # Docker spawner settings
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")                                     # URL prefix (e.g. /jupyterhub), None or / for root
 JUPYTERHUB_NETWORK_NAME = os.environ.get("JUPYTERHUB_NETWORK_NAME", "jupyterhub_network")       # Docker network for hub + spawned containers
-JUPYTERHUB_NOTEBOOK_IMAGE = os.environ.get("JUPYTERHUB_NOTEBOOK_IMAGE", "stellars/stellars-jupyterlab-ds:latest")  # JupyterLab image to spawn
+JUPYTERHUB_LAB_IMAGE = os.environ.get("JUPYTERHUB_LAB_IMAGE", "stellars/stellars-jupyterlab-ds:latest")  # JupyterLab image to spawn
 COMPOSE_PROJECT_NAME = os.environ.get("COMPOSE_PROJECT_NAME", "").strip()                      # passed through by compose - drives docker compose project label and volume namespace; required (every named volume in this config is namespaced as f"{COMPOSE_PROJECT_NAME}_..."; empty would silently mismatch the compose-side namespacing and fail spawns at Subpath resolution)
 if not COMPOSE_PROJECT_NAME:
     raise RuntimeError(
@@ -525,9 +525,9 @@ c.DockerSpawner.environment = {
     'MLFLOW_PORT': 5000,                                     # MLflow server port
     'MLFLOW_HOST': '0.0.0.0',                                # MLflow bind address
     'MLFLOW_WORKERS': 1,                                     # MLflow worker count
-    'ENABLE_SERVICE_MLFLOW': JUPYTERHUB_SERVICE_MLFLOW,      # toggle MLflow in container startup
-    'ENABLE_SERVICE_RESOURCES_MONITOR': JUPYTERHUB_SERVICE_RESOURCES_MONITOR,  # toggle resource monitor widget
-    'ENABLE_SERVICE_TENSORBOARD': JUPYTERHUB_SERVICE_TENSORBOARD,  # toggle TensorBoard in container startup
+    'ENABLE_SERVICE_MLFLOW': JUPYTERHUB_LAB_SERVICE_MLFLOW,      # toggle MLflow in container startup
+    'ENABLE_SERVICE_RESOURCES_MONITOR': JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR,  # toggle resource monitor widget
+    'ENABLE_SERVICE_TENSORBOARD': JUPYTERHUB_LAB_SERVICE_TENSORBOARD,  # toggle TensorBoard in container startup
     'NVIDIA_DETECTED': nvidia_detected,                      # GPU hardware availability flag (informational)
     'JUPYTERLAB_AUX_SCRIPTS_PATH': JUPYTERLAB_AUX_SCRIPTS_PATH,  # admin startup scripts path
     'JUPYTERLAB_AUX_MENU_PATH': JUPYTERLAB_AUX_MENU_PATH,      # admin-managed custom menu definitions
@@ -551,7 +551,7 @@ RESERVED_ENV_VAR_NAMES = set(c.DockerSpawner.environment.keys()) | {
 # group config. Left empty here so a user who is not in a GPU-enabled group
 # does not receive the device.
 
-c.DockerSpawner.image = JUPYTERHUB_NOTEBOOK_IMAGE           # JupyterLab Docker image to spawn
+c.DockerSpawner.image = JUPYTERHUB_LAB_IMAGE           # JupyterLab Docker image to spawn
 c.DockerSpawner.use_internal_ip = True                       # use container IP on Docker network (not host)
 c.DockerSpawner.network_name = JUPYTERHUB_NETWORK_NAME       # Docker network connecting hub and user containers
 c.JupyterHub.default_url = JUPYTERHUB_BASE_URL_PREFIX + '/hub/home'  # redirect after login
@@ -577,9 +577,9 @@ c.JupyterHub.template_vars = {
     'idle_culler_max_extension': JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION,  # max extension hours display
     'activitymon_target_hours': ACTIVITYMON_TARGET_HOURS,    # activity scoring window display
     'activitymon_sample_interval': ACTIVITYMON_SAMPLE_INTERVAL,  # sampling interval display
-    'container_max_extra_space_mb': JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB * 1024,  # threshold in MB for container size warning
-    'volume_max_total_size_mb': JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE_GB * 1024,        # threshold in MB for volume size warning
-    'memory_max_usage_mb': JUPYTERHUB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning (0 GB -> 30% of host RAM)
+    'container_max_extra_space_mb': JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB * 1024,  # threshold in MB for container size warning
+    'volume_max_total_size_mb': JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB * 1024,        # threshold in MB for volume size warning
+    'memory_max_usage_mb': JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning (0 GB -> 30% of host RAM)
     'favicon_uri': branding['favicon_uri'],                  # external favicon URL (empty = static_url default)
 }
 
@@ -596,9 +596,9 @@ c.JupyterHub.tornado_settings = {
         'idle_culler_max_extension': JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION,  # for ExtendSessionHandler limits
         'gpu_list': gpu_list,                                 # host GPUs enumerated at startup (for GroupsPageHandler)
         'gpu_isolation_enforced': GPU_ISOLATION_ENFORCED,     # False on WSL2 -> GroupsPageHandler shows the advisory note
-        'container_max_extra_space_mb': JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB * 1024,  # threshold in MB for container size warning
-        'volume_max_total_size_mb': JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE_GB * 1024,        # threshold in MB for volume size warning
-        'memory_max_usage_mb': JUPYTERHUB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning
+        'container_max_extra_space_mb': JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB * 1024,  # threshold in MB for container size warning
+        'volume_max_total_size_mb': JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB * 1024,        # threshold in MB for volume size warning
+        'memory_max_usage_mb': JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning
         'reserved_env_var_names': RESERVED_ENV_VAR_NAMES,                              # names groups cannot override
         'reserved_env_var_prefixes': RESERVED_ENV_VAR_PREFIXES,                        # prefixes reserved for JupyterHub/platform
         'shared_volume_name': f"{COMPOSE_PROJECT_NAME}_jupyterhub_shared",             # standard shared volume offered by the groups volume-mounts UI
@@ -644,8 +644,8 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     docker_proxy_volume_name=JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME,      # named docker volume; the spawner subpath-mounts this into each lab
     user_compose_project_template=JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE,  # rendered per-user when a docker-limited group enables it
     hub_network_name=JUPYTERHUB_NETWORK_NAME,                     # revealed in user's `docker network ls` when their group enables it (default on)
-    block_file_downloads=JUPYTERHUB_BLOCK_FILE_DOWNLOADS,        # master switch: overlay per-user download-block CHP routes for non-granted users
-    lab_sudo_enable_default=JUPYTERHUB_LAB_SUDO_ENABLE_DEFAULT,  # default JUPYTERLAB_SUDO_ENABLE when no group configures sudo
+    block_file_downloads=JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS,        # master switch: overlay per-user download-block CHP routes for non-granted users
+    lab_sudo_enable_default=JUPYTERHUB_LAB_SUDO_ENABLE,  # default JUPYTERLAB_SUDO_ENABLE when no group configures sudo
 )
 
 
@@ -790,9 +790,9 @@ schedule_startup_docker_proxy_callback(
 # Re-apply per-user download-block CHP routes for labs that survived this hub
 # restart (pre_spawn_hook does not fire for survivors). No-op when the master
 # switch is off.
-print(f"[Config] File-download policy: {'BLOCK (per-group downloads_active grants)' if JUPYTERHUB_BLOCK_FILE_DOWNLOADS else 'ALLOW (dormant)'}")
+print(f"[Config] File-download policy: {'BLOCK (per-group downloads_active grants)' if JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS else 'ALLOW (dormant)'}")
 schedule_startup_downloads_callback(
-    block_file_downloads=JUPYTERHUB_BLOCK_FILE_DOWNLOADS,
+    block_file_downloads=JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS,
     gpu_available=bool(gpu_enabled),
     reserved_env_var_names=RESERVED_ENV_VAR_NAMES,
     reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,
