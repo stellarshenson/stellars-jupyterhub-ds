@@ -67,7 +67,7 @@ def _render_user_compose_project(template, *, compose_project, username):
 
 def _build_overrides(resolved, *, username, compose_project='',
                      user_compose_project_template='', hub_network_name=''):
-    """Map the group_resolver dict to ProxyConfig field names."""
+    """Map the resolved policy dict to ProxyConfig field names."""
     enforce = bool(resolved.get('docker_limited_user_compose_project_enabled'))
     allow_override = bool(resolved.get('docker_limited_user_compose_project_allow_override'))
     if enforce:

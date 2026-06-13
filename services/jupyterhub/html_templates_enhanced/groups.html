@@ -748,6 +748,18 @@ require(["jquery"], function($) {
     });
   }
 
+  // Build the native-title tooltip text for a group row from the server-provided
+  // policy_summary (one detail line per active policy; the registry is the single
+  // source - the client renders, never recomputes). Newline-joined; the browser
+  // renders \n in a title attribute as line breaks.
+  function policyTooltip(group, position) {
+    var lines = ['Group: ' + group.name, 'Priority: ' + position, ''];
+    var details = (group.policy_summary || []).map(function(p) { return p.detail; });
+    lines = lines.concat(details.length ? details : ['No policies configured']);
+    lines.push('', 'Click to configure');
+    return lines.join('\n');
+  }
+
   function renderTable() {
     $('#loading-indicator').hide();
     $('#groups-toolbar').show();
@@ -769,31 +781,9 @@ require(["jquery"], function($) {
       var isFirst = idx === 0;
       var isLast = idx === currentGroups.length - 1;
 
-      var features = [];
-      var envCount = (group.config.env_vars && group.config.env_vars.length) || 0;
-      if (group.config.env_vars_active && envCount > 0) {
-        features.push(envCount + ' Var' + (envCount !== 1 ? 's' : ''));
-      }
-      if (group.config.gpu_access) features.push('GPU');
-      if (group.config.docker_active &&
-          (group.config.docker_access || group.config.docker_limited || group.config.docker_privileged)) {
-        features.push('Docker');
-      }
-      if (group.config.mem_limit_enabled && group.config.mem_limit_gb > 0) {
-        features.push('Mem');
-      }
-      if (group.config.cpu_limit_enabled && group.config.cpu_limit_cores > 0) {
-        features.push('CPU');
-      }
-      if (group.config.api_keys_pool && group.config.api_keys_pool.enabled) {
-        features.push('Keys');
-      }
-      if (group.config.volume_mounts_active &&
-          group.config.volume_mounts && group.config.volume_mounts.length > 0) {
-        features.push('Volumes');
-      }
-      if (group.config.downloads_active) features.push('Downloads ' + (group.config.downloads_allow === false ? 'off' : 'on'));
-      if (group.config.sudo_active) features.push('Sudo ' + (group.config.sudo_enable === false ? 'off' : 'on'));
+      // Badges come from the server-provided policy_summary (registry-sourced),
+      // so badge text never drifts from the resolution/display logic.
+      var features = (group.policy_summary || []).map(function(p) { return p.badge; });
 
       var featureBadges = features.length
         ? features.map(function(s) { return '<span class="badge bg-secondary me-1">' + escapeHtml(s) + '</span>'; }).join('')
@@ -804,16 +794,13 @@ require(["jquery"], function($) {
           '<i class="fa fa-grip-vertical text-muted"></i>' +
         '</td>' +
         '<td class="text-center">' + (idx + 1) + '</td>' +
-        '<td class="text-nowrap"><strong>' + escapeHtml(group.name) + '</strong></td>' +
+        '<td class="text-nowrap"><a href="#" class="btn-config fw-bold text-decoration-none" data-name="' + escapeAttr(group.name) + '" title="' + escapeAttr(policyTooltip(group, idx + 1)) + '">' + escapeHtml(group.name) + '</a></td>' +
         '<td class="text-muted small">' + escapeHtml(group.description || '') + '</td>' +
         '<td class="small">' + featureBadges + '</td>' +
         '<td class="text-center">' +
           '<span title="' + formatMembersTooltip(group.members) + '">' + group.member_count + '</span>' +
         '</td>' +
         '<td class="text-center text-nowrap">' +
-          '<button class="btn btn-outline-primary btn-sm me-1 btn-config d-inline-flex justify-content-center align-items-center" style="width:2rem;padding-left:3px;padding-right:0;" data-name="' + escapeAttr(group.name) + '" title="Configure group">' +
-            '<i class="fa fa-cog" style="font-size:0.85em;"></i>' +
-          '</button>' +
           '<button class="btn btn-outline-secondary btn-sm me-1 btn-move-up d-inline-flex justify-content-center align-items-center" style="width:2rem;padding-left:3px;padding-right:0;" data-name="' + escapeAttr(group.name) + '" title="Move up (higher priority)"' +
             (isFirst ? ' disabled' : '') + '>' +
             '<i class="fa fa-arrow-up" style="font-size:0.85em;"></i>' +
@@ -831,7 +818,7 @@ require(["jquery"], function($) {
     });
 
     // Bind action buttons
-    tbody.find('.btn-config').on('click', function() { openConfig($(this).data('name')); });
+    tbody.find('.btn-config').on('click', function(e) { e.preventDefault(); openConfig($(this).data('name')); });
     tbody.find('.btn-move-up').on('click', function() { moveGroup($(this).data('name'), -1); });
     tbody.find('.btn-move-down').on('click', function() { moveGroup($(this).data('name'), 1); });
     tbody.find('.btn-delete').on('click', function() { deleteGroup($(this).data('name')); });

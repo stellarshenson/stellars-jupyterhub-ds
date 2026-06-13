@@ -6,12 +6,13 @@ import os
 from jupyterhub.handlers import BaseHandler
 from tornado import web
 
-from ..api_keys_pool import merge_pool_on_save
-from ..group_resolver import is_reserved_env_var
-from ..groups_config import (
-    GroupConfigValidator,
-    GroupsConfigManager,
-    validate_group_name,
+from ..groups_config import GroupsConfigManager, validate_group_name
+from ..policy import (
+    PolicyCoerceError,
+    PolicyCtx,
+    coerce_config,
+    summarize_config,
+    validate_all,
 )
 
 
@@ -80,6 +81,10 @@ class GroupsDataHandler(BaseHandler):
                 'member_count': len(group.users),
                 'members': [u.name for u in group.users],
                 'config': config['config'],
+                # Per-type display summaries (badge + tooltip line), computed
+                # server-side from the registry so the client never recomputes
+                # policy-display logic.
+                'policy_summary': summarize_config(config['config']),
             })
 
         result.sort(key=lambda g: g['priority'], reverse=True)
@@ -178,167 +183,38 @@ class GroupsConfigHandler(BaseHandler):
             raise web.HTTPError(403, "Only administrators can update group config")
 
         body = json.loads(self.request.body)
-
         description = body.get('description')
-        config_dict = {}
-
-        if 'env_vars' in body:
-            env_vars = body['env_vars']
-            if not isinstance(env_vars, list):
-                raise web.HTTPError(400, "env_vars must be a list")
-            for var in env_vars:
-                if not isinstance(var, dict) or 'name' not in var:
-                    raise web.HTTPError(400, "Each env_var must have a 'name' field")
-
-            # Reject names reserved by JupyterHub or the platform config
-            stellars_config = self.settings.get('stellars_config', {})
-            reserved_names = stellars_config.get('reserved_env_var_names', frozenset())
-            reserved_prefixes = stellars_config.get('reserved_env_var_prefixes', ())
-            rejected = [
-                var['name'] for var in env_vars
-                if is_reserved_env_var(var['name'], reserved_names, reserved_prefixes)
-            ]
-            if rejected:
-                self.set_status(400)
-                self.finish({
-                    'error': 'reserved_env_var_names',
-                    'message': (
-                        "Reserved variable names cannot be set in group config: "
-                        + ", ".join(sorted(set(rejected)))
-                        + ". These are controlled by JupyterHub or the platform configuration."
-                    ),
-                    'rejected': sorted(set(rejected)),
-                })
-                return
-            config_dict['env_vars'] = env_vars
-
-        # Section active flags: off = section reads as unconfigured at resolve
-        # time, but its data persists and re-enabling restores it. downloads and
-        # sudo additionally carry a value flag (downloads_allow / sudo_enable)
-        # via the same boolean accept/merge path.
-        for _key in ('env_vars_active', 'docker_active', 'volume_mounts_active',
-                     'downloads_active', 'downloads_allow', 'sudo_active', 'sudo_enable'):
-            if _key in body:
-                config_dict[_key] = bool(body[_key])
-
-        if 'gpu_access' in body:
-            config_dict['gpu_access'] = bool(body['gpu_access'])
-        if 'gpu_all' in body:
-            config_dict['gpu_all'] = bool(body['gpu_all'])
-        if 'gpu_device_ids' in body:
-            ids = body['gpu_device_ids']
-            if not isinstance(ids, list):
-                raise web.HTTPError(400, "gpu_device_ids must be a list")
-            config_dict['gpu_device_ids'] = [str(x) for x in ids]
-        if 'docker_access' in body:
-            config_dict['docker_access'] = bool(body['docker_access'])
-        if 'docker_limited' in body:
-            config_dict['docker_limited'] = bool(body['docker_limited'])
-        for _key in ('docker_limited_max_containers', 'docker_limited_max_volumes',
-                     'docker_limited_max_networks'):
-            if _key in body:
-                try:
-                    config_dict[_key] = max(0, int(body[_key]))
-                except (TypeError, ValueError):
-                    config_dict[_key] = 0
-        for _key in ('docker_limited_max_storage_gb', 'docker_limited_cpu_cap_cores',
-                     'docker_limited_mem_cap_gb'):
-            if _key in body:
-                try:
-                    config_dict[_key] = max(0.0, round(float(body[_key]), 1))
-                except (TypeError, ValueError):
-                    config_dict[_key] = 0
-        if 'docker_limited_allow_dangerous_flags' in body:
-            config_dict['docker_limited_allow_dangerous_flags'] = bool(body['docker_limited_allow_dangerous_flags'])
-        if 'docker_limited_user_compose_project_enabled' in body:
-            config_dict['docker_limited_user_compose_project_enabled'] = bool(body['docker_limited_user_compose_project_enabled'])
-        if 'docker_limited_user_compose_project_allow_override' in body:
-            config_dict['docker_limited_user_compose_project_allow_override'] = bool(body['docker_limited_user_compose_project_allow_override'])
-        if 'docker_limited_hub_network_access' in body:
-            config_dict['docker_limited_hub_network_access'] = bool(body['docker_limited_hub_network_access'])
-        if 'docker_privileged' in body:
-            config_dict['docker_privileged'] = bool(body['docker_privileged'])
-        if 'mem_limit_enabled' in body:
-            config_dict['mem_limit_enabled'] = bool(body['mem_limit_enabled'])
-        if 'mem_limit_gb' in body:
-            try:
-                gb = float(body['mem_limit_gb'])
-            except (TypeError, ValueError):
-                gb = 0.0
-            config_dict['mem_limit_gb'] = max(0.0, round(gb, 1))
-        if 'mem_swap_disabled' in body:
-            config_dict['mem_swap_disabled'] = bool(body['mem_swap_disabled'])
-        if 'cpu_limit_enabled' in body:
-            config_dict['cpu_limit_enabled'] = bool(body['cpu_limit_enabled'])
-        if 'cpu_limit_cores' in body:
-            try:
-                cores = float(body['cpu_limit_cores'])
-            except (TypeError, ValueError):
-                cores = 0.0
-            config_dict['cpu_limit_cores'] = max(0.0, round(cores, 1))
 
         manager = GroupsConfigManager.get_instance()
-
-        # Merge with existing config to preserve unset fields
+        # Merge onto the existing config to preserve unset fields; the api-keys
+        # coerce needs the stored pool to keep secrets by slot.
         existing = manager.ensure_config(group_name)
 
-        # API keys pool: reconcile incoming (masked) credentials against the
-        # stored ones by slot so an admin save never overwrites a real stored
-        # secret with its own mask; mint slot ids for new entries. Reserved
-        # target names are rejected the same way env_vars are.
-        if 'api_keys_pool' in body:
-            pool_in = body['api_keys_pool']
-            if not isinstance(pool_in, dict):
-                raise web.HTTPError(400, "api_keys_pool must be an object")
-            stellars_config = self.settings.get('stellars_config', {})
-            reserved_names = stellars_config.get('reserved_env_var_names', frozenset())
-            reserved_prefixes = stellars_config.get('reserved_env_var_prefixes', ())
-            pool_names = [
-                pool_in.get('env_var_id'),
-                pool_in.get('env_var_secret'),
-                pool_in.get('env_var_key'),
-            ]
-            rejected = [
-                n for n in pool_names
-                if n and is_reserved_env_var(n, reserved_names, reserved_prefixes)
-            ]
-            if pool_in.get('enabled') and rejected:
-                self.set_status(400)
-                self.finish({
-                    'error': 'reserved_env_var_names',
-                    'message': (
-                        "Reserved variable names cannot be used for the API keys pool: "
-                        + ", ".join(sorted(set(rejected)))
-                        + ". These are controlled by JupyterHub or the platform configuration."
-                    ),
-                    'rejected': sorted(set(rejected)),
-                })
-                return
-            existing_pool = existing['config'].get('api_keys_pool') or {}
-            config_dict['api_keys_pool'] = merge_pool_on_save(pool_in, existing_pool)
+        stellars_config = self.settings.get('stellars_config', {})
+        ctx = PolicyCtx(
+            reserved_names=stellars_config.get('reserved_env_var_names', frozenset()),
+            reserved_prefixes=stellars_config.get('reserved_env_var_prefixes', ()),
+        )
 
-        if 'volume_mounts' in body:
-            mounts_in = body['volume_mounts']
-            if not isinstance(mounts_in, list):
-                raise web.HTTPError(400, "volume_mounts must be a list")
-            # Normalise; protection (blacklist, name/path validity, duplicates)
-            # is imposed at save time by validate_volume_mounts in validate_all.
-            config_dict['volume_mounts'] = [
-                {
-                    'volume': (m.get('volume') or '').strip(),
-                    'mountpoint': (m.get('mountpoint') or '').strip(),
-                }
-                for m in mounts_in if isinstance(m, dict)
-            ]
+        # Coerce every field through the policy registry (one loop over the
+        # types, replacing the old field-by-field branches). A structured
+        # PolicyCoerceError renders the stable reserved-name JSON; a plain one
+        # maps to a bare 400, matching the legacy handler shapes.
+        try:
+            config_dict = coerce_config(body, existing['config'], ctx)
+        except PolicyCoerceError as e:
+            if e.structured:
+                self.set_status(400)
+                self.finish({'error': e.code, 'message': e.message, **e.extra})
+                return
+            raise web.HTTPError(400, e.message)
 
         merged = existing['config'].copy()
         merged.update(config_dict)
 
-        # Per-field coherence: GPU selection, Docker mutual exclusivity + quota
-        # sanity, CPU cap presence-with-positive-value, Mem cap likewise. The
-        # validator class returns the first failure; the handler maps the error
-        # code to HTTP 400 with a stable JSON shape.
-        valid, code, msg = GroupConfigValidator.validate_all(merged)
+        # Per-type coherence checks (registry-driven); first failure wins and
+        # maps to HTTP 400 with a stable JSON shape.
+        valid, code, msg = validate_all(merged)
         if not valid:
             self.set_status(400)
             self.finish({'error': code, 'message': msg})

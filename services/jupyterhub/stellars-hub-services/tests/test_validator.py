@@ -1,6 +1,26 @@
-"""Tests for GroupConfigValidator - per-field coherence checks."""
+"""Per-type coherence checks, exercised against the policy registry.
 
-from stellars_hub_services.groups_config import GroupConfigValidator
+The legacy ``GroupConfigValidator`` class was deleted in the policy-model
+migration; validation now lives per type in ``policy/registry.py``. This shim
+maps the old per-method names onto the registry so the full coherence test
+matrix is preserved verbatim against the new source of truth.
+"""
+
+from stellars_hub_services.policy import POLICY_TYPES
+from stellars_hub_services.policy import validate_all as _validate_all
+
+_BY_KEY = {pt.key: pt for pt in POLICY_TYPES}
+
+
+class GroupConfigValidator:
+    """Test shim - the old per-field API backed by the policy registry."""
+    validate_gpu = staticmethod(_BY_KEY['gpu'].validate)
+    validate_docker = staticmethod(_BY_KEY['docker'].validate)
+    validate_cpu = staticmethod(_BY_KEY['cpu'].validate)
+    validate_mem = staticmethod(_BY_KEY['mem'].validate)
+    validate_api_keys_pool = staticmethod(_BY_KEY['api_keys'].validate)
+    validate_volume_mounts = staticmethod(_BY_KEY['volume_mounts'].validate)
+    validate_all = staticmethod(_validate_all)
 
 
 class TestValidateGpu:
