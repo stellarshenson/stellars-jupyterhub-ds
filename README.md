@@ -369,6 +369,17 @@ volumes:
 - The image ships a working built-in `jupyterhub_config.py`. Drop a replacement into `./config/` next to `compose.yml` to override; missing/empty falls back to the built-in. See [docs/configuration.md](docs/configuration.md).
 - TLS certs work the same way: drop yml + cert/key into `./certs/` next to `compose.yml`; missing/empty auto-generates a self-signed cert. See [docs/certificates.md](docs/certificates.md).
 
+## Testing
+
+Two tiers: fast Python unit suites that run in CI and gate the image build, and a local-only functional harness that boots the real image and drives the running platform.
+
+- **Unit tests** - `make test` runs the `stellars-hub-services` and `stellars-docker-proxy` pytest suites; they also gate the Docker build and run as a GitHub `unit_tests` job
+- **Functional tests** - `make test-functional` boots the built image in an isolated throwaway deployment (own compose project, network and volumes - never touches a real deployment) and drives the hub UI with a containerized Playwright runner, inspecting spawned containers to assert each group policy lands on the lab; local-only, since GitHub runners cannot run the DockerSpawner deployment
+- **Env-password admin mode** - `make test-functional-env` covers the signup-disabled, pre-provisioned-admin regime (restart-to-provision) with one focused test
+- **GPU** - `make test-functional` auto-detects a host GPU and runs the GPU auto-detection test when one is present
+- **Selective / cleanup** - `PYTEST_ARGS="-k ..."` re-runs part of the suite; `make test-functional-clean` force-removes a leftover harness
+- See [docs/functional-test-system.md](docs/functional-test-system.md) for how it works and [docs/acc-crit-functional-test-harness.md](docs/acc-crit-functional-test-harness.md) for the test catalogue
+
 ## Customisation
 
 Most knobs are env vars set in `compose.yml`; deployment-specific values go in a `compose_override.yml` next to the upstream `compose.yml`.
