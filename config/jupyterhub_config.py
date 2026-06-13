@@ -32,10 +32,7 @@ from stellars_hub_services import (
     make_pre_spawn_hook,                    # factory returning async hook for group perms, favicon, icons
     register_events,                        # attaches SQLAlchemy listeners for user rename/delete sync
     resolve_gpu_mode,                       # GPU detection: 0=off, 1=forced, 2=auto-detect via nvidia-smi
-    schedule_api_keys_reconcile,            # periodic api-keys-pool reconcile (rebuilds in-use set from running containers)
-    schedule_startup_api_keys_reconcile,    # startup api-keys-pool reconcile (survivors of a hub restart)
-    schedule_startup_docker_proxy_callback, # re-registers docker-proxy listeners for limited-docker users that survived a hub restart
-    schedule_startup_downloads_callback,    # re-registers download-block CHP routes for blocked users that survived a hub restart
+    schedule_policy_startup,                # re-imposes every policy model for servers that survived a hub restart (docker-proxy, downloads, api-keys)
     schedule_startup_favicon_callback,      # registers CHP favicon routes for already-running servers
     setup_branding,                         # processes logo/favicon/icon URIs, copies file:// to static dir
 )
@@ -646,6 +643,7 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     hub_network_name=JUPYTERHUB_NETWORK_NAME,                     # revealed in user's `docker network ls` when their group enables it (default on)
     block_file_downloads=JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS,        # master switch: overlay per-user download-block CHP routes for non-granted users
     lab_sudo_enable_default=JUPYTERHUB_LAB_SUDO_ENABLE,  # default JUPYTERLAB_SUDO_ENABLE when no group configures sudo
+    api_keys_reconcile_interval=JUPYTERHUB_IDLE_CULLER_INTERVAL,  # periodic api-keys-pool reconcile cadence (reuses the cull interval, default 600s)
 )
 
 
@@ -771,40 +769,13 @@ schedule_startup_favicon_callback(
     favicon_busy_target=branding['favicon_busy_target'],
 )
 
-# Re-bind in-process docker-proxy listeners for limited-docker users whose
-# lab containers survived this hub restart. Manager._listeners is empty in the
-# fresh process; the per-user socket file persists in the named volume but no
-# UnixSite is accepting on it, so the lab gets ECONNREFUSED. Same rationale as
-# the favicon callback above: pre_spawn_hook does not fire for survivors.
-schedule_startup_docker_proxy_callback(
-    docker_proxy_socket_dir=JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR,
-    docker_proxy_volume_name=JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME,
-    gpu_available=bool(gpu_enabled),
-    reserved_env_var_names=RESERVED_ENV_VAR_NAMES,
-    reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,
-    compose_project=COMPOSE_PROJECT_NAME,
-    user_compose_project_template=JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE,
-    hub_network_name=JUPYTERHUB_NETWORK_NAME,
-)
-
-# Re-apply per-user download-block CHP routes for labs that survived this hub
-# restart (pre_spawn_hook does not fire for survivors). No-op when the master
-# switch is off.
+# Re-impose every policy model for servers that survived this hub restart -
+# pre_spawn_hook only fires on new spawns. One call drives each model's
+# on_hub_startup: docker-proxy listener re-bind for limited-docker survivors,
+# download-block CHP route re-registration, and api-keys reconcile + periodic
+# (in-use set derived from durable container labels, so it self-heals missed
+# stops). Reuses the exact ApplyContext the spawn hook captured.
 print(f"[Config] File-download policy: {'BLOCK (per-group downloads_active grants)' if JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS else 'ALLOW (dormant)'}")
-schedule_startup_downloads_callback(
-    block_file_downloads=JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS,
-    gpu_available=bool(gpu_enabled),
-    reserved_env_var_names=RESERVED_ENV_VAR_NAMES,
-    reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,
-)
-
-# API keys pool: rebuild the in-use set from running containers on startup
-# (survivors of a hub restart), then reconcile periodically so a stop missed
-# while the hub was down self-heals. The in-use set is always derived from
-# container labels, so this is resilient to events being lost.
-schedule_startup_api_keys_reconcile()
-schedule_api_keys_reconcile(
-    interval_seconds=JUPYTERHUB_IDLE_CULLER_INTERVAL,   # reuse the cull cadence (default 600s)
-)
+schedule_policy_startup(c.DockerSpawner.pre_spawn_hook._stellars_apply_context)
 
 # EOF

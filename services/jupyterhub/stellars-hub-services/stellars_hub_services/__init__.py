@@ -17,8 +17,6 @@ from .api_keys_pool import (
     parse_pool_labels,
     pick_free_slot,
     pool_label_key,
-    schedule_api_keys_reconcile,
-    schedule_startup_api_keys_reconcile,
 )
 from .auth import StellarsNativeAuthenticator
 from .branding import setup_branding
@@ -27,8 +25,7 @@ from .events import register_events
 from .gpu import is_wsl2, resolve_gpu_mode
 from .hooks import (
     make_pre_spawn_hook,
-    schedule_startup_docker_proxy_callback,
-    schedule_startup_downloads_callback,
+    schedule_policy_startup,
     schedule_startup_favicon_callback,
 )
 from .idle_culler import (
@@ -63,8 +60,6 @@ __all__ = [
     "parse_pool_labels",
     "pick_free_slot",
     "pool_label_key",
-    "schedule_api_keys_reconcile",
-    "schedule_startup_api_keys_reconcile",
     "calc_available_hours",
     "calc_ceiling",
     "calc_extended_remaining",
@@ -82,10 +77,9 @@ __all__ = [
     "is_wsl2",
     "load_merged_user_volumes",
     "make_pre_spawn_hook",
-    "schedule_startup_downloads_callback",
+    "schedule_policy_startup",
     "register_events",
     "resolve_gpu_mode",
-    "schedule_startup_docker_proxy_callback",
     "schedule_startup_favicon_callback",
     "setup_branding",
 ]
