@@ -239,7 +239,8 @@ def test_groups_config():
 
 
 def test_group_resolver():
-    from stellars_hub_services.group_resolver import resolve_group_config, is_reserved_env_var
+    from stellars_hub_services.policy import resolve_policies as resolve_group_config
+    from stellars_hub_services.policy import is_reserved_env_var
 
     reserved_names = frozenset({'JUPYTERLAB_TIMEZONE', 'NVIDIA_DETECTED'})
     reserved_prefixes = ('JUPYTERHUB_', 'JPY_')
@@ -349,7 +350,9 @@ def test_all_modules_importable():
         'stellars_hub_services.handlers.volumes',
         'stellars_hub_services.handlers.groups',
         'stellars_hub_services.groups_config',
-        'stellars_hub_services.group_resolver',
+        'stellars_hub_services.policy',
+        'stellars_hub_services.policy.registry',
+        'stellars_hub_services.policy.engine',
     ]
     for mod_name in modules:
         mod = importlib.import_module(mod_name)

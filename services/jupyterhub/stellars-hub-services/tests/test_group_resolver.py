@@ -1,4 +1,4 @@
-"""Functional tests for group_resolver.py - per-group CPU and memory caps.
+"""Functional tests for the policy engine resolution - per-group CPU and memory caps.
 
 CPU and memory limits use the same biggest-enabled-wins rule: a user's effective
 cap is the largest enabled value among their groups, and a group with the limit
@@ -6,7 +6,9 @@ disabled never removes another group's cap. The resolver returns the raw value;
 the spawn-time ceil-to-whole-cores happens in hooks.py.
 """
 
-from stellars_hub_services.group_resolver import resolve_group_config
+from stellars_hub_services.policy import POLICY_TYPES, resolve_policies
+
+_BY_KEY = {pt.key: pt for pt in POLICY_TYPES}
 
 
 def _grp(name, **config):
@@ -14,13 +16,26 @@ def _grp(name, **config):
 
 
 def _resolve(user_groups, all_configs, gpu_available=False):
-    return resolve_group_config(
+    return resolve_policies(
         user_group_names=user_groups,
         all_group_configs=all_configs,
         gpu_available=gpu_available,
         reserved_names=frozenset(),
         reserved_prefixes=(),
     )
+
+
+def validate_gpu_selection(gpu_access, gpu_all, gpu_device_ids):
+    """GPU coherence via the registry (was a groups_config wrapper)."""
+    return _BY_KEY['gpu'].validate(
+        {'gpu_access': gpu_access, 'gpu_all': gpu_all, 'gpu_device_ids': gpu_device_ids})
+
+
+def validate_docker_selection(docker_access, docker_limited, docker_privileged=False):
+    """Docker coherence via the registry (was a groups_config wrapper)."""
+    return _BY_KEY['docker'].validate(
+        {'docker_access': docker_access, 'docker_limited': docker_limited,
+         'docker_privileged': docker_privileged})
 
 
 class TestCpuLimit:
@@ -176,19 +191,15 @@ class TestGpuSelection:
 
 class TestGpuSelectionValidation:
     def test_access_off_always_valid(self):
-        from stellars_hub_services.groups_config import validate_gpu_selection
         assert validate_gpu_selection(False, False, [])[0] is True
 
     def test_all_gpus_valid(self):
-        from stellars_hub_services.groups_config import validate_gpu_selection
         assert validate_gpu_selection(True, True, [])[0] is True
 
     def test_specific_with_ids_valid(self):
-        from stellars_hub_services.groups_config import validate_gpu_selection
         assert validate_gpu_selection(True, False, ["0"])[0] is True
 
     def test_access_on_not_all_no_ids_invalid(self):
-        from stellars_hub_services.groups_config import validate_gpu_selection
         valid, msg = validate_gpu_selection(True, False, [])
         assert valid is False
         assert "at least one GPU" in msg
@@ -345,38 +356,30 @@ class TestDockerLimited:
 
 class TestDockerSelectionValidation:
     def test_both_invalid(self):
-        from stellars_hub_services.groups_config import validate_docker_selection
         valid, msg = validate_docker_selection(True, True)
         assert valid is False
         assert "both" in msg.lower()
 
     def test_only_normal_valid(self):
-        from stellars_hub_services.groups_config import validate_docker_selection
         assert validate_docker_selection(True, False)[0] is True
 
     def test_only_limited_valid(self):
-        from stellars_hub_services.groups_config import validate_docker_selection
         assert validate_docker_selection(False, True)[0] is True
 
     def test_neither_valid(self):
-        from stellars_hub_services.groups_config import validate_docker_selection
         assert validate_docker_selection(False, False)[0] is True
 
     def test_root_alone_valid(self):
         """Root without an access mode is allowed: --privileged with no socket."""
-        from stellars_hub_services.groups_config import validate_docker_selection
         assert validate_docker_selection(False, False, docker_privileged=True)[0] is True
 
     def test_root_with_normal_valid(self):
-        from stellars_hub_services.groups_config import validate_docker_selection
         assert validate_docker_selection(True, False, docker_privileged=True)[0] is True
 
     def test_root_with_limited_valid(self):
-        from stellars_hub_services.groups_config import validate_docker_selection
         assert validate_docker_selection(False, True, docker_privileged=True)[0] is True
 
     def test_root_with_both_still_invalid_on_mutex(self):
-        from stellars_hub_services.groups_config import validate_docker_selection
         valid, msg = validate_docker_selection(True, True, docker_privileged=True)
         assert valid is False
         assert "both" in msg.lower()

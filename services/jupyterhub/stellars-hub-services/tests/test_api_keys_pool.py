@@ -336,3 +336,48 @@ class TestPoolManagerReconcile:
         summary = asyncio.run(mgr.reconcile())
         assert summary['reaped'] == 1                            # tentative cleared
         assert summary['in_use'] == 1                            # observed durably
+
+
+class TestRestartPersistence:
+    """A spawned lab outlives the hub, so the in-use set must survive a hub
+    restart - rebuilt from the durable per-container slot label - or two running
+    labs collide on the same credential. The `manager` fixture hands us a fresh
+    PoolManager (empty tentative bookkeeping), exactly the post-restart state;
+    the observer reports the labs that survived."""
+
+    def test_no_collision_after_hub_restart(self, manager):
+        mgr, state = manager
+        # Two labs survived the restart, each holding a durable slot label.
+        state['by_pool'] = {'p': {'p-0', 'p-1'}}
+        state['by_container'] = {
+            'jupyterlab-alice': {'p': 'p-0'},
+            'jupyterlab-bob': {'p': 'p-1'},
+        }
+        # A third user spawns against the rebuilt-from-labels in-use set.
+        res = asyncio.run(mgr.assign('carol', [_pool('p', 'k0', 'k1', 'k2')]))
+        slot = res['labels'].get(pool_label_key('p'))
+        assert slot == 'p-2'                       # the only free slot
+        assert slot not in {'p-0', 'p-1'}          # neither survivor re-handed-out
+
+    def test_survivor_keeps_own_slot_after_restart(self, manager):
+        mgr, state = manager
+        # alice's lab survived the restart holding p-1; her next spawn reuses it
+        # (label-derived), never allocating a second credential.
+        state['by_pool'] = {'p': {'p-1'}}
+        state['by_container'] = {'jupyterlab-alice': {'p': 'p-1'}}
+        res = asyncio.run(mgr.assign('alice', [_pool('p', 'k0', 'k1')]))
+        assert res['labels'][pool_label_key('p')] == 'p-1'
+
+    def test_exhausted_after_restart_never_reuses_live_slot(self, manager):
+        mgr, state = manager
+        # All slots held by survivors -> a new user gets EXHAUSTED, never a
+        # collision with a live credential.
+        state['by_pool'] = {'p': {'p-0', 'p-1'}}
+        state['by_container'] = {
+            'jupyterlab-alice': {'p': 'p-0'},
+            'jupyterlab-bob': {'p': 'p-1'},
+        }
+        res = asyncio.run(mgr.assign('carol', [_pool('p', 'k0', 'k1')]))
+        assert res['labels'] == {}                 # no slot stamped
+        assert res['assignments'][0]['slot'] is None
+        assert res['assignments'][0]['masked'] == 'EXHAUSTED'

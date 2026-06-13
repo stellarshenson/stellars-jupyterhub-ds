@@ -4,7 +4,7 @@ import math
 from urllib.parse import urlparse
 
 from .docker_proxy import register_user
-from .group_resolver import resolve_group_config
+from .policy import resolve_policies
 from .groups_config import GroupsConfigManager
 
 __all__ = (
@@ -148,7 +148,7 @@ def make_pre_spawn_hook(
             spawner.log.error(f"[Groups] Failed to load group configs: {e}")
             all_configs = []
 
-        resolved = resolve_group_config(
+        resolved = resolve_policies(
             user_group_names=user_group_names,
             all_group_configs=all_configs,
             gpu_available=gpu_available,
@@ -548,7 +548,7 @@ def schedule_startup_docker_proxy_callback(
                 continue
             username = user.name
             user_group_names = [g.name for g in user.groups]
-            resolved = resolve_group_config(
+            resolved = resolve_policies(
                 user_group_names=user_group_names,
                 all_group_configs=all_configs,
                 gpu_available=gpu_available,
@@ -632,7 +632,7 @@ def schedule_startup_downloads_callback(
             user = app.users.get(orm_user.name)
             if not (user and user.spawner and user.spawner.active):
                 continue
-            resolved = resolve_group_config(
+            resolved = resolve_policies(
                 user_group_names=[g.name for g in user.groups],
                 all_group_configs=all_configs,
                 gpu_available=gpu_available,
