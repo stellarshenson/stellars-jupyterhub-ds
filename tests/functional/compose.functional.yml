@@ -1,0 +1,75 @@
+# UI / integration test stack - LOCAL ONLY.
+#
+# GitHub-hosted runners cannot run this DockerSpawner container deployment, so it
+# is never wired into CI. It is fully ISOLATED from any real deployment:
+#   - its own compose project (stellars-functest) and network (stellars-functest_network)
+#   - project-namespaced volumes (no shared jupyterhub_* names)
+#   - a dedicated admin user (functestadmin)
+#   - NO published host port - the containerized Playwright runner reaches the hub
+#     by service name on the test network, so it never binds the operator's :8000
+# It never touches the operator's jupyterhub deployment, volumes, or network.
+
+services:
+  jupyterhub:
+    image: stellars/stellars-jupyterhub-ds:latest
+    pull_policy: never                       # use the locally built image, never pull
+    container_name: stellars-functest-jupyterhub
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw   # DockerSpawner
+      - certs:/mnt/certs
+      - data:/data
+      - shared:/mnt/shared
+      - docker_sockets:/var/run/jupyterhub-docker-proxy-sockets
+    environment:
+      - JUPYTERHUB_ADMIN=functestadmin                   # dedicated test admin (no clash with real 'admin')
+      - JUPYTERHUB_BASE_URL=/jupyterhub
+      - JUPYTERHUB_SSL_ENABLED=0                        # http; no Traefik in the test stack
+      # Bootstrap-by-signup: signup off + no admin password + fresh DB opens the
+      # one-shot admin bootstrap window, so the harness creates the first admin
+      # (functestadmin) by signing up, then authenticates (env-password bootstrap
+      # cannot seed on a single fresh boot - the users_info table is created after
+      # the config runs).
+      - JUPYTERHUB_SIGNUP_ENABLED=0
+      - JUPYTERHUB_GPU_ENABLED=${FUNCTEST_GPU_ENABLED:-0}   # default off (fast); FUNCTEST_GPU_ENABLED=2 on a GPU host to test auto-detect
+      - JUPYTERHUB_LAB_IMAGE=quay.io/jupyterhub/singleuser:latest   # minimal public spawnable image
+      - JUPYTERHUB_LAB_SERVICE_MLFLOW=0
+      - JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR=0
+      - JUPYTERHUB_LAB_SERVICE_TENSORBOARD=0
+      - JUPYTERHUB_NETWORK_NAME=stellars-functest_network            # spawned labs join the test network only
+      - COMPOSE_PROJECT_NAME=stellars-functest
+    networks:
+      - jupyterhub_network
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/jupyterhub/hub/health', timeout=3).status==200 else 1)\""]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 10s
+
+  tests:
+    image: mcr.microsoft.com/playwright/python:v1.49.0-noble   # Chromium + deps baked; no host browser deps
+    depends_on:
+      jupyterhub:
+        condition: service_healthy
+    environment:
+      - BASE_URL=http://jupyterhub:8000/jupyterhub             # reach the hub by service name on the test network
+      - ADMIN_USER=functestadmin
+      - ADMIN_PASSWORD=functest-secret
+      - PYTEST_ARGS=${PYTEST_ARGS:-}                           # select specific workflows e.g. PYTEST_ARGS="-k priority"
+    volumes:
+      - ./:/tests
+      - /var/run/docker.sock:/var/run/docker.sock:rw          # inspect/exec spawned labs (end-to-end verification)
+    working_dir: /tests
+    command: ["bash", "-lc", "pip install --quiet -r requirements.txt && pytest -v --color=yes $PYTEST_ARGS"]
+    networks:
+      - jupyterhub_network
+
+networks:
+  jupyterhub_network:
+    name: stellars-functest_network
+
+volumes:
+  certs:
+  data:
+  shared:
+  docker_sockets:

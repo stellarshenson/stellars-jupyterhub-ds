@@ -32,3 +32,28 @@ jobs:
 
       - name: Run provisioning script tests
         run: bash services/jupyterhub/tests/test_provision_config.sh
+
+  unit_tests:
+    name: Python unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: stellars-hub-services
+        working-directory: services/jupyterhub/stellars-hub-services
+        run: |
+          python -m pip install --upgrade pip
+          pip install . pytest pytest-asyncio
+          pytest tests/ -v
+
+      - name: stellars-docker-proxy
+        working-directory: services/jupyterhub/stellars-docker-proxy
+        run: |
+          pip install . pytest pytest-asyncio
+          pytest tests/ -v
