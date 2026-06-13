@@ -1,0 +1,8 @@
+# Pinned to the Playwright runner image (mcr.microsoft.com/playwright/python:v1.49.0)
+# so the pip-installed playwright reuses the browsers baked into the image.
+playwright==1.49.0
+pytest-playwright==0.5.2
+pytest==8.3.4
+requests==2.32.3
+docker==7.1.0
+

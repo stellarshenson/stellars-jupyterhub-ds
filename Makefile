@@ -4,7 +4,7 @@
 # GLOBALS                                                                       #
 #################################################################################
 .DEFAULT_GOAL := help
-.PHONY: help preflight build build_verbose rebuild rebuild_increment_version _rebuild_impl push pull start stop clean increment_version maybe_increment_version tag logs
+.PHONY: help preflight build build_verbose rebuild rebuild_increment_version _rebuild_impl push pull start stop clean increment_version maybe_increment_version tag logs test test-functional test-functional-clean
 
 # ── Preflight: tools, services, and files required end-to-end ──
 # Covers versioning (python3 + tomllib + awk + sed), build (docker), push (git),
@@ -194,6 +194,40 @@ logs: preflight
 	else \
 		docker compose --env-file .env -f compose.yml logs -f 2>&1 | tee docker.log; \
 	fi
+
+# ── Functional test harness (LOCAL ONLY - isolated throwaway deployment) ──
+FUNCTEST_PROJECT := stellars-functest
+FUNCTEST_COMPOSE := tests/functional/compose.functional.yml
+FUNCTEST_IMAGES  := quay.io/jupyterhub/singleuser:latest mcr.microsoft.com/playwright/python:v1.49.0-noble
+
+## run the python unit test suites locally (stellars-hub-services + stellars-docker-proxy)
+test:
+	@cd services/jupyterhub/stellars-hub-services && python3 -m pytest tests/ -q
+	@cd services/jupyterhub/stellars-docker-proxy && python3 -m pytest tests/ -q
+
+## run the functional UI/scenario harness in an isolated throwaway deployment, then clean containers/network/volumes (LOCAL ONLY; pulled images kept to avoid re-pull - REMOVE_IMAGES=1 to also remove them)
+test-functional:
+	@echo "[functional] booting isolated deployment ($(FUNCTEST_PROJECT))..."
+	@start=$$(date +%s); \
+	docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) up --abort-on-container-exit --exit-code-from tests; \
+	rc=$$?; \
+	$(MAKE) --no-print-directory test-functional-clean; \
+	end=$$(date +%s); \
+	echo "[functional] total time (boot + tests + teardown): $$((end-start))s; test-suite total is the pytest 'in Xs' line above"; \
+	exit $$rc
+
+## remove the functional-test harness - containers, spawned labs, network, volumes (idempotent; pulled images kept - REMOVE_IMAGES=1 also removes them)
+test-functional-clean:
+	@echo "[functional] cleaning harness (containers, network, volumes)..."
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) down -v --remove-orphans >/dev/null 2>&1 || true
+	@docker ps -aq --filter "label=com.docker.compose.project=$(FUNCTEST_PROJECT)" | xargs -r docker rm -f >/dev/null 2>&1 || true
+	@docker volume ls -q --filter "name=^$(FUNCTEST_PROJECT)_" | xargs -r docker volume rm >/dev/null 2>&1 || true
+	@docker volume rm jupyterlab-functestadmin_home jupyterlab-functestadmin_workspace jupyterlab-functestadmin_cache >/dev/null 2>&1 || true
+	@docker network rm $(FUNCTEST_PROJECT)_network >/dev/null 2>&1 || true
+ifdef REMOVE_IMAGES
+	@docker rmi $(FUNCTEST_IMAGES) >/dev/null 2>&1 || true
+endif
+	@echo "[functional] cleanup complete (pulled images kept)"
 
 ## clean orphaned containers
 clean: preflight
