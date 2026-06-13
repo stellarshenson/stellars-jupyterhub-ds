@@ -1,37 +1,44 @@
 """Unified group policy model.
 
-One registry of policy types is the single source of truth for every group
-permission: defaults, write-coercion, validation, cross-group resolution, the
-runtime driver, and UI metadata. See ``registry.py`` for the types and
-``engine.py`` for the resolve/validate/coerce entry points.
+Every group permission is a ``Policy`` model (``registry.py``) owning its whole
+lifecycle - default, coerce/validate, resolve, summarize, apply (impose on a
+spawning server), on_hub_startup (re-impose for restart survivors). ``engine.py``
+holds the thin loops over the model registry; ``base.py`` the model interface
+and shared contexts.
 """
 
+from .base import (
+    PROTECTED_MOUNTPOINTS,
+    ApplyContext,
+    Policy,
+    PolicyCoerceError,
+    PolicyCtx,
+    is_protected_mountpoint,
+    is_reserved_env_var,
+)
 from .engine import (
     POLICY_TYPES,
-    PolicyCtx,
+    apply_policies,
     coerce_config,
     default_config,
     resolve_policies,
+    run_hub_startup,
     summarize_config,
     validate_all,
-)
-from .registry import (
-    PROTECTED_MOUNTPOINTS,
-    PolicyCoerceError,
-    PolicyType,
-    is_protected_mountpoint,
-    is_reserved_env_var,
 )
 
 __all__ = [
     'POLICY_TYPES',
+    'Policy',
     'PolicyCtx',
-    'PolicyType',
+    'ApplyContext',
     'PolicyCoerceError',
     'PROTECTED_MOUNTPOINTS',
+    'apply_policies',
     'coerce_config',
     'default_config',
     'resolve_policies',
+    'run_hub_startup',
     'summarize_config',
     'validate_all',
     'is_protected_mountpoint',

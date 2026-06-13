@@ -36,12 +36,24 @@ One policy-type registry is the single source for every group permission (defaul
 - [x] **volume_mounts** - union keyed by mountpoint; priority-wins on conflict; protected-mountpoint blacklist re-checked at resolve
   - log: 2026-06-13 criterion added; done (v3.12.0)
 
-## Drivers (lifecycle controllers)
+## Models own apply + lifecycle (the controller layer)
 
-- [x] **Controllers own lifecycle** - api-keys (`PoolManager`) and docker-limited (proxy `register_user`) controllers own slot handout/rotation/masking and quota/ownership; wired in `hooks.py`/`config`, behaviour unchanged
-  - log: 2026-06-13 criterion added; done (v3.12.0)
-  - log: 2026-06-13 GC: registry `DriverRef` indirection removed as unconsumed (user "trim to what's used"); controllers stay wired directly, registry is data-only
-- [x] **api_keys restart persistence** - in-use set is label-derived; a lab surviving a hub restart keeps its slot; the startup reconcile rebuilds in-use before any new spawn assigns
+- [x] **Policy is a model class** - each permission is a `Policy` subclass (`EnvVarsPolicy`, `GpuPolicy`, ...) owning default/coerce/validate/resolve/summarize/apply/on_hub_startup; `POLICY_TYPES` is a list of instances
+  - log: 2026-06-13 criterion added; done
+  - log: 2026-06-13 evolved from the function-registry to model classes (operator "each policy type a model, not a hybrid frankenstack")
+- [x] **apply imposes the resolved value** - each model's `apply(spawner, resolved, actx)` mutates the spawner / registers routes / assigns slots; moved verbatim from the old monolithic `pre_spawn_hook`
+  - log: 2026-06-13 criterion added; done
+- [x] **Thin hook** - `pre_spawn_hook` = resolve -> `apply_policies` loop -> non-policy steps only (compose labels, favicon, lab icons, aggregate log); no per-feature branches
+  - log: 2026-06-13 criterion added; done
+- [x] **Unified startup** - one `schedule_policy_startup(actx)` -> `run_hub_startup` loops each model's `on_hub_startup`; replaces the three per-feature startup callbacks; favicon stays separate (non-policy)
+  - log: 2026-06-13 criterion added; done
+- [x] **ApplyContext** - spawn-time hub config (proxy dirs, compose project, gpu uuid map, sudo/downloads defaults, reconcile interval) threaded to apply/startup via one frozen context built once in `make_pre_spawn_hook`
+  - log: 2026-06-13 criterion added; done
+- [x] **api_keys / docker controllers unchanged** - `PoolManager` and proxy `register_user` logic preserved, now invoked from `ApiKeysPolicy`/`DockerPolicy`; dead `schedule_*` functions removed
+  - log: 2026-06-13 criterion added; done
+- [x] **Apply regression guard** - `tests/test_policy_apply.py` FakeSpawner asserts exact spawner state per model (gpu/docker/mem/cpu/sudo/env/volumes/api-keys/downloads); resolve golden + all prior suites still green (506 tests)
+  - log: 2026-06-13 criterion added; done
+- [x] **api_keys restart persistence** - in-use set is label-derived; a lab surviving a hub restart keeps its slot; `ApiKeysPolicy.on_hub_startup` rebuilds in-use before any new spawn assigns
   - log: 2026-06-13 criterion added; done (v3.12.0)
 - [x] **api_keys label at create** - the slot label is stamped on the container via `extra_create_kwargs` at create (the one gap that would reintroduce collisions)
   - log: 2026-06-13 criterion added; done (v3.12.0)
