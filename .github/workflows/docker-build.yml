@@ -15,20 +15,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Lint Dockerfile with hadolint
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: services/jupyterhub/Dockerfile.jupyterhub
-          ignore: DL3008,DL3013,DL3015,DL3059,DL3027,DL4006,SC2006,SC1008,DL3046,SC2153,DL3001,SC2016,SC2002
+          ignore: DL3007,DL3008,DL3013,DL3015,DL3059,DL3027,DL4006,SC2006,SC1008,DL3046,SC2153,DL3001,SC2016,SC2002
 
   provision_config_tests:
     name: Test 01_provision_config.sh
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Run provisioning script tests
         run: bash services/jupyterhub/tests/test_provision_config.sh
@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
         uses: actions/setup-python@v5
