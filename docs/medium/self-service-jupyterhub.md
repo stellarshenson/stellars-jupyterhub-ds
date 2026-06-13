@@ -187,7 +187,7 @@ Both platforms are designed to be configured entirely through environment variab
 
 ![Configuration](images/11-configuration.svg)
 
-The Hub accepts 29 environment variables controlling everything from admin username and GPU mode to idle culler timeouts and branding URIs. The Lab image uses service toggles (`JUPYTERHUB_SERVICE_MLFLOW`, `JUPYTERHUB_SERVICE_TENSORBOARD`, `JUPYTERHUB_SERVICE_RESOURCES_MONITOR`) to enable or disable background services per deployment. Branding is configurable through four URI variables that accept either local `file://` paths or external `http(s)://` URLs for logos, favicons, and JupyterLab icons.
+The Hub accepts 29 environment variables controlling everything from admin username and GPU mode to idle culler timeouts and branding URIs. The Lab image uses service toggles (`JUPYTERHUB_LAB_SERVICE_MLFLOW`, `JUPYTERHUB_LAB_SERVICE_TENSORBOARD`, `JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR`) to enable or disable background services per deployment. Branding is configurable through four URI variables that accept either local `file://` paths or external `http(s)://` URLs for logos, favicons, and JupyterLab icons.
 
 For production deployments, create a `compose_override.yml` alongside the main `compose.yml`. Override environment variables, add CIFS/NAS mounts for shared storage, change the notebook image, enable the idle culler, set a custom timezone. The override file is gitignored by design, so deployment-specific credentials and settings never end up in version control. Multiple deployments can run from the same codebase with different override files.
 
@@ -260,9 +260,9 @@ services:
       - JUPYTERHUB_GPU_ENABLED=2          # auto-detect
       - JUPYTERHUB_IDLE_CULLER_ENABLED=0   # opt-in
       - JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION_MINUTES=1440
-      - JUPYTERHUB_NOTEBOOK_IMAGE=stellars/stellars-jupyterlab-ds:latest
-      - JUPYTERHUB_SERVICE_MLFLOW=1
-      - JUPYTERHUB_SERVICE_TENSORBOARD=1
+      - JUPYTERHUB_LAB_IMAGE=stellars/stellars-jupyterlab-ds:latest
+      - JUPYTERHUB_LAB_SERVICE_MLFLOW=1
+      - JUPYTERHUB_LAB_SERVICE_TENSORBOARD=1
 
   watchtower:
     image: nickfedor/watchtower:latest

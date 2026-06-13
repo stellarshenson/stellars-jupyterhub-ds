@@ -68,7 +68,7 @@ def default_config():
         # downloads to downloads_allow (True=allow/False=block) and the highest-
         # priority configuring group wins; section off = does not configure
         # (resolver returns None, the hook applies the platform default derived
-        # from JUPYTERHUB_BLOCK_FILE_DOWNLOADS). downloads_allow defaults True so
+        # from JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS). downloads_allow defaults True so
         # a freshly-enabled section allows downloads until explicitly blocked.
         # No inference for legacy rows (absent active flag = not configured),
         # no validator - both are always-valid booleans.
@@ -78,7 +78,7 @@ def default_config():
         # group explicitly configures member sudo to sudo_enable (True=1/False=0)
         # and the highest-priority configuring group wins; section off = does
         # not configure (resolver returns None, the hook applies the platform
-        # JUPYTERHUB_LAB_SUDO_ENABLE_DEFAULT). sudo_enable defaults True so a
+        # JUPYTERHUB_LAB_SUDO_ENABLE). sudo_enable defaults True so a
         # freshly-enabled section grants sudo until explicitly disabled.
         'sudo_active': False,
         'sudo_enable': True,

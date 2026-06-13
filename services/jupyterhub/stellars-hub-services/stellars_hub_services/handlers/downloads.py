@@ -2,7 +2,7 @@
 
 A user whose effective download policy is "block" - the highest-priority group
 whose File Downloads section is on resolved to block, or no group configures it
-and the platform JUPYTERHUB_BLOCK_FILE_DOWNLOADS default blocks - has per-user
+and the platform JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS default blocks - has per-user
 CHP routes overlaid onto their lab's download surfaces, sending those prefixes
 to the hub instead of the container (same mechanism as the favicon routes).
 These handlers act on the overlaid traffic.

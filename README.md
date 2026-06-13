@@ -156,7 +156,7 @@ graph TB
     subgraph ENV["Environment Variables (compose.yml)"]
         ADMIN[JUPYTERHUB_ADMIN<br/>Admin username]
         BASEURL[JUPYTERHUB_BASE_URL<br/>URL prefix]
-        IMG[JUPYTERHUB_NOTEBOOK_IMAGE<br/>User container image]
+        IMG[JUPYTERHUB_LAB_IMAGE<br/>User container image]
         NET[JUPYTERHUB_NETWORK_NAME<br/>Container network]
         SSL[JUPYTERHUB_SSL_ENABLED<br/>0=off, 1=on]
         GPU[JUPYTERHUB_GPU_ENABLED<br/>0=off, 1=on, 2=auto]
@@ -164,11 +164,11 @@ graph TB
         TFLOG[TF_CPP_MIN_LOG_LEVEL<br/>TensorFlow verbosity]
         NVIMG[JUPYTERHUB_NVIDIA_IMAGE<br/>CUDA test image]
 
-        subgraph SVCEN["JUPYTERHUB_SERVICE_*<br/>Passed to Lab as env"]
+        subgraph SVCEN["JUPYTERHUB_LAB_SERVICE_*<br/>Passed to Lab as env"]
             direction LR
-            MLF[JUPYTERHUB_SERVICE_MLFLOW]
-            RES[JUPYTERHUB_SERVICE_RESOURCES_MONITOR]
-            TNS[JUPYTERHUB_SERVICE_TENSORBOARD]
+            MLF[JUPYTERHUB_LAB_SERVICE_MLFLOW]
+            RES[JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR]
+            TNS[JUPYTERHUB_LAB_SERVICE_TENSORBOARD]
             SVC_MORE[...]
         end
     end
@@ -501,9 +501,9 @@ services:
       - JUPYTERHUB_ACTIVITYMON_HALF_LIFE=72                 # 72 hours / 3 days (default) - decay half-life for scoring
       - JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER=60            # 60 minutes (default) - threshold for inactive status
       - JUPYTERHUB_ACTIVITYMON_VOLUMES_UPDATE_INTERVAL=3600 # 1 hour (default) - how often to refresh volume sizes
-      - JUPYTERHUB_CONTAINER_MAX_EXTRA_SPACE_GB=10          # 10 GB (default) - writable layer quota before warning (0=disabled)
-      - JUPYTERHUB_VOLUME_MAX_TOTAL_SIZE_GB=50              # 50 GB (default) - total volume quota before warning (0=disabled)
-      - JUPYTERHUB_MEMORY_MAX_USAGE_FRACTION=0.25           # 25% (default) - memory quota as fraction of host RAM
+      - JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB=10          # 10 GB (default) - writable layer quota before warning (0=disabled)
+      - JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB=50              # 50 GB (default) - total volume quota before warning (0=disabled)
+      - JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION=0.25           # 25% (default) - memory quota as fraction of host RAM
 ```
 
 **Features**:
@@ -628,8 +628,8 @@ Each section in the config modal carries an on/off switch in its header and open
   - **Privileged Docker (root)**: orthogonal to the access mode. Runs the user's own lab with `--privileged` (kernel-root inside the lab). When combined with limited access, it also lets the user spawn `--privileged` sub-containers through the proxy; it does NOT bypass other dangerous-flag checks (host binds, host net/pid, cap-add, device passthrough remain blocked unless `allow_dangerous_flags` is on)
 - **API Keys Pool**: a finite set of API credentials handed out one per running container so no two members share a key. Choose a credential type - **single api key** (one variable name) or **key-id / key-secret pair** (two variable names) - and add any number of credentials. On spawn the platform assigns a free credential and injects it into the configured env vars; when the container stops the credential returns to the pool. Assignment is recorded as a durable Docker label carrying only the slot id, so the in-use set is rebuilt by inspecting running containers - a container stopped while the hub was down or started by a previous hub version self-heals on the next reconcile (startup + periodic). If the pool runs dry the variables are still set but empty and a warning is logged; assignments are logged with last-4 masking only. The groups page is admin-only, so credentials are shown in full there - only the logs obfuscate them. See [docs/acc-crit-api-keys-pool.md](docs/acc-crit-api-keys-pool.md) for the full acceptance criteria
 - **Volume Mounts**: named Docker volumes mounted into member containers at spawn, each as a volume-name / mountpoint row. The shared volume is **no longer mounted into every container** - grant it per group; the modal offers a one-click "Add standard shared volume (`/mnt/shared`)" button when the platform shared volume exists on the host. Any other admin-created volume can be added by name; missing volumes are auto-created by Docker on first spawn. Mounting onto protected system paths (`/`, `/etc`, `/usr`, `/home`, `/opt`, `/var`, ...) is rejected at save time and re-checked at spawn (defense in depth) - mount under `/mnt` or `/data`
-- **File Downloads**: a section that explicitly sets whether members may download files from their lab via the browser. Section off = the group does not configure it; resolution is priority-wins (highest-priority configuring group decides allow/block); when no group configures it the platform default `JUPYTERHUB_BLOCK_FILE_DOWNLOADS` (`0`=allow, `1`=block) applies. When blocked, the hub overlays per-user routes onto the lab's download surfaces (`files/?download`, notebook export, the export-markdown and share-files download endpoints), returns a 403, and the user gets a "blocked by policy" notification; inline viewing, the contents API, kernels, and terminals are untouched. **Best-effort browser-download policy with notification and an audit trail, not full data-loss prevention** - the lab has a root shell with internet egress, so a determined user can still copy data out through a terminal or kernel over an encrypted channel. Takes effect on the member's next server start. See [docs/acc-crit-group-file-downloads.md](docs/acc-crit-group-file-downloads.md)
-- **Sudo Access**: a section that explicitly sets whether members get sudo in their lab, injected as `JUPYTERLAB_SUDO_ENABLE=0|1` at spawn (the lab image consumes it). When the section is off the group does not configure sudo. Resolution is priority-wins: if several of a user's groups configure it, the highest-priority group decides; if none do, the platform default `JUPYTERHUB_LAB_SUDO_ENABLE_DEFAULT` (compose, default `1`) applies. Takes effect on the member's next server start. See [docs/acc-crit-group-sudo-access.md](docs/acc-crit-group-sudo-access.md)
+- **File Downloads**: a section that explicitly sets whether members may download files from their lab via the browser. Section off = the group does not configure it; resolution is priority-wins (highest-priority configuring group decides allow/block); when no group configures it the platform default `JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS` (`0`=allow, `1`=block) applies. When blocked, the hub overlays per-user routes onto the lab's download surfaces (`files/?download`, notebook export, the export-markdown and share-files download endpoints), returns a 403, and the user gets a "blocked by policy" notification; inline viewing, the contents API, kernels, and terminals are untouched. **Best-effort browser-download policy with notification and an audit trail, not full data-loss prevention** - the lab has a root shell with internet egress, so a determined user can still copy data out through a terminal or kernel over an encrypted channel. Takes effect on the member's next server start. See [docs/acc-crit-group-file-downloads.md](docs/acc-crit-group-file-downloads.md)
+- **Sudo Access**: a section that explicitly sets whether members get sudo in their lab, injected as `JUPYTERLAB_SUDO_ENABLE=0|1` at spawn (the lab image consumes it). When the section is off the group does not configure sudo. Resolution is priority-wins: if several of a user's groups configure it, the highest-priority group decides; if none do, the platform default `JUPYTERHUB_LAB_SUDO_ENABLE` (compose, default `1`) applies. Takes effect on the member's next server start. See [docs/acc-crit-group-sudo-access.md](docs/acc-crit-group-sudo-access.md)
 
 **Resolution rules** (when a user belongs to multiple groups):
 
@@ -639,7 +639,7 @@ Each section in the config modal carries an on/off switch in its header and open
 - CPU limit: **biggest value wins** - same rule as memory
 - Env var name conflicts (a plain env var or an API keys pool target variable) resolve by **group order** - the group higher in the ordered list wins and the shadowed value is logged. Each group's pool assigns independently, so a user in several groups draws one credential from each pool
 - Volume mounts: **union across groups**; on a mountpoint conflict (or the same volume claimed at two mountpoints) the higher-priority group wins and the shadowed entry is logged
-- File downloads: **priority wins** - among the groups whose File Downloads section is on, the highest-priority group's allow/block value applies; if none configure it, the platform default `JUPYTERHUB_BLOCK_FILE_DOWNLOADS` applies
+- File downloads: **priority wins** - among the groups whose File Downloads section is on, the highest-priority group's allow/block value applies; if none configure it, the platform default `JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS` applies
 - Sudo access: **priority wins** - among the groups whose Sudo Access section is on, the highest-priority group's value applies; if none configure it, the platform default applies
 
 **UI features**:
