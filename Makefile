@@ -4,7 +4,7 @@
 # GLOBALS                                                                       #
 #################################################################################
 .DEFAULT_GOAL := help
-.PHONY: help preflight build build_verbose rebuild rebuild_increment_version _rebuild_impl push pull start stop clean increment_version maybe_increment_version tag logs test test-functional test-functional-clean
+.PHONY: help preflight build build_verbose rebuild rebuild_increment_version _rebuild_impl push pull start stop clean increment_version maybe_increment_version tag logs test test-functional test-functional-env test-functional-clean
 
 # ── Preflight: tools, services, and files required end-to-end ──
 # Covers versioning (python3 + tomllib + awk + sed), build (docker), push (git),
@@ -198,6 +198,7 @@ logs: preflight
 # ── Functional test harness (LOCAL ONLY - isolated throwaway deployment) ──
 FUNCTEST_PROJECT := stellars-functest
 FUNCTEST_COMPOSE := tests/functional/compose.functional.yml
+FUNCTEST_ENV_COMPOSE := tests/functional/compose.functional-env.yml
 FUNCTEST_IMAGES  := quay.io/jupyterhub/singleuser:latest mcr.microsoft.com/playwright/python:v1.49.0-noble
 
 ## run the python unit test suites locally (stellars-hub-services + stellars-docker-proxy)
@@ -207,13 +208,29 @@ test:
 
 ## run the functional UI/scenario harness in an isolated throwaway deployment, then clean containers/network/volumes (LOCAL ONLY; pulled images kept to avoid re-pull - REMOVE_IMAGES=1 to also remove them)
 test-functional:
-	@echo "[functional] booting isolated deployment ($(FUNCTEST_PROJECT))..."
-	@start=$$(date +%s); \
-	docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) up --abort-on-container-exit --exit-code-from tests; \
+	@if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then gpumode=2; else gpumode=0; fi; \
+	echo "[functional] booting isolated deployment ($(FUNCTEST_PROJECT)) [GPU auto-detect mode=$$gpumode]..."; \
+	start=$$(date +%s); \
+	FUNCTEST_GPU_ENABLED=$$gpumode docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) up --abort-on-container-exit --exit-code-from tests; \
 	rc=$$?; \
 	$(MAKE) --no-print-directory test-functional-clean; \
 	end=$$(date +%s); \
 	echo "[functional] total time (boot + tests + teardown): $$((end-start))s; test-suite total is the pytest 'in Xs' line above"; \
+	exit $$rc
+
+## run the functional harness in auth mode 2 (signup disabled + env-password admin; restart-to-provision on a fresh DB), then clean up
+test-functional-env:
+	@echo "[functional/env] booting hub (first boot creates the DB + tables)..."
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) up -d --wait jupyterhub
+	@echo "[functional/env] restarting hub to provision the env-password admin..."
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) restart jupyterhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) up -d --wait jupyterhub
+	@start=$$(date +%s); \
+	docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) run --rm tests; \
+	rc=$$?; \
+	$(MAKE) --no-print-directory test-functional-clean; \
+	end=$$(date +%s); \
+	echo "[functional/env] total time: $$((end-start))s"; \
 	exit $$rc
 
 ## remove the functional-test harness - containers, spawned labs, network, volumes (idempotent; pulled images kept - REMOVE_IMAGES=1 also removes them)

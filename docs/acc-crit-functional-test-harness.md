@@ -60,8 +60,8 @@ Legend: `[x]` implemented, `[ ]` planned (the test/scenario backlog). Each item 
   - log: 2026-06-13 implemented
 - [x] **Signup bootstrap window** - on a fresh DB (signup off, no env password) the first admin is created by signing up, then authenticates and reaches the hub
   - log: 2026-06-13 implemented (the harness default; env-password bootstrap cannot seed on a single fresh boot)
-- [ ] **Admin env-password login (mode 2)** - signup disabled + JUPYTERHUB_ADMIN_PASSWORD, admin pre-provisioned (needs a restart-to-provision on a fresh DB)
-  - log: 2026-06-13 planned
+- [x] **Admin env-password login (mode 2)** - signup disabled + JUPYTERHUB_ADMIN_PASSWORD; `make test-functional-env` does the restart-to-provision and runs ONE focused test (`test_auth_env_mode`: env admin authenticates + signup form not served), not a full-suite re-run
+  - log: 2026-06-13 implemented (compose.functional-env.yml + test-functional-env; env mode collects only the envauth tests)
 - [ ] **Signup enabled/disabled** - signup form present iff `JUPYTERHUB_SIGNUP_ENABLED=1`
   - log: 2026-06-13 planned
 - [ ] **Non-admin needs authorization** - a self-signed user cannot log in until admin authorizes
@@ -262,8 +262,8 @@ Legend: `[x]` implemented, `[ ]` planned (the test/scenario backlog). Each item 
 
 ## Spawn & lab lifecycle
 
-- [x] **Spawn smoke (best-effort)** - start server with minimal image; lab loads or skip
-  - log: 2026-06-13 implemented
+- [x] **Spawn creates the container** - starting a server creates `jupyterlab-functestadmin`, inspected for policy effects (test_container_policy); the lab UI itself does not load under the minimal image, so no separate always-skip smoke
+  - log: 2026-06-13 implemented (replaced the always-skip spawn smoke)
 - [ ] **Spawn with overlay** - spawn-config overlay makes the minimal image spawn reliably
   - log: 2026-06-13 planned
 - [ ] **Stop server** - stop returns to a stopped state
@@ -285,34 +285,34 @@ The resolved policy *is* the container's create-time config (Env / Mounts /
 HostConfig), set by DockerSpawner before the app starts - so these are
 inspectable via the host docker socket regardless of the lab image.
 
-- [ ] **Container created** - spawning a member of a configured group creates `jupyterlab-<user>` (running)
-  - log: 2026-06-13 planned
-- [ ] **Env: sudo** - container Env has `JUPYTERLAB_SUDO_ENABLE=<resolved>`
-  - log: 2026-06-13 planned
-- [ ] **Env: group vars** - configured group env vars present in container Env
-  - log: 2026-06-13 planned
+- [x] **Container created** - spawning a member of a configured group creates `jupyterlab-<user>` (running)
+  - log: 2026-06-13 planned; done (test_container_policy)
+- [x] **Env: sudo** - container Env has `JUPYTERLAB_SUDO_ENABLE=<resolved>`
+  - log: 2026-06-13 planned; done (test_container_policy)
+- [x] **Env: group vars** - configured group env vars present in container Env
+  - log: 2026-06-13 planned; done (test_container_policy)
 - [ ] **Env: reserved stripped** - reserved names never injected
   - log: 2026-06-13 planned
 - [ ] **Env: GPU flags** - `ENABLE_GPU_SUPPORT` / `NVIDIA_VISIBLE_DEVICES` / `CUDA_VISIBLE_DEVICES` match the gpu policy
   - log: 2026-06-13 planned
 - [ ] **Env: api-keys** - pool target vars present; two running containers never hold the same credential
   - log: 2026-06-13 planned
-- [ ] **Mounts: group volume** - the configured volume -> mountpoint appears in Mounts
-  - log: 2026-06-13 planned
+- [x] **Mounts: group volume** - the configured volume -> mountpoint appears in Mounts
+  - log: 2026-06-13 planned; done (test_container_policy)
 - [ ] **Mounts: per-user volumes** - home/workspace/cache mounted
   - log: 2026-06-13 planned
 - [ ] **Mounts: docker socket** - raw access mounts `/var/run/docker.sock`; limited mounts the proxy subpath + sets `DOCKER_HOST`
   - log: 2026-06-13 planned
-- [ ] **Limit: memory** - `HostConfig.Memory == cap` bytes; `MemorySwap` per swap policy
-  - log: 2026-06-13 planned
+- [x] **Limit: memory** - `HostConfig.Memory == cap` bytes; `MemorySwap` per swap policy
+  - log: 2026-06-13 planned; done (test_container_policy)
 - [ ] **Limit: cpu** - `NanoCpus` / `CpuQuota` == ceil(cores)
   - log: 2026-06-13 planned
 - [ ] **Privileged** - `HostConfig.Privileged` true only when granted
   - log: 2026-06-13 planned
 - [ ] **Network** - attached to the test network; limited-docker hub-network visibility per flag
   - log: 2026-06-13 planned
-- [ ] **Labels: compose project** - `com.docker.compose.project` stamped on the lab
-  - log: 2026-06-13 planned
+- [x] **Labels: compose project** - `com.docker.compose.project` stamped on the lab
+  - log: 2026-06-13 planned; done (test_container_policy)
 - [ ] **Labels: api-keys slot** - durable slot label present per pool
   - log: 2026-06-13 planned
 - [ ] **Exec: sudo reality** - `exec` confirms sudo availability matches the policy
@@ -330,12 +330,12 @@ The core of the harness: for each policy value an admin can set on a group, spaw
 
 - [ ] **sudo on** -> `JUPYTERLAB_SUDO_ENABLE=1` in Env
   - log: 2026-06-13 planned
-- [ ] **sudo off** -> `JUPYTERLAB_SUDO_ENABLE=0`
-  - log: 2026-06-13 planned
+- [x] **sudo off** -> `JUPYTERLAB_SUDO_ENABLE=0`
+  - log: 2026-06-13 planned; done (test_container_policy)
 - [ ] **sudo unconfigured** -> platform default value
   - log: 2026-06-13 planned
-- [ ] **mem 4G** -> `HostConfig.Memory == 4*1024^3`
-  - log: 2026-06-13 planned
+- [x] **mem 4G** -> `HostConfig.Memory == 4*1024^3`
+  - log: 2026-06-13 planned; done (test_container_policy)
 - [ ] **mem 4G + no-swap** -> `MemorySwap == Memory`
   - log: 2026-06-13 planned
 - [ ] **mem disabled** -> no memory limit
@@ -350,8 +350,8 @@ The core of the harness: for each policy value an admin can set on a group, spaw
   - log: 2026-06-13 planned
 - [ ] **gpu none** -> `NVIDIA_VISIBLE_DEVICES=void`, no device_requests
   - log: 2026-06-13 planned
-- [ ] **env FOO=bar** -> `FOO=bar` in Env
-  - log: 2026-06-13 planned
+- [x] **env FOO=bar** -> `FOO=bar` in Env
+  - log: 2026-06-13 planned; done (test_container_policy)
 - [ ] **env reserved (PATH)** -> not injected
   - log: 2026-06-13 planned
 - [ ] **docker raw** -> `/var/run/docker.sock` mounted, no DOCKER_HOST
@@ -360,8 +360,8 @@ The core of the harness: for each policy value an admin can set on a group, spaw
   - log: 2026-06-13 planned
 - [ ] **docker privileged** -> `HostConfig.Privileged=true`
   - log: 2026-06-13 planned
-- [ ] **volume vol->/mnt/x** -> Mounts contains the named volume at /mnt/x
-  - log: 2026-06-13 planned
+- [x] **volume vol->/mnt/x** -> Mounts contains the named volume at /mnt/x
+  - log: 2026-06-13 planned; done (test_container_policy)
 - [ ] **api-keys pool** -> target var(s) set, durable slot label present
   - log: 2026-06-13 planned
 - [ ] **downloads block** -> per-user CHP block routes registered (lab-extension effect out of scope minimal)
@@ -441,10 +441,10 @@ The core of the harness: for each policy value an admin can set on a group, spaw
 
 ## GPU auto-detection (GPU host only)
 
-- [x] **Auto-detect enables on GPU host** - with `JUPYTERHUB_GPU_ENABLED=2` and a GPU present, the hub `[GPU debug]` line reports `detected=1 enabled=1` and enumerates GPUs
-  - log: 2026-06-13 implemented (test_gpu_detection; skips when no GPU)
-- [x] **Skips on CPU host** - no GPU -> the test skips (no false failure, no CUDA pull on the default run)
-  - log: 2026-06-13 implemented
+- [x] **Auto-detect enables on GPU host** - `make test-functional` auto-detects a host GPU, sets `JUPYTERHUB_GPU_ENABLED=2`, and the test asserts the hub `[GPU debug]` line reports `detected=1 enabled=1` with GPUs enumerated
+  - log: 2026-06-13 implemented (runs for real on a GPU host)
+- [x] **Deselected on CPU host** - no GPU -> the gpu test is deselected (not collected), no skip noise and no CUDA pull
+  - log: 2026-06-13 implemented (conftest pytest_collection_modifyitems)
 - [ ] **GPU policy spawn (GPU host)** - a gpu-access group member spawns with `device_requests` and `NVIDIA_VISIBLE_DEVICES` set
   - log: 2026-06-13 planned
 - [ ] **Specific-GPU selection (GPU host)** - a device-id subset reaches the container env

@@ -1,0 +1,14 @@
+# Override for auth mode 2: signup-disabled + env-password admin.
+#
+# The base compose already disables signup; this adds JUPYTERHUB_ADMIN_PASSWORD so
+# the admin is provisioned from the env (bootstrap-by-env), not the signup window.
+# On a fresh DB this needs a restart-to-provision (the users_info table is created
+# after the config runs on the first boot, so the first provision is a no-op and
+# the second boot seeds the admin) - driven by `make test-functional-env`.
+services:
+  jupyterhub:
+    environment:
+      - JUPYTERHUB_ADMIN_PASSWORD=functest-secret
+  tests:
+    environment:
+      - FUNCTEST_AUTH_MODE=env
