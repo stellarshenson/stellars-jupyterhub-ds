@@ -56,6 +56,7 @@ services:
       - ADMIN_USER=functestadmin
       - ADMIN_PASSWORD=functest-secret
       - PYTEST_ARGS=${PYTEST_ARGS:-}                           # select specific workflows e.g. PYTEST_ARGS="-k priority"
+      - FUNCTEST_GPU_ENABLED=${FUNCTEST_GPU_ENABLED:-0}        # conftest collects the gpu test only when this is 2
     volumes:
       - ./:/tests
       - /var/run/docker.sock:/var/run/docker.sock:rw          # inspect/exec spawned labs (end-to-end verification)

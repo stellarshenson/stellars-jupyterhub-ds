@@ -16,6 +16,28 @@ import requests
 BASE_URL = os.environ.get("BASE_URL", "http://jupyterhub:8000/jupyterhub").rstrip("/")
 ADMIN_USER = os.environ.get("ADMIN_USER", "functestadmin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "functest-secret")
+# "signup" (default): first admin created via the bootstrap-signup window.
+# "env": signup disabled + JUPYTERHUB_ADMIN_PASSWORD; the admin is pre-provisioned
+# by the make target's restart-to-provision, so no signup is performed here.
+AUTH_MODE = os.environ.get("FUNCTEST_AUTH_MODE", "signup")
+
+
+def pytest_collection_modifyitems(config, items):
+    """Deselect (not skip) tests that do not apply to this run's regime, so the
+    suite never reports noise skips:
+    - env mode runs ONLY the env-auth test (everything else is auth-mode-agnostic
+      and already covered by the default signup run);
+    - signup mode drops the env-auth tests;
+    - gpu tests are collected only when GPU auto-detect is on (dropped on CPU hosts).
+    """
+    gpu_on = os.environ.get("FUNCTEST_GPU_ENABLED", "0") == "2"
+    if AUTH_MODE == "env":
+        items[:] = [i for i in items if "envauth" in i.keywords]
+        return
+    items[:] = [
+        i for i in items
+        if "envauth" not in i.keywords and ("gpu" not in i.keywords or gpu_on)
+    ]
 
 
 @pytest.fixture(scope="session")
@@ -55,7 +77,13 @@ def _bootstrap_admin(_wait_for_hub):
     users_info table is created after the config runs), so the documented flow is
     to sign up the admin during the one-shot bootstrap window. Idempotent - a
     second attempt (user exists) is harmless.
+
+    In env-password mode the admin is pre-provisioned (signup disabled +
+    restart-to-provision), so skip signup entirely.
     """
+    if AUTH_MODE != "signup":
+        yield
+        return
     s = requests.Session()
     r = s.get(f"{BASE_URL}/hub/signup", timeout=10)
     m = re.search(r'name="_xsrf"[^>]*value="([^"]+)"', r.text)
