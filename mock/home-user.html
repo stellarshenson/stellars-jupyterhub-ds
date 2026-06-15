@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="optimum-hub-dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optimum Hub - My lab</title>
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/app.css">
+  <link rel="icon" href="assets/brand/favicon.ico">
+  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<!-- data-role="user" tells the shell to drop the Administration section, the
+     broadcast action and the fleet pages - a plain user only operates one lab. -->
+<body data-page="home" data-role="user" data-title="Overview">
+<main>
+  <div class="page-head">
+    <div class="titles">
+      <h1 class="page-title">Welcome, alice</h1>
+      <div class="page-sub">Your lab and what your groups let you do</div>
+    </div>
+  </div>
+
+  <!-- My server: one hero card, the whole point of the page -->
+  <div class="card" style="display:flex;align-items:center;gap:var(--space-5);flex-wrap:wrap">
+    <span class="m-ic" style="width:48px;height:48px">{ic:server}</span>
+    <div>
+      <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap">
+        <h2 style="font-size:var(--text-xl)">jupyterlab-alice</h2>
+        <span class="pill running"><span class="dot"></span>Running</span>
+        <span class="act idle">Idle 12m</span>
+      </div>
+      <div class="m-break" style="margin-top:8px">
+        <span>CPU <b>8%</b></span><span>Memory <b>2.1 / 16 GB</b></span><span>Time left <b>3h 48m</b></span>
+      </div>
+    </div>
+    <div class="row-actions" style="margin-left:auto;gap:var(--space-2)">
+      <button class="btn btn-primary" data-toast="Opening your lab (mock)">{ic:play} Open lab</button>
+      <button class="btn" data-toast="Restarting your lab (mock)">{ic:restart} Restart</button>
+      <button class="btn btn-danger" data-toast="Stopping your lab (mock)">{ic:stop} Stop</button>
+    </div>
+  </div>
+
+  <div class="grid cols-2" style="margin-top:var(--space-4)">
+    <div class="card card-pad-0">
+      <div class="card-head"><h3>What you can do</h3><div class="actions"><span class="page-sub">granted by your groups</span></div></div>
+      <div style="padding:0 var(--space-4)">
+        <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>GPU</b><div class="g-from">group gpu</div></div><span class="g-val">devices 0,1</span></div>
+        <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>Memory</b><div class="g-from">group data-science</div></div><span class="g-val">16 GB</span></div>
+        <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>CPU</b><div class="g-from">group data-science</div></div><span class="g-val">4 cores</span></div>
+        <div class="grant"><span class="g-ic">{ic:shield}</span><div><b>Downloads</b><div class="g-from">group data-science</div></div><span class="g-val">blocked</span></div>
+      </div>
+      <div style="padding:var(--space-3) var(--space-4)" class="chips">
+        <span class="page-sub" style="margin-right:var(--space-2)">Groups:</span>
+        <span class="chip">data-science</span><span class="chip">gpu</span>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:var(--space-4)">
+      <div class="card card-pad-0">
+        <div class="card-head"><h3>Your storage</h3></div>
+        <div style="padding:var(--space-4)">
+          <dl class="kv">
+            <dt>home</dt><dd class="mono">2.1 GB</dd>
+            <dt>workspace</dt><dd class="mono">9.8 GB</dd>
+            <dt>cache</dt><dd class="mono">0.5 GB</dd>
+          </dl>
+          <div style="margin-top:var(--space-3)"><button class="btn btn-danger" data-toast="Manage-volumes (stop server first) (mock)">Manage volumes</button></div>
+        </div>
+      </div>
+
+      <div class="card card-pad-0">
+        <div class="card-head"><h3>Recent</h3></div>
+        <div class="feed">
+          <div class="feed-item"><div class="feed-ic">{ic:restart}</div><div class="feed-body"><div class="t">You restarted your server</div><div class="when">3 hours ago</div></div></div>
+          <div class="feed-item"><div class="feed-ic">{ic:play}</div><div class="feed-body"><div class="t">You started your server</div><div class="when">yesterday</div></div></div>
+          <div class="feed-item"><div class="feed-ic">{ic:group}</div><div class="feed-body"><div class="t">You were added to group <b>gpu</b></div><div class="when">2 days ago</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="assets/app.js"></script>
+</body>
+</html>
