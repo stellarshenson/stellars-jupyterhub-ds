@@ -27,44 +27,38 @@
       <input class="input" type="text" placeholder="e.g. tomasz">
     </div>
 
-    <!-- Password is auto-generated xkcd-style by default. "Set manually" is
-         net-new backend (creation is auto-gen only today) - kept visible but
-         flagged; the manual input below is shown disabled with a note. -->
+    <!-- One password field: pre-filled with a generated value, overwrite to set
+         your own. No mode toggle - whatever is in the field on Save is used. -->
     <div class="field">
       <label>Password</label>
       <div style="display:flex;gap:var(--space-2);align-items:center">
-        <input class="input mono" type="text" value="correct-horse-battery" readonly>
+        <input class="input mono" type="text" value="correct-horse-battery">
         <button class="btn btn-sm" data-toast="Regenerated password (mock)">Regenerate</button>
       </div>
-      <div style="display:flex;align-items:center;gap:var(--space-3);margin-top:var(--space-3)">
-        <span class="switch" data-toast="Set password manually (net-new) (mock)"><span class="track"></span></span>
-        <span class="page-sub">set manually <span class="tag warn">net-new</span></span>
-      </div>
-      <input class="input mono" type="text" placeholder="type a password" disabled style="margin-top:var(--space-3)">
+      <div class="page-sub" style="margin-top:var(--space-2)">Auto-generated - type over it to set your own; shown to you after the user is created</div>
     </div>
 
+    <!-- Groups: typeahead combobox scales to hundreds of groups -->
     <div class="field">
       <label>Groups</label>
-      <div class="chips" style="margin-bottom:var(--space-3)">
-        <span class="chip">data-science <span class="x" data-toast="Removed data-science (mock)">{ic:stop}</span></span>
-      </div>
-      <div style="display:flex;gap:var(--space-2);max-width:360px">
-        <input class="input" type="text" placeholder="Add to group… (autocomplete)">
-        <button class="btn" data-toast="Added to group (mock)">Add</button>
+      <div class="combo" data-combo="groups" style="max-width:420px">
+        <div class="chips" data-combo-chips>
+          <span class="chip" data-val="data-science"><span>data-science</span><span class="x">{ic:stop}</span></span>
+        </div>
+        <input class="combo-input" type="text" placeholder="Add to group…">
+        <div class="combo-pop" data-combo-pop></div>
       </div>
     </div>
 
-    <div class="field">
+    <div class="field" style="margin-bottom:0">
       <label>Authorize now</label>
       <div style="display:flex;align-items:center;gap:var(--space-3)">
-        <span class="switch on" data-toast="Authorize-later is net-new (mock)"><span class="track"></span></span>
-        <span class="page-sub">on = usable immediately; off defers authorisation <span class="tag warn">net-new</span></span>
+        <span class="switch on" data-toast="Toggled authorize-now (mock)"><span class="track"></span></span>
+        <span class="page-sub">on = usable immediately; off defers authorisation to later</span>
       </div>
     </div>
 
-    <div class="page-sub" style="margin-bottom:var(--space-4)">Manual password and authorize-later are net-new backend (per the design doc) - shown here, marked <span class="tag warn">net-new</span></div>
-
-    <div style="display:flex;gap:var(--space-2);justify-content:flex-end">
+    <div style="display:flex;gap:var(--space-2);justify-content:flex-end;margin-top:var(--space-5)">
       <a class="btn" href="users.html">Cancel</a>
       <button class="btn btn-primary" data-toast="Created user (mock)">Add user</button>
     </div>

@@ -35,32 +35,36 @@
   </div>
 
   <div class="card card-pad-0" style="margin-top:var(--space-4)">
-    <div class="card-head"><h3>Your tokens</h3></div>
+    <div class="card-head">
+      <h3>Your tokens</h3>
+      <div class="actions"><label class="search">{ic:search}<input type="text" placeholder="Filter tokens…" data-list-search></label></div>
+    </div>
     <div class="table-wrap">
-      <table class="tbl">
-        <thead><tr><th>Note</th><th>Scopes</th><th>Last used</th><th>Expires</th><th class="right">Actions</th></tr></thead>
+      <table class="tbl" data-list>
+        <thead><tr><th class="sortable" data-sort="note">Note <span class="sort"></span></th><th>Scopes</th><th>Last used</th><th>Expires</th><th class="right">Actions</th></tr></thead>
         <tbody>
-          <tr>
+          <tr data-text="training pipeline read:users access:servers">
             <td>training pipeline</td>
             <td><span class="tag">read:users</span> <span class="tag">access:servers</span></td>
             <td class="num">2 hours ago</td>
             <td class="num">in 27 days</td>
             <td><div class="row-actions"><button class="btn btn-sm btn-danger" data-toast="Token revoked (mock)">Revoke</button></div></td>
           </tr>
-          <tr>
+          <tr data-text="laptop CLI self">
             <td>laptop CLI</td>
             <td><span class="tag">self</span></td>
             <td class="num">yesterday</td>
             <td class="num">never</td>
             <td><div class="row-actions"><button class="btn btn-sm btn-danger" data-toast="Token revoked (mock)">Revoke</button></div></td>
           </tr>
-          <tr>
+          <tr data-text="scratch notebook read:servers">
             <td>scratch notebook</td>
             <td><span class="tag">read:servers</span></td>
             <td class="num">never</td>
             <td class="num">in 5 days</td>
             <td><div class="row-actions"><button class="btn btn-sm btn-danger" data-toast="Token revoked (mock)">Revoke</button></div></td>
           </tr>
+          <tr data-list-empty hidden><td colspan="5"><div class="empty" style="padding:var(--space-6)"><p>No token matches that filter</p></div></td></tr>
         </tbody>
       </table>
     </div>

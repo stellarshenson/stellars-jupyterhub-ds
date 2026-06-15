@@ -9,56 +9,115 @@
   <link rel="icon" href="assets/brand/favicon.ico">
   <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 </head>
+<!-- Configure group is a full screen, tabbed and symmetric with Configure user:
+     General (metadata) | Policy (the nine sections) | Members (membership at
+     scale). One Save (top-right) for the whole group. -->
 <body data-page="groups" data-title="Configure group - research">
 <main>
   <div class="page-head">
     <div class="titles">
       <h1 class="page-title">Configure group - research <span class="tag accent" style="vertical-align:middle">Priority 1</span></h1>
-      <div class="page-sub">Toggle a policy on to grant it to every member; the hub combines policies across a user's groups by priority</div>
-      <div class="page-sub" style="margin-top:var(--space-2)"><a href="groups.html" style="color:var(--color-accent);cursor:pointer">{ic:arrowup} Back to Groups</a></div>
+      <div class="page-sub"><a href="groups.html" style="color:var(--color-accent);cursor:pointer">{ic:chevron} Back to Groups</a></div>
+    </div>
+    <div class="actions">
+      <a class="btn" href="groups.html">Cancel</a>
+      <button class="btn btn-primary" data-toast="Saved group research (mock)">Save</button>
     </div>
   </div>
 
-  <!-- The nine policy sections, in registry order. Each is a grant row: icon +
-       name + one-line hint, the current value, and an enable toggle. A section
-       that is off collapses and is omitted from the saved payload. Some sections
-       reveal extra controls when on - GPU and Docker shown expanded below. -->
-  <div class="card">
-    <div class="grant"><span class="g-ic">{ic:settings}</span><div><b>Environment</b><div class="g-from">inject env vars, reserved names rejected</div></div><span class="g-val">2 vars</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle env (mock)"><span class="track"></span></span></div>
-
-    <!-- reserved-env-var inline error: surfaced when a forbidden name is entered -->
-    <div style="padding:var(--space-2) 0 var(--space-3) calc(28px + var(--space-3));color:var(--color-danger);font-size:var(--text-xs)">JUPYTERHUB_API_TOKEN is reserved and was rejected - pick a different variable name</div>
-
-    <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>GPU</b><div class="g-from">all or specific device ids</div></div><span class="g-val">all</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle gpu (mock)"><span class="track"></span></span></div>
-
-    <!-- GPU expanded: a section is more than a toggle. When on it reveals its
-         own controls - here an "all devices" switch and a device-ids input. -->
-    <div style="padding:var(--space-2) 0 var(--space-3) calc(28px + var(--space-3))">
-      <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3)">
-        <span class="switch on" data-toast="Toggle all devices (mock)"><span class="track"></span></span>
-        <span class="page-sub">grant all devices</span>
-      </div>
-      <div class="field" style="max-width:280px;margin-bottom:0">
-        <label>Device ids</label>
-        <input class="input" type="text" placeholder="0,1,2" value="" disabled>
-        <div class="page-sub" style="margin-top:var(--space-2)">enabled when "all devices" is off</div>
-      </div>
+  <div class="card" data-tabs>
+    <div class="tab-bar">
+      <button class="tab active" data-tab="general">General</button>
+      <button class="tab" data-tab="policy">Policy</button>
+      <button class="tab" data-tab="members">Members <span class="list-count">· 142</span></button>
     </div>
 
-    <div class="grant"><span class="g-ic">{ic:server}</span><div><b>Docker</b><div class="g-from">raw socket or limited quotas</div></div><span class="g-val">raw</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle docker (mock)"><span class="track"></span></span></div>
-    <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>CPU</b><div class="g-from">core limit, biggest enabled wins</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle cpu (mock)"><span class="track"></span></span></div>
-    <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>Memory</b><div class="g-from">GB limit + swap</div></div><span class="g-val">32 GB</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle mem (mock)"><span class="track"></span></span></div>
-    <div class="grant"><span class="g-ic">{ic:shield}</span><div><b>Sudo</b><div class="g-from">root inside the lab</div></div><span class="g-val">on</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle sudo (mock)"><span class="track"></span></span></div>
-    <div class="grant"><span class="g-ic">{ic:shield}</span><div><b>Downloads</b><div class="g-from">block or allow downloads</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle downloads (mock)"><span class="track"></span></span></div>
-    <div class="grant"><span class="g-ic">{ic:key}</span><div><b>API keys</b><div class="g-from">credential pool, one slot per user, single|pair mode</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle api-keys (mock)"><span class="track"></span></span></div>
-    <div class="grant"><span class="g-ic">{ic:server}</span><div><b>Volume mounts</b><div class="g-from">shared volumes, protected paths barred</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle volumes (mock)"><span class="track"></span></span></div>
+    <!-- General: group metadata. Priority decides who wins on policy conflict. -->
+    <section class="tab-panel active" data-panel="general" style="max-width:520px">
+      <div class="field"><label>Name</label><input class="input" type="text" value="research"></div>
+      <div class="field"><label>Description</label><input class="input" type="text" value="Research staff - full GPU and raw Docker"></div>
+      <div class="field" style="margin-bottom:0"><label>Priority</label><input class="input" type="number" value="1" style="max-width:120px"><div class="page-sub" style="margin-top:var(--space-2)">Lower number wins when policies conflict across a user's groups</div></div>
+    </section>
 
-    <div class="page-sub" style="margin-top:var(--space-4)">Docker reveals quota fields (max containers, cpu-cap, mem-cap) when switched from raw to limited; API keys reveals single-var vs pair-var inputs when on.</div>
+    <!-- Policy: the nine sections, in registry order. Each is a grant row - icon,
+         name, one-line hint, current value, enable toggle. Off collapses and is
+         omitted from the saved payload. Some reveal extra controls when on. -->
+    <section class="tab-panel" data-panel="policy">
+      <div class="page-sub" style="margin-bottom:var(--space-4)">Toggle a policy on to grant it to every member; the hub combines policies across a user's groups by priority</div>
 
-    <div style="margin-top:var(--space-4);display:flex;gap:var(--space-2);justify-content:flex-end">
-      <a class="btn" href="groups.html">Cancel</a>
-      <button class="btn btn-primary" data-toast="Saved group policy (mock)">Save policy</button>
-    </div>
+      <div class="grant"><span class="g-ic">{ic:settings}</span><div><b>Environment</b><div class="g-from">inject env vars, reserved names rejected</div></div><span class="g-val">2 vars</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle env (mock)"><span class="track"></span></span></div>
+      <div style="padding:var(--space-2) 0 var(--space-3) calc(28px + var(--space-3));color:var(--color-danger);font-size:var(--text-xs)">JUPYTERHUB_API_TOKEN is reserved and was rejected - pick a different variable name</div>
+
+      <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>GPU</b><div class="g-from">all or specific device ids</div></div><span class="g-val">all</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle gpu (mock)"><span class="track"></span></span></div>
+      <div style="padding:var(--space-2) 0 var(--space-3) calc(28px + var(--space-3))">
+        <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3)">
+          <span class="switch on" data-toast="Toggle all devices (mock)"><span class="track"></span></span>
+          <span class="page-sub">grant all devices</span>
+        </div>
+        <div class="field" style="max-width:280px;margin-bottom:0">
+          <label>Device ids</label>
+          <input class="input" type="text" placeholder="0,1,2" value="" disabled>
+          <div class="page-sub" style="margin-top:var(--space-2)">enabled when "all devices" is off</div>
+        </div>
+      </div>
+
+      <div class="grant"><span class="g-ic">{ic:server}</span><div><b>Docker</b><div class="g-from">raw socket or limited quotas</div></div><span class="g-val">raw</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle docker (mock)"><span class="track"></span></span></div>
+      <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>CPU</b><div class="g-from">core limit, biggest enabled wins</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle cpu (mock)"><span class="track"></span></span></div>
+      <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>Memory</b><div class="g-from">GB limit + swap</div></div><span class="g-val">32 GB</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle mem (mock)"><span class="track"></span></span></div>
+      <div class="grant"><span class="g-ic">{ic:shield}</span><div><b>Sudo</b><div class="g-from">root inside the lab</div></div><span class="g-val">on</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle sudo (mock)"><span class="track"></span></span></div>
+      <div class="grant"><span class="g-ic">{ic:shield}</span><div><b>Downloads</b><div class="g-from">block or allow downloads</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle downloads (mock)"><span class="track"></span></span></div>
+      <div class="grant"><span class="g-ic">{ic:key}</span><div><b>API keys</b><div class="g-from">credential pool, one slot per user, single|pair mode</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle api-keys (mock)"><span class="track"></span></span></div>
+      <div class="grant"><span class="g-ic">{ic:server}</span><div><b>Volume mounts</b><div class="g-from">shared volumes, protected paths barred</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle volumes (mock)"><span class="track"></span></span></div>
+
+      <div class="page-sub" style="margin-top:var(--space-4)">Docker reveals quota fields (max containers, cpu-cap, mem-cap) when switched from raw to limited; API keys reveals single-var vs pair-var inputs when on.</div>
+    </section>
+
+    <!-- Members: membership at scale. A typeahead adds users from the corpus; the
+         list below searches and pages through the (large) membership and removes
+         one in place - chips would overflow at hundreds of members. -->
+    <section class="tab-panel" data-panel="members">
+      <div class="page-sub" style="margin-bottom:var(--space-3)">Add a user by typing; the list below searches and pages the full membership</div>
+      <div class="combo" data-combo="users" style="max-width:420px;margin-bottom:var(--space-4)">
+        <div class="chips" data-combo-chips></div>
+        <input class="combo-input" type="text" placeholder="Add a member…">
+        <div class="combo-pop" data-combo-pop></div>
+      </div>
+
+      <div class="card card-pad-0">
+        <div class="card-head">
+          <h3><span class="list-count">142</span> members</h3>
+          <div class="actions">
+            <label class="search">{ic:search}<input type="text" placeholder="Find a member…" data-list-search></label>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="tbl" data-list>
+            <thead><tr><th class="sortable" data-sort="user">Member <span class="sort"></span></th><th>Joined</th><th class="right">Remove</th></tr></thead>
+            <tbody>
+              <tr data-text="milan"><td><div class="u"><span class="avatar">MI</span>milan</div></td><td class="num">2026-03-01</td><td class="right"><button class="icon-btn" title="Remove from group" data-toast="Removed milan from research (mock)">{ic:stop}</button></td></tr>
+              <tr data-text="alice"><td><div class="u"><span class="avatar">AL</span>alice</div></td><td class="num">2026-03-04</td><td class="right"><button class="icon-btn" title="Remove from group" data-toast="Removed alice from research (mock)">{ic:stop}</button></td></tr>
+              <tr data-text="ola"><td><div class="u"><span class="avatar">OL</span>ola</div></td><td class="num">2026-03-09</td><td class="right"><button class="icon-btn" title="Remove from group" data-toast="Removed ola from research (mock)">{ic:stop}</button></td></tr>
+              <tr data-text="piotr"><td><div class="u"><span class="avatar">PI</span>piotr</div></td><td class="num">2026-04-02</td><td class="right"><button class="icon-btn" title="Remove from group" data-toast="Removed piotr from research (mock)">{ic:stop}</button></td></tr>
+              <tr data-text="tomek"><td><div class="u"><span class="avatar">TO</span>tomek</div></td><td class="num">2026-04-18</td><td class="right"><button class="icon-btn" title="Remove from group" data-toast="Removed tomek from research (mock)">{ic:stop}</button></td></tr>
+              <tr data-text="ewa"><td><div class="u"><span class="avatar">EW</span>ewa</div></td><td class="num">2026-05-06</td><td class="right"><button class="icon-btn" title="Remove from group" data-toast="Removed ewa from research (mock)">{ic:stop}</button></td></tr>
+              <tr data-list-empty hidden><td colspan="3"><div class="empty" style="padding:var(--space-6)"><p>No member matches that search</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <span>Showing <b>1-6</b> of <b>142</b></span>
+          <span class="pages">
+            <button class="pg" disabled data-toast="Page navigation is illustrative (mock)">Prev</button>
+            <button class="pg on" data-toast="Page 1 (mock)">1</button>
+            <button class="pg" data-toast="Page 2 (mock)">2</button>
+            <button class="pg" data-toast="Page 3 (mock)">3</button>
+            <span style="padding:0 4px">…</span>
+            <button class="pg" data-toast="Page 24 (mock)">24</button>
+            <button class="pg" data-toast="Next page (mock)">Next</button>
+          </span>
+        </div>
+      </div>
+    </section>
   </div>
 </main>
 <script src="assets/app.js"></script>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="optimum-hub-dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optimum Hub - Configure user</title>
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/app.css">
+  <link rel="icon" href="assets/brand/favicon.ico">
+  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<!-- USR-005 is a full screen, not a drawer: the user carries too much config
+     (avatar, names, email, password, groups, volumes) for a side panel, and a
+     list row should never open a cramped panel for a heavy entity. Symmetric
+     with Configure group. One Save for the whole screen (top-right). -->
+<body data-page="users" data-title="Configure user - alice">
+<main>
+  <div class="page-head">
+    <div class="titles">
+      <h1 class="page-title">Configure user - alice</h1>
+      <div class="page-sub"><a href="users.html" style="color:var(--color-accent);cursor:pointer">{ic:chevron} Back to Users</a></div>
+    </div>
+    <div class="actions">
+      <a class="btn" href="users.html">Cancel</a>
+      <button class="btn btn-primary" data-toast="Saved alice (mock)">Save</button>
+    </div>
+  </div>
+
+  <div class="card" style="max-width:760px">
+    <div data-tabs>
+      <div class="tab-bar">
+        <button class="tab active" data-tab="profile">Profile</button>
+        <button class="tab" data-tab="groups">Groups</button>
+        <button class="tab" data-tab="volumes">Volumes</button>
+      </div>
+
+      <!-- Profile: identity + the change-password section. Avatar, first/last
+           name and email are editable; username/role/dates are read-only fact. -->
+      <section class="tab-panel active" data-panel="profile">
+        <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-5)">
+          <div class="avatar" style="width:64px;height:64px;font-size:22px">AL</div>
+          <div>
+            <button class="btn btn-sm" data-toast="Upload avatar (mock)">Change avatar</button>
+            <div class="page-sub" style="margin-top:var(--space-2)">PNG or JPG, square, up to 1 MB</div>
+          </div>
+        </div>
+
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:var(--space-4)">
+          <div class="field" style="margin-bottom:0"><label>First name</label><input class="input" type="text" value="Alice"></div>
+          <div class="field" style="margin-bottom:0"><label>Last name</label><input class="input" type="text" value="Kowalska"></div>
+        </div>
+        <div class="field" style="margin-top:var(--space-4)"><label>Email</label><input class="input mono" type="email" value="alice@stellars-tech.eu"></div>
+
+        <dl class="kv" style="margin-top:var(--space-2)">
+          <dt>Username</dt><dd class="mono">alice</dd>
+          <dt>Role</dt><dd><span class="tag">user</span></dd>
+          <dt>Authorised</dt><dd><span class="switch on" data-toast="De-authorised alice (mock)"><span class="track"></span></span></dd>
+          <dt>Signed up</dt><dd>2026-03-04</dd>
+          <dt>Last active</dt><dd>2m ago</dd>
+        </dl>
+
+        <div class="section-title">Password</div>
+        <div class="field" style="margin-bottom:0">
+          <label>Set a new password</label>
+          <div style="display:flex;gap:var(--space-2);align-items:center;max-width:420px">
+            <input class="input mono" type="text" placeholder="leave blank to keep current">
+            <button class="btn btn-sm" data-toast="Generated a password (mock)">Generate</button>
+          </div>
+          <div class="page-sub" style="margin-top:var(--space-2)">Typing a value resets the password on Save; blank keeps the current one</div>
+        </div>
+      </section>
+
+      <!-- Groups: membership is the only lever - a typeahead combobox scales to
+           hundreds of groups. Effective access below is read-only (the hub
+           resolves it across her groups). -->
+      <section class="tab-panel" data-panel="groups">
+        <div class="page-sub" style="margin-bottom:var(--space-3)">Membership is the only lever - it grants policy. Type to add, x to remove.</div>
+        <div class="combo" data-combo="groups" style="max-width:420px">
+          <div class="chips" data-combo-chips>
+            <span class="chip" data-val="data-science"><span>data-science</span><span class="x">{ic:stop}</span></span>
+            <span class="chip" data-val="gpu"><span>gpu</span><span class="x">{ic:stop}</span></span>
+          </div>
+          <input class="combo-input" type="text" placeholder="Add to group…">
+          <div class="combo-pop" data-combo-pop></div>
+        </div>
+
+        <div class="section-title">Effective access</div>
+        <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>GPU</b><div class="g-from">from group gpu</div></div><span class="g-val">0,1</span></div>
+        <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>Memory</b><div class="g-from">from group data-science</div></div><span class="g-val">16 GB</span></div>
+        <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>CPU</b><div class="g-from">from group data-science</div></div><span class="g-val">4 cores</span></div>
+        <div class="grant"><span class="g-ic">{ic:shield}</span><div><b>Downloads</b><div class="g-from">from group data-science</div></div><span class="g-val">blocked</span></div>
+      </section>
+
+      <!-- Volumes: reset needs the server stopped. -->
+      <section class="tab-panel" data-panel="volumes">
+        <div class="page-sub" style="margin-bottom:var(--space-3)">Reset needs the server stopped</div>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead><tr><th></th><th>Volume</th><th class="right">Size</th></tr></thead>
+            <tbody>
+              <tr><td><input type="checkbox"></td><td>home</td><td class="num right">2.1 GB</td></tr>
+              <tr><td><input type="checkbox"></td><td>workspace</td><td class="num right">9.8 GB</td></tr>
+              <tr><td><input type="checkbox"></td><td>cache</td><td class="num right">0.5 GB</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:var(--space-4)"><button class="btn btn-danger" data-toast="Reset selected volumes (mock)">Reset selected</button></div>
+      </section>
+    </div>
+  </div>
+</main>
+<script src="assets/app.js"></script>
+</body>
+</html>

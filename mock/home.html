@@ -23,15 +23,15 @@
   <div class="grid cols-4">
     <a class="card metric card-link" href="servers.html">
       <div class="m-top"><span class="m-ic">{ic:server}</span><span>Servers</span><span class="m-go">{ic:chevron}</span></div>
-      <div class="m-val">16</div>
-      <div class="spark"><span style="width:19%;background:var(--color-success)"></span><span style="width:6%;background:var(--color-warning)"></span><span style="width:75%;background:var(--color-border)"></span></div>
-      <div class="m-break"><span><b>3</b> running</span><span><b>1</b> idle</span><span><b>12</b> stopped</span></div>
+      <div class="m-val">1,262</div>
+      <div class="spark"><span style="width:1.5%;background:var(--color-success)"></span><span style="width:0.5%;background:var(--color-warning)"></span><span style="width:98%;background:var(--color-border)"></span></div>
+      <div class="m-break"><span><b>18</b> running</span><span><b>4</b> idle</span><span><b>1,240</b> stopped</span></div>
     </a>
     <a class="card metric card-link" href="users.html">
       <div class="m-top"><span class="m-ic">{ic:users}</span><span>Users</span><span class="m-go">{ic:chevron}</span></div>
-      <div class="m-val">24</div>
-      <div class="spark"><span style="width:92%;background:var(--color-accent)"></span><span style="width:8%;background:var(--color-accent-2)"></span></div>
-      <div class="m-break"><span><b>22</b> authorised</span><span style="color:var(--color-accent-2)"><b>2</b> pending</span></div>
+      <div class="m-val">1,296</div>
+      <div class="spark"><span style="width:99%;background:var(--color-accent)"></span><span style="width:1%;background:var(--color-accent-2)"></span></div>
+      <div class="m-break"><span><b>1,284</b> authorised</span><span style="color:var(--color-accent-2)"><b>2</b> pending</span></div>
     </a>
     <div class="card span-2">
       <div class="card-head" style="padding:0 0 var(--space-3);border-bottom:0">
@@ -46,11 +46,11 @@
     </div>
   </div>
 
-  <!-- pending approvals callout -->
+  <!-- pending approvals callout: a count, not enumerated names (could be many) -->
   <div style="margin-top:var(--space-4)">
     <div class="callout">
       {ic:user}
-      <div><b>2 users awaiting approval</b> - bartek and nina</div>
+      <div><b>2 users awaiting approval</b> - review and authorise</div>
       <a class="btn btn-sm" href="users.html">Review</a>
     </div>
   </div>
@@ -63,30 +63,35 @@
         <h3>Active servers</h3>
         <div class="actions"><a class="btn btn-sm btn-ghost" href="servers.html">View all -></a></div>
       </div>
+      <!-- Status and Activity are SEPARATE columns (never clubbed): Status the
+           lifecycle pill, Activity the meter with its % in the tooltip - matches
+           the Servers page exactly. -->
       <div class="table-wrap">
         <table class="tbl">
-          <thead><tr><th>User</th><th>Status</th><th>CPU</th><th>Memory</th><th>Time left</th><th class="right">Actions</th></tr></thead>
+          <thead><tr><th>User</th><th>Status</th><th>Activity</th><th class="right">CPU</th><th class="right">Memory</th><th class="right">Time left</th><th class="right">Actions</th></tr></thead>
           <tbody>
             <tr>
               <td><div class="u"><span class="avatar">AL</span>alice</div></td>
-              <td><span class="pill running"><span class="dot"></span>Active</span> <span class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></td>
-              <td class="num">38%</td>
-              <td class="num">6.2 / 16 GB</td>
-              <td class="num">3h 48m</td>
+              <td><span class="pill running"><span class="dot"></span>Active</span></td>
+              <td><span class="meter" title="Activity 96% · 24h sampled"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></td>
+              <td class="num right">38%</td>
+              <td class="num right">6.2 / 16 GB</td>
+              <td class="num right">3h 48m</td>
               <td><div class="row-actions">
-                <button class="icon-btn" title="Open" data-toast="Open jupyterlab-alice (mock)">{ic:play}</button>
+                <button class="icon-btn" title="Enter session (confirm)" data-toast="Confirm: enter alice's running server? (mock)">{ic:play}</button>
                 <button class="icon-btn" title="Restart" data-toast="Restart jupyterlab-alice (mock)">{ic:restart}</button>
                 <button class="icon-btn" title="Stop" data-toast="Stop jupyterlab-alice (mock)">{ic:stop}</button>
               </div></td>
             </tr>
             <tr>
               <td><div class="u"><span class="avatar">KO</span><div>konrad <span class="tag accent">admin</span></div></div></td>
-              <td><span class="pill running"><span class="dot"></span>Active</span> <span class="meter"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span></td>
-              <td class="num">12%</td>
-              <td class="num">3.1 / 32 GB</td>
-              <td class="num">22h</td>
+              <td><span class="pill running"><span class="dot"></span>Active</span></td>
+              <td><span class="meter" title="Activity 78% · 24h sampled"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></td>
+              <td class="num right">12%</td>
+              <td class="num right">3.1 / 32 GB</td>
+              <td class="num right">22h</td>
               <td><div class="row-actions">
-                <button class="icon-btn" title="Open" data-toast="Open jupyterlab-konrad (mock)">{ic:play}</button>
+                <button class="icon-btn" title="Enter session (confirm)" data-toast="Confirm: enter konrad's running server? (mock)">{ic:play}</button>
                 <button class="icon-btn" title="Restart" data-toast="Restart jupyterlab-konrad (mock)">{ic:restart}</button>
                 <button class="icon-btn" title="Stop" data-toast="Stop jupyterlab-konrad (mock)">{ic:stop}</button>
               </div></td>
@@ -95,21 +100,23 @@
               <td><div class="u"><span class="avatar">MI</span>milan</div></td>
               <td><span class="pill spawning"><span class="dot"></span>Spawning</span></td>
               <td class="num">-</td>
-              <td class="num">-</td>
-              <td class="num">-</td>
+              <td class="num right">-</td>
+              <td class="num right">-</td>
+              <td class="num right">-</td>
               <td><div class="row-actions">
-                <button class="icon-btn" title="Logs" data-toast="Tail spawn log (mock)">{ic:activity}</button>
+                <button class="icon-btn" title="View spawn log" data-toast="Tail spawn log (mock)">{ic:activity}</button>
                 <button class="icon-btn" title="Cancel" data-toast="Cancel spawn (mock)">{ic:stop}</button>
               </div></td>
             </tr>
             <tr>
               <td><div class="u"><span class="avatar">NI</span>nina</div></td>
-              <td><span class="pill idle"><span class="dot"></span>Idle 38m</span> <span class="meter idle"><i class="on"></i><i></i><i></i><i></i><i></i></span></td>
-              <td class="num">2%</td>
-              <td class="num">1.4 / 16 GB</td>
-              <td class="num" style="color:var(--color-warning)">22m</td>
+              <td><span class="pill idle"><span class="dot"></span>Idle 38m</span></td>
+              <td><span class="meter low" title="Activity 12% · 24h sampled"><i class="on"></i><i></i><i></i><i></i><i></i></span></td>
+              <td class="num right">2%</td>
+              <td class="num right">1.4 / 16 GB</td>
+              <td class="num right" style="color:var(--color-warning)">22m</td>
               <td><div class="row-actions">
-                <button class="icon-btn" title="Open" data-toast="Open jupyterlab-nina (mock)">{ic:play}</button>
+                <button class="icon-btn" title="Enter session (confirm)" data-toast="Confirm: enter nina's running server? (mock)">{ic:play}</button>
                 <button class="icon-btn" title="Restart" data-toast="Restart jupyterlab-nina (mock)">{ic:restart}</button>
                 <button class="icon-btn" title="Stop" data-toast="Stop jupyterlab-nina (mock)">{ic:stop}</button>
               </div></td>
