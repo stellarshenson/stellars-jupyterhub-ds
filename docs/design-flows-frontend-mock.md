@@ -40,21 +40,21 @@ Role-gated. The sidebar holds only what is visited often; everything else is rea
 
 ```
 SIDEBAR (admin)                        SIDEBAR (user)
-  OPERATE                                  Overview   OVR-100   (no header - one item)
-    Overview     OVR-001
-    Servers      SRV-001
+    Overview     OVR-001                  Overview   OVR-100   (no header - one item)
   ADMINISTRATION
-    Users        USR-001
-    Groups       GRP-001
+    Servers        SRV-001
+    Users          USR-001
+    Groups         GRP-001
+    Events         EVT-001
+    Notifications  BRD-001  (notifications.html - send + sent history)
     Advanced  v                      (expandable)
-      Settings   SET-001
-      Tokens     TOK-001
+      Settings     SET-001
+      Tokens       TOK-001
 
-TOPBAR   breadcrumb · Cmd-K · theme · broadcast(admin) · user-menu
-OFF-RAIL Events EVT-001 (Overview widget + palette; breadcrumb home = Overview)
-         Broadcast BRD-001 (drawer from the topbar megaphone)
-         create screens (full) + edit drawers, reached from their list
-USER-MENU change password · sign out   (plain user also: API tokens)
+TOPBAR      breadcrumb · Cmd-K   (no action icons)
+SIDEBAR-FOOT identity · theme toggle · sign out
+OFF-RAIL    create + configure screens (full), reached from their list row
+USER-MENU   change password · sign out   (plain user also: API tokens)
 ```
 
 `Advanced` is a collapsible item inside Administration holding the occasional power-user surfaces - **Settings** (read-only reference) and **Tokens** (personal credentials) - so the primary rail stays lean (Overview, Servers, Users, Groups). Both are also reachable by `Cmd-K`, the fast path for admins who automate. Plain users have no Administration section; they reach their own tokens from the user-menu.
@@ -77,9 +77,9 @@ The split is live-system vs configuration, not frequency: **Operate** is the run
 | GRP-001 | Groups list (priority-ordered) | sidebar | `GET /api/admin/groups` |
 | GRP-002 | New group (name + description) | GRP-001 Add | `POST /api/admin/groups/create` |
 | GRP-003 | Configure group (full screen, tabbed) - General / Policy (nine sections) / Members | GRP-001 row | `GET|PUT /api/admin/groups/{name}/config`, group-users add/remove |
-| EVT-001 | Events (audit timeline) | OVR-001 feed, palette | net-new - no event source exists yet |
+| EVT-001 | Events (audit timeline) | Administration nav, OVR-001 feed, palette | net-new - no event source exists yet |
 | SET-001 | Settings (read-only reference) | Advanced menu | settings dictionary |
-| BRD-001 | Broadcast composer (drawer) | topbar megaphone | `POST /api/notifications/broadcast` |
+| BRD-001 | Notifications (full screen) - send (left) + sent history (right) | Notifications nav item, palette | `POST /api/notifications/broadcast` |
 | SELF-001 | Manage volumes (user) | OVR-100 | `GET|DELETE .../manage-volumes` |
 | SELF-002 | Extend session | OVR-100 | `GET|POST .../session-info`,`.../extend-session` |
 | AUTH-* | login / signup / oauth / change-pw / error | pre-session | NativeAuthenticator (kept server-rendered) |
@@ -226,9 +226,11 @@ Driven by the operator after reviewing the rebuilt mock: make it logical and mak
 - **Typeahead combobox** (`data-combo="groups|users"`) - replaces every `<select>` / fake-autocomplete membership picker (a port of the live hub's admin chip editor): type to filter the corpus, Enter/Tab/click to add, x to remove. Used in Configure user (groups), new-user, bulk-users, Configure group (members)
 - **Relationship at scale** - Configure group gains a **Members** tab (typeahead add + a searchable, paged member list with per-row remove); display chip lists cap at a few with a `+N` that expands (`data-chips`); the Users list shows a group **count** that drills in, and group member counts drill in - neither enumerates names in a tooltip
 
-**Configure user / group are full screens (supersedes the P5 edit-as-drawer decision):** both entities carry too much config for a side panel, and a list row should never open a cramped panel for a heavy entity. `user-config.html` (USR-005): Profile (avatar, first/last name, email, change-password, role, authorised) / Groups / Volumes. `group-config.html` (GRP-003): General (name, description, priority) / Policy (the nine sections) / Members. One Save per screen. The user-edit drawer is removed; BRD-001 broadcast remains a drawer (it is a transient composer, not a heavy entity).
+**Configure user / group are full screens (supersedes the P5 edit-as-drawer decision):** both entities carry too much config for a side panel, and a list row should never open a cramped panel for a heavy entity. `user-config.html` (USR-005): Profile (avatar, first/last name, email, change-password, role, authorised) / Groups / Volumes. `group-config.html` (GRP-003): General (name, description, priority) / Policy (the nine sections) / Members. One Save per screen. The user-edit drawer is removed (and later BRD-001 too - see the Navigation follow-up; no feature uses a drawer now).
 
 **Per-element refinements:** Activity is a meter only, the % in its tooltip (not inline); quota breaches (memory / volumes / writable layer) are colour-only; the Users list drops the email sub-line (email lives on the Profile tab); new-user has one password field pre-filled with a generated value that the admin types over (no "set manually" mode); the Overview active-servers mini-table un-clubs Status and Activity into separate columns to match Servers; the Users list drops the Role column - role is binary (user/admin), so a near-constant column is wasted and admins are flagged by an inline accent tag beside the name; membership chips and the member-remove control use a clean x (close) glyph instead of the stop square, so add (typeahead) and remove (x) read as one visual language; the back-link chevron is dropped from the config/create screens - an unsized inline SVG rendered it oversized, and a forward > on a Back link was wrong regardless.
+
+**Navigation follow-up - Events and Notifications promoted into Administration:** both were off-rail (Events via the Overview widget + palette, Broadcast via a topbar megaphone). They now sit in the Administration nav - **Events** as a page (`events.html`), **Notifications** as a full screen (`notifications.html`) split into send (left, the broadcast composer) and past notifications (right, the sent history). This reverses the P6 "Broadcast is a drawer" decision: the right-side overlay with a large icon was the wrong home for it, so it becomes a screen and the drawer subsystem (host, composer, `data-open-drawer`/`data-nav-action` wiring) is removed entirely - no feature uses a drawer any more. The topbar drops both action icons (theme toggle and the megaphone), keeping only the breadcrumb and Cmd-K; the **theme toggle relocates to the sidebar foot** beside sign-out so theme switching survives. The Groups priority list also gains drag-by-row-number reordering (the # column is the drag handle) plus up/down arrows, retiring the standalone drag ellipsis; and the policy / effective-access grant rows get distinct per-row icons (GPU, Memory, CPU, Docker, Volumes, Downloads, Environment no longer share the cpu/shield/server glyphs). Finally, **Servers moves into Administration** as well: with Overview the only thing left to "operate", the Operate group dissolves - Overview stands alone at the top of the rail (headerless) and a single role-gated Administration section holds Servers, Users, Groups, Events, Notifications and Advanced. This supersedes the earlier Operate-vs-Administration (live-system vs configuration) split.
 
 ## Backend reality - corrections and net-new
 
@@ -273,8 +275,8 @@ Resolved calls (no open decisions remain):
 What the mock becomes once the scheme is agreed, by ref. Net new screens are the create/detail/bulk ones the laws demand.
 
 - New screens (full): **USR-002** new user, **USR-003** bulk input, **USR-004** bulk result, **GRP-002** new group, **GRP-003** group config
-- New full screens: **USR-005** Configure user (`user-config.html`: Profile / Groups + effective access / Volumes); **GRP-003** gains General + Members tabs. New drawer: **BRD-001** broadcast composer (the user-edit drawer was reversed to a full screen - see Refinement round)
+- New full screens: **USR-005** Configure user (`user-config.html`: Profile / Groups + effective access / Volumes); **GRP-003** gains General + Members tabs. **BRD-001** Notifications is a full screen (send + sent history); all drawers removed - see Refinement round
 - New: **EVT-001** Events timeline (needs the net-new event source), **SRV-002** light row-expand (current status + live spawn log)
-- Changed: **USR-001** (Add + Bulk lead to full screens; row opens the edit drawer; authorize inline; pending-on-top kept), **GRP-001** (Add + row navigate; drop bottom preview), **SRV-001** (all users' server state; full monitor columns - Status, Activity, CPU, Memory, GPU, Volumes, System, Time-left - plus lifecycle actions, sort, quota-warning cells, Reset/Report/Refresh toolbar, light row-expand), **OVR-001** (Groups card -> wide Resources widget; events widget -> EVT-001)
+- Changed: **USR-001** (Add + Bulk lead to full screens; row opens the Configure-user screen; authorize inline; pending-on-top kept), **GRP-001** (Add + row navigate; drop bottom preview), **SRV-001** (all users' server state; full monitor columns - Status, Activity, CPU, Memory, GPU, Volumes, System, Time-left - plus lifecycle actions, sort, quota-warning cells, Reset/Report/Refresh toolbar, light row-expand), **OVR-001** (Groups card -> wide Resources widget; events widget -> EVT-001)
 - Removed from v2: the inline "Configure user"/"Configure group" preview panels; the Keys user tab; the topbar notifications bell (no backend)
 - Unchanged: the role-aware shell, the token system, the visual language
