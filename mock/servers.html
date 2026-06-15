@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/tokens.css">
   <link rel="stylesheet" href="assets/app.css">
   <link rel="icon" href="assets/brand/favicon.ico">
-  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <script>try{var m=localStorage.getItem("optimum-hub-theme");var d=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches;var t=(m==="optimum-hub-dark"||m==="dark")?"optimum-hub-dark":(m==="optimum-hub-light"||m==="light")?"optimum-hub-light":(d?"optimum-hub-dark":"optimum-hub-light");document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 </head>
 <body data-page="servers">
 <main>
@@ -36,9 +36,9 @@
         <span class="pill stopped" data-list-scope="stopped"><span class="dot"></span>Stopped 1,240</span>
         <span class="pill error" data-list-scope="failed"><span class="dot"></span>Failed 4</span>
         <span class="pill stopped" data-list-scope="all"><span class="dot"></span>All 1,262</span>
-        <button class="btn btn-sm btn-ghost" data-toast="Reset activity samples - clears 24h history (mock)">Reset samples</button>
-        <button class="btn btn-sm btn-ghost" data-toast="Downloaded activity report (mock)">{ic:arrowup} Report</button>
-        <button class="btn btn-sm btn-ghost" data-toast="Refreshed (mock)">{ic:restart} Refresh</button>
+        <button class="list-secondary" data-toast="Reset activity samples - clears 24h history (mock)">Reset samples</button>
+        <button class="list-secondary" data-toast="Downloaded activity report (mock)">{ic:arrowup} Report</button>
+        <button class="list-secondary" data-toast="Refreshed (mock)">{ic:restart} Refresh</button>
       </div>
     </div>
     <div class="table-wrap">
@@ -49,7 +49,7 @@
             <th>Status</th>
             <th class="sortable" data-sort="act" data-sort-type="num">Activity <span class="sort"></span></th>
             <th class="sortable right" data-sort="cpu" data-sort-type="num">CPU <span class="sort"></span></th>
-            <th class="sortable right" data-sort="mem" data-sort-type="num">Memory <span class="sort"></span></th>
+            <th class="sortable right" data-sort="mem" data-sort-type="num" title="Memory used as % of host RAM; warns above the 25% per-user limit">Memory <span class="sort"></span></th>
             <th>GPU</th>
             <th class="sortable right" data-sort="vol" data-sort-type="num">Volumes <span class="sort"></span></th>
             <th class="right">System</th>
@@ -61,44 +61,44 @@
 
           <!-- Running, heavily engaged. Memory near cap and writable layer over
                the 10 GB quota -> both cells colour danger. Enter is confirmed. -->
-          <tr data-text="alice" data-scope="active" data-sort-act="96" data-sort-cpu="38" data-sort-mem="14.8" data-sort-vol="12" data-sort-time="228">
-            <td><div class="u"><span class="avatar">AL</span>alice</div></td>
-            <td><span class="pill running"><span class="dot"></span>Active</span></td>
+          <tr data-text="alice" data-scope="active" data-sort-act="96" data-sort-cpu="38" data-sort-mem="30" data-sort-vol="12" data-sort-time="228">
+            <td><div class="u">alice</div></td>
+            <td><span class="pill running" title="Last activity 1m ago"><span class="dot"></span>Active 1m</span></td>
             <td><span class="meter" title="Activity 96% · 24h sampled"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></td>
             <td class="num right">38%</td>
-            <td class="right"><span class="cell-warn" title="Exceeds memory warning threshold">14.8 / 16 GB</span></td>
+            <td class="right"><span class="cell-warn" title="19.2 GB · 30% of host RAM, over the 25% per-user limit">30%</span></td>
             <td>-</td>
             <td class="num right" title="home 2.1 GB · workspace 9.8 GB · cache 0.5 GB">12 GB</td>
             <td class="right"><span class="cell-warn" title="Writable layer exceeds 10 GB quota">+11.2 GB</span></td>
             <td class="num right">3h 48m</td>
             <td><div class="row-actions">
-              <button class="icon-btn" title="Enter session (confirm)" data-toast="Confirm: enter alice's running server? (mock)">{ic:play}</button>
-              <button class="icon-btn" title="Restart" data-toast="Restarted alice's server (mock)">{ic:restart}</button>
-              <button class="icon-btn" title="Stop" data-toast="Stopped alice's server (mock)">{ic:stop}</button>
+              <button class="list-icon-secondary" title="Enter session (confirm)" data-toast="Confirm: enter alice's running server? (mock)">{ic:play}</button>
+              <button class="list-icon-secondary" title="Restart" data-toast="Restarted alice's server (mock)">{ic:restart}</button>
+              <button class="list-icon-dangerous" title="Stop" data-toast="Stopped alice's server (mock)">{ic:stop}</button>
             </div></td>
           </tr>
 
           <!-- Running admin (role tag, not a group). Engaged 4/5. -->
-          <tr data-text="konrad admin" data-scope="active" data-sort-act="78" data-sort-cpu="12" data-sort-mem="3.1" data-sort-vol="28" data-sort-time="1320">
-            <td><div class="u"><span class="avatar">KO</span><div>konrad <span class="tag accent">admin</span></div></div></td>
-            <td><span class="pill running"><span class="dot"></span>Active</span></td>
+          <tr data-text="konrad admin" data-scope="active" data-sort-act="78" data-sort-cpu="12" data-sort-mem="5" data-sort-vol="28" data-sort-time="1320">
+            <td><div class="u"><div>konrad <span class="tag accent">admin</span></div></div></td>
+            <td><span class="pill running" title="Last activity 5m ago"><span class="dot"></span>Active 5m</span></td>
             <td><span class="meter" title="Activity 78% · 24h sampled"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></td>
             <td class="num right">12%</td>
-            <td class="num right">3.1 / 32 GB</td>
+            <td class="num right" title="3.1 GB · 5% of host RAM">5%</td>
             <td>-</td>
             <td class="num right" title="home 4.0 GB · workspace 22.5 GB · cache 1.5 GB">28 GB</td>
             <td class="num right">+1.1 GB</td>
             <td class="num right">22h</td>
             <td><div class="row-actions">
-              <button class="icon-btn" title="Enter session (confirm)" data-toast="Confirm: enter konrad's running server? (mock)">{ic:play}</button>
-              <button class="icon-btn" title="Restart" data-toast="Restarted konrad's server (mock)">{ic:restart}</button>
-              <button class="icon-btn" title="Stop" data-toast="Stopped konrad's server (mock)">{ic:stop}</button>
+              <button class="list-icon-secondary" title="Enter session (confirm)" data-toast="Confirm: enter konrad's running server? (mock)">{ic:play}</button>
+              <button class="list-icon-secondary" title="Restart" data-toast="Restarted konrad's server (mock)">{ic:restart}</button>
+              <button class="list-icon-dangerous" title="Stop" data-toast="Stopped konrad's server (mock)">{ic:stop}</button>
             </div></td>
           </tr>
 
           <!-- Spawning on GPUs 0,1: no live metrics yet. View log / cancel. -->
           <tr data-text="milan" data-scope="active" data-sort-act="0" data-sort-cpu="0" data-sort-mem="0" data-sort-vol="41" data-sort-time="0">
-            <td><div class="u"><span class="avatar">MI</span>milan</div></td>
+            <td><div class="u">milan</div></td>
             <td><span class="pill spawning"><span class="dot"></span>Spawning</span></td>
             <td class="num">-</td>
             <td class="num right">-</td>
@@ -108,35 +108,35 @@
             <td class="num right">-</td>
             <td class="num right">-</td>
             <td><div class="row-actions">
-              <button class="icon-btn" title="View spawn log" data-toast="Tail live spawn log (mock)">{ic:activity}</button>
-              <button class="icon-btn" title="Cancel spawn" data-toast="Cancelled milan's spawn (mock)">{ic:stop}</button>
+              <button class="list-icon-secondary" title="View spawn log" data-toast="Tail live spawn log (mock)">{ic:activity}</button>
+              <button class="list-icon-dangerous" title="Cancel spawn" data-toast="Cancelled milan's spawn (mock)">{ic:stop}</button>
             </div></td>
           </tr>
 
           <!-- Running but idle 38m: amber pill, activity meter 1/5 red (12%).
                Time left amber - the culler is close. -->
-          <tr data-text="nina" data-scope="active" data-sort-act="12" data-sort-cpu="2" data-sort-mem="1.4" data-sort-vol="8" data-sort-time="22">
-            <td><div class="u"><span class="avatar">NI</span>nina</div></td>
+          <tr data-text="nina" data-scope="active" data-sort-act="12" data-sort-cpu="2" data-sort-mem="2" data-sort-vol="8" data-sort-time="22">
+            <td><div class="u">nina</div></td>
             <td><span class="pill idle"><span class="dot"></span>Idle 38m</span></td>
             <td><span class="meter low" title="Activity 12% · 24h sampled"><i class="on"></i><i></i><i></i><i></i><i></i></span></td>
             <td class="num right">2%</td>
-            <td class="num right">1.4 / 16 GB</td>
+            <td class="num right" title="1.4 GB · 2% of host RAM">2%</td>
             <td>-</td>
             <td class="num right" title="home 1.2 GB · workspace 6.4 GB · cache 0.4 GB">8 GB</td>
             <td class="num right">+0.4 GB</td>
             <td class="right"><span style="color:var(--color-warning)">22m</span></td>
             <td><div class="row-actions">
-              <button class="icon-btn" title="Enter session (confirm)" data-toast="Confirm: enter nina's running server? (mock)">{ic:play}</button>
-              <button class="icon-btn" title="Restart" data-toast="Restarted nina's server (mock)">{ic:restart}</button>
-              <button class="icon-btn" title="Stop" data-toast="Stopped nina's server (mock)">{ic:stop}</button>
+              <button class="list-icon-secondary" title="Enter session (confirm)" data-toast="Confirm: enter nina's running server? (mock)">{ic:play}</button>
+              <button class="list-icon-secondary" title="Restart" data-toast="Restarted nina's server (mock)">{ic:restart}</button>
+              <button class="list-icon-dangerous" title="Stop" data-toast="Stopped nina's server (mock)">{ic:stop}</button>
             </div></td>
           </tr>
 
           <!-- Stopped, but storage persists: volumes over the 50 GB quota are
                the reason to act. Start (admin stays here) + Manage volumes. -->
           <tr data-text="jakub" data-scope="stopped" data-sort-act="0" data-sort-cpu="0" data-sort-mem="0" data-sort-vol="52" data-sort-time="0">
-            <td><div class="u"><span class="avatar">JA</span>jakub</div></td>
-            <td><span class="pill stopped"><span class="dot"></span>Stopped</span></td>
+            <td><div class="u">jakub</div></td>
+            <td><span class="pill stopped" title="Stopped 2 days ago"><span class="dot"></span>Stopped 2d</span></td>
             <td class="num">-</td>
             <td class="num right">-</td>
             <td class="num right">-</td>
@@ -145,15 +145,15 @@
             <td class="num right">-</td>
             <td class="num right">-</td>
             <td><div class="row-actions">
-              <button class="icon-btn" title="Start (you stay here)" data-toast="Started jakub's server - you stay here (mock)">{ic:play}</button>
-              <button class="icon-btn" title="Manage volumes" data-toast="Manage jakub's volumes (mock)">{ic:disk}</button>
+              <button class="list-icon-secondary" title="Start (you stay here)" data-toast="Started jakub's server - you stay here (mock)">{ic:play}</button>
+              <button class="list-icon-secondary" title="Manage volumes" data-toast="Manage jakub's volumes (mock)">{ic:disk}</button>
             </div></td>
           </tr>
 
           <!-- Spawn failed: red pill, no metrics. Read the error or relaunch. -->
           <tr data-text="ewa" data-scope="failed" data-sort-act="0" data-sort-cpu="0" data-sort-mem="0" data-sort-vol="3" data-sort-time="0">
-            <td><div class="u"><span class="avatar">EW</span>ewa</div></td>
-            <td><span class="pill error"><span class="dot"></span>Spawn failed</span></td>
+            <td><div class="u">ewa</div></td>
+            <td><span class="pill error" title="Failed 5 hours ago"><span class="dot"></span>Spawn failed 5h</span></td>
             <td class="num">-</td>
             <td class="num right">-</td>
             <td class="num right">-</td>
@@ -162,15 +162,15 @@
             <td class="num right">-</td>
             <td class="num right">-</td>
             <td><div class="row-actions">
-              <button class="icon-btn" title="View spawn error" data-toast="View spawn error (mock)">{ic:activity}</button>
-              <button class="icon-btn" title="Relaunch" data-toast="Relaunched ewa's server (mock)">{ic:restart}</button>
+              <button class="list-icon-secondary" title="View spawn error" data-toast="View spawn error (mock)">{ic:activity}</button>
+              <button class="list-icon-secondary" title="Relaunch" data-toast="Relaunched ewa's server (mock)">{ic:restart}</button>
             </div></td>
           </tr>
 
           <!-- Stopped holder with modest storage. -->
           <tr data-text="piotr" data-scope="stopped" data-sort-act="0" data-sort-cpu="0" data-sort-mem="0" data-sort-vol="6" data-sort-time="0">
-            <td><div class="u"><span class="avatar">PI</span>piotr</div></td>
-            <td><span class="pill stopped"><span class="dot"></span>Stopped</span></td>
+            <td><div class="u">piotr</div></td>
+            <td><span class="pill stopped" title="Stopped 6 hours ago"><span class="dot"></span>Stopped 6h</span></td>
             <td class="num">-</td>
             <td class="num right">-</td>
             <td class="num right">-</td>
@@ -179,14 +179,14 @@
             <td class="num right">-</td>
             <td class="num right">-</td>
             <td><div class="row-actions">
-              <button class="icon-btn" title="Start (you stay here)" data-toast="Started piotr's server - you stay here (mock)">{ic:play}</button>
-              <button class="icon-btn" title="Manage volumes" data-toast="Manage piotr's volumes (mock)">{ic:disk}</button>
+              <button class="list-icon-secondary" title="Start (you stay here)" data-toast="Started piotr's server - you stay here (mock)">{ic:play}</button>
+              <button class="list-icon-secondary" title="Manage volumes" data-toast="Manage piotr's volumes (mock)">{ic:disk}</button>
             </div></td>
           </tr>
 
           <!-- Never spawned: no volumes exist yet, nothing to manage. -->
           <tr data-text="marta" data-scope="stopped" data-sort-act="0" data-sort-cpu="0" data-sort-mem="0" data-sort-vol="0" data-sort-time="0">
-            <td><div class="u"><span class="avatar">MA</span>marta</div></td>
+            <td><div class="u">marta</div></td>
             <td><span class="pill stopped"><span class="dot"></span>Stopped</span></td>
             <td class="num">-</td>
             <td class="num right">-</td>
@@ -196,7 +196,7 @@
             <td class="num right">-</td>
             <td class="num right">-</td>
             <td><div class="row-actions">
-              <button class="icon-btn" title="Start (you stay here)" data-toast="Started marta's server - you stay here (mock)">{ic:play}</button>
+              <button class="list-icon-secondary" title="Start (you stay here)" data-toast="Started marta's server - you stay here (mock)">{ic:play}</button>
             </div></td>
           </tr>
 

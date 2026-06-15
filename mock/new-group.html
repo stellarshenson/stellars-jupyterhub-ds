@@ -7,14 +7,14 @@
   <link rel="stylesheet" href="assets/tokens.css">
   <link rel="stylesheet" href="assets/app.css">
   <link rel="icon" href="assets/brand/favicon.ico">
-  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <script>try{var m=localStorage.getItem("optimum-hub-theme");var d=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches;var t=(m==="optimum-hub-dark"||m==="dark")?"optimum-hub-dark":(m==="optimum-hub-light"||m==="light")?"optimum-hub-light":(d?"optimum-hub-dark":"optimum-hub-light");document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 </head>
 <body data-page="groups" data-title="New group">
 <main>
   <div class="page-head">
     <div class="titles">
       <h1 class="page-title">New group</h1>
-      <div class="page-sub"><a href="groups.html" style="color:var(--color-accent);cursor:pointer">{ic:arrowup} Back to Groups</a></div>
+      <div class="page-sub"><a href="groups.html" style="color:var(--color-accent);cursor:pointer">Back to Groups</a></div>
     </div>
   </div>
 
@@ -24,16 +24,15 @@
   <div class="card" style="max-width:560px">
     <div class="field">
       <label>Name</label>
-      <input class="input" type="text" placeholder="research">
-      <div class="page-sub" style="margin-top:var(--space-2)">starts with a letter, [a-zA-Z0-9_-]</div>
+      <input class="input" type="text" placeholder="research" title="Starts with a letter; allowed characters [a-zA-Z0-9_-]">
     </div>
     <div class="field">
       <label>Description</label>
       <input class="input" type="text" placeholder="What this group is for (optional)">
     </div>
     <div style="display:flex;gap:var(--space-2);justify-content:flex-end">
-      <a class="btn" href="groups.html">Cancel</a>
-      <button class="btn btn-primary" data-toast="Created group (mock)">Create group</button>
+      <a class="page-secondary" href="groups.html">Cancel</a>
+      <button class="page-primary" data-toast="Created group (mock)">Create group</button>
     </div>
   </div>
 </main>

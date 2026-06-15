@@ -7,60 +7,122 @@
   <link rel="stylesheet" href="assets/tokens.css">
   <link rel="stylesheet" href="assets/app.css">
   <link rel="icon" href="assets/brand/favicon.ico">
-  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <script>try{var m=localStorage.getItem("optimum-hub-theme");var d=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches;var t=(m==="optimum-hub-dark"||m==="dark")?"optimum-hub-dark":(m==="optimum-hub-light"||m==="light")?"optimum-hub-light":(d?"optimum-hub-dark":"optimum-hub-light");document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 </head>
+<!-- Create user reuses the Configure-user design verbatim - same tabbed shell
+     (Profile / Groups), same fields, same Groups tab. Only the mode-specific
+     cues differ: no rename acknowledgement, no Created/Last-active, no Remove
+     user; Admin defaults off, Authorise defaults on, and an initial password
+     with require-change-at-first-login. One design, elements switched on/off. -->
 <body data-page="users" data-title="New user">
 <main>
   <div class="page-head">
     <div class="titles">
       <h1 class="page-title">New user</h1>
-      <div class="page-sub">Create a single user</div>
-    </div>
-    <div class="actions">
-      <a class="btn btn-ghost" href="users.html">Back to Users</a>
+      <div class="page-sub"><a href="users.html" style="color:var(--color-accent);cursor:pointer">Back to Users</a></div>
     </div>
   </div>
 
-  <div class="card" style="max-width:620px">
-    <div class="field">
-      <label>Username</label>
-      <input class="input" type="text" placeholder="e.g. tomasz">
-    </div>
-
-    <!-- One password field: pre-filled with a generated value, overwrite to set
-         your own. No mode toggle - whatever is in the field on Save is used. -->
-    <div class="field">
-      <label>Password</label>
-      <div style="display:flex;gap:var(--space-2);align-items:center">
-        <input class="input mono" type="text" value="correct-horse-battery">
-        <button class="btn btn-sm" data-toast="Regenerated password (mock)">Regenerate</button>
+  <div class="card">
+    <div data-tabs>
+      <div class="tab-bar">
+        <button class="tab active" data-tab="profile">Profile</button>
+        <button class="tab" data-tab="groups">Groups</button>
       </div>
-      <div class="page-sub" style="margin-top:var(--space-2)">Auto-generated - type over it to set your own; shown to you after the user is created</div>
-    </div>
 
-    <!-- Groups: typeahead combobox scales to hundreds of groups -->
-    <div class="field">
-      <label>Groups</label>
-      <div class="combo" data-combo="groups" style="max-width:420px">
-        <div class="chips" data-combo-chips>
-          <span class="chip" data-val="data-science"><span>data-science</span><span class="x">{ic:close}</span></span>
+      <!-- Profile: identity + initial password. Same layout as Configure user;
+           names and email optional, Admin off, Authorise on. -->
+      <section class="tab-panel active" data-panel="profile" style="max-width:720px">
+        <div class="field">
+          <label>Username</label>
+          <input class="input mono" type="text" placeholder="e.g. tomasz">
         </div>
-        <input class="combo-input" type="text" placeholder="Add to group…">
-        <div class="combo-pop" data-combo-pop></div>
-      </div>
-    </div>
 
-    <div class="field" style="margin-bottom:0">
-      <label>Authorize now</label>
-      <div style="display:flex;align-items:center;gap:var(--space-3)">
-        <span class="switch on" data-toast="Toggled authorize-now (mock)"><span class="track"></span></span>
-        <span class="page-sub">on = usable immediately; off defers authorisation to later</span>
-      </div>
-    </div>
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:var(--space-4)">
+          <div class="field" style="margin-bottom:0"><label>First name (optional)</label><input class="input" type="text"></div>
+          <div class="field" style="margin-bottom:0"><label>Last name (optional)</label><input class="input" type="text"></div>
+        </div>
+        <div class="field" style="margin-top:var(--space-4)"><label>Email (optional)</label><input class="input mono" type="email" placeholder="name@stellars-tech.eu"></div>
 
-    <div style="display:flex;gap:var(--space-2);justify-content:flex-end;margin-top:var(--space-5)">
-      <a class="btn" href="users.html">Cancel</a>
-      <button class="btn btn-primary" data-toast="Created user (mock)">Add user</button>
+        <dl class="kv" style="margin-top:var(--space-4)">
+          <dt>Admin</dt><dd><span class="switch" data-toast="Toggled admin (mock)"><span class="track"></span></span></dd>
+          <dt>Authorise</dt><dd><span class="switch on" data-toast="Toggled authorise (mock)"><span class="track"></span></span></dd>
+        </dl>
+
+        <div class="section-title">Password</div>
+        <div class="field" style="max-width:520px;margin-bottom:var(--space-3)">
+          <label>Initial password</label>
+          <div style="display:flex;gap:var(--space-2);align-items:center">
+            <input class="input mono" type="text" value="correct-horse-battery" title="Auto-generated - type over it to set your own; shown to you after the user is created">
+            <button class="input-secondary" data-toast="Regenerated password (mock)">Generate</button>
+          </div>
+        </div>
+        <dl class="kv">
+          <dt>Require change at first login</dt>
+          <dd><span class="switch on" data-toast="Toggled require-password-change (mock)"><span class="track"></span></span></dd>
+        </dl>
+      </section>
+
+      <!-- Groups: identical to the Configure-user Groups tab - name-only chips,
+           add by typeahead, or browse the policy-aware list with an explicit + Add. -->
+      <section class="tab-panel" data-panel="groups">
+        <div class="combo" data-combo="groups" style="max-width:520px">
+          <div class="chips" data-combo-chips>
+            <span class="chip" data-val="data-science"><span>data-science</span><span class="x">{ic:close}</span></span>
+          </div>
+          <input class="combo-input" type="text" placeholder="Add a group by name…">
+          <div class="combo-pop" data-combo-pop></div>
+        </div>
+
+        <div class="card card-pad-0" style="margin-top:var(--space-4)">
+          <div class="card-head">
+            <h3>Add a group</h3>
+            <div class="actions"><label class="search">{ic:search}<input type="text" placeholder="Filter groups…" data-list-search></label></div>
+          </div>
+          <div class="table-wrap">
+            <table class="tbl" data-list>
+              <thead><tr><th>Group</th><th>Description</th><th>Policies</th><th class="right">Add</th></tr></thead>
+              <tbody>
+                <tr data-text="research">
+                  <td><b>research</b></td>
+                  <td style="color:var(--color-text-muted)">Research staff - full GPU and raw Docker</td>
+                  <td><div class="chips" data-fill><span class="tag accent">GPU all</span><span class="tag accent">Docker raw</span><span class="tag warn">Sudo on</span><span class="tag accent">Mem 32G</span><span class="tag accent">Env 2</span></div></td>
+                  <td class="right"><button class="list-secondary" data-toast="Added research (mock)">{ic:plus} Add</button></td>
+                </tr>
+                <tr data-text="ml-platform">
+                  <td><b>ml-platform</b></td>
+                  <td style="color:var(--color-text-muted)">Shared ML tooling and runtimes</td>
+                  <td><div class="chips" data-fill><span class="tag accent">GPU all</span><span class="tag accent">Mem 24G</span><span class="tag accent">CPU 8</span></div></td>
+                  <td class="right"><button class="list-secondary" data-toast="Added ml-platform (mock)">{ic:plus} Add</button></td>
+                </tr>
+                <tr data-text="vision-lab">
+                  <td><b>vision-lab</b></td>
+                  <td style="color:var(--color-text-muted)">Computer-vision research group</td>
+                  <td><div class="chips" data-fill><span class="tag accent">GPU 0,1</span><span class="tag">Downloads off</span></div></td>
+                  <td class="right"><button class="list-secondary" data-toast="Added vision-lab (mock)">{ic:plus} Add</button></td>
+                </tr>
+                <tr data-text="interns">
+                  <td><b>interns</b></td>
+                  <td style="color:var(--color-text-muted)">Limited onboarding access</td>
+                  <td><span style="color:var(--color-text-subtle)">No policies</span></td>
+                  <td class="right"><button class="list-secondary" data-toast="Added interns (mock)">{ic:plus} Add</button></td>
+                </tr>
+                <tr data-text="finance">
+                  <td><b>finance</b></td>
+                  <td style="color:var(--color-text-muted)">Finance analytics team</td>
+                  <td><div class="chips" data-fill><span class="tag accent">Mem 8G</span><span class="tag">Downloads off</span></div></td>
+                  <td class="right"><button class="list-secondary" data-toast="Added finance (mock)">{ic:plus} Add</button></td>
+                </tr>
+                <tr data-list-empty hidden><td colspan="4"><div class="empty" style="padding:var(--space-6)"><p>No group matches that filter</p></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="form-foot" style="justify-content:flex-end">
+      <a class="page-secondary" href="users.html">Cancel</a>
+      <button class="page-primary" data-toast="Created user (mock)">Add user</button>
     </div>
   </div>
 </main>

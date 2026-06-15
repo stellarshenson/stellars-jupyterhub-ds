@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="optimum-hub-dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optimum Hub - Design system</title>
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/app.css">
+  <link rel="icon" href="assets/brand/favicon.ico">
+  <script>try{var m=localStorage.getItem("optimum-hub-theme");var d=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches;var t=(m==="optimum-hub-dark"||m==="dark")?"optimum-hub-dark":(m==="optimum-hub-light"||m==="light")?"optimum-hub-light":(d?"optimum-hub-dark":"optimum-hub-light");document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<!-- Mock-only style guide - NOT part of the product. Shows the control design
+     language so it stays consistent: the action-button taxonomy (context x
+     variant), the label family (passive / active), inputs and misc controls. -->
+<body data-page="design-system" data-title="Design system">
+<main>
+  <div class="page-head">
+    <div class="titles">
+      <h1 class="page-title">Design system</h1>
+      <div class="page-sub">The control vocabulary - one language across every screen</div>
+    </div>
+  </div>
+
+  <div class="note" style="margin-bottom:var(--space-5)"><span><b>Note:</b> mock-only reference, not part of the design. Action buttons are one class per button - context (size) x variant (colour), never stacked. User help lives in tooltips; designer commentary in dashed Note boxes like this.</span></div>
+
+  <!-- Action buttons: context (rows) x variant (columns) -->
+  <div class="card" style="margin-bottom:var(--space-4)">
+    <div class="section-title" style="margin-top:0">Action buttons</div>
+    <div class="table-wrap">
+      <table class="tbl">
+        <thead><tr><th>Context</th><th>primary</th><th>secondary</th><th>dangerous</th><th>disabled</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>page</b><br><span class="page-sub">form / page-head</span></td>
+            <td><button class="page-primary">Save</button></td>
+            <td><button class="page-secondary">Cancel</button></td>
+            <td><button class="page-dangerous">{ic:close} Remove user</button></td>
+            <td><button class="page-disabled" disabled>Save</button></td>
+          </tr>
+          <tr>
+            <td><b>list</b><br><span class="page-sub">table-row action</span></td>
+            <td><button class="list-primary">Authorize</button></td>
+            <td><button class="list-secondary">Reset samples</button></td>
+            <td><button class="list-dangerous">Discard</button></td>
+            <td><button class="list-disabled" disabled>Authorize</button></td>
+          </tr>
+          <tr>
+            <td><b>input</b><br><span class="page-sub">inline with a field</span></td>
+            <td><button class="input-primary">Set password</button></td>
+            <td><button class="input-secondary">Generate</button></td>
+            <td><button class="input-dangerous">Clear</button></td>
+            <td><button class="input-disabled" disabled>Set password</button></td>
+          </tr>
+          <tr>
+            <td><b>list-icon</b><br><span class="page-sub">icon-only square</span></td>
+            <td><button class="list-icon-primary" title="primary (reserved)">{ic:play}</button></td>
+            <td><button class="list-icon-secondary" title="Restart">{ic:restart}</button></td>
+            <td><button class="list-icon-dangerous" title="Stop">{ic:stop}</button></td>
+            <td><button class="list-icon-disabled" title="disabled" disabled>{ic:arrowup}</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Labels: one slightly-rounded shape; passive (no action) or active (x reveals on hover) -->
+  <div class="card" style="margin-bottom:var(--space-4)">
+    <div class="section-title" style="margin-top:0">Labels - passive and active</div>
+    <dl class="kv" style="grid-template-columns:160px 1fr">
+      <dt>Status pills</dt>
+      <dd style="display:flex;gap:var(--space-2);flex-wrap:wrap">
+        <span class="pill running"><span class="dot"></span>active</span>
+        <span class="pill idle"><span class="dot"></span>idle</span>
+        <span class="pill stopped"><span class="dot"></span>stopped</span>
+        <span class="pill spawning"><span class="dot"></span>spawning</span>
+        <span class="pill error"><span class="dot"></span>error</span>
+      </dd>
+      <dt>Tags</dt>
+      <dd style="display:flex;gap:var(--space-2);flex-wrap:wrap">
+        <span class="tag accent">accent</span>
+        <span class="tag warn">warn</span>
+        <span class="tag ok">ok</span>
+        <span class="tag danger">danger</span>
+        <span class="tag">neutral</span>
+      </dd>
+      <dt>Chips - passive</dt>
+      <dd><span class="chip"><span>data-science</span></span> <span class="chip"><span>gpu</span></span></dd>
+      <dt>Chips - active</dt>
+      <dd style="display:flex;gap:6px;align-items:center"><span class="chip" data-val="data-science"><span>data-science</span><span class="x">{ic:close}</span></span><span class="chip" data-val="gpu"><span>gpu</span><span class="x">{ic:close}</span></span><span class="page-sub">hover a chip to reveal its remove x</span></dd>
+      <dt>Capped list</dt>
+      <dd style="display:flex;gap:6px"><span class="chip"><span>data-science</span></span><span class="chip"><span>gpu</span></span><span class="chip-more">+4</span></dd>
+      <dt>Fill counter</dt>
+      <dd style="display:flex;gap:6px;align-items:center"><span class="tag accent">GPU all</span><span class="tag accent">Mem 32G</span><span class="tag-more">(5)</span></dd>
+      <dt>Engagement</dt>
+      <dd style="display:flex;gap:var(--space-3);align-items:center"><span class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="meter idle"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span><span class="meter low"><i class="on"></i><i></i><i></i><i></i><i></i></span></dd>
+    </dl>
+  </div>
+
+  <!-- Inputs + misc -->
+  <div class="card">
+    <div class="section-title" style="margin-top:0">Inputs and misc</div>
+    <dl class="kv" style="grid-template-columns:160px 1fr">
+      <dt>Text input</dt>
+      <dd><input class="input" type="text" value="editable" style="max-width:280px"></dd>
+      <dt>Disabled input</dt>
+      <dd><input class="input mono" value="locked value" disabled style="max-width:280px"></dd>
+      <dt>Select</dt>
+      <dd><select class="select" style="max-width:280px"><option>single</option><option>pair</option></select></dd>
+      <dt>Switch</dt>
+      <dd style="display:flex;gap:var(--space-4)"><span class="switch on"><span class="track"></span></span><span class="switch"><span class="track"></span></span></dd>
+      <dt>Link</dt>
+      <dd><a class="link">View all -></a></dd>
+    </dl>
+  </div>
+</main>
+<script src="assets/app.js"></script>
+</body>
+</html>

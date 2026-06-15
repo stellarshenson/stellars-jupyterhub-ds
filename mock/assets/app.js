@@ -14,10 +14,11 @@
     group:   'M17 20v-2a4 4 0 0 0-3-3.87M5 20v-2a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2M10 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M17 11a3 3 0 1 0-2-5.2',
     shield:  'M12 2l8 3v6c0 5-3.5 8-8 11-4.5-3-8-6-8-11V5z M9 12l2 2 4-4',
     activity:'M22 12h-4l-3 9L9 3l-3 9H2',
-    settings:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4.6 15H4.5a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.1-2.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 11 4.6V4.5a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8 1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z',
+    settings:'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16z M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z M12 2v3M12 19v3M22 12h-3M5 12H2M19.07 4.93l-2.12 2.12M7.05 16.95l-2.12 2.12M19.07 19.07l-2.12-2.12M7.05 7.05 4.93 4.93',
     search:  'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3',
     sun:     'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4',
     moon:    'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
+    monitor: 'M3 4h18v12H3zM8 20h8M12 16v4',
     plus:    'M12 5v14M5 12h14',
     bell:    'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0',
     play:    'M5 3l14 9-14 9z',
@@ -26,7 +27,7 @@
     megaphone:'M3 11l18-5v12L3 14v-3z M11.6 16.8a3 3 0 1 1-5.8-1.6',
     logout:  'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
     dots:    'M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2M19 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2M5 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2',
-    key:     'M21 2l-2 2m-3.5 3.5a5 5 0 1 0-2 2l1.5-1.5 2 2 2-2-2-2 2.5-2.5',
+    key:     'M7 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M11 12h10M17 12v3M21 12v4',
     user:    'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8',
     cpu:     'M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3M5 5h14v14H5zM9 9h6v6H9z',
     check:   'M20 6L9 17l-5-5',
@@ -58,17 +59,19 @@
   function isAdmin() { return role() !== "user"; }
 
   // ---------- navigation model ----------
-  // Operate = what you watch daily; Administration = occasional management
-  // (admin-only). One entity, one destination: Servers absorbs live activity,
-  // Groups absorbs policy editing - no standalone Activity or Policies page.
+  // Overview is the dashboard; a single admin-only Administration section holds
+  // everything you manage. One entity, one destination: Servers absorbs live
+  // activity, Groups absorbs policy editing - no standalone Activity or Policies
+  // page.
   var NAV_ADMIN = [
     { group: "", items: [
       { id: "home",     label: "Overview", icon: "grid",     href: "home.html" }
     ]},
     { group: "Administration", items: [
-      { id: "servers",  label: "Servers",  icon: "server",   href: "servers.html", badge: "3" },
+      { id: "servers",  label: "Servers",  icon: "server",   href: "servers.html" },
       { id: "users",    label: "Users",    icon: "users",    href: "users.html", badge: "2" },
       { id: "groups",   label: "Groups",   icon: "group",    href: "groups.html" },
+      { id: "lab-container", label: "Lab Container", icon: "box", href: "lab-container.html" },
       { id: "events",   label: "Events",   icon: "activity", href: "events.html" },
       { id: "notifications", label: "Notifications", icon: "megaphone", href: "notifications.html" },
       { id: "advanced", label: "Advanced", icon: "dots", children: [
@@ -79,7 +82,7 @@
   ];
   // a user has one server, so it lives on their Overview - no fleet pages
   var NAV_USER = [
-    { group: "Operate", items: [
+    { group: "", items: [
       { id: "home", label: "Overview", icon: "grid", href: "home-user.html" }
     ]}
   ];
@@ -111,19 +114,25 @@
   }
 
   // ---------- theme ----------
+  // theme has three modes - light / dark / system (follow the OS). The stored
+  // value is the MODE; the resolved theme is applied to <html data-theme>.
   var THEMES = { dark: "optimum-hub-dark", light: "optimum-hub-light" };
-  function currentTheme() {
-    return document.documentElement.getAttribute("data-theme") || THEMES.dark;
+  function systemTheme() { return (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches) ? THEMES.dark : THEMES.light; }
+  function currentMode() {
+    var m; try { m = localStorage.getItem("optimum-hub-theme"); } catch (e) {}
+    if (m === "light" || m === "dark" || m === "system") return m;
+    if (m === THEMES.light) return "light";   // legacy stored value
+    if (m === THEMES.dark) return "dark";
+    return "system";
   }
-  function applyTheme(t) {
-    document.documentElement.setAttribute("data-theme", t);
-    try { localStorage.setItem("optimum-hub-theme", t); } catch (e) {}
-    var btn = document.getElementById("theme-toggle");
-    if (btn) btn.innerHTML = (t === THEMES.light) ? svg("moon") : svg("sun");
+  function resolveTheme(mode) { return mode === "system" ? systemTheme() : (mode === "light" ? THEMES.light : THEMES.dark); }
+  function applyMode(mode) {
+    document.documentElement.setAttribute("data-theme", resolveTheme(mode));
+    try { localStorage.setItem("optimum-hub-theme", mode); } catch (e) {}
+    forEach(document.querySelectorAll("#theme-changer [data-mode]"), function (b) { b.classList.toggle("on", b.getAttribute("data-mode") === mode); });
   }
-  function toggleTheme() {
-    applyTheme(currentTheme() === THEMES.light ? THEMES.dark : THEMES.light);
-  }
+  // in system mode, track live OS changes
+  if (window.matchMedia) { try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () { if (currentMode() === "system") applyMode("system"); }); } catch (e) {} }
 
   // ---------- shell render ----------
   function renderShell() {
@@ -135,8 +144,8 @@
     var crumb = match ? match.label : (document.body.getAttribute("data-title") || "");
     var home = isAdmin() ? "home.html" : "home-user.html";
     var who = isAdmin()
-      ? '<div class="avatar">AD</div><div class="who">admin<small>Administrator</small></div>'
-      : '<div class="avatar">AL</div><div class="who">alice<small>Data scientist</small></div>';
+      ? '<div class="who">admin<small>Administrator</small></div>'
+      : '<div class="who">alice<small>Data scientist</small></div>';
 
     var multiGroup = NAV().length > 1;
     function navItemHTML(n) {
@@ -169,23 +178,43 @@
             '<img class="brand-logo" src="assets/brand/jh-logo.svg" alt="Stellars Tech AI Lab"></a>' +
           '<nav class="nav">' + navHTML + '</nav>' +
           '<div class="sidebar-foot">' + who +
-            '<button class="icon-btn" id="theme-toggle" style="margin-left:auto" title="Toggle theme"></button>' +
-            '<button class="icon-btn" title="Sign out">' + svg("logout") + '</button>' +
+            '<button class="list-icon-secondary" style="margin-left:auto" title="Sign out">' + svg("logout") + '</button>' +
           '</div>' +
         '</aside>' +
         '<div class="main">' +
           '<header class="topbar">' +
             '<div class="crumbs"><span>Optimum Hub</span><span class="sep">/</span><b>' + crumb + '</b></div>' +
-            '<div class="kbar" id="kbar-open"><span>' + svg("search") + '</span><span>Search or jump to…</span><span class="kbd">⌘K</span></div>' +
+            themeChangerHTML() +
           '</header>' +
           '<div class="content">' + mainHTML + '</div>' +
         '</div>' +
       '</div>' +
       paletteHTML() +
-      '<div class="toasts" id="toasts"></div>';
+      '<div class="toasts" id="toasts"></div>' +
+      (page === "home" ? mockSwitchHTML() : '');
 
-    applyTheme(currentTheme());
+    applyMode(currentMode());
     wire();
+  }
+
+  // topbar theme changer - light / dark / system (segmented, mock + real)
+  function themeChangerHTML() {
+    return '<div class="theme-changer" id="theme-changer" style="margin-left:auto">' +
+      '<button data-mode="light" title="Light">' + svg("sun") + '</button>' +
+      '<button data-mode="dark" title="Dark">' + svg("moon") + '</button>' +
+      '<button data-mode="system" title="System">' + svg("monitor") + '</button>' +
+      '</div>';
+  }
+
+  // mock-only: a role-view switcher on the Overview, NOT part of the design -
+  // it just lets a reviewer hop between the admin and user home without URLs
+  function mockSwitchHTML() {
+    return '<div class="mock-switch" title="Mock navigation helper - not part of the design">' +
+      '<b>mock</b>' +
+      '<a href="home.html"' + (isAdmin() ? ' class="on"' : '') + '>Admin</a>' +
+      '<a href="home-user.html"' + (isAdmin() ? '' : ' class="on"') + '>User</a>' +
+      '<a href="design-system.html" title="Design language palette - mock only">design</a>' +
+      '</div>';
   }
 
   function paletteHTML() {
@@ -289,6 +318,7 @@
           var vis = okT && okS; r.hidden = !vis; if (vis) shown++;
         });
         if (emptyRow) emptyRow.hidden = shown > 0;
+        stripe(tbody);
       }
       if (search) search.addEventListener("input", debounce(function () { st.q = search.value; refresh(); }));
       forEach(scopes, function (p) {
@@ -311,6 +341,7 @@
           var rs = dataRows().sort(function (a, b) { var av = val(a), bv = val(b); return (av < bv ? -1 : av > bv ? 1 : 0) * (asc ? 1 : -1); });
           rs.forEach(function (r) { tbody.appendChild(r); });
           if (emptyRow) tbody.appendChild(emptyRow);
+          stripe(tbody);
         });
       });
       refresh();
@@ -383,8 +414,42 @@
       chips.forEach(function (c, i) { if (i >= cap) c.hidden = true; });
       var more = document.createElement("button");
       more.type = "button"; more.className = "chip-more"; more.textContent = "+" + (chips.length - cap);
+      more.title = chips.slice(cap).map(function (c) { return c.textContent.trim(); }).join(", ");
       more.addEventListener("click", function () { chips.forEach(function (c) { c.hidden = false; }); more.remove(); });
       box.appendChild(more);
+    });
+  }
+
+  // data-fill: a chip/tag row that fills one line, then collapses the overflow
+  // into a "(N)" counter (N = total) whose tooltip lists every item. Width-driven
+  // (unlike data-chips' fixed cap) - if everything fits, nothing collapses.
+  function applyFill(root) {
+    forEach(root.querySelectorAll("[data-fill]"), function (box) {
+      if (box.getAttribute("data-fill-done")) return;
+      if (box.offsetParent === null) return; // hidden (e.g. an inactive tab) - defer until shown
+      box.setAttribute("data-fill-done", "1");
+      var chips = Array.prototype.slice.call(box.querySelectorAll(".chip, .tag"));
+      if (chips.length < 2) return;
+      var firstTop = chips[0].offsetTop;
+      if (!chips.some(function (c) { return c.offsetTop > firstTop; })) return; // all fit on one line
+      var more = document.createElement("span");
+      more.className = "tag-more";
+      more.textContent = "(" + chips.length + ")";
+      more.title = chips.map(function (c) { return c.textContent.trim(); }).join(", ");
+      box.appendChild(more);
+      var vis = chips.slice();
+      while (vis.length && more.offsetTop > firstTop) { vis.pop().hidden = true; }
+    });
+  }
+
+  // zebra: tag every other VISIBLE row .alt so striping survives filter/sort
+  // (CSS nth-child counts hidden rows). Run on load and after any list change.
+  function stripe(tbody) {
+    if (!tbody) return;
+    var i = 0;
+    forEach(tbody.querySelectorAll("tr"), function (r) {
+      if (r.hidden || r.hasAttribute("data-list-empty")) { r.classList.remove("alt"); return; }
+      r.classList.toggle("alt", i % 2 === 1); i++;
     });
   }
 
@@ -396,6 +461,7 @@
     var k = b.getAttribute("data-tab");
     forEach(box.querySelectorAll(".tab"), function (x) { x.classList.toggle("active", x === b); });
     forEach(box.querySelectorAll(".tab-panel"), function (p) { p.classList.toggle("active", p.getAttribute("data-panel") === k); });
+    applyFill(box); // the newly shown panel can now be measured for data-fill
   }
   // wire toasts, tabs and the scale behaviours within a subtree (document on load)
   function wireRoot(root) {
@@ -404,10 +470,13 @@
     applyList(root);
     applyCombo(root);
     applyChips(root);
+    applyFill(root);
+    forEach(root.querySelectorAll("table.tbl"), function (t) { stripe(t.tBodies[0]); });
   }
   function wire() {
-    document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
-    document.getElementById("kbar-open").addEventListener("click", openPalette);
+    forEach(document.querySelectorAll("#theme-changer [data-mode]"), function (b) {
+      b.addEventListener("click", function () { applyMode(b.getAttribute("data-mode")); });
+    });
     document.getElementById("scrim").addEventListener("click", closePalette);
     document.getElementById("palette-q").addEventListener("input", function (e) { buildPalette(e.target.value); });
 

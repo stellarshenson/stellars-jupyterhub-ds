@@ -45,6 +45,7 @@ SIDEBAR (admin)                        SIDEBAR (user)
     Servers        SRV-001
     Users          USR-001
     Groups         GRP-001
+    Lab Container  LAB-001  (lab-container.html - image + volume set)
     Events         EVT-001
     Notifications  BRD-001  (notifications.html - send + sent history)
     Advanced  v                      (expandable)
@@ -55,6 +56,8 @@ TOPBAR      breadcrumb · Cmd-K   (no action icons)
 SIDEBAR-FOOT identity · theme toggle · sign out
 OFF-RAIL    create + configure screens (full), reached from their list row
 USER-MENU   change password · sign out   (plain user also: API tokens)
+MOCK-ONLY   the Overview carries a dashed Admin/User view switch - a reviewer
+            navigation helper, explicitly not part of the design
 ```
 
 `Advanced` is a collapsible item inside Administration holding the occasional power-user surfaces - **Settings** (read-only reference) and **Tokens** (personal credentials) - so the primary rail stays lean (Overview, Servers, Users, Groups). Both are also reachable by `Cmd-K`, the fast path for admins who automate. Plain users have no Administration section; they reach their own tokens from the user-menu.
@@ -73,10 +76,11 @@ The split is live-system vs configuration, not frequency: **Operate** is the run
 | USR-002 | New user (single) | USR-001 Add | `POST /api/users`, `POST /api/admin/credentials` |
 | USR-003 | Bulk add users (input) | USR-001 Bulk add | `POST /api/users` |
 | USR-004 | Bulk result (credentials + download) | USR-003 confirm | `POST /api/admin/credentials` |
-| USR-005 | Configure user (full screen `user-config.html`) - Profile (avatar, names, email, password) / Groups (+ effective access) / Volumes | USR-001 row | `PATCH /api/users/{user}`, manage-volumes, authorize, change-password, per-user resolve |
+| USR-005 | Configure user (full screen `user-config.html`) - Profile (username, names, email, admin toggle, password) / Groups (typeahead add + browse-list) / Volumes; bottom action footer (Remove/Cancel/Save) | USR-001 row | `PATCH /api/users/{user}`, manage-volumes, authorize, change-password |
 | GRP-001 | Groups list (priority-ordered) | sidebar | `GET /api/admin/groups` |
 | GRP-002 | New group (name + description) | GRP-001 Add | `POST /api/admin/groups/create` |
-| GRP-003 | Configure group (full screen, tabbed) - General / Policy (nine sections) / Members | GRP-001 row | `GET|PUT /api/admin/groups/{name}/config`, group-users add/remove |
+| GRP-003 | Configure group (full screen, tabbed) - General / Policy (nine sections) / Members; bottom action footer (Delete/Cancel/Save) | GRP-001 row | `GET|PUT /api/admin/groups/{name}/config`, group-users add/remove |
+| LAB-001 | Lab Container (full screen `lab-container.html`) - spawned image + volume set (core home/workspace/cache locked, add custom) | sidebar | `JUPYTERHUB_LAB_IMAGE`, `DOCKER_SPAWNER_VOLUMES`, `VOLUME_DESCRIPTIONS` |
 | EVT-001 | Events (audit timeline) | Administration nav, OVR-001 feed, palette | net-new - no event source exists yet |
 | SET-001 | Settings (read-only reference) | Advanced menu | settings dictionary |
 | BRD-001 | Notifications (full screen) - send (left) + sent history (right) | Notifications nav item, palette | `POST /api/notifications/broadcast` |
@@ -231,6 +235,20 @@ Driven by the operator after reviewing the rebuilt mock: make it logical and mak
 **Per-element refinements:** Activity is a meter only, the % in its tooltip (not inline); quota breaches (memory / volumes / writable layer) are colour-only; the Users list drops the email sub-line (email lives on the Profile tab); new-user has one password field pre-filled with a generated value that the admin types over (no "set manually" mode); the Overview active-servers mini-table un-clubs Status and Activity into separate columns to match Servers; the Users list drops the Role column - role is binary (user/admin), so a near-constant column is wasted and admins are flagged by an inline accent tag beside the name; membership chips and the member-remove control use a clean x (close) glyph instead of the stop square, so add (typeahead) and remove (x) read as one visual language; the back-link chevron is dropped from the config/create screens - an unsized inline SVG rendered it oversized, and a forward > on a Back link was wrong regardless.
 
 **Navigation follow-up - Events and Notifications promoted into Administration:** both were off-rail (Events via the Overview widget + palette, Broadcast via a topbar megaphone). They now sit in the Administration nav - **Events** as a page (`events.html`), **Notifications** as a full screen (`notifications.html`) split into send (left, the broadcast composer) and past notifications (right, the sent history). This reverses the P6 "Broadcast is a drawer" decision: the right-side overlay with a large icon was the wrong home for it, so it becomes a screen and the drawer subsystem (host, composer, `data-open-drawer`/`data-nav-action` wiring) is removed entirely - no feature uses a drawer any more. The topbar drops both action icons (theme toggle and the megaphone), keeping only the breadcrumb and Cmd-K; the **theme toggle relocates to the sidebar foot** beside sign-out so theme switching survives. The Groups priority list also gains drag-by-row-number reordering (the # column is the drag handle) plus up/down arrows, retiring the standalone drag ellipsis; and the policy / effective-access grant rows get distinct per-row icons (GPU, Memory, CPU, Docker, Volumes, Downloads, Environment no longer share the cpu/shield/server glyphs). Finally, **Servers moves into Administration** as well: with Overview the only thing left to "operate", the Operate group dissolves - Overview stands alone at the top of the rail (headerless) and a single role-gated Administration section holds Servers, Users, Groups, Events, Notifications and Advanced. This supersedes the earlier Operate-vs-Administration (live-system vs configuration) split.
+
+**Consistency pass - one interaction language (no ambiguities):** after a rapid iteration round an adversarial critic sweep drove a codification of the interaction language, now applied across every screen. **Remove/delete is always the `×` close glyph** (the filled square is reserved for an actual server stop/cancel-spawn) - the groups Delete buttons were the last holdout. **Colour equals state on one palette** - `.tag.ok` (green: active/created/success), `.tag.warn` (amber: idle/pending), `.tag.danger` (red: error/failed), `.tag.accent` (cyan: neutral emphasis) - so colour alone carries the signal on pills, tags and meters alike (previously error rendered amber and success grey). **Buttons**: dense list rows are icon-only with tooltips, `btn-primary` is reserved for a screen's submit/CTA, a single consequential row action may be labelled (Change password stays a secondary `btn-sm`). **Back**: the footer Cancel is the back/discard path on every full screen, back-links are bare text, and the page-head ghost-Back on the create screens was dropped. **Config screens are symmetric**: user-config, group-config and the new LAB-001 all use one bottom action footer (destructive left, Cancel/Save right). Navigation orphans were closed (the Overview Broadcast shortcut now opens Notifications; the Servers nav badge was dropped; Manage-volumes shows only on stopped server rows where it works). The Users dashboard widget became action-oriented (pending / never-logged-in / inactive 30d+) with matching scope pills on the Users list, and the avatars/initials were dropped everywhere. New **LAB-001 Lab Container** defines the spawned image and volume set, the source the user Volumes tab reads its names/mounts/descriptions from. Removed dead code (`.act`, `.avatar`, drawer host) and the user-config Effective-access section. Out of scope: mobile navigation (the rail hides under 860px with no replacement - desktop admin design for now).
+
+## Design language - control vocabulary
+
+The control layer was unified into one named system (live reference: `design-system.html`, a mock-only palette).
+
+- **Action buttons** - one class per button, two axes: context sets size, variant sets colour, never stacked. Contexts `page` (form / page-head, the Save baseline), `list` (dense table-row, more compact), `input` (inline with a field), `list-icon` (icon-only square). Variants `primary` (filled accent), `secondary` (bordered neutral), `dangerous` (red), `disabled` (muted, inert). The old `btn`/`btn-sm`/`btn-primary`/`btn-danger`/`btn-ghost`/`icon-btn` vocabulary is retired. Change-password on the Users list is `list-primary` (no icon) at the operator's call; Stop / Cancel-spawn / Remove / Delete are `list-icon-dangerous`
+- **Labels** - pills, tags and chips share one slightly-rounded-rectangle shape (was a stadium pill). Passive by default; an active label carries a remove `×` that reveals on hover - defined in the language, ready to use, no page rolls it out yet. Status-pill dots stay circular
+- **Help in tooltips, notes for designers** - field help lives in the control's `title` tooltip, not inline; visible explanatory commentary uses a dashed `Note:` box (`.note`). Screens stay minimal
+- **Compact + zebra** - controls use compact padding; list rows get a JS-applied alternating tint that survives filter and sort (CSS `nth-child` would miscount hidden rows)
+- **Create reuses Configure** - `new-user.html` is the `user-config.html` tabbed screen (Profile / Groups) with mode cues toggled: no rename acknowledgement, no Created/Last-active, no Remove user; Admin off, Authorise on, an initial password and require-change-at-first-login. One design, elements switched on/off to stay robust
+- **Icons** - Settings/Configure uses a clean gear; Tokens / API-keys / Change-password a classic key matching the original hub
+- **Lab Container** - lists only custom mounts (the three standard volumes are platform-managed, called out in a Note); custom names are fully qualified (`jupyterhub_shared`); the view is full width; disabled inputs render explicitly inert (dashed, muted)
 
 ## Backend reality - corrections and net-new
 

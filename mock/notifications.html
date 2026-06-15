@@ -7,10 +7,10 @@
   <link rel="stylesheet" href="assets/tokens.css">
   <link rel="stylesheet" href="assets/app.css">
   <link rel="icon" href="assets/brand/favicon.ico">
-  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <script>try{var m=localStorage.getItem("optimum-hub-theme");var d=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches;var t=(m==="optimum-hub-dark"||m==="dark")?"optimum-hub-dark":(m==="optimum-hub-light"||m==="light")?"optimum-hub-light":(d?"optimum-hub-dark":"optimum-hub-light");document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 </head>
 <!-- Notifications is a full screen, not a right-side overlay. Two views side by
-     side: left composes and sends a broadcast to active labs (the former drawer
+     side: left composes and sends a broadcast to active lab users (the former drawer
      composer), right lists what was already sent. One Send button; the visual
      metaphor stays in the message, the detail (type / delivery / time) in the
      meta line under each past entry. -->
@@ -19,7 +19,7 @@
   <div class="page-head">
     <div class="titles">
       <h1 class="page-title">Notifications</h1>
-      <div class="page-sub">Broadcast a message to active labs, and review what was sent</div>
+      <div class="page-sub">Broadcast a message to active lab users, and review what was sent</div>
     </div>
   </div>
 
@@ -29,8 +29,7 @@
       <div class="card-head" style="padding:0 0 var(--space-3)"><h3>Send a notification</h3></div>
       <div class="field">
         <label>Message</label>
-        <textarea class="input" rows="3" maxlength="140" placeholder="Up to 140 characters - sent to every active lab"></textarea>
-        <div class="page-sub" style="margin-top:var(--space-2)">Up to 140 characters</div>
+        <textarea class="input" rows="3" maxlength="140" placeholder="Up to 140 characters - sent to every active lab user"></textarea>
       </div>
       <div class="grid" style="grid-template-columns:1fr 1fr;gap:var(--space-4)">
         <div class="field" style="margin-bottom:0">
@@ -39,15 +38,15 @@
         </div>
         <div class="field" style="margin-bottom:0">
           <label>Recipients</label>
-          <select class="select"><option>All active labs (18)</option><option>Choose users…</option></select>
+          <select class="select"><option>All active lab users (18)</option><option>Choose users…</option></select>
         </div>
       </div>
       <div class="field" style="display:flex;align-items:center;gap:var(--space-3);margin-top:var(--space-4);margin-bottom:0">
-        <span class="switch on" data-toast="Toggle auto-close (mock)"><span class="track"></span></span>
-        <span class="page-sub">auto-close on the lab once read</span>
+        <span class="switch on" title="Auto-close on the lab once read" data-toast="Toggle auto-close (mock)"><span class="track"></span></span>
+        <label style="font-size:var(--text-sm);color:var(--color-text-muted)">Auto-close once read</label>
       </div>
       <div style="margin-top:var(--space-5)">
-        <button class="btn btn-primary" data-toast="Broadcast delivered 18/18 (mock)">{ic:megaphone} Send notification</button>
+        <button class="page-primary" data-toast="Broadcast delivered 18/18 (mock)">{ic:megaphone} Send notification</button>
       </div>
     </div>
 
@@ -76,7 +75,7 @@
             <tr data-text="storage quota raised 50 gb everyone success">
               <td>
                 <div>Storage quota raised to 50 GB for everyone</div>
-                <div class="page-sub" style="margin-top:2px"><span class="tag">success</span> · delivered 18/18 · 3 days ago</div>
+                <div class="page-sub" style="margin-top:2px"><span class="tag ok">success</span> · delivered 18/18 · 3 days ago</div>
               </td>
             </tr>
             <tr data-text="spawn errors node-3 resolved info">

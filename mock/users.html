@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/tokens.css">
   <link rel="stylesheet" href="assets/app.css">
   <link rel="icon" href="assets/brand/favicon.ico">
-  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <script>try{var m=localStorage.getItem("optimum-hub-theme");var d=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches;var t=(m==="optimum-hub-dark"||m==="dark")?"optimum-hub-dark":(m==="optimum-hub-light"||m==="light")?"optimum-hub-light":(d?"optimum-hub-dark":"optimum-hub-light");document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 </head>
 <body data-page="users">
 <main>
@@ -17,8 +17,8 @@
       <div class="page-sub">People, their authorisation state and group membership</div>
     </div>
     <div class="actions">
-      <a class="btn btn-primary" href="new-user.html">{ic:plus} Add user</a>
-      <a class="btn" href="bulk-users.html">Bulk add</a>
+      <a class="page-primary" href="new-user.html">{ic:plus} Add user</a>
+      <a class="page-secondary" href="bulk-users.html">Bulk add</a>
     </div>
   </div>
 
@@ -33,19 +33,19 @@
       <table class="tbl">
         <tbody>
           <tr>
-            <td><div class="u"><span class="avatar">BA</span>bartek</div></td>
+            <td><div class="u">bartek</div></td>
             <td class="num">signed up 12m ago</td>
             <td class="right"><div class="row-actions">
-              <button class="btn btn-sm btn-primary" data-toast="Authorised bartek (mock)">Authorize</button>
-              <button class="btn btn-sm btn-danger" data-toast="Discarded bartek (mock)">Discard</button>
+              <button class="list-primary" data-toast="Authorised bartek (mock)">Authorize</button>
+              <button class="list-dangerous" data-toast="Discarded bartek (mock)">Discard</button>
             </div></td>
           </tr>
           <tr>
-            <td><div class="u"><span class="avatar">NI</span>nina</div></td>
+            <td><div class="u">nina</div></td>
             <td class="num">signed up 6m ago</td>
             <td class="right"><div class="row-actions">
-              <button class="btn btn-sm btn-primary" data-toast="Authorised nina (mock)">Authorize</button>
-              <button class="btn btn-sm btn-danger" data-toast="Discarded nina (mock)">Discard</button>
+              <button class="list-primary" data-toast="Authorised nina (mock)">Authorize</button>
+              <button class="list-dangerous" data-toast="Discarded nina (mock)">Discard</button>
             </div></td>
           </tr>
         </tbody>
@@ -53,18 +53,23 @@
     </div>
   </div>
 
-  <!-- Authorised users. At scale: search filters live; scope pills (Authorised
-       default / De-authorised / All) keep the default view clean; columns sort;
-       the pager is illustrative. The Authorised switch is the cheap inline lever
-       (off = deliberate de-authorisation). Groups is a COUNT that drills into
-       the user's config - never enumerated chips (a user may be in dozens).
-       Configure opens the full Configure-user screen (no drawer). -->
+  <!-- Authorised users. At scale: search filters live; activity-driven scope
+       pills (Authorised default / Inactive = activity 0% / New = never signed in
+       / De-authorised / All) keep the default view clean and drill in from the
+       Overview widget; columns sort (User / Created / Last seen / Activity, the
+       5-segment meter); the pager is illustrative. The Authorised switch is the
+       cheap inline lever (off = deliberate de-authorisation). Groups shows
+       capped name chips (+N reveals the rest). No Actions column - the username
+       links to the full Configure-user screen where every action lives (change
+       password, groups, volumes, remove), so nothing is duplicated on the row. -->
   <div class="card card-pad-0" style="margin-top:var(--space-4)">
     <div class="card-head">
       <h3>Authorised users</h3>
       <div class="actions">
         <label class="search">{ic:search}<input type="text" placeholder="Filter by user…" data-list-search></label>
         <span class="pill running active" data-list-scope="authorised"><span class="dot"></span>Authorised 1,284</span>
+        <span class="pill stopped" data-list-scope="inactive" title="Activity at 0%"><span class="dot"></span>Inactive 118</span>
+        <span class="pill stopped" data-list-scope="new" title="Authorised but never signed in"><span class="dot"></span>New 34</span>
         <span class="pill stopped" data-list-scope="deauthorised"><span class="dot"></span>De-authorised 12</span>
         <span class="pill stopped" data-list-scope="all"><span class="dot"></span>All 1,296</span>
       </div>
@@ -75,46 +80,67 @@
           <tr>
             <th class="sortable" data-sort="user">User <span class="sort"></span></th>
             <th>Authorised</th>
-            <th class="right">Groups</th>
+            <th>Groups</th>
+            <th class="sortable" data-sort="created">Created <span class="sort"></span></th>
             <th class="sortable right" data-sort="seen" data-sort-type="num">Last seen <span class="sort"></span></th>
-            <th class="right">Configure</th>
+            <th class="sortable" data-sort="activity" data-sort-type="num">Activity <span class="sort"></span></th>
           </tr>
         </thead>
         <tbody>
-          <tr data-text="admin" data-scope="authorised" data-sort-seen="0">
-            <td><div class="u"><span class="avatar">AD</span>admin <span class="tag accent">admin</span></div></td>
+          <tr data-text="admin" data-scope="authorised" data-sort-seen="0" data-sort-created="2025-09-01" data-sort-activity="99">
+            <td><a class="u" href="user-config.html">admin <span class="tag accent">admin</span></a></td>
             <td><span class="switch on" data-toast="Cannot de-authorise yourself (mock)"><span class="track"></span></span></td>
-            <td class="right"><a href="user-config.html" style="color:var(--color-accent)">1 group</a></td>
+            <td><div class="chips" data-chips="3"><span class="chip">admins</span></div></td>
+            <td class="num" title="2025-09-01 08:00 UTC">9mo ago</td>
             <td class="num right">now</td>
-            <td class="right"><a class="icon-btn" href="user-config.html" title="Configure">{ic:settings}</a></td>
+            <td><span class="meter" title="99% active (24h)"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></td>
           </tr>
-          <tr data-text="alice" data-scope="authorised" data-sort-seen="2">
-            <td><div class="u"><span class="avatar">AL</span>alice</div></td>
+          <tr data-text="alice" data-scope="authorised" data-sort-seen="2" data-sort-created="2026-03-04" data-sort-activity="86">
+            <td><a class="u" href="user-config.html">alice</a><span class="name-hint">Alice Kowalska</span></td>
             <td><span class="switch on" data-toast="De-authorised alice (mock)"><span class="track"></span></span></td>
-            <td class="right"><a href="user-config.html" style="color:var(--color-accent)">4 groups</a></td>
+            <td><div class="chips" data-chips="3"><span class="chip">data-science</span><span class="chip">gpu</span><span class="chip">ml-platform</span><span class="chip">vision-lab</span><span class="chip">nlp</span></div></td>
+            <td class="num" title="2026-03-04 09:12 UTC">3mo ago</td>
             <td class="num right">2m ago</td>
-            <td class="right"><a class="icon-btn" href="user-config.html" title="Configure">{ic:settings}</a></td>
+            <td><span class="meter" title="86% active (24h)"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></td>
           </tr>
-          <tr data-text="milan" data-scope="authorised" data-sort-seen="1">
-            <td><div class="u"><span class="avatar">MI</span>milan</div></td>
+          <tr data-text="milan" data-scope="authorised" data-sort-seen="1" data-sort-created="2026-02-10" data-sort-activity="71">
+            <td><a class="u" href="user-config.html">milan</a><span class="name-hint">Milan Novak</span></td>
             <td><span class="switch on" data-toast="De-authorised milan (mock)"><span class="track"></span></span></td>
-            <td class="right"><a href="user-config.html" style="color:var(--color-accent)">2 groups</a></td>
+            <td><div class="chips" data-chips="3"><span class="chip">data-science</span><span class="chip">nlp</span></div></td>
+            <td class="num" title="2026-02-10 11:30 UTC">4mo ago</td>
             <td class="num right">now</td>
-            <td class="right"><a class="icon-btn" href="user-config.html" title="Configure">{ic:settings}</a></td>
+            <td><span class="meter idle" title="71% active (24h)"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span></td>
           </tr>
-          <tr data-text="jakub" data-scope="deauthorised" data-sort-seen="1440">
-            <td><div class="u"><span class="avatar">JA</span>jakub</div></td>
+          <tr data-text="jakub" data-scope="deauthorised" data-sort-seen="1440" data-sort-created="2025-11-20" data-sort-activity="5">
+            <td><a class="u" href="user-config.html">jakub</a><span class="name-hint">Jakub Wojcik</span></td>
             <td><span class="switch" data-toast="Re-authorised jakub (mock)"><span class="track"></span></span></td>
-            <td class="right"><span style="color:var(--color-text-subtle)">de-authorised</span></td>
+            <td><div class="chips" data-chips="3"><span class="chip">interns</span><span class="chip">students</span><span class="chip">finance</span></div></td>
+            <td class="num" title="2025-11-20 14:05 UTC">7mo ago</td>
             <td class="num right">1d ago</td>
-            <td class="right"><a class="icon-btn" href="user-config.html" title="Configure">{ic:settings}</a></td>
+            <td><span class="meter low" title="5% active (24h)"><i class="on"></i><i></i><i></i><i></i><i></i></span></td>
           </tr>
-          <tr data-list-empty hidden><td colspan="5"><div class="empty" style="padding:var(--space-6)"><p>No user matches that filter</p></div></td></tr>
+          <tr data-text="ewa" data-scope="authorised new" data-sort-seen="999999" data-sort-created="2026-06-10" data-sort-activity="0">
+            <td><a class="u" href="user-config.html">ewa</a><span class="name-hint">Ewa Nowak</span></td>
+            <td><span class="switch on" data-toast="De-authorised ewa (mock)"><span class="track"></span></span></td>
+            <td><div class="chips" data-chips="3"><span class="chip">interns</span></div></td>
+            <td class="num" title="2026-06-10 16:20 UTC">5d ago</td>
+            <td class="num right" title="account created, never signed in">never</td>
+            <td><span class="meter low" title="No activity yet"><i></i><i></i><i></i><i></i><i></i></span></td>
+          </tr>
+          <tr data-text="tomek" data-scope="authorised inactive" data-sort-seen="132480" data-sort-created="2026-01-15" data-sort-activity="0">
+            <td><a class="u" href="user-config.html">tomek</a><span class="name-hint">Tomek Zielinski</span></td>
+            <td><span class="switch on" data-toast="De-authorised tomek (mock)"><span class="track"></span></span></td>
+            <td><div class="chips" data-chips="3"><span class="chip">students</span><span class="chip">finance</span></div></td>
+            <td class="num" title="2026-01-15 10:00 UTC">5mo ago</td>
+            <td class="num right">92d ago</td>
+            <td><span class="meter low" title="0% active (24h)"><i></i><i></i><i></i><i></i><i></i></span></td>
+          </tr>
+          <tr data-list-empty hidden><td colspan="6"><div class="empty" style="padding:var(--space-6)"><p>No user matches that filter</p></div></td></tr>
         </tbody>
       </table>
     </div>
     <div class="pager">
-      <span>Showing <b>1-4</b> of <b>1,284</b></span>
+      <span>Showing <b>1-6</b> of <b>1,284</b></span>
       <span class="pages">
         <button class="pg" disabled data-toast="Page navigation is illustrative (mock)">Prev</button>
         <button class="pg on" data-toast="Page 1 (mock)">1</button>

@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/tokens.css">
   <link rel="stylesheet" href="assets/app.css">
   <link rel="icon" href="assets/brand/favicon.ico">
-  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <script>try{var m=localStorage.getItem("optimum-hub-theme");var d=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches;var t=(m==="optimum-hub-dark"||m==="dark")?"optimum-hub-dark":(m==="optimum-hub-light"||m==="light")?"optimum-hub-light":(d?"optimum-hub-dark":"optimum-hub-light");document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 </head>
 <body data-page="users" data-title="Bulk add - result">
 <main>
@@ -17,8 +17,8 @@
       <div class="page-sub">Save these now - passwords are shown once</div>
     </div>
     <div class="actions">
-      <button class="btn" data-toast="Downloaded credentials.txt (mock)">Download .txt</button>
-      <a class="btn btn-primary" href="users.html">Done</a>
+      <button class="page-secondary" data-toast="Downloaded credentials.txt (mock)">Download .txt</button>
+      <a class="page-primary" href="users.html">Done</a>
     </div>
   </div>
 
@@ -31,10 +31,10 @@
       <table class="tbl">
         <thead><tr><th>Username</th><th>Password</th><th>Groups</th><th class="right">Status</th></tr></thead>
         <tbody>
-          <tr><td>tomasz</td><td class="mono">correct-horse-battery</td><td><div class="chips"><span class="chip">interns</span></div></td><td class="right"><span class="tag accent">created</span></td></tr>
-          <tr><td>ewa</td><td class="mono">staple-river-violet</td><td><div class="chips"><span class="chip">interns</span></div></td><td class="right"><span class="tag accent">created</span></td></tr>
-          <tr><td>piotr</td><td class="mono">amber-lantern-quartz</td><td><div class="chips"><span class="chip">interns</span></div></td><td class="right"><span class="tag warn">failed</span></td></tr>
-          <tr><td>kasia</td><td class="mono">copper-meadow-signal</td><td><div class="chips"><span class="chip">interns</span></div></td><td class="right"><span class="tag accent">created</span></td></tr>
+          <tr><td>tomasz</td><td class="mono">correct-horse-battery</td><td><div class="chips"><span class="chip">interns</span></div></td><td class="right"><span class="tag ok">created</span></td></tr>
+          <tr><td>ewa</td><td class="mono">staple-river-violet</td><td><div class="chips"><span class="chip">interns</span></div></td><td class="right"><span class="tag ok">created</span></td></tr>
+          <tr><td>piotr</td><td><span style="color:var(--color-text-subtle)">not created</span></td><td><div class="chips"><span class="chip">interns</span></div></td><td class="right"><span class="tag danger">failed</span></td></tr>
+          <tr><td>kasia</td><td class="mono">copper-meadow-signal</td><td><div class="chips"><span class="chip">interns</span></div></td><td class="right"><span class="tag ok">created</span></td></tr>
         </tbody>
       </table>
     </div>

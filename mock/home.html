@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/tokens.css">
   <link rel="stylesheet" href="assets/app.css">
   <link rel="icon" href="assets/brand/favicon.ico">
-  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <script>try{var m=localStorage.getItem("optimum-hub-theme");var d=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches;var t=(m==="optimum-hub-dark"||m==="dark")?"optimum-hub-dark":(m==="optimum-hub-light"||m==="light")?"optimum-hub-light":(d?"optimum-hub-dark":"optimum-hub-light");document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 </head>
 <body data-page="home">
 <main>
@@ -30,8 +30,8 @@
     <a class="card metric card-link" href="users.html">
       <div class="m-top"><span class="m-ic">{ic:users}</span><span>Users</span><span class="m-go">{ic:chevron}</span></div>
       <div class="m-val">1,296</div>
-      <div class="spark"><span style="width:99%;background:var(--color-accent)"></span><span style="width:1%;background:var(--color-accent-2)"></span></div>
-      <div class="m-break"><span><b>1,284</b> authorised</span><span style="color:var(--color-accent-2)"><b>2</b> pending</span></div>
+      <div class="spark"><span style="width:0.2%;background:var(--color-accent-2)"></span><span style="width:88%;background:var(--color-success)"></span><span style="width:9%;background:var(--color-text-subtle)"></span><span style="width:2.6%;background:var(--color-accent)"></span></div>
+      <div class="m-break"><span style="color:var(--color-accent-2)" title="Signed up, awaiting admin authorisation"><b>2</b> pending</span><span style="color:var(--color-success)" title="Activity above 0%"><b>1,142</b> active</span><span title="Activity at 0%"><b>118</b> inactive</span><span style="color:var(--color-accent)" title="Authorised but never signed in"><b>34</b> new</span></div>
     </a>
     <div class="card span-2">
       <div class="card-head" style="padding:0 0 var(--space-3);border-bottom:0">
@@ -51,7 +51,7 @@
     <div class="callout">
       {ic:user}
       <div><b>2 users awaiting approval</b> - review and authorise</div>
-      <a class="btn btn-sm" href="users.html">Review</a>
+      <a class="list-secondary" href="users.html">Review</a>
     </div>
   </div>
 
@@ -61,7 +61,7 @@
     <div class="card card-pad-0">
       <div class="card-head">
         <h3>Active servers</h3>
-        <div class="actions"><a class="btn btn-sm btn-ghost" href="servers.html">View all -></a></div>
+        <div class="actions"><a class="link" href="servers.html">View all -></a></div>
       </div>
       <!-- Status and Activity are SEPARATE columns (never clubbed): Status the
            lifecycle pill, Activity the meter with its % in the tooltip - matches
@@ -71,54 +71,54 @@
           <thead><tr><th>User</th><th>Status</th><th>Activity</th><th class="right">CPU</th><th class="right">Memory</th><th class="right">Time left</th><th class="right">Actions</th></tr></thead>
           <tbody>
             <tr>
-              <td><div class="u"><span class="avatar">AL</span>alice</div></td>
+              <td><div class="u">alice</div></td>
               <td><span class="pill running"><span class="dot"></span>Active</span></td>
               <td><span class="meter" title="Activity 96% · 24h sampled"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></td>
               <td class="num right">38%</td>
-              <td class="num right">6.2 / 16 GB</td>
+              <td class="right"><span class="cell-warn" title="19.2 GB · 30% of host RAM, over the 25% per-user limit">30%</span></td>
               <td class="num right">3h 48m</td>
               <td><div class="row-actions">
-                <button class="icon-btn" title="Enter session (confirm)" data-toast="Confirm: enter alice's running server? (mock)">{ic:play}</button>
-                <button class="icon-btn" title="Restart" data-toast="Restart jupyterlab-alice (mock)">{ic:restart}</button>
-                <button class="icon-btn" title="Stop" data-toast="Stop jupyterlab-alice (mock)">{ic:stop}</button>
+                <button class="list-icon-secondary" title="Enter session (confirm)" data-toast="Confirm: enter alice's running server? (mock)">{ic:play}</button>
+                <button class="list-icon-secondary" title="Restart" data-toast="Restart jupyterlab-alice (mock)">{ic:restart}</button>
+                <button class="list-icon-dangerous" title="Stop" data-toast="Stop jupyterlab-alice (mock)">{ic:stop}</button>
               </div></td>
             </tr>
             <tr>
-              <td><div class="u"><span class="avatar">KO</span><div>konrad <span class="tag accent">admin</span></div></div></td>
+              <td><div class="u"><div>konrad <span class="tag accent">admin</span></div></div></td>
               <td><span class="pill running"><span class="dot"></span>Active</span></td>
               <td><span class="meter" title="Activity 78% · 24h sampled"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></td>
               <td class="num right">12%</td>
-              <td class="num right">3.1 / 32 GB</td>
+              <td class="num right" title="3.1 GB · 5% of host RAM">5%</td>
               <td class="num right">22h</td>
               <td><div class="row-actions">
-                <button class="icon-btn" title="Enter session (confirm)" data-toast="Confirm: enter konrad's running server? (mock)">{ic:play}</button>
-                <button class="icon-btn" title="Restart" data-toast="Restart jupyterlab-konrad (mock)">{ic:restart}</button>
-                <button class="icon-btn" title="Stop" data-toast="Stop jupyterlab-konrad (mock)">{ic:stop}</button>
+                <button class="list-icon-secondary" title="Enter session (confirm)" data-toast="Confirm: enter konrad's running server? (mock)">{ic:play}</button>
+                <button class="list-icon-secondary" title="Restart" data-toast="Restart jupyterlab-konrad (mock)">{ic:restart}</button>
+                <button class="list-icon-dangerous" title="Stop" data-toast="Stop jupyterlab-konrad (mock)">{ic:stop}</button>
               </div></td>
             </tr>
             <tr>
-              <td><div class="u"><span class="avatar">MI</span>milan</div></td>
+              <td><div class="u">milan</div></td>
               <td><span class="pill spawning"><span class="dot"></span>Spawning</span></td>
               <td class="num">-</td>
               <td class="num right">-</td>
               <td class="num right">-</td>
               <td class="num right">-</td>
               <td><div class="row-actions">
-                <button class="icon-btn" title="View spawn log" data-toast="Tail spawn log (mock)">{ic:activity}</button>
-                <button class="icon-btn" title="Cancel" data-toast="Cancel spawn (mock)">{ic:stop}</button>
+                <button class="list-icon-secondary" title="View spawn log" data-toast="Tail spawn log (mock)">{ic:activity}</button>
+                <button class="list-icon-dangerous" title="Cancel" data-toast="Cancel spawn (mock)">{ic:stop}</button>
               </div></td>
             </tr>
             <tr>
-              <td><div class="u"><span class="avatar">NI</span>nina</div></td>
+              <td><div class="u">nina</div></td>
               <td><span class="pill idle"><span class="dot"></span>Idle 38m</span></td>
               <td><span class="meter low" title="Activity 12% · 24h sampled"><i class="on"></i><i></i><i></i><i></i><i></i></span></td>
               <td class="num right">2%</td>
-              <td class="num right">1.4 / 16 GB</td>
+              <td class="num right" title="1.4 GB · 2% of host RAM">2%</td>
               <td class="num right" style="color:var(--color-warning)">22m</td>
               <td><div class="row-actions">
-                <button class="icon-btn" title="Enter session (confirm)" data-toast="Confirm: enter nina's running server? (mock)">{ic:play}</button>
-                <button class="icon-btn" title="Restart" data-toast="Restart jupyterlab-nina (mock)">{ic:restart}</button>
-                <button class="icon-btn" title="Stop" data-toast="Stop jupyterlab-nina (mock)">{ic:stop}</button>
+                <button class="list-icon-secondary" title="Enter session (confirm)" data-toast="Confirm: enter nina's running server? (mock)">{ic:play}</button>
+                <button class="list-icon-secondary" title="Restart" data-toast="Restart jupyterlab-nina (mock)">{ic:restart}</button>
+                <button class="list-icon-dangerous" title="Stop" data-toast="Stop jupyterlab-nina (mock)">{ic:stop}</button>
               </div></td>
             </tr>
           </tbody>
@@ -132,14 +132,14 @@
         <div class="qa">
           <a class="qa-btn" href="new-user.html">{ic:user}<span>Add user<small>create + authorise</small></span></a>
           <a class="qa-btn" href="new-group.html">{ic:group}<span>Create group<small>grant policies</small></span></a>
-          <button class="qa-btn" data-toast="Broadcast composer (mock)">{ic:megaphone}<span>Broadcast<small>notify all labs</small></span></button>
+          <a class="qa-btn" href="notifications.html">{ic:megaphone}<span>Broadcast<small>notify lab users</small></span></a>
           <a class="qa-btn" href="settings.html">{ic:settings}<span>Settings<small>platform config</small></span></a>
         </div>
       </div>
 
       <div class="card card-pad-0">
         <div class="card-head"><h3>Recent events</h3>
-          <div class="actions"><a class="btn btn-sm btn-ghost" href="events.html">View all -></a></div></div>
+          <div class="actions"><a class="link" href="events.html">View all -></a></div></div>
         <div class="feed">
           <div class="feed-item"><div class="feed-ic">{ic:play}</div><div class="feed-body"><div class="t"><b>milan</b> started a server with <span class="tag accent">gpu</span></div><div class="when">just now</div></div></div>
           <div class="feed-item"><div class="feed-ic">{ic:user}</div><div class="feed-body"><div class="t"><b>nina</b> signed up - awaiting approval</div><div class="when">6 min ago</div></div></div>
