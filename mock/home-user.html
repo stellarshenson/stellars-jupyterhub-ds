@@ -28,7 +28,6 @@
       <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap">
         <h2 style="font-size:var(--text-lg)">jupyterlab-alice</h2>
         <span class="pill running"><span class="dot"></span>Active</span>
-        <span class="meter" title="Activity 86% · 24h sampled"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>
       </div>
       <div class="row-actions" style="justify-content:flex-start;gap:var(--space-2);margin-top:var(--space-4)">
         <button class="page-primary" data-toast="Opening your lab (mock)">{ic:play} Open lab</button>
@@ -37,8 +36,10 @@
       </div>
       <div style="margin-top:var(--space-5)">
         <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px"><span class="page-sub">Time left</span><b style="font-size:var(--text-sm)">3h 48m</b></div>
-        <div class="spark" style="height:8px" title="3h 48m before the idle culler stops the lab"><span style="width:45%;background:var(--color-success)"></span></div>
-        <div style="margin-top:var(--space-3)"><button class="input-secondary" title="Add hours before the idle culler stops the lab - up to your extension limit" data-toast="Extended session by 2h (mock)">{ic:plus} Extend</button></div>
+        <div style="display:flex;align-items:center;gap:var(--space-3)">
+          <div class="spark" style="height:8px;flex:1" title="3h 48m before the idle culler stops the lab"><span style="width:45%;background:var(--color-success)"></span></div>
+          <button class="input-secondary" title="Add hours before the idle culler stops the lab - up to your extension limit" data-toast="Extended session by 2h (mock)">{ic:plus} Extend</button>
+        </div>
       </div>
     </div>
     <div class="card">
@@ -47,6 +48,7 @@
         <div class="res-row"><span class="res-label">CPU</span><span class="res-bar"><i style="width:8%"></i></span><span class="res-val">8%</span></div>
         <div class="res-row"><span class="res-label">Memory</span><span class="res-bar"><i style="width:3%"></i></span><span class="res-val" title="2.1 GB of host RAM">3%</span></div>
         <div class="res-row"><span class="res-label">GPU</span><span class="res-bar"><i style="width:0%"></i></span><span class="res-val">0%</span></div>
+        <div class="res-row"><span class="res-label">Activity</span><span class="res-bar"><i style="width:86%;background:var(--color-success)"></i></span><span class="res-val" title="86% active · 24h sampled">86%</span></div>
       </div>
     </div>
   </div>
