@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="optimum-hub-dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optimum Hub - Notifications</title>
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/app.css">
+  <link rel="icon" href="assets/brand/favicon.ico">
+  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<!-- Notifications is a full screen, not a right-side overlay. Two views side by
+     side: left composes and sends a broadcast to active labs (the former drawer
+     composer), right lists what was already sent. One Send button; the visual
+     metaphor stays in the message, the detail (type / delivery / time) in the
+     meta line under each past entry. -->
+<body data-page="notifications" data-title="Notifications">
+<main>
+  <div class="page-head">
+    <div class="titles">
+      <h1 class="page-title">Notifications</h1>
+      <div class="page-sub">Broadcast a message to active labs, and review what was sent</div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:var(--space-4);align-items:start">
+    <!-- Left: compose + send -->
+    <div class="card">
+      <div class="card-head" style="padding:0 0 var(--space-3)"><h3>Send a notification</h3></div>
+      <div class="field">
+        <label>Message</label>
+        <textarea class="input" rows="3" maxlength="140" placeholder="Up to 140 characters - sent to every active lab"></textarea>
+        <div class="page-sub" style="margin-top:var(--space-2)">Up to 140 characters</div>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div class="field" style="margin-bottom:0">
+          <label>Type</label>
+          <select class="select"><option>info</option><option>success</option><option>warning</option><option>error</option><option>in-progress</option></select>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label>Recipients</label>
+          <select class="select"><option>All active labs (18)</option><option>Choose users…</option></select>
+        </div>
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:var(--space-3);margin-top:var(--space-4);margin-bottom:0">
+        <span class="switch on" data-toast="Toggle auto-close (mock)"><span class="track"></span></span>
+        <span class="page-sub">auto-close on the lab once read</span>
+      </div>
+      <div style="margin-top:var(--space-5)">
+        <button class="btn btn-primary" data-toast="Broadcast delivered 18/18 (mock)">{ic:megaphone} Send notification</button>
+      </div>
+    </div>
+
+    <!-- Right: past notifications (sent history) - searchable, paged at scale.
+         Message on top, the meta line carries type, delivery count and time. -->
+    <div class="card card-pad-0">
+      <div class="card-head">
+        <h3>Past notifications</h3>
+        <div class="actions"><label class="search">{ic:search}<input type="text" placeholder="Filter sent…" data-list-search></label></div>
+      </div>
+      <div class="table-wrap">
+        <table class="tbl" data-list>
+          <tbody>
+            <tr data-text="cluster maintenance 18:00 save your work warning">
+              <td>
+                <div>Cluster maintenance at 18:00 - save your work</div>
+                <div class="page-sub" style="margin-top:2px"><span class="tag warn">warning</span> · delivered 18/18 · 2h ago</div>
+              </td>
+            </tr>
+            <tr data-text="new gpu nodes live request access info">
+              <td>
+                <div>New GPU nodes are live - request access in #ml</div>
+                <div class="page-sub" style="margin-top:2px"><span class="tag accent">info</span> · delivered 16/18 · yesterday</div>
+              </td>
+            </tr>
+            <tr data-text="storage quota raised 50 gb everyone success">
+              <td>
+                <div>Storage quota raised to 50 GB for everyone</div>
+                <div class="page-sub" style="margin-top:2px"><span class="tag">success</span> · delivered 18/18 · 3 days ago</div>
+              </td>
+            </tr>
+            <tr data-text="spawn errors node-3 resolved info">
+              <td>
+                <div>Spawn errors on node-3 resolved</div>
+                <div class="page-sub" style="margin-top:2px"><span class="tag accent">info</span> · delivered 9/9 · 5 days ago</div>
+              </td>
+            </tr>
+            <tr data-text="scheduled restart tonight 02:00 utc warning">
+              <td>
+                <div>Scheduled restart tonight 02:00 UTC</div>
+                <div class="page-sub" style="margin-top:2px"><span class="tag warn">warning</span> · delivered 14/14 · last week</div>
+              </td>
+            </tr>
+            <tr data-list-empty hidden><td><div class="empty" style="padding:var(--space-6)"><p>No notification matches that filter</p></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <span>Showing <b>1-5</b> of <b>112</b> · last 30 days</span>
+        <span class="pages">
+          <button class="pg" disabled data-toast="Page navigation is illustrative (mock)">Prev</button>
+          <button class="pg on" data-toast="Page 1 (mock)">1</button>
+          <button class="pg" data-toast="Page 2 (mock)">2</button>
+          <button class="pg" data-toast="Page 3 (mock)">3</button>
+          <button class="pg" data-toast="Next page (mock)">Next</button>
+        </span>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="assets/app.js"></script>
+</body>
+</html>

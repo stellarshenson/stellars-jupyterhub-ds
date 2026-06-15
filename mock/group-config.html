@@ -45,10 +45,10 @@
     <section class="tab-panel" data-panel="policy">
       <div class="page-sub" style="margin-bottom:var(--space-4)">Toggle a policy on to grant it to every member; the hub combines policies across a user's groups by priority</div>
 
-      <div class="grant"><span class="g-ic">{ic:settings}</span><div><b>Environment</b><div class="g-from">inject env vars, reserved names rejected</div></div><span class="g-val">2 vars</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle env (mock)"><span class="track"></span></span></div>
+      <div class="grant"><span class="g-ic">{ic:code}</span><div><b>Environment</b><div class="g-from">inject env vars, reserved names rejected</div></div><span class="g-val">2 vars</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle env (mock)"><span class="track"></span></span></div>
       <div style="padding:var(--space-2) 0 var(--space-3) calc(28px + var(--space-3));color:var(--color-danger);font-size:var(--text-xs)">JUPYTERHUB_API_TOKEN is reserved and was rejected - pick a different variable name</div>
 
-      <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>GPU</b><div class="g-from">all or specific device ids</div></div><span class="g-val">all</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle gpu (mock)"><span class="track"></span></span></div>
+      <div class="grant"><span class="g-ic">{ic:gpu}</span><div><b>GPU</b><div class="g-from">all or specific device ids</div></div><span class="g-val">all</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle gpu (mock)"><span class="track"></span></span></div>
       <div style="padding:var(--space-2) 0 var(--space-3) calc(28px + var(--space-3))">
         <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3)">
           <span class="switch on" data-toast="Toggle all devices (mock)"><span class="track"></span></span>
@@ -61,13 +61,13 @@
         </div>
       </div>
 
-      <div class="grant"><span class="g-ic">{ic:server}</span><div><b>Docker</b><div class="g-from">raw socket or limited quotas</div></div><span class="g-val">raw</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle docker (mock)"><span class="track"></span></span></div>
+      <div class="grant"><span class="g-ic">{ic:box}</span><div><b>Docker</b><div class="g-from">raw socket or limited quotas</div></div><span class="g-val">raw</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle docker (mock)"><span class="track"></span></span></div>
       <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>CPU</b><div class="g-from">core limit, biggest enabled wins</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle cpu (mock)"><span class="track"></span></span></div>
-      <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>Memory</b><div class="g-from">GB limit + swap</div></div><span class="g-val">32 GB</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle mem (mock)"><span class="track"></span></span></div>
+      <div class="grant"><span class="g-ic">{ic:memory}</span><div><b>Memory</b><div class="g-from">GB limit + swap</div></div><span class="g-val">32 GB</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle mem (mock)"><span class="track"></span></span></div>
       <div class="grant"><span class="g-ic">{ic:shield}</span><div><b>Sudo</b><div class="g-from">root inside the lab</div></div><span class="g-val">on</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle sudo (mock)"><span class="track"></span></span></div>
-      <div class="grant"><span class="g-ic">{ic:shield}</span><div><b>Downloads</b><div class="g-from">block or allow downloads</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle downloads (mock)"><span class="track"></span></span></div>
+      <div class="grant"><span class="g-ic">{ic:download}</span><div><b>Downloads</b><div class="g-from">block or allow downloads</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle downloads (mock)"><span class="track"></span></span></div>
       <div class="grant"><span class="g-ic">{ic:key}</span><div><b>API keys</b><div class="g-from">credential pool, one slot per user, single|pair mode</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle api-keys (mock)"><span class="track"></span></span></div>
-      <div class="grant"><span class="g-ic">{ic:server}</span><div><b>Volume mounts</b><div class="g-from">shared volumes, protected paths barred</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle volumes (mock)"><span class="track"></span></span></div>
+      <div class="grant"><span class="g-ic">{ic:disk}</span><div><b>Volume mounts</b><div class="g-from">shared volumes, protected paths barred</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle volumes (mock)"><span class="track"></span></span></div>
 
       <div class="page-sub" style="margin-top:var(--space-4)">Docker reveals quota fields (max containers, cpu-cap, mem-cap) when switched from raw to limited; API keys reveals single-var vs pair-var inputs when on.</div>
     </section>

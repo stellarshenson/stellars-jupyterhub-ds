@@ -198,6 +198,13 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .tbl .num { font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
 .tbl .right { text-align: right; }
 .row-actions { display: flex; gap: 2px; justify-content: flex-end; }
+/* priority column doubles as the drag handle - grab the row by its number */
+.tbl td.drag { cursor: grab; white-space: nowrap; }
+.tbl td.drag:active { cursor: grabbing; }
+.grip { display: inline-flex; vertical-align: middle; margin-right: 6px; color: var(--color-text-subtle); }
+.grip .ic { width: 14px; height: 14px; }
+.tbl td.drag:hover .grip { color: var(--color-text-muted); }
+.icon-btn[disabled] { opacity: .35; cursor: default; pointer-events: none; }
 
 /* ---------- pills / badges ---------- */
 .pill {
@@ -379,18 +386,7 @@ th[data-dir="desc"] .sort { border-top: 5px solid currentColor; opacity: .7; }
 .palette-item.sel, .palette-item:hover { background: var(--color-accent-soft); }
 .palette-item.sel .ic { color: var(--color-accent); }
 
-/* ---------- drawer ---------- */
-.drawer {
-  position: fixed; top: 0; right: 0; height: 100vh; width: min(460px, 94vw); z-index: 61;
-  background: var(--color-surface); border-left: 1px solid var(--color-border-strong);
-  box-shadow: var(--shadow-overlay); transform: translateX(100%); transition: transform .18s ease;
-  display: flex; flex-direction: column;
-}
-.drawer.open { transform: translateX(0); }
-.drawer-head { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4); border-bottom: 1px solid var(--color-border-subtle); }
-.drawer-head h3 { font-size: var(--text-lg); }
-.drawer-body { padding: var(--space-4); overflow-y: auto; flex: 1; }
-.drawer-foot { padding: var(--space-4); border-top: 1px solid var(--color-border-subtle); display: flex; gap: var(--space-2); justify-content: flex-end; }
+/* ---------- forms ---------- */
 .field { margin-bottom: var(--space-4); }
 .field label { display: block; font-size: var(--text-sm); margin-bottom: var(--space-2); color: var(--color-text-muted); }
 .input, .select {

@@ -31,9 +31,16 @@
     cpu:     'M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3M5 5h14v14H5zM9 9h6v6H9z',
     check:   'M20 6L9 17l-5-5',
     arrowup: 'M12 19V5M5 12l7-7 7 7',
+    arrowdown:'M12 5v14M5 12l7 7 7-7',
     chevron: 'M9 18l6-6-6-6',
     close:   'M18 6 6 18M6 6l12 12',
-    disk:    'M22 12H2M5.45 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.9A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.1z M6 16h.01M10 16h.01'
+    grip:    'M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01',
+    disk:    'M22 12H2M5.45 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.9A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.1z M6 16h.01M10 16h.01',
+    gpu:     'M3 6h18v12H3zM8 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M14 10h4M14 14h4',
+    memory:  'M3 8h18v8H3zM7 11v2M11 11v2M15 11v2M6 16v2M10 16v2M14 16v2M18 16v2',
+    download:'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
+    box:     'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96 12 12.01l8.73-5.05M12 22.08V12',
+    code:    'm18 16 4-4-4-4M6 8l-4 4 4 4M14.5 4l-5 16'
   };
   function svg(name) {
     return '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="' + (I[name] || '') + '"/></svg>';
@@ -55,13 +62,15 @@
   // (admin-only). One entity, one destination: Servers absorbs live activity,
   // Groups absorbs policy editing - no standalone Activity or Policies page.
   var NAV_ADMIN = [
-    { group: "Operate", items: [
-      { id: "home",     label: "Overview", icon: "grid",     href: "home.html" },
-      { id: "servers",  label: "Servers",  icon: "server",   href: "servers.html", badge: "3" }
+    { group: "", items: [
+      { id: "home",     label: "Overview", icon: "grid",     href: "home.html" }
     ]},
     { group: "Administration", items: [
+      { id: "servers",  label: "Servers",  icon: "server",   href: "servers.html", badge: "3" },
       { id: "users",    label: "Users",    icon: "users",    href: "users.html", badge: "2" },
       { id: "groups",   label: "Groups",   icon: "group",    href: "groups.html" },
+      { id: "events",   label: "Events",   icon: "activity", href: "events.html" },
+      { id: "notifications", label: "Notifications", icon: "megaphone", href: "notifications.html" },
       { id: "advanced", label: "Advanced", icon: "dots", children: [
         { id: "settings", label: "Settings", icon: "settings", href: "settings.html" },
         { id: "tokens",   label: "Tokens",   icon: "key",      href: "tokens.html" }
@@ -78,9 +87,8 @@
 
   // command palette actions, scoped to the role
   var ACTIONS_ADMIN = [
-    { group: "Create", icon: "plus", label: "Add user",        hint: "U", run: function(){ toast("Add-user drawer (mock)"); } },
-    { group: "Create", icon: "plus", label: "Create group",    hint: "G", run: function(){ toast("Create-group drawer (mock)"); } },
-    { group: "Actions", icon: "megaphone", label: "Broadcast notification", run: function(){ showDrawer(broadcastDrawerHTML()); } },
+    { group: "Create", icon: "plus", label: "Add user",        hint: "U", run: function(){ location.href = "new-user.html"; } },
+    { group: "Create", icon: "plus", label: "Create group",    hint: "G", run: function(){ location.href = "new-group.html"; } },
     { group: "Actions", icon: "stop", label: "Stop server: jupyterlab-alice", run: function(){ toast("Stopping jupyterlab-alice (mock)"); } },
     { group: "Navigate", icon: "activity", label: "Events log", run: function(){ location.href = "events.html"; } }
   ];
@@ -150,7 +158,7 @@
         (n.badge ? '<span class="badge-count">' + n.badge + '</span>' : '') + '</a>';
     }
     var navHTML = NAV().map(function (g) {
-      return (multiGroup ? '<div class="nav-group-label">' + g.group + '</div>' : '') +
+      return ((multiGroup && g.group) ? '<div class="nav-group-label">' + g.group + '</div>' : '') +
         g.items.map(navItemHTML).join("");
     }).join("");
 
@@ -161,22 +169,19 @@
             '<img class="brand-logo" src="assets/brand/jh-logo.svg" alt="Stellars Tech AI Lab"></a>' +
           '<nav class="nav">' + navHTML + '</nav>' +
           '<div class="sidebar-foot">' + who +
-            '<button class="icon-btn" style="margin-left:auto" title="Sign out">' + svg("logout") + '</button>' +
+            '<button class="icon-btn" id="theme-toggle" style="margin-left:auto" title="Toggle theme"></button>' +
+            '<button class="icon-btn" title="Sign out">' + svg("logout") + '</button>' +
           '</div>' +
         '</aside>' +
         '<div class="main">' +
           '<header class="topbar">' +
             '<div class="crumbs"><span>Optimum Hub</span><span class="sep">/</span><b>' + crumb + '</b></div>' +
             '<div class="kbar" id="kbar-open"><span>' + svg("search") + '</span><span>Search or jump to…</span><span class="kbd">⌘K</span></div>' +
-            '<button class="icon-btn" id="theme-toggle" title="Toggle theme"></button>' +
-            (isAdmin() ? '<button class="icon-btn" id="broadcast-open" title="Broadcast to all labs">' + svg("megaphone") + '</button>' : '') +
           '</header>' +
           '<div class="content">' + mainHTML + '</div>' +
         '</div>' +
       '</div>' +
       paletteHTML() +
-      '<div class="scrim" id="drawer-scrim"></div>' +
-      '<div class="drawer" id="drawer"></div>' +
       '<div class="toasts" id="toasts"></div>';
 
     applyTheme(currentTheme());
@@ -241,37 +246,6 @@
 
   // ---------- helpers ----------
   function forEach(list, fn) { Array.prototype.forEach.call(list, fn); }
-
-  // ---------- drawer (edit surfaces + broadcast - keeps list context) ----------
-  function showDrawer(html) {
-    var d = document.getElementById("drawer");
-    d.innerHTML = html;
-    document.getElementById("drawer-scrim").classList.add("open");
-    d.classList.add("open");
-    wireRoot(d);
-    forEach(d.querySelectorAll("[data-close-drawer]"), function (el) { el.addEventListener("click", closeDrawer); });
-  }
-  function openTemplateDrawer(id) {
-    var t = document.querySelector('template[data-drawer="' + id + '"]');
-    if (t) showDrawer(t.innerHTML);
-  }
-  function closeDrawer() {
-    document.getElementById("drawer").classList.remove("open");
-    document.getElementById("drawer-scrim").classList.remove("open");
-  }
-  // broadcast is a global admin action - the composer lives here, not per page
-  function broadcastDrawerHTML() {
-    return '<div class="drawer-head">' + svg("megaphone") + '<h3>Broadcast</h3>' +
-        '<button class="icon-btn" data-close-drawer style="margin-left:auto" title="Close">' + svg("stop") + '</button></div>' +
-      '<div class="drawer-body">' +
-        '<div class="field"><label>Message</label><textarea class="input" rows="3" maxlength="140" placeholder="Up to 140 characters - sent to every active lab"></textarea></div>' +
-        '<div class="field"><label>Type</label><select class="select"><option>info</option><option>success</option><option>warning</option><option>error</option><option>in-progress</option></select></div>' +
-        '<div class="field"><label>Recipients</label><select class="select"><option>All active labs (3)</option><option>Choose users…</option></select></div>' +
-        '<div class="field" style="display:flex;align-items:center;gap:var(--space-3)"><span class="switch on"><span class="track"></span></span><span class="page-sub">auto-close on the lab</span></div>' +
-      '</div>' +
-      '<div class="drawer-foot"><button class="btn" data-close-drawer>Cancel</button>' +
-        '<button class="btn btn-primary" data-toast="Broadcast delivered 3/3 (mock)" data-close-drawer>Send</button></div>';
-  }
 
   // ---------- scale behaviours (lists, comboboxes, capped chips) ----------
   // Demonstrated for real over the static sample rows / in-script corpora so
@@ -423,22 +397,18 @@
     forEach(box.querySelectorAll(".tab"), function (x) { x.classList.toggle("active", x === b); });
     forEach(box.querySelectorAll(".tab-panel"), function (p) { p.classList.toggle("active", p.getAttribute("data-panel") === k); });
   }
-  // wire toasts, tabs and drawer-openers within a subtree (document on load, the drawer on open)
+  // wire toasts, tabs and the scale behaviours within a subtree (document on load)
   function wireRoot(root) {
     forEach(root.querySelectorAll("[data-toast]"), function (el) { el.addEventListener("click", function () { toast(el.getAttribute("data-toast")); }); });
     forEach(root.querySelectorAll("[data-tabs]"), function (box) { box.addEventListener("click", tabClick); });
-    forEach(root.querySelectorAll("[data-open-drawer]"), function (el) { el.addEventListener("click", function () { openTemplateDrawer(el.getAttribute("data-open-drawer")); }); });
     applyList(root);
     applyCombo(root);
     applyChips(root);
   }
   function wire() {
     document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
-    var bc = document.getElementById("broadcast-open");
-    if (bc) bc.addEventListener("click", function () { showDrawer(broadcastDrawerHTML()); });
     document.getElementById("kbar-open").addEventListener("click", openPalette);
     document.getElementById("scrim").addEventListener("click", closePalette);
-    document.getElementById("drawer-scrim").addEventListener("click", closeDrawer);
     document.getElementById("palette-q").addEventListener("input", function (e) { buildPalette(e.target.value); });
 
     // expandable nav parents (Advanced)
@@ -455,8 +425,6 @@
 
   document.addEventListener("keydown", function (e) {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); openPalette(); return; }
-    var dr = document.getElementById("drawer");
-    if (e.key === "Escape" && dr && dr.classList.contains("open")) { closeDrawer(); return; }
     var open = document.getElementById("palette") && document.getElementById("palette").classList.contains("open");
     if (!open) return;
     if (e.key === "Escape") closePalette();
