@@ -32,6 +32,7 @@
     check:   'M20 6L9 17l-5-5',
     arrowup: 'M12 19V5M5 12l7-7 7 7',
     chevron: 'M9 18l6-6-6-6',
+    close:   'M18 6 6 18M6 6l12 12',
     disk:    'M22 12H2M5.45 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.9A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.1z M6 16h.01M10 16h.01'
   };
   function svg(name) {
@@ -363,7 +364,7 @@
         if (!v || chosen().indexOf(v) > -1) return;
         var c = document.createElement("span");
         c.className = "chip"; c.setAttribute("data-val", v);
-        c.innerHTML = "<span>" + v + "</span><span class=\"x\">" + svg("stop") + "</span>";
+        c.innerHTML = "<span>" + v + "</span><span class=\"x\">" + svg("close") + "</span>";
         wireRemove(c); chipsEl.appendChild(c);
       }
       function close() { pop.classList.remove("open"); pop.innerHTML = ""; matches = []; sel = -1; }
