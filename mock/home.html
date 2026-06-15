@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="optimum-hub-dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optimum Hub - Home</title>
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/app.css">
+  <link rel="icon" href="assets/brand/favicon.ico">
+  <script>/* anti-FOUC: apply saved theme before paint */
+    try { var t = localStorage.getItem("optimum-hub-theme"); if (t) document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+  </script>
+</head>
+<body data-page="home">
+<main>
+
+  <div class="page-head">
+    <div class="titles">
+      <h1 class="page-title">Home</h1>
+      <div class="page-sub">Platform at a glance - servers, people and access in one place</div>
+    </div>
+    <div class="actions">
+      <button class="btn" data-toast="Broadcast composer (mock)">+ Broadcast</button>
+      <button class="btn btn-primary" data-toast="Add-user drawer (mock)">+ Add user</button>
+    </div>
+  </div>
+
+  <!-- metrics -->
+  <div class="grid cols-4">
+    <div class="card metric">
+      <div class="m-top"><span class="m-ic">{ic:server}</span><span>Servers</span></div>
+      <div class="m-val">16</div>
+      <div class="spark"><span style="width:19%;background:var(--color-success)"></span><span style="width:6%;background:var(--color-warning)"></span><span style="width:75%;background:var(--color-border)"></span></div>
+      <div class="m-break"><span><b>3</b> running</span><span><b>1</b> idle</span><span><b>12</b> stopped</span></div>
+    </div>
+    <div class="card metric">
+      <div class="m-top"><span class="m-ic">{ic:users}</span><span>Users</span></div>
+      <div class="m-val">24</div>
+      <div class="spark"><span style="width:92%;background:var(--color-accent)"></span><span style="width:8%;background:var(--color-accent-2)"></span></div>
+      <div class="m-break"><span><b>22</b> authorised</span><span style="color:var(--color-accent-2)"><b>2</b> pending</span></div>
+    </div>
+    <div class="card metric">
+      <div class="m-top"><span class="m-ic">{ic:group}</span><span>Groups</span></div>
+      <div class="m-val">6</div>
+      <div class="spark"><span style="width:100%;background:var(--color-accent)"></span></div>
+      <div class="m-break"><span><b>4</b> with policies</span><span><b>2</b> empty</span></div>
+    </div>
+    <div class="card metric">
+      <div class="m-top"><span class="m-ic">{ic:cpu}</span><span>GPU</span></div>
+      <div class="m-val">3</div>
+      <div class="spark"><span style="width:33%;background:var(--color-success)"></span><span style="width:67%;background:var(--color-border)"></span></div>
+      <div class="m-break"><span><b>1</b> in use</span><span><b>2</b> free</span><span class="tag accent">auto-detect</span></div>
+    </div>
+  </div>
+
+  <!-- pending approvals callout -->
+  <div style="margin-top:var(--space-4)">
+    <div class="callout">
+      {ic:user}
+      <div><b>2 users awaiting approval</b> - bartek and nina signed up and need authorisation</div>
+      <button class="btn btn-sm" data-toast="Opened Users -> pending (mock)">Review</button>
+    </div>
+  </div>
+
+  <!-- main split: active servers + activity -->
+  <div class="grid cols-2" style="margin-top:var(--space-5)">
+
+    <div class="card card-pad-0">
+      <div class="card-head">
+        <h3>Active servers</h3>
+        <div class="actions"><a class="btn btn-sm btn-ghost" href="servers.html">View all →</a></div>
+      </div>
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead><tr><th>User</th><th>Status</th><th>Uptime</th><th>CPU</th><th>Memory</th><th class="right">Actions</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="u"><span class="avatar">AL</span><div>alice<br><small>data-science</small></div></div></td>
+              <td><span class="pill running"><span class="dot"></span>Running</span></td>
+              <td class="num">4h 12m</td>
+              <td class="num">38%</td>
+              <td class="num">6.2 / 16 GB</td>
+              <td><div class="row-actions">
+                <button class="icon-btn" title="Open" data-toast="Open jupyterlab-alice (mock)">{ic:play}</button>
+                <button class="icon-btn" title="Restart" data-toast="Restart jupyterlab-alice (mock)">{ic:restart}</button>
+                <button class="icon-btn" title="Stop" data-toast="Stop jupyterlab-alice (mock)">{ic:stop}</button>
+              </div></td>
+            </tr>
+            <tr>
+              <td><div class="u"><span class="avatar">KO</span><div>konrad<br><small>admin</small></div></div></td>
+              <td><span class="pill running"><span class="dot"></span>Running</span></td>
+              <td class="num">1d 3h</td>
+              <td class="num">12%</td>
+              <td class="num">3.1 / 32 GB</td>
+              <td><div class="row-actions">
+                <button class="icon-btn" title="Open" data-toast="Open (mock)">{ic:play}</button>
+                <button class="icon-btn" title="Restart" data-toast="Restart (mock)">{ic:restart}</button>
+                <button class="icon-btn" title="Stop" data-toast="Stop (mock)">{ic:stop}</button>
+              </div></td>
+            </tr>
+            <tr>
+              <td><div class="u"><span class="avatar">MI</span><div>milan<br><small>research, gpu</small></div></div></td>
+              <td><span class="pill spawning"><span class="dot"></span>Spawning</span></td>
+              <td class="num">-</td>
+              <td class="num">-</td>
+              <td class="num">-</td>
+              <td><div class="row-actions">
+                <button class="icon-btn" title="Logs" data-toast="Tail spawn log (mock)">{ic:activity}</button>
+                <button class="icon-btn" title="Cancel" data-toast="Cancel spawn (mock)">{ic:stop}</button>
+              </div></td>
+            </tr>
+            <tr>
+              <td><div class="u"><span class="avatar">NI</span><div>nina<br><small>data-science</small></div></div></td>
+              <td><span class="pill idle"><span class="dot"></span>Idle 38m</span></td>
+              <td class="num">2h 50m</td>
+              <td class="num">2%</td>
+              <td class="num">1.4 / 16 GB</td>
+              <td><div class="row-actions">
+                <button class="icon-btn" title="Open" data-toast="Open (mock)">{ic:play}</button>
+                <button class="icon-btn" title="Restart" data-toast="Restart (mock)">{ic:restart}</button>
+                <button class="icon-btn" title="Stop" data-toast="Stop (mock)">{ic:stop}</button>
+              </div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:var(--space-4)">
+      <div class="card">
+        <h3 style="margin-bottom:var(--space-3)">Quick actions</h3>
+        <div class="qa">
+          <button class="qa-btn" data-toast="Add-user drawer (mock)">{ic:user}<span>Add user<small>create + authorise</small></span></button>
+          <button class="qa-btn" data-toast="Create-group drawer (mock)">{ic:group}<span>Create group<small>grant policies</small></span></button>
+          <button class="qa-btn" data-toast="New-policy editor (mock)">{ic:shield}<span>New policy<small>env, gpu, docker…</small></span></button>
+          <button class="qa-btn" data-toast="Broadcast composer (mock)">{ic:bell}<span>Broadcast<small>notify all labs</small></span></button>
+        </div>
+      </div>
+
+      <div class="card card-pad-0">
+        <div class="card-head"><h3>Recent activity</h3>
+          <div class="actions"><a class="btn btn-sm btn-ghost" href="activity.html">All →</a></div></div>
+        <div class="feed">
+          <div class="feed-item"><div class="feed-ic">{ic:play}</div><div class="feed-body"><div class="t"><b>milan</b> started a server with <span class="tag accent">gpu</span></div><div class="when">just now</div></div></div>
+          <div class="feed-item"><div class="feed-ic">{ic:user}</div><div class="feed-body"><div class="t"><b>nina</b> signed up - awaiting approval</div><div class="when">6 min ago</div></div></div>
+          <div class="feed-item"><div class="feed-ic">{ic:shield}</div><div class="feed-body"><div class="t">Policy <b>docker</b> changed on group <b>research</b></div><div class="when">22 min ago</div></div></div>
+          <div class="feed-item"><div class="feed-ic">{ic:stop}</div><div class="feed-body"><div class="t"><b>jakub</b>'s server was culled (idle 2h)</div><div class="when">1 hour ago</div></div></div>
+          <div class="feed-item"><div class="feed-ic">{ic:group}</div><div class="feed-body"><div class="t"><b>alice</b> added to group <b>data-science</b></div><div class="when">3 hours ago</div></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+<script src="assets/app.js"></script>
+</body>
+</html>

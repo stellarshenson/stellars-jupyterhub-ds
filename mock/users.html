@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="optimum-hub-dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optimum Hub - Users</title>
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/app.css">
+  <link rel="icon" href="assets/brand/favicon.ico">
+  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<body data-page="users">
+<main>
+  <div class="page-head">
+    <div class="titles">
+      <h1 class="page-title">Users</h1>
+      <div class="page-sub">People, their authorisation state and group membership</div>
+    </div>
+    <div class="actions">
+      <button class="btn" data-toast="Bulk actions (mock)">Bulk</button>
+      <button class="btn btn-primary" data-toast="Add-user drawer (mock)">+ Add user</button>
+    </div>
+  </div>
+
+  <div class="card card-pad-0">
+    <div class="card-head"><h3>24 users</h3>
+      <div class="actions"><span class="pill idle"><span class="dot"></span>2 pending approval</span></div>
+    </div>
+    <div class="table-wrap">
+      <table class="tbl">
+        <thead><tr><th>User</th><th>Role</th><th>Authorised</th><th>Groups</th><th>Last seen</th><th class="right">Actions</th></tr></thead>
+        <tbody>
+          <tr><td><div class="u"><span class="avatar">AD</span><div>admin<br><small>you</small></div></div></td><td><span class="tag accent">admin</span></td><td><span class="switch on"><span class="track"></span></span></td><td><div class="chips"><span class="chip">data-science</span></div></td><td class="num">now</td><td><div class="row-actions"><button class="icon-btn" data-toast="Profile (mock)">{ic:user}</button><button class="icon-btn" data-toast="More (mock)">{ic:dots}</button></div></td></tr>
+          <tr><td><div class="u"><span class="avatar">AL</span>alice</div></td><td><span class="tag">user</span></td><td><span class="switch on"><span class="track"></span></span></td><td><div class="chips"><span class="chip">data-science</span><span class="chip">gpu</span></div></td><td class="num">2m ago</td><td><div class="row-actions"><button class="icon-btn" data-toast="Profile (mock)">{ic:user}</button><button class="icon-btn" data-toast="More (mock)">{ic:dots}</button></div></td></tr>
+          <tr><td><div class="u"><span class="avatar">MI</span>milan</div></td><td><span class="tag">user</span></td><td><span class="switch on"><span class="track"></span></span></td><td><div class="chips"><span class="chip">research</span><span class="chip">gpu</span></div></td><td class="num">now</td><td><div class="row-actions"><button class="icon-btn" data-toast="Profile (mock)">{ic:user}</button><button class="icon-btn" data-toast="More (mock)">{ic:dots}</button></div></td></tr>
+          <tr><td><div class="u"><span class="avatar">BA</span><div>bartek<br><small>signed up 12m ago</small></div></div></td><td><span class="tag">user</span></td><td><span class="pill idle"><span class="dot"></span>Needs approval</span></td><td><span style="color:var(--color-text-subtle)">-</span></td><td class="num">-</td><td><div class="row-actions"><button class="btn btn-sm btn-primary" data-toast="Authorised bartek (mock)">Approve</button><button class="icon-btn" data-toast="Discard (mock)">{ic:stop}</button></div></td></tr>
+          <tr><td><div class="u"><span class="avatar">NI</span><div>nina<br><small>signed up 6m ago</small></div></div></td><td><span class="tag">user</span></td><td><span class="pill idle"><span class="dot"></span>Needs approval</span></td><td><span style="color:var(--color-text-subtle)">-</span></td><td class="num">-</td><td><div class="row-actions"><button class="btn btn-sm btn-primary" data-toast="Authorised nina (mock)">Approve</button><button class="icon-btn" data-toast="Discard (mock)">{ic:stop}</button></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+<script src="assets/app.js"></script>
+</body>
+</html>

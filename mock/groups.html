@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="optimum-hub-dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optimum Hub - Groups</title>
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/app.css">
+  <link rel="icon" href="assets/brand/favicon.ico">
+  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<body data-page="groups">
+<main>
+  <div class="page-head">
+    <div class="titles">
+      <h1 class="page-title">Groups</h1>
+      <div class="page-sub">Priority-ordered groups - each resolves to a policy applied at spawn</div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" data-toast="Create-group drawer (mock)">+ Add group</button>
+    </div>
+  </div>
+
+  <div class="card card-pad-0">
+    <div class="card-head"><h3>6 groups</h3><div class="actions"><span class="page-sub">Higher priority wins on conflict</span></div></div>
+    <div class="table-wrap">
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Group</th><th>Members</th><th>Active policies</th><th class="right">Actions</th></tr></thead>
+        <tbody>
+          <tr><td class="num">1</td><td><a data-toast="Open group config (mock)" style="color:var(--color-accent);cursor:pointer"><b>research</b></a></td><td class="num">4</td><td><div class="chips"><span class="tag accent">GPU all</span><span class="tag accent">Docker raw</span><span class="tag warn">Sudo on</span><span class="tag accent">Mem 32G</span></div></td><td><div class="row-actions"><button class="icon-btn" data-toast="Move up (mock)">{ic:arrowup}</button><button class="icon-btn" data-toast="Config (mock)">{ic:settings}</button><button class="icon-btn" data-toast="Delete (mock)">{ic:stop}</button></div></td></tr>
+          <tr><td class="num">2</td><td><a data-toast="Open group config (mock)" style="color:var(--color-accent);cursor:pointer"><b>data-science</b></a></td><td class="num">11</td><td><div class="chips"><span class="tag accent">Mem 16G</span><span class="tag accent">CPU 4</span><span class="tag">Downloads off</span></div></td><td><div class="row-actions"><button class="icon-btn" data-toast="Move up (mock)">{ic:arrowup}</button><button class="icon-btn" data-toast="Config (mock)">{ic:settings}</button><button class="icon-btn" data-toast="Delete (mock)">{ic:stop}</button></div></td></tr>
+          <tr><td class="num">3</td><td><a data-toast="Open group config (mock)" style="color:var(--color-accent);cursor:pointer"><b>gpu</b></a></td><td class="num">5</td><td><div class="chips"><span class="tag accent">GPU 0,1</span></div></td><td><div class="row-actions"><button class="icon-btn" data-toast="Move up (mock)">{ic:arrowup}</button><button class="icon-btn" data-toast="Config (mock)">{ic:settings}</button><button class="icon-btn" data-toast="Delete (mock)">{ic:stop}</button></div></td></tr>
+          <tr><td class="num">4</td><td><a data-toast="Open group config (mock)" style="color:var(--color-accent);cursor:pointer"><b>keys-openai</b></a></td><td class="num">3</td><td><div class="chips"><span class="tag accent">API keys pool: 3</span></div></td><td><div class="row-actions"><button class="icon-btn" data-toast="Move up (mock)">{ic:arrowup}</button><button class="icon-btn" data-toast="Config (mock)">{ic:settings}</button><button class="icon-btn" data-toast="Delete (mock)">{ic:stop}</button></div></td></tr>
+          <tr><td class="num">5</td><td><a data-toast="Open group config (mock)" style="color:var(--color-accent);cursor:pointer"><b>interns</b></a></td><td class="num">0</td><td><span style="color:var(--color-text-subtle)">No policies configured</span></td><td><div class="row-actions"><button class="icon-btn" data-toast="Move up (mock)">{ic:arrowup}</button><button class="icon-btn" data-toast="Config (mock)">{ic:settings}</button><button class="icon-btn" data-toast="Delete (mock)">{ic:stop}</button></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-title">Group config (preview)</div>
+  <div class="card">
+    <div class="page-sub" style="margin-bottom:var(--space-3)">Clicking a group name opens its policy editor - visual form on the left, the resolved JSON on the right (bidirectional, like Tailscale/Supabase). Each of the nine policy types is a toggleable section.</div>
+    <div class="chips">
+      <span class="tag">env vars</span><span class="tag">gpu</span><span class="tag">docker</span><span class="tag">cpu</span><span class="tag">mem</span><span class="tag">sudo</span><span class="tag">downloads</span><span class="tag">api keys</span><span class="tag">volume mounts</span>
+    </div>
+  </div>
+</main>
+<script src="assets/app.js"></script>
+</body>
+</html>
