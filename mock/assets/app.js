@@ -481,6 +481,17 @@
     forEach(box.querySelectorAll(".tab"), function (x) { x.classList.toggle("active", x === b); });
     forEach(box.querySelectorAll(".tab-panel"), function (p) { p.classList.toggle("active", p.getAttribute("data-panel") === k); });
     applyFill(box); // the newly shown panel can now be measured for data-fill
+    applyTabWidth(box);
+  }
+  // adaptive width: the card hosting the tabs widens or narrows to fit the
+  // active tab (a wide member/group table vs a narrow profile form), so the
+  // footer Save/Cancel stay beside the content instead of far to the right
+  function applyTabWidth(box) {
+    var active = box.querySelector(".tab.active");
+    var card = box.closest ? box.closest(".card") : null;
+    if (!active || !card) return;
+    var w = active.getAttribute("data-tab-w");
+    if (w) { card.style.maxWidth = w; card.style.transition = "max-width .18s ease"; }
   }
   // wire toasts, tabs and the scale behaviours within a subtree (document on load)
   function wireRoot(root) {
@@ -502,7 +513,7 @@
         slot.style.display = "";
       });
     });
-    forEach(root.querySelectorAll("[data-tabs]"), function (box) { box.addEventListener("click", tabClick); });
+    forEach(root.querySelectorAll("[data-tabs]"), function (box) { box.addEventListener("click", tabClick); applyTabWidth(box); });
     applyList(root);
     applyCombo(root);
     applyChips(root);

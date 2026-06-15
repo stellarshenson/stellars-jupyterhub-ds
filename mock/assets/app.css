@@ -215,6 +215,14 @@ code, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
 }
 .card-head h3 { font-size: var(--text-base); }
 .card-head .actions { margin-left: auto; display: flex; gap: var(--space-2); }
+/* a whole card-head that navigates to its full page: title left, a chevron
+   right (the dashboard's one "go to section" affordance, shared with the metric
+   cards' m-go). Replaces the old text "View all ->" links. */
+.card-head-link { text-decoration: none; color: inherit; cursor: pointer; }
+.card-head-link .head-go { margin-left: auto; display: inline-flex; color: var(--color-text-subtle); transition: color .12s ease, transform .12s ease; }
+.card-head-link .head-go .ic { width: 18px; height: 18px; }
+.card-head-link:hover h3 { color: var(--color-accent); }
+.card-head-link:hover .head-go { color: var(--color-accent); transform: translateX(2px); }
 
 .metric { display: flex; flex-direction: column; gap: var(--space-3); }
 .metric .m-top { display: flex; align-items: center; gap: var(--space-2); color: var(--color-text-muted); font-size: var(--text-sm); }

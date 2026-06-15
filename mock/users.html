@@ -68,10 +68,10 @@
       <div class="actions">
         <label class="search">{ic:search}<input type="text" placeholder="Filter by user…" data-list-search></label>
         <span class="pill running active" data-list-scope="authorised"><span class="dot"></span>Authorised 1,284</span>
-        <span class="pill stopped" data-list-scope="inactive" title="Activity at 0%"><span class="dot"></span>Inactive 118</span>
+        <span class="pill idle" data-list-scope="inactive" title="Activity at 0%"><span class="dot"></span>Inactive 118</span>
         <span class="pill stopped" data-list-scope="new" title="Authorised but never signed in"><span class="dot"></span>New 34</span>
-        <span class="pill stopped" data-list-scope="deauthorised"><span class="dot"></span>De-authorised 12</span>
-        <span class="pill stopped" data-list-scope="all"><span class="dot"></span>All 1,296</span>
+        <span class="pill error" data-list-scope="deauthorised" title="Blocked - cannot sign in"><span class="dot"></span>De-authorised 12</span>
+        <span class="pill accent" data-list-scope="all"><span class="dot"></span>All 1,296</span>
       </div>
     </div>
     <div class="table-wrap">

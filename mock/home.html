@@ -88,10 +88,10 @@
   <div class="grid cols-2" style="margin-top:var(--space-5)">
 
     <div class="card card-pad-0">
-      <div class="card-head">
+      <a class="card-head card-head-link" href="servers.html" title="View all servers">
         <h3>Active servers</h3>
-        <div class="actions"><a class="link" href="servers.html">View all -></a></div>
-      </div>
+        <span class="head-go">{ic:chevron}</span>
+      </a>
       <!-- Status and Activity are SEPARATE columns (never clubbed): Status the
            lifecycle pill, Activity the meter with its % in the tooltip - matches
            the Servers page exactly. -->
@@ -167,8 +167,8 @@
       </div>
 
       <div class="card card-pad-0">
-        <div class="card-head"><h3>Recent events</h3>
-          <div class="actions"><a class="link" href="events.html">View all -></a></div></div>
+        <a class="card-head card-head-link" href="events.html" title="View all events"><h3>Recent events</h3>
+          <span class="head-go">{ic:chevron}</span></a>
         <div class="feed">
           <div class="feed-item"><div class="feed-ic">{ic:play}</div><div class="feed-body"><div class="t"><b>milan</b> started a server with <span class="tag accent">gpu</span></div><div class="when">just now</div></div></div>
           <div class="feed-item"><div class="feed-ic">{ic:user}</div><div class="feed-body"><div class="t"><b>nina</b> signed up - awaiting approval</div><div class="when">6 min ago</div></div></div>
