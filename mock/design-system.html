@@ -45,13 +45,6 @@
             <td><button class="list-disabled" disabled>Authorize</button></td>
           </tr>
           <tr>
-            <td><b>input</b><br><span class="page-sub">inline with a field</span></td>
-            <td><button class="input-primary">Set password</button></td>
-            <td><button class="input-secondary">Generate</button></td>
-            <td><button class="input-dangerous">Clear</button></td>
-            <td><button class="input-disabled" disabled>Set password</button></td>
-          </tr>
-          <tr>
             <td><b>list-icon</b><br><span class="page-sub">icon-only square</span></td>
             <td><button class="list-icon-primary" title="primary (reserved)">{ic:play}</button></td>
             <td><button class="list-icon-secondary" title="Restart">{ic:restart}</button></td>
@@ -61,6 +54,32 @@
         </tbody>
       </table>
     </div>
+  </div>
+
+  <!-- Input buttons: match the field height and blend into it; variants
+       primary/secondary/warning/disabled; content text / icon+text / icon-only -->
+  <div class="card" style="margin-bottom:var(--space-4)">
+    <div class="section-title" style="margin-top:0">Input buttons</div>
+    <dl class="kv" style="grid-template-columns:160px 1fr">
+      <dt>Attached to a field</dt>
+      <dd style="display:flex;gap:var(--space-2);align-items:center;max-width:460px">
+        <input class="input mono" value="stellars/stellars-jupyterlab-ds:latest" style="flex:1">
+        <button class="input-primary">{ic:download} Set</button>
+      </dd>
+      <dt>Variants</dt>
+      <dd style="display:flex;gap:var(--space-2);flex-wrap:wrap">
+        <button class="input-primary">Primary</button>
+        <button class="input-secondary">Secondary</button>
+        <button class="input-warning">Warning</button>
+        <button class="input-disabled" disabled>Disabled</button>
+      </dd>
+      <dt>Content</dt>
+      <dd style="display:flex;gap:var(--space-2);flex-wrap:wrap;align-items:center">
+        <button class="input-secondary">Text</button>
+        <button class="input-secondary">{ic:restart} Icon + text</button>
+        <button class="input-secondary" title="Icon only">{ic:restart}</button>
+      </dd>
+    </dl>
   </div>
 
   <!-- Labels: one slightly-rounded shape; passive (no action) or active (x reveals on hover) -->

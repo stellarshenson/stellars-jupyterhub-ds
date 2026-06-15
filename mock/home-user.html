@@ -20,42 +20,55 @@
     </div>
   </div>
 
-  <!-- My server: one hero card, the whole point of the page.
-       One Status concept - a single running pill + meter, never a second axis. -->
-  <div class="card" style="display:flex;align-items:center;gap:var(--space-5);flex-wrap:wrap">
-    <span class="m-ic" style="width:48px;height:48px">{ic:server}</span>
-    <div style="min-width:240px;flex:1">
+  <!-- My server: two panels side by side - (1) identity + controls + the TTL
+       gadget (progress bar + Extend), (2) resources vs host. Same block is
+       reused on the admin Overview (every user runs a lab). No server icon. -->
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:var(--space-4)">
+    <div class="card">
       <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap">
-        <h2 style="font-size:var(--text-xl)">jupyterlab-alice</h2>
+        <h2 style="font-size:var(--text-lg)">jupyterlab-alice</h2>
         <span class="pill running"><span class="dot"></span>Active</span>
-        <span class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span>
+        <span class="meter" title="Activity 86% · 24h sampled"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>
       </div>
-      <div class="res" style="margin-top:var(--space-3);max-width:420px">
+      <div class="row-actions" style="justify-content:flex-start;gap:var(--space-2);margin-top:var(--space-4)">
+        <button class="page-primary" data-toast="Opening your lab (mock)">{ic:play} Open lab</button>
+        <button class="page-secondary" data-toast="Restarting your lab (mock)">{ic:restart} Restart</button>
+        <button class="page-dangerous" data-toast="Stopping your lab (mock)">{ic:stop} Stop</button>
+      </div>
+      <div style="margin-top:var(--space-5)">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px"><span class="page-sub">Time left</span><b style="font-size:var(--text-sm)">3h 48m</b></div>
+        <div class="spark" style="height:8px" title="3h 48m before the idle culler stops the lab"><span style="width:45%;background:var(--color-success)"></span></div>
+        <div style="margin-top:var(--space-3)"><button class="input-secondary" title="Add hours before the idle culler stops the lab - up to your extension limit" data-toast="Extended session by 2h (mock)">{ic:plus} Extend</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head" style="padding:0 0 var(--space-3);border-bottom:0"><h3>Resources</h3><div class="actions"><span class="page-sub">this lab vs host</span></div></div>
+      <div class="res">
         <div class="res-row"><span class="res-label">CPU</span><span class="res-bar"><i style="width:8%"></i></span><span class="res-val">8%</span></div>
-        <div class="res-row"><span class="res-label">Memory</span><span class="res-bar"><i style="width:13%"></i></span><span class="res-val">2.1/16 GB</span></div>
+        <div class="res-row"><span class="res-label">Memory</span><span class="res-bar"><i style="width:3%"></i></span><span class="res-val" title="2.1 GB of host RAM">3%</span></div>
         <div class="res-row"><span class="res-label">GPU</span><span class="res-bar"><i style="width:0%"></i></span><span class="res-val">0%</span></div>
       </div>
-      <div class="page-sub" style="margin-top:var(--space-3)">Time left <b style="color:var(--color-text)">3h 48m</b></div>
-    </div>
-    <div class="row-actions" style="margin-left:auto;gap:var(--space-2)">
-      <button class="page-primary" data-toast="Opening your lab (mock)">{ic:play} Open lab</button>
-      <button class="page-secondary" data-toast="Restarting your lab (mock)">{ic:restart} Restart</button>
-      <button class="page-dangerous" data-toast="Stopping your lab (mock)">{ic:stop} Stop</button>
     </div>
   </div>
 
   <div class="grid cols-2" style="margin-top:var(--space-4)">
+    <!-- Your groups, read-only, in priority order - each with its description
+         and active policies as pills (the Groups-page presentation). When two
+         groups set the same policy the higher-priority one wins. -->
     <div class="card card-pad-0">
-      <div class="card-head"><h3>What you can do</h3><div class="actions"><span class="page-sub">granted by your groups</span></div></div>
-      <div style="padding:0 var(--space-4)">
-        <div class="grant"><span class="g-ic">{ic:gpu}</span><div><b>GPU</b><div class="g-from">group gpu</div></div><span class="g-val">devices 0,1</span></div>
-        <div class="grant"><span class="g-ic">{ic:memory}</span><div><b>Memory</b><div class="g-from">group data-science</div></div><span class="g-val">16 GB</span></div>
-        <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>CPU</b><div class="g-from">group data-science</div></div><span class="g-val">4 cores</span></div>
-        <div class="grant"><span class="g-ic">{ic:download}</span><div><b>Downloads</b><div class="g-from">group data-science</div></div><span class="g-val">blocked</span></div>
-      </div>
-      <div style="padding:var(--space-3) var(--space-4);align-items:center" class="chips" data-chips="3">
-        <span class="page-sub" style="margin-right:var(--space-2)">Groups:</span>
-        <span class="chip">data-science</span><span class="chip">gpu</span><span class="chip">ml-platform</span><span class="chip">vision-lab</span><span class="chip">nlp</span><span class="chip">robotics</span>
+      <div class="card-head"><h3>Your groups</h3><div class="actions"><span class="page-sub" title="When two groups set the same policy, the higher-priority one wins">in priority order</span></div></div>
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead><tr><th>#</th><th>Group</th><th>Active policies</th></tr></thead>
+          <tbody>
+            <tr><td class="num">1</td><td><b>gpu</b><div class="page-sub">Dedicated GPU device access</div></td><td><div class="chips" data-fill><span class="tag accent">GPU 0,1</span></div></td></tr>
+            <tr><td class="num">2</td><td><b>data-science</b><div class="page-sub">Data science team baseline</div></td><td><div class="chips" data-fill><span class="tag accent">Mem 16G</span><span class="tag accent">CPU 4</span><span class="tag">Downloads off</span></div></td></tr>
+            <tr><td class="num">3</td><td><b>ml-platform</b><div class="page-sub">Shared ML tooling and runtimes</div></td><td><div class="chips" data-fill><span class="tag accent">GPU all</span><span class="tag accent">Mem 24G</span><span class="tag accent">CPU 8</span></div></td></tr>
+            <tr><td class="num">4</td><td><b>vision-lab</b><div class="page-sub">Computer-vision research</div></td><td><div class="chips" data-fill><span class="tag accent">GPU 0,1</span><span class="tag">Downloads off</span></div></td></tr>
+            <tr><td class="num">5</td><td><b>nlp</b><div class="page-sub">NLP research group</div></td><td><div class="chips" data-fill><span class="tag accent">Mem 12G</span><span class="tag accent">Env 1</span></div></td></tr>
+            <tr><td class="num">6</td><td><b>robotics</b><div class="page-sub">Robotics lab</div></td><td><span style="color:var(--color-text-subtle)">No policies</span></td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -68,16 +81,7 @@
             <dt>workspace</dt><dd class="mono">9.8 GB</dd>
             <dt>cache</dt><dd class="mono">0.5 GB</dd>
           </dl>
-          <div style="margin-top:var(--space-3)"><button class="page-dangerous" data-toast="Manage volumes - stop server first (mock)">Manage volumes</button></div>
-        </div>
-      </div>
-
-      <div class="card card-pad-0">
-        <div class="card-head"><h3>Recent</h3></div>
-        <div class="feed">
-          <div class="feed-item"><div class="feed-ic">{ic:restart}</div><div class="feed-body"><div class="t">You restarted your server</div><div class="when">3 hours ago</div></div></div>
-          <div class="feed-item"><div class="feed-ic">{ic:play}</div><div class="feed-body"><div class="t">You started your server</div><div class="when">yesterday</div></div></div>
-          <div class="feed-item"><div class="feed-ic">{ic:group}</div><div class="feed-body"><div class="t">You were added to group <b>gpu</b></div><div class="when">2 days ago</div></div></div>
+          <div style="margin-top:var(--space-3)"><button class="page-dangerous" title="Stop the server first" data-toast="Manage volumes - stop server first (mock)">Manage volumes</button></div>
         </div>
       </div>
     </div>

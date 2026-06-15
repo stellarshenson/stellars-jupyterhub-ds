@@ -28,19 +28,23 @@
     <div class="field">
       <label>Lab image</label>
       <input class="input mono" type="text" value="stellars/stellars-jupyterlab-ds:latest" title="The Docker image DockerSpawner launches for each user">
+      <div style="margin-top:var(--space-2)"><button class="input-primary" data-toast="Pulling and checking the image… (mock)">{ic:download} Set lab image</button></div>
+      <!-- on click the platform pulls + verifies the image (spinner), then this
+           success line appears under the input -->
+      <div class="page-sub" style="margin-top:var(--space-2);color:var(--color-success);display:flex;align-items:center;gap:6px">{ic:check} Image pulled and verified - ready to spawn</div>
     </div>
 
-    <div class="section-title">Custom volumes</div>
-    <div class="note" style="margin-bottom:var(--space-3)"><span><b>Note:</b> every lab also gets the three standard volumes - home, workspace and cache. They are platform-managed and not listed here. Add custom shared mounts below.</span></div>
+    <div class="section-title">Volumes</div>
+    <div class="note" style="margin-bottom:var(--space-3)"><span><b>Note:</b> every lab also gets the standard home, workspace and cache volumes - platform-managed and not listed. The shared mount is standard and locked; add your own custom mounts below.</span></div>
     <div class="table-wrap">
       <table class="tbl">
         <thead><tr><th>Name</th><th>Mount point</th><th>Description</th><th class="right"></th></tr></thead>
         <tbody>
           <tr>
-            <td><input class="input mono" value="jupyterhub_shared"></td>
-            <td><input class="input mono" value="/mnt/shared"></td>
-            <td><input class="input" value="Shared team storage (CIFS/NAS)"></td>
-            <td class="right"><button class="list-icon-dangerous" title="Remove volume" data-toast="Removed jupyterhub_shared (mock)">{ic:close}</button></td>
+            <td><span class="mono">jupyterhub_shared</span> <span class="tag">standard</span></td>
+            <td><span class="mono">/mnt/shared</span></td>
+            <td>Shared team storage (CIFS/NAS)</td>
+            <td class="right"><span class="page-sub" title="Standard platform volume - configured by the operator, not editable here">locked</span></td>
           </tr>
           <tr>
             <td><input class="input mono" value="jupyterhub_datasets"></td>
