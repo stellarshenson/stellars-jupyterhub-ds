@@ -283,6 +283,10 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .meter i.on { background: var(--color-success); }
 .meter.idle i.on { background: var(--color-warning); }
 .meter.low  i.on { background: var(--color-danger); }
+/* .fill - the same 5 segments stretched to fill a row (e.g. the Resources panel);
+   same lit count and colour as the inline meter, just elongated */
+.meter.fill { display: flex; flex: 1; }
+.meter.fill i { flex: 1; width: auto; height: 8px; }
 
 /* quota breach in a resource cell - colour alone signals it; the title tooltip
    carries the threshold. No warning icon. */
@@ -295,6 +299,14 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .res-row .res-bar { flex: 1; height: 8px; border-radius: var(--radius-full); background: var(--color-bg-subtle); overflow: hidden; }
 .res-row .res-bar > i { display: block; height: 100%; background: var(--color-accent); }
 .res-row .res-val { width: 76px; flex: none; text-align: right; font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
+
+/* session-timer (TTL) gadget - one line, mirrors the live hub: progress bar
+   (fills) + clock/value + Extend (which opens the hours dialog) */
+.ttl { display: flex; align-items: center; gap: var(--space-2); }
+.ttl > .spark { flex: 1; }
+.ttl-val { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-size: var(--text-sm); color: var(--color-text-muted); }
+.ttl-val .ic { width: 14px; height: 14px; }
+.ttl-val b { color: var(--color-text); }
 
 .badge-count { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: var(--radius-sm); background: var(--color-surface-active); color: var(--color-text-muted); }
 .tag { font-size: var(--text-xs); padding: 1px 8px; border-radius: var(--radius-sm); background: var(--color-bg-subtle); border: 1px solid var(--color-border-subtle); color: var(--color-text-muted); }
