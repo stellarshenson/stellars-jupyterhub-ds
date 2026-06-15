@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="optimum-hub-dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optimum Hub - New user</title>
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/app.css">
+  <link rel="icon" href="assets/brand/favicon.ico">
+  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<body data-page="users" data-title="New user">
+<main>
+  <div class="page-head">
+    <div class="titles">
+      <h1 class="page-title">New user</h1>
+      <div class="page-sub">Create a single user</div>
+    </div>
+    <div class="actions">
+      <a class="btn btn-ghost" href="users.html">{ic:chevron} Users</a>
+    </div>
+  </div>
+
+  <div class="card" style="max-width:620px">
+    <div class="field">
+      <label>Username</label>
+      <input class="input" type="text" placeholder="e.g. tomasz">
+    </div>
+
+    <!-- Password is auto-generated xkcd-style by default. "Set manually" is
+         net-new backend (creation is auto-gen only today) - kept visible but
+         flagged; the manual input below is shown disabled with a note. -->
+    <div class="field">
+      <label>Password</label>
+      <div style="display:flex;gap:var(--space-2);align-items:center">
+        <input class="input mono" type="text" value="correct-horse-battery" readonly>
+        <button class="btn btn-sm" data-toast="Regenerated password (mock)">Regenerate</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:var(--space-3);margin-top:var(--space-3)">
+        <span class="switch" data-toast="Set password manually (net-new) (mock)"><span class="track"></span></span>
+        <span class="page-sub">set manually <span class="tag warn">net-new</span></span>
+      </div>
+      <input class="input mono" type="text" placeholder="type a password" disabled style="margin-top:var(--space-3)">
+    </div>
+
+    <div class="field">
+      <label>Groups</label>
+      <div class="chips" style="margin-bottom:var(--space-3)">
+        <span class="chip">data-science <span class="x" data-toast="Removed data-science (mock)">{ic:stop}</span></span>
+      </div>
+      <div style="display:flex;gap:var(--space-2);max-width:360px">
+        <input class="input" type="text" placeholder="Add to group… (autocomplete)">
+        <button class="btn" data-toast="Added to group (mock)">Add</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Authorize now</label>
+      <div style="display:flex;align-items:center;gap:var(--space-3)">
+        <span class="switch on" data-toast="Authorize-later is net-new (mock)"><span class="track"></span></span>
+        <span class="page-sub">on = usable immediately; off defers authorisation <span class="tag warn">net-new</span></span>
+      </div>
+    </div>
+
+    <div class="page-sub" style="margin-bottom:var(--space-4)">Manual password and authorize-later are net-new backend (per the design doc) - shown here, marked <span class="tag warn">net-new</span></div>
+
+    <div style="display:flex;gap:var(--space-2);justify-content:flex-end">
+      <a class="btn" href="users.html">Cancel</a>
+      <button class="btn btn-primary" data-toast="Created user (mock)">Add user</button>
+    </div>
+  </div>
+</main>
+<script src="assets/app.js"></script>
+</body>
+</html>

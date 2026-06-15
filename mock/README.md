@@ -1,78 +1,82 @@
 # Optimum Hub - frontend mock
 
-A static HTML/CSS prototype of a redesigned JupyterHub portal. Design exploration only - **not wired to the hub, not part of the runtime, no build step**. Open `home.html` (admin) or `home-user.html` (plain user).
+A static HTML/CSS/JS prototype of a redesigned JupyterHub portal. Design exploration only - **not wired to the hub, no build step, nothing calls a real API**. Open `home.html` (admin) or `home-user.html` (plain user).
+
+The design that drives this mock is `../docs/design-flows-frontend-mock.md` (flows, navigation laws, screen registry, decisions). This tree is built against those screen refs.
 
 ## The idea
 
-Navigate to nouns, not views. One entity lives in exactly one place. Split the chrome into what you *watch* (Operate) and what you *administer* (Administration), and gate the second by role. Every dashboard widget is a mini-view that drills into its dedicated page. Show only what drives a decision.
+Navigate to nouns, not views. One entity, one place. Split the chrome into what you *operate* (the live system) and what you *administer* (the configuration), gated by role. Every dashboard widget is a mini-view that drills into its page. Show only what drives a decision - and never split one thing into two (status and activity are one column, not two).
 
 ## Navigation
 
 ```
-OPERATE
-  Overview     dashboard - counts + what needs attention now
-  Servers      every lab: lifecycle + engagement + resources + time-left
+SIDEBAR (admin)                 SIDEBAR (user)
+  OPERATE                         Overview            (no header - one item)
+    Overview   home.html
+    Servers    servers.html
+  ADMINISTRATION
+    Users      users.html
+    Groups     groups.html
+    Advanced v
+      Settings settings.html
+      Tokens   tokens.html
 
-ADMINISTRATION  (admin only)
-  Users        people, authorisation, membership
-  Groups       priority groups; each group's policies edited in its drawer
-  Settings     platform config
+TOPBAR     breadcrumb · Cmd-K · theme · broadcast (admin) · user-menu
+OFF-RAIL   Events (Overview widget + Cmd-K) · Broadcast (topbar drawer)
+           create screens + edit drawers, reached from their list
 ```
 
-- **Servers absorbs the old Activity page** - a running lab *is* its activity, so engagement and resource usage are columns, not a second page
-- **Groups absorbs the old Policies page** - a policy is an attribute of a group, not a destination; the nine types are edited inside the group
-- **Events** is the audit log behind the Overview feed - a dedicated page reached by clicking the widget (and via Cmd-K), not a permanent rail item
-- **Broadcast** is a topbar action (megaphone), not a page
+Navigation laws: list `Add` opens a full create screen; a list row opens a detail (drawer for edits, full screen for heavy create); detail tabs only if each earns its keep; bulk = input screen then result screen; delete/reset are inline confirms; every widget links to its page; long lists lead with a search field.
 
 ## Roles
 
-The portal is role-aware (`<body data-role="user">`):
+Role-aware via `<body data-role>`:
 
-- **Admin** (`home.html`) - fleet dashboard, both nav sections, broadcast, all pages
-- **User** (`home-user.html`) - one launchpad: their server (open/restart/stop), what their groups grant (read-only), their storage. No Administration section, no fleet pages
+- **Admin** (`home.html`) - fleet Overview, Servers, and the Administration section
+- **User** (`home-user.html`) - one launchpad: their server (open/restart/stop), what their groups grant (read-only), their storage. No Administration, no fleet pages
 
-## Servers - the merged operational surface
+## Key decisions in the mock
 
-- **Status** = lifecycle: Running / Spawning / Stopped / Failed
-- **Activity** = engagement: Active / Idle 38m / - (the reclaim signal; a distinct axis from status)
-- **Time left** = cull countdown (actionable); uptime dropped (vanity)
-- **Image dropped** - uniform across the platform, drives no decision
-
-## Users - pending-on-top
-
-- **Pending authorisation** is a separate list at the top, shown only when something waits, each row carrying Authorize / Discard
-- Below, authorised users carry an **Authorised switch** - off means a deliberate admin de-authorisation (the admin's lever), distinct from never-approved pending signups
-- **Configure user** is a tabbed detail borrowed from the RustFS/MinIO console: Identity, Groups (membership is the only lever - it grants policy), Access (effective policy, read-only + view-as), Keys (API-key pool slot), Storage (volumes). In the real app it opens as a right-side drawer
-
-## Theme
-
-Two variants, `optimum-hub-dark` and `optimum-hub-light`: JupyterLab **Stellars Sublime** surfaces + **Stellars-Tech** accents (cyan `#0096d1`, orange `#da8230`). `tokens.css` is variable-driven - a semantic layer (`--color-bg`, `--color-surface`, `--color-text`, `--color-accent`, status colours, spacing/radius/type scales) defined dark-first, with the light variant overriding colour vars only. Components reference semantic vars exclusively, so retheming is a handful of edits. An inline `<head>` script applies the saved theme before paint (no flash).
+- **One Status column** - lifecycle and engagement are one axis: Active / Idle Xm / Spawning / Stopped / Failed, with a 5-segment engagement meter inline on running rows. No separate Activity column or page (its Reset/Report tools live in the Servers toolbar)
+- **Resources widget** - CPU / Memory / GPU as three bars (a wide widget on the admin Overview, the hero block on the user launchpad); the lone GPU tile and the Groups count card are gone
+- **Admin starts a server without entering it** - Start spawns it for the user and the admin stays on the list; entering a running server is a second, confirmed action
+- **User cells show identity, not membership** - username and role only; a user can be in dozens of groups, so no group sub-line
+- **Edit = drawer, create = full screen** - editing a user opens a drawer over the list (one Save, tabs Profile / Groups + effective access / Volumes); creating is a dedicated screen
+- **Events, not Logs** - the audit timeline behind the Overview feed; **Broadcast** (outgoing) is a topbar drawer, distinct from any inbox (the bell was removed - no backend for it)
 
 ## Try it
 
-- Toggle theme with the sun/moon button (top-right); choice persists in `localStorage`
-- Press `Cmd/Ctrl+K` for the command palette - navigate, create, run actions (scoped to role)
+- Toggle theme with the sun/moon button (persists in `localStorage`)
+- `Cmd/Ctrl+K` for the command palette (role-scoped); `Advanced` in the sidebar expands to Settings + Tokens
+- Click a user's Configure to open the edit drawer; the topbar megaphone opens Broadcast
 - Buttons fire mock toasts; nothing calls a real API
 
 ## Layout
 
 ```
 mock/
-  index.html        redirect to home
-  home.html         admin Overview (fleet dashboard, full)
-  home-user.html    plain-user Overview (personal launchpad)
-  servers.html      every lab - lifecycle + activity + resources
-  users.html        pending-on-top + RustFS-style user config
-  groups.html       priority groups + the nine policy types
-  events.html       audit log (behind the Overview feed)
-  settings.html     platform config
+  index.html         redirect to home
+  home.html          admin Overview (fleet dashboard)
+  home-user.html     plain-user Overview (launchpad)
+  servers.html       every lab - one Status column, resources, time-left
+  users.html         pending-on-top + authorised list + USR-005 edit drawer
+  new-user.html      single create (full screen)
+  bulk-users.html    bulk create input (full screen)
+  bulk-result.html   bulk credentials + download
+  groups.html        priority groups -> policy
+  new-group.html     create group (full screen)
+  group-config.html  the nine policy sections (full screen)
+  events.html        audit timeline
+  settings.html      read-only configuration reference
+  tokens.html        personal API tokens + OAuth apps
   assets/
-    tokens.css      the two themes as CSS custom properties
-    app.css         shell + components
-    app.js          role-aware shell render + theme + Cmd-K + tabs
-    brand/          logo + favicon (from ../branding)
+    tokens.css       the two themes as CSS custom properties
+    app.css          shell + components
+    app.js           role-aware shell render + theme + Cmd-K + drawer + tabs
+    brand/           logo + favicon (from ../branding)
 ```
 
 ## Status
 
-Mock for design review. The rebuild concept and the hub-as-trust-boundary security model live in `../docs/portal-ui-catalogue.md`; the design research behind this mock is in `../docs/design-research-frontend-mock.md`.
+Mock for design review. The rebuild concept and the hub-as-trust-boundary security model live in `../docs/portal-ui-catalogue.md`; the flow-driven navigation design (with net-new backend work flagged) is in `../docs/design-flows-frontend-mock.md`.

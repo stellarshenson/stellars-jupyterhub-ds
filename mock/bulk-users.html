@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="optimum-hub-dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optimum Hub - Bulk add</title>
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/app.css">
+  <link rel="icon" href="assets/brand/favicon.ico">
+  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<body data-page="users" data-title="Bulk add">
+<main>
+  <div class="page-head">
+    <div class="titles">
+      <h1 class="page-title">Bulk add users</h1>
+      <div class="page-sub">Configure once for the batch - paste one username per line</div>
+    </div>
+    <div class="actions">
+      <a class="btn btn-ghost" href="users.html">{ic:chevron} Users</a>
+    </div>
+  </div>
+
+  <div class="card" style="max-width:620px">
+    <div class="field">
+      <label>Usernames</label>
+      <textarea class="input" rows="8" placeholder="one username per line&#10;tomasz&#10;ewa&#10;piotr&#10;kasia"></textarea>
+    </div>
+
+    <div class="field">
+      <label>Groups</label>
+      <div class="chips" style="margin-bottom:var(--space-3)">
+        <span class="chip">interns <span class="x" data-toast="Removed interns (mock)">{ic:stop}</span></span>
+      </div>
+      <div style="display:flex;gap:var(--space-2);max-width:360px">
+        <input class="input" type="text" placeholder="Add to group… (autocomplete)">
+        <button class="btn" data-toast="Added to group (mock)">Add</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Authorize now</label>
+      <div style="display:flex;align-items:center;gap:var(--space-3)">
+        <span class="switch on" data-toast="Toggle authorize now (mock)"><span class="track"></span></span>
+        <span class="page-sub">off = authorise later</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Require password change on first login</label>
+      <div style="display:flex;align-items:center;gap:var(--space-3)">
+        <span class="switch on" data-toast="Toggle force password change (mock)"><span class="track"></span></span>
+        <span class="page-sub">users set their own password on first sign-in</span>
+      </div>
+    </div>
+
+    <!-- No password fields: every password is auto-generated (an operator
+         cannot set 100 passwords by hand). Secrets surface once on the result. -->
+    <div class="page-sub" style="margin-bottom:var(--space-4)">No password fields - every password is auto-generated and shown once on the next screen</div>
+
+    <div style="display:flex;gap:var(--space-2);justify-content:flex-end">
+      <a class="btn" href="users.html">Cancel</a>
+      <a class="btn btn-primary" href="bulk-result.html">Create users</a>
+    </div>
+  </div>
+</main>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -60,7 +60,10 @@
     { group: "Administration", items: [
       { id: "users",    label: "Users",    icon: "users",    href: "users.html", badge: "2" },
       { id: "groups",   label: "Groups",   icon: "group",    href: "groups.html" },
-      { id: "settings", label: "Settings", icon: "settings", href: "settings.html" }
+      { id: "advanced", label: "Advanced", icon: "dots", children: [
+        { id: "settings", label: "Settings", icon: "settings", href: "settings.html" },
+        { id: "tokens",   label: "Tokens",   icon: "key",      href: "tokens.html" }
+      ]}
     ]}
   ];
   // a user has one server, so it lives on their Overview - no fleet pages
@@ -75,7 +78,7 @@
   var ACTIONS_ADMIN = [
     { group: "Create", icon: "plus", label: "Add user",        hint: "U", run: function(){ toast("Add-user drawer (mock)"); } },
     { group: "Create", icon: "plus", label: "Create group",    hint: "G", run: function(){ toast("Create-group drawer (mock)"); } },
-    { group: "Actions", icon: "megaphone", label: "Broadcast notification", run: function(){ toast("Broadcast composer (mock)"); } },
+    { group: "Actions", icon: "megaphone", label: "Broadcast notification", run: function(){ showDrawer(broadcastDrawerHTML()); } },
     { group: "Actions", icon: "stop", label: "Stop server: jupyterlab-alice", run: function(){ toast("Stopping jupyterlab-alice (mock)"); } },
     { group: "Navigate", icon: "activity", label: "Events log", run: function(){ location.href = "events.html"; } }
   ];
@@ -87,7 +90,14 @@
   function ACTIONS() { return isAdmin() ? ACTIONS_ADMIN : ACTIONS_USER; }
 
   function navItems() {
-    return NAV().reduce(function (a, g) { return a.concat(g.items); }, []);
+    var out = [];
+    NAV().forEach(function (g) {
+      g.items.forEach(function (n) {
+        if (n.children) n.children.forEach(function (c) { out.push(c); });
+        else out.push(n);
+      });
+    });
+    return out;
   }
 
   // ---------- theme ----------
@@ -118,14 +128,28 @@
       ? '<div class="avatar">AD</div><div class="who">admin<small>Administrator</small></div>'
       : '<div class="avatar">AL</div><div class="who">alice<small>Data scientist</small></div>';
 
-    var navHTML = NAV().map(function (g) {
-      return '<div class="nav-group-label">' + g.group + '</div>' +
-        g.items.map(function (n) {
-          return '<a class="nav-item' + (n.id === page ? ' active' : '') + '" href="' + n.href + '">' +
+    var multiGroup = NAV().length > 1;
+    function navItemHTML(n) {
+      if (n.children) {
+        var openCls = n.children.some(function (c) { return c.id === page; }) ? ' expanded' : '';
+        return '<div class="nav-item nav-parent' + openCls + '" data-nav-toggle>' +
             svg(n.icon) + '<span>' + n.label + '</span>' +
-            (n.badge ? '<span class="badge-count">' + n.badge + '</span>' : '') +
-          '</a>';
-        }).join("");
+            '<span class="caret">' + svg("chevron") + '</span>' +
+          '</div>' +
+          '<div class="nav-sub' + (openCls ? ' open' : '') + '">' +
+            n.children.map(function (c) {
+              return '<a class="nav-item' + (c.id === page ? ' active' : '') + '" href="' + c.href + '">' +
+                svg(c.icon) + '<span>' + c.label + '</span></a>';
+            }).join("") +
+          '</div>';
+      }
+      return '<a class="nav-item' + (n.id === page ? ' active' : '') + '" href="' + n.href + '">' +
+        svg(n.icon) + '<span>' + n.label + '</span>' +
+        (n.badge ? '<span class="badge-count">' + n.badge + '</span>' : '') + '</a>';
+    }
+    var navHTML = NAV().map(function (g) {
+      return (multiGroup ? '<div class="nav-group-label">' + g.group + '</div>' : '') +
+        g.items.map(navItemHTML).join("");
     }).join("");
 
     document.body.innerHTML =
@@ -144,12 +168,12 @@
             '<div class="kbar" id="kbar-open"><span>' + svg("search") + '</span><span>Search or jump to…</span><span class="kbd">⌘K</span></div>' +
             '<button class="icon-btn" id="theme-toggle" title="Toggle theme"></button>' +
             (isAdmin() ? '<button class="icon-btn" id="broadcast-open" title="Broadcast to all labs">' + svg("megaphone") + '</button>' : '') +
-            '<button class="icon-btn" title="Notifications">' + svg("bell") + '</button>' +
           '</header>' +
           '<div class="content">' + mainHTML + '</div>' +
         '</div>' +
       '</div>' +
       paletteHTML() +
+      '<div class="scrim" id="drawer-scrim"></div>' +
       '<div class="drawer" id="drawer"></div>' +
       '<div class="toasts" id="toasts"></div>';
 
@@ -213,34 +237,80 @@
   }
   window.hubToast = toast;
 
+  // ---------- helpers ----------
+  function forEach(list, fn) { Array.prototype.forEach.call(list, fn); }
+
+  // ---------- drawer (edit surfaces + broadcast - keeps list context) ----------
+  function showDrawer(html) {
+    var d = document.getElementById("drawer");
+    d.innerHTML = html;
+    document.getElementById("drawer-scrim").classList.add("open");
+    d.classList.add("open");
+    wireRoot(d);
+    forEach(d.querySelectorAll("[data-close-drawer]"), function (el) { el.addEventListener("click", closeDrawer); });
+  }
+  function openTemplateDrawer(id) {
+    var t = document.querySelector('template[data-drawer="' + id + '"]');
+    if (t) showDrawer(t.innerHTML);
+  }
+  function closeDrawer() {
+    document.getElementById("drawer").classList.remove("open");
+    document.getElementById("drawer-scrim").classList.remove("open");
+  }
+  // broadcast is a global admin action - the composer lives here, not per page
+  function broadcastDrawerHTML() {
+    return '<div class="drawer-head">' + svg("megaphone") + '<h3>Broadcast</h3>' +
+        '<button class="icon-btn" data-close-drawer style="margin-left:auto" title="Close">' + svg("stop") + '</button></div>' +
+      '<div class="drawer-body">' +
+        '<div class="field"><label>Message</label><textarea class="input" rows="3" maxlength="140" placeholder="Up to 140 characters - sent to every active lab"></textarea></div>' +
+        '<div class="field"><label>Type</label><select class="select"><option>info</option><option>success</option><option>warning</option><option>error</option><option>in-progress</option></select></div>' +
+        '<div class="field"><label>Recipients</label><select class="select"><option>All active labs (3)</option><option>Choose users…</option></select></div>' +
+        '<div class="field" style="display:flex;align-items:center;gap:var(--space-3)"><span class="switch on"><span class="track"></span></span><span class="page-sub">auto-close on the lab</span></div>' +
+      '</div>' +
+      '<div class="drawer-foot"><button class="btn" data-close-drawer>Cancel</button>' +
+        '<button class="btn btn-primary" data-toast="Broadcast delivered 3/3 (mock)" data-close-drawer>Send</button></div>';
+  }
+
   // ---------- wiring ----------
+  function tabClick(e) {
+    var box = e.currentTarget;
+    var b = e.target.closest ? e.target.closest(".tab") : null;
+    if (!b || !box.contains(b)) return;
+    var k = b.getAttribute("data-tab");
+    forEach(box.querySelectorAll(".tab"), function (x) { x.classList.toggle("active", x === b); });
+    forEach(box.querySelectorAll(".tab-panel"), function (p) { p.classList.toggle("active", p.getAttribute("data-panel") === k); });
+  }
+  // wire toasts, tabs and drawer-openers within a subtree (document on load, the drawer on open)
+  function wireRoot(root) {
+    forEach(root.querySelectorAll("[data-toast]"), function (el) { el.addEventListener("click", function () { toast(el.getAttribute("data-toast")); }); });
+    forEach(root.querySelectorAll("[data-tabs]"), function (box) { box.addEventListener("click", tabClick); });
+    forEach(root.querySelectorAll("[data-open-drawer]"), function (el) { el.addEventListener("click", function () { openTemplateDrawer(el.getAttribute("data-open-drawer")); }); });
+  }
   function wire() {
     document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
     var bc = document.getElementById("broadcast-open");
-    if (bc) bc.addEventListener("click", function () { toast("Broadcast composer (mock)"); });
+    if (bc) bc.addEventListener("click", function () { showDrawer(broadcastDrawerHTML()); });
     document.getElementById("kbar-open").addEventListener("click", openPalette);
     document.getElementById("scrim").addEventListener("click", closePalette);
+    document.getElementById("drawer-scrim").addEventListener("click", closeDrawer);
     document.getElementById("palette-q").addEventListener("input", function (e) { buildPalette(e.target.value); });
 
-    // demo: any [data-toast] element fires a toast (quick-action buttons, kebabs)
-    Array.prototype.forEach.call(document.querySelectorAll("[data-toast]"), function (el) {
-      el.addEventListener("click", function () { toast(el.getAttribute("data-toast")); });
-    });
-
-    // tabbed detail panels (data-tabs container, .tab buttons, .tab-panel sections)
-    Array.prototype.forEach.call(document.querySelectorAll("[data-tabs]"), function (box) {
-      box.addEventListener("click", function (e) {
-        var b = e.target.closest ? e.target.closest(".tab") : null;
-        if (!b || !box.contains(b)) return;
-        var k = b.getAttribute("data-tab");
-        Array.prototype.forEach.call(box.querySelectorAll(".tab"), function (x) { x.classList.toggle("active", x === b); });
-        Array.prototype.forEach.call(box.querySelectorAll(".tab-panel"), function (p) { p.classList.toggle("active", p.getAttribute("data-panel") === k); });
+    // expandable nav parents (Advanced)
+    forEach(document.querySelectorAll("[data-nav-toggle]"), function (el) {
+      el.addEventListener("click", function () {
+        el.classList.toggle("expanded");
+        var sub = el.nextElementSibling;
+        if (sub && sub.classList.contains("nav-sub")) sub.classList.toggle("open");
       });
     });
+
+    wireRoot(document);
   }
 
   document.addEventListener("keydown", function (e) {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); openPalette(); return; }
+    var dr = document.getElementById("drawer");
+    if (e.key === "Escape" && dr && dr.classList.contains("open")) { closeDrawer(); return; }
     var open = document.getElementById("palette") && document.getElementById("palette").classList.contains("open");
     if (!open) return;
     if (e.key === "Escape") closePalette();

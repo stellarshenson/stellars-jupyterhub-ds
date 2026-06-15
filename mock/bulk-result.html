@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="optimum-hub-dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optimum Hub - Bulk add - result</title>
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/app.css">
+  <link rel="icon" href="assets/brand/favicon.ico">
+  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<body data-page="users" data-title="Bulk add - result">
+<main>
+  <div class="page-head">
+    <div class="titles">
+      <h1 class="page-title">Bulk add - result</h1>
+      <div class="page-sub">Save these now - passwords are shown once</div>
+    </div>
+    <div class="actions">
+      <button class="btn" data-toast="Downloaded credentials.txt (mock)">Download .txt</button>
+      <a class="btn btn-primary" href="users.html">Done</a>
+    </div>
+  </div>
+
+  <!-- Per-user status: the batch is not atomic, so partial failure is visible
+       (one row failed, the rest created) - the credential file is the current
+       behaviour, surfaced once. -->
+  <div class="card card-pad-0">
+    <div class="card-head"><h3>4 users processed</h3></div>
+    <div class="table-wrap">
+      <table class="tbl">
+        <thead><tr><th>Username</th><th>Password</th><th>Groups</th><th class="right">Status</th></tr></thead>
+        <tbody>
+          <tr><td>tomasz</td><td class="mono">correct-horse-battery</td><td><div class="chips"><span class="chip">interns</span></div></td><td class="right"><span class="tag accent">created</span></td></tr>
+          <tr><td>ewa</td><td class="mono">staple-river-violet</td><td><div class="chips"><span class="chip">interns</span></div></td><td class="right"><span class="tag accent">created</span></td></tr>
+          <tr><td>piotr</td><td class="mono">amber-lantern-quartz</td><td><div class="chips"><span class="chip">interns</span></div></td><td class="right"><span class="tag warn">failed</span></td></tr>
+          <tr><td>kasia</td><td class="mono">copper-meadow-signal</td><td><div class="chips"><span class="chip">interns</span></div></td><td class="right"><span class="tag accent">created</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+<script src="assets/app.js"></script>
+</body>
+</html>

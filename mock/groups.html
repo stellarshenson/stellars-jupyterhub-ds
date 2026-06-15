@@ -18,48 +18,85 @@
     </div>
     <div class="actions">
       <label class="search">{ic:search}<input type="text" placeholder="Filter groups…"></label>
-      <button class="btn btn-primary" data-toast="Create-group drawer (mock)">+ Add group</button>
+      <a class="btn btn-primary" href="new-group.html">+ Add group</a>
     </div>
   </div>
 
+  <!-- Priority-ordered: higher rows win on conflict. Reorder by dragging the
+       handle, or by move-up / move-down for keyboard users. Clicking the group
+       NAME opens its config (the nine policy sections) on a dedicated screen. -->
   <div class="card card-pad-0">
     <div class="card-head"><h3>6 groups</h3><div class="actions"><span class="page-sub">Higher priority wins on conflict</span></div></div>
     <div class="table-wrap">
       <table class="tbl">
         <thead><tr><th>#</th><th>Group</th><th>Members</th><th>Active policies</th><th class="right">Actions</th></tr></thead>
         <tbody>
-          <tr><td class="num">1</td><td><a data-toast="Open group config (mock)" style="color:var(--color-accent);cursor:pointer"><b>research</b></a></td><td class="num">4</td><td><div class="chips"><span class="tag accent">GPU all</span><span class="tag accent">Docker raw</span><span class="tag warn">Sudo on</span><span class="tag accent">Mem 32G</span></div></td><td><div class="row-actions"><button class="icon-btn" title="Move up" data-toast="Move up (mock)">{ic:arrowup}</button><button class="icon-btn" title="Configure" data-toast="Open group config (mock)">{ic:settings}</button><button class="icon-btn" title="Delete" data-toast="Delete (mock)">{ic:stop}</button></div></td></tr>
-          <tr><td class="num">2</td><td><a data-toast="Open group config (mock)" style="color:var(--color-accent);cursor:pointer"><b>data-science</b></a></td><td class="num">11</td><td><div class="chips"><span class="tag accent">Mem 16G</span><span class="tag accent">CPU 4</span><span class="tag">Downloads off</span></div></td><td><div class="row-actions"><button class="icon-btn" title="Move up" data-toast="Move up (mock)">{ic:arrowup}</button><button class="icon-btn" title="Configure" data-toast="Open group config (mock)">{ic:settings}</button><button class="icon-btn" title="Delete" data-toast="Delete (mock)">{ic:stop}</button></div></td></tr>
-          <tr><td class="num">3</td><td><a data-toast="Open group config (mock)" style="color:var(--color-accent);cursor:pointer"><b>gpu</b></a></td><td class="num">5</td><td><div class="chips"><span class="tag accent">GPU 0,1</span></div></td><td><div class="row-actions"><button class="icon-btn" title="Move up" data-toast="Move up (mock)">{ic:arrowup}</button><button class="icon-btn" title="Configure" data-toast="Open group config (mock)">{ic:settings}</button><button class="icon-btn" title="Delete" data-toast="Delete (mock)">{ic:stop}</button></div></td></tr>
-          <tr><td class="num">4</td><td><a data-toast="Open group config (mock)" style="color:var(--color-accent);cursor:pointer"><b>keys-openai</b></a></td><td class="num">3</td><td><div class="chips"><span class="tag accent">API keys pool: 3</span></div></td><td><div class="row-actions"><button class="icon-btn" title="Move up" data-toast="Move up (mock)">{ic:arrowup}</button><button class="icon-btn" title="Configure" data-toast="Open group config (mock)">{ic:settings}</button><button class="icon-btn" title="Delete" data-toast="Delete (mock)">{ic:stop}</button></div></td></tr>
-          <tr><td class="num">5</td><td><a data-toast="Open group config (mock)" style="color:var(--color-accent);cursor:pointer"><b>interns</b></a></td><td class="num">0</td><td><span style="color:var(--color-text-subtle)">No policies configured</span></td><td><div class="row-actions"><button class="icon-btn" title="Move up" data-toast="Move up (mock)">{ic:arrowup}</button><button class="icon-btn" title="Configure" data-toast="Open group config (mock)">{ic:settings}</button><button class="icon-btn" title="Delete" data-toast="Delete (mock)">{ic:stop}</button></div></td></tr>
+          <tr>
+            <td class="num">1</td>
+            <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer"><b>research</b></a></td>
+            <td class="num" title="milan, alice, ola, piotr">4</td>
+            <td><div class="chips"><span class="tag accent">GPU all</span><span class="tag accent">Docker raw</span><span class="tag warn">Sudo on</span><span class="tag accent">Mem 32G</span></div></td>
+            <td><div class="row-actions">
+              <button class="icon-btn" title="Move up" data-toast="Moved research up (mock)">{ic:arrowup}</button>
+              <button class="icon-btn" title="Drag to reorder" data-toast="Drag to reorder (mock)">{ic:dots}</button>
+              <a class="icon-btn" href="group-config.html" title="Configure">{ic:settings}</a>
+              <button class="icon-btn" title="Delete" data-toast="Delete group research? removes all members (mock)">{ic:stop}</button>
+            </div></td>
+          </tr>
+          <tr>
+            <td class="num">2</td>
+            <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer"><b>data-science</b></a></td>
+            <td class="num" title="alice, jakub, nina, marek, kasia, +6 more">11</td>
+            <td><div class="chips"><span class="tag accent">Mem 16G</span><span class="tag accent">CPU 4</span><span class="tag">Downloads off</span></div></td>
+            <td><div class="row-actions">
+              <button class="icon-btn" title="Move up" data-toast="Moved data-science up (mock)">{ic:arrowup}</button>
+              <button class="icon-btn" title="Drag to reorder" data-toast="Drag to reorder (mock)">{ic:dots}</button>
+              <a class="icon-btn" href="group-config.html" title="Configure">{ic:settings}</a>
+              <button class="icon-btn" title="Delete" data-toast="Delete group data-science? removes all members (mock)">{ic:stop}</button>
+            </div></td>
+          </tr>
+          <tr>
+            <td class="num">3</td>
+            <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer"><b>gpu</b></a></td>
+            <td class="num" title="milan, alice, tomek, ewa, dawid">5</td>
+            <td><div class="chips"><span class="tag accent">GPU 0,1</span></div></td>
+            <td><div class="row-actions">
+              <button class="icon-btn" title="Move up" data-toast="Moved gpu up (mock)">{ic:arrowup}</button>
+              <button class="icon-btn" title="Drag to reorder" data-toast="Drag to reorder (mock)">{ic:dots}</button>
+              <a class="icon-btn" href="group-config.html" title="Configure">{ic:settings}</a>
+              <button class="icon-btn" title="Delete" data-toast="Delete group gpu? removes all members (mock)">{ic:stop}</button>
+            </div></td>
+          </tr>
+          <tr>
+            <td class="num">4</td>
+            <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer"><b>keys-openai</b></a></td>
+            <td class="num" title="alice, nina, kasia">3</td>
+            <td><div class="chips"><span class="tag accent">API keys pool: 3</span></div></td>
+            <td><div class="row-actions">
+              <button class="icon-btn" title="Move up" data-toast="Moved keys-openai up (mock)">{ic:arrowup}</button>
+              <button class="icon-btn" title="Drag to reorder" data-toast="Drag to reorder (mock)">{ic:dots}</button>
+              <a class="icon-btn" href="group-config.html" title="Configure">{ic:settings}</a>
+              <button class="icon-btn" title="Delete" data-toast="Delete group keys-openai? removes all members (mock)">{ic:stop}</button>
+            </div></td>
+          </tr>
+          <tr>
+            <td class="num">5</td>
+            <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer"><b>interns</b></a></td>
+            <td class="num" title="no members yet">0</td>
+            <td><span style="color:var(--color-text-subtle)">No policies configured</span></td>
+            <td><div class="row-actions">
+              <button class="icon-btn" title="Move up" data-toast="Moved interns up (mock)">{ic:arrowup}</button>
+              <button class="icon-btn" title="Drag to reorder" data-toast="Drag to reorder (mock)">{ic:dots}</button>
+              <a class="icon-btn" href="group-config.html" title="Configure">{ic:settings}</a>
+              <button class="icon-btn" title="Delete" data-toast="Delete group interns? removes all members (mock)">{ic:stop}</button>
+            </div></td>
+          </tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- There is no separate Policies page: a policy is an attribute of a group.
-       Clicking a group opens this editor - the nine policy types as sections,
-       each a toggle plus its control. In the real app this is a right-side drawer. -->
-  <div class="section-title">Configure group - research (preview)</div>
-  <div class="card">
-    <div class="page-sub" style="margin-bottom:var(--space-4)">Toggle a policy on to grant it to every member. The hub combines policies across a user's groups by priority and exposes the resolved summary - the client only renders it.</div>
-
-    <div class="grant"><span class="g-ic">{ic:settings}</span><div><b>Environment</b><div class="g-from">inject env vars - reserved names rejected</div></div><span class="g-val">2 vars</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle env (mock)"><span class="track"></span></span></div>
-    <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>GPU</b><div class="g-from">grant all or specific device ids</div></div><span class="g-val">all</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle gpu (mock)"><span class="track"></span></span></div>
-    <div class="grant"><span class="g-ic">{ic:server}</span><div><b>Docker</b><div class="g-from">raw socket or limited quotas</div></div><span class="g-val">raw</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle docker (mock)"><span class="track"></span></span></div>
-    <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>CPU</b><div class="g-from">core limit - biggest enabled wins</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle cpu (mock)"><span class="track"></span></span></div>
-    <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>Memory</b><div class="g-from">GB limit + swap toggle</div></div><span class="g-val">32 GB</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle mem (mock)"><span class="track"></span></span></div>
-    <div class="grant"><span class="g-ic">{ic:shield}</span><div><b>Sudo</b><div class="g-from">root inside the lab</div></div><span class="g-val">on</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle sudo (mock)"><span class="track"></span></span></div>
-    <div class="grant"><span class="g-ic">{ic:shield}</span><div><b>Downloads</b><div class="g-from">block or allow file downloads</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle downloads (mock)"><span class="track"></span></span></div>
-    <div class="grant"><span class="g-ic">{ic:key}</span><div><b>API keys</b><div class="g-from">credential pool, one slot per user</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle api-keys (mock)"><span class="track"></span></span></div>
-    <div class="grant"><span class="g-ic">{ic:server}</span><div><b>Volume mounts</b><div class="g-from">shared volumes - protected paths barred</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle volumes (mock)"><span class="track"></span></span></div>
-
-    <div style="margin-top:var(--space-4);display:flex;gap:var(--space-2);justify-content:flex-end">
-      <button class="btn" data-toast="Reverted (mock)">Cancel</button>
-      <button class="btn btn-primary" data-toast="Saved group policy (mock)">Save policy</button>
-    </div>
-  </div>
+  <div class="page-sub" style="margin-top:var(--space-3)">There is no separate Policies page - a policy is an attribute of a group, edited in group config. Drag the {ic:dots} handle to reorder, or use move-up / move-down (keyboard-friendly); higher priority wins on conflict.</div>
 </main>
 <script src="assets/app.js"></script>
 </body>

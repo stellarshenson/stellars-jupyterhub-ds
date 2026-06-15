@@ -14,16 +14,16 @@
   <div class="page-head">
     <div class="titles">
       <h1 class="page-title">Events</h1>
-      <div class="page-sub">The full audit log behind the Overview feed - who did what, when</div>
+      <div class="page-sub">The audit log behind the Overview feed - who did what, when</div>
     </div>
     <div class="actions">
       <label class="search">{ic:search}<input type="text" placeholder="Filter events…"></label>
-      <select class="select" style="width:auto"><option>All types</option><option>Server</option><option>User</option><option>Policy</option><option>Cull</option></select>
+      <select class="select" style="width:auto"><option>All types</option><option>Server</option><option>User</option><option>Policy</option><option>Cull</option><option>Notify</option><option>Error</option></select>
     </div>
   </div>
 
   <div class="card card-pad-0">
-    <div class="card-head"><h3>Today</h3><div class="actions"><span class="page-sub">live - newest first</span></div></div>
+    <div class="card-head"><h3>Today</h3><div class="actions"><span class="page-sub">newest first</span></div></div>
     <div class="table-wrap">
       <table class="tbl">
         <thead><tr><th>Time</th><th>Actor</th><th>Event</th><th class="right">Type</th></tr></thead>
@@ -35,7 +35,7 @@
           <tr><td class="num">2h ago</td><td><div class="u"><span class="avatar">AD</span>admin</div></td><td>added <b>alice</b> to group <b>data-science</b></td><td class="right"><span class="tag">user</span></td></tr>
           <tr><td class="num">3h ago</td><td><div class="u"><span class="avatar">AL</span>alice</div></td><td>restarted her server</td><td class="right"><span class="tag accent">server</span></td></tr>
           <tr><td class="num">4h ago</td><td><div class="u"><span class="avatar">AD</span>admin</div></td><td>broadcast a notification to all labs</td><td class="right"><span class="tag">notify</span></td></tr>
-          <tr><td class="num">5h ago</td><td><div class="u"><span class="avatar">EW</span>ewa</div></td><td>server <b>spawn failed</b> - image pull error</td><td class="right"><span class="tag" style="color:var(--color-danger)">error</span></td></tr>
+          <tr><td class="num">5h ago</td><td><div class="u"><span class="avatar">EW</span>ewa</div></td><td>server <b>spawn failed</b> - image pull error</td><td class="right"><span class="tag warn">error</span></td></tr>
         </tbody>
       </table>
     </div>

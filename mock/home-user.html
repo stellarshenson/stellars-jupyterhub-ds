@@ -20,18 +20,22 @@
     </div>
   </div>
 
-  <!-- My server: one hero card, the whole point of the page -->
+  <!-- My server: one hero card, the whole point of the page.
+       One Status concept - a single running pill + meter, never a second axis. -->
   <div class="card" style="display:flex;align-items:center;gap:var(--space-5);flex-wrap:wrap">
     <span class="m-ic" style="width:48px;height:48px">{ic:server}</span>
-    <div>
+    <div style="min-width:240px;flex:1">
       <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap">
         <h2 style="font-size:var(--text-xl)">jupyterlab-alice</h2>
-        <span class="pill running"><span class="dot"></span>Running</span>
-        <span class="act idle">Idle 12m</span>
+        <span class="pill running"><span class="dot"></span>Active</span>
+        <span class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span>
       </div>
-      <div class="m-break" style="margin-top:8px">
-        <span>CPU <b>8%</b></span><span>Memory <b>2.1 / 16 GB</b></span><span>Time left <b>3h 48m</b></span>
+      <div class="res" style="margin-top:var(--space-3);max-width:420px">
+        <div class="res-row"><span class="res-label">CPU</span><span class="res-bar"><i style="width:8%"></i></span><span class="res-val">8%</span></div>
+        <div class="res-row"><span class="res-label">Memory</span><span class="res-bar"><i style="width:13%"></i></span><span class="res-val">2.1/16 GB</span></div>
+        <div class="res-row"><span class="res-label">GPU</span><span class="res-bar"><i style="width:0%"></i></span><span class="res-val">0%</span></div>
       </div>
+      <div class="page-sub" style="margin-top:var(--space-3)">Time left <b style="color:var(--color-text)">3h 48m</b></div>
     </div>
     <div class="row-actions" style="margin-left:auto;gap:var(--space-2)">
       <button class="btn btn-primary" data-toast="Opening your lab (mock)">{ic:play} Open lab</button>
@@ -64,7 +68,7 @@
             <dt>workspace</dt><dd class="mono">9.8 GB</dd>
             <dt>cache</dt><dd class="mono">0.5 GB</dd>
           </dl>
-          <div style="margin-top:var(--space-3)"><button class="btn btn-danger" data-toast="Manage-volumes (stop server first) (mock)">Manage volumes</button></div>
+          <div style="margin-top:var(--space-3)"><button class="btn btn-danger" data-toast="Manage volumes - stop server first (mock)">Manage volumes</button></div>
         </div>
       </div>
 

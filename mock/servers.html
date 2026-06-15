@@ -14,13 +14,17 @@
   <div class="page-head">
     <div class="titles">
       <h1 class="page-title">Servers</h1>
-      <div class="page-sub">Every lab in one pane - lifecycle, engagement, resources and time left</div>
+      <div class="page-sub">Every lab in one pane - state, resources and time left</div>
     </div>
     <div class="actions">
       <label class="search">{ic:search}<input type="text" placeholder="Filter servers…"></label>
     </div>
   </div>
 
+  <!-- One list, every user's server. The Status column carries both the
+       lifecycle pill AND the inline engagement meter on running rows - no
+       separate Activity column. The old Activity page is fully absorbed:
+       its Reset-samples + Report tools live in this card's toolbar. -->
   <div class="card card-pad-0">
     <div class="card-head">
       <h3>16 servers</h3>
@@ -28,22 +32,100 @@
         <span class="pill running"><span class="dot"></span>3 running</span>
         <span class="pill idle"><span class="dot"></span>1 idle</span>
         <span class="pill stopped"><span class="dot"></span>12 stopped</span>
+        <button class="btn btn-sm btn-ghost" data-toast="Reset activity samples (mock)">{ic:restart} Reset</button>
+        <button class="btn btn-sm btn-ghost" data-toast="Download engagement report (mock)">{ic:arrowup} Report</button>
       </div>
     </div>
     <div class="table-wrap">
       <table class="tbl">
-        <thead><tr><th>User</th><th>Status</th><th>Activity</th><th>CPU</th><th>Memory</th><th>GPU</th><th>Time left</th><th class="right">Actions</th></tr></thead>
+        <thead><tr><th>User</th><th>Status</th><th>CPU</th><th>Memory</th><th>GPU</th><th>Time left</th><th class="right">Actions</th></tr></thead>
         <tbody>
-          <tr><td><div class="u"><span class="avatar">AL</span>alice</div></td><td><span class="pill running"><span class="dot"></span>Running</span></td><td><span class="act active">Active</span></td><td class="num">38%</td><td class="num">6.2 / 16 GB</td><td class="num">-</td><td class="num">3h 48m</td><td><div class="row-actions"><button class="icon-btn" title="Open" data-toast="Open (mock)">{ic:play}</button><button class="icon-btn" title="Restart" data-toast="Restart (mock)">{ic:restart}</button><button class="icon-btn" title="Stop" data-toast="Stop (mock)">{ic:stop}</button></div></td></tr>
-          <tr><td><div class="u"><span class="avatar">KO</span>konrad</div></td><td><span class="pill running"><span class="dot"></span>Running</span></td><td><span class="act active">Active</span></td><td class="num">12%</td><td class="num">3.1 / 32 GB</td><td class="num">-</td><td class="num">22h</td><td><div class="row-actions"><button class="icon-btn" title="Open" data-toast="Open (mock)">{ic:play}</button><button class="icon-btn" title="Restart" data-toast="Restart (mock)">{ic:restart}</button><button class="icon-btn" title="Stop" data-toast="Stop (mock)">{ic:stop}</button></div></td></tr>
-          <tr><td><div class="u"><span class="avatar">MI</span>milan</div></td><td><span class="pill spawning"><span class="dot"></span>Spawning</span></td><td><span class="act">-</span></td><td class="num">-</td><td class="num">-</td><td class="num"><span class="tag accent">0,1</span></td><td class="num">-</td><td><div class="row-actions"><button class="icon-btn" title="Logs" data-toast="Tail spawn log (mock)">{ic:activity}</button><button class="icon-btn" title="Cancel" data-toast="Cancel spawn (mock)">{ic:stop}</button></div></td></tr>
-          <tr><td><div class="u"><span class="avatar">NI</span>nina</div></td><td><span class="pill running"><span class="dot"></span>Running</span></td><td><span class="act idle">Idle 38m</span></td><td class="num">2%</td><td class="num">1.4 / 16 GB</td><td class="num">-</td><td class="num" style="color:var(--color-warning)">22m</td><td><div class="row-actions"><button class="icon-btn" title="Open" data-toast="Open (mock)">{ic:play}</button><button class="icon-btn" title="Restart" data-toast="Restart (mock)">{ic:restart}</button><button class="icon-btn" title="Stop" data-toast="Stop (mock)">{ic:stop}</button></div></td></tr>
-          <tr><td><div class="u"><span class="avatar">JA</span>jakub</div></td><td><span class="pill stopped"><span class="dot"></span>Stopped</span></td><td><span class="act">-</span></td><td class="num">-</td><td class="num">-</td><td class="num">-</td><td class="num">-</td><td><div class="row-actions"><button class="icon-btn" title="Start" data-toast="Start (mock)">{ic:play}</button><button class="icon-btn" title="More" data-toast="More (mock)">{ic:dots}</button></div></td></tr>
-          <tr><td><div class="u"><span class="avatar">EW</span>ewa</div></td><td><span class="pill error"><span class="dot"></span>Spawn failed</span></td><td><span class="act">-</span></td><td class="num">-</td><td class="num">-</td><td class="num">-</td><td class="num">-</td><td><div class="row-actions"><button class="icon-btn" title="View error" data-toast="View error (mock)">{ic:activity}</button><button class="icon-btn" title="Relaunch" data-toast="Relaunch (mock)">{ic:restart}</button></div></td></tr>
+          <!-- Running + engaged: pill Active + full 5-segment meter inline -->
+          <tr>
+            <td><div class="u"><span class="avatar">AL</span>alice</div></td>
+            <td><span class="pill running"><span class="dot"></span>Active</span> <span class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></td>
+            <td class="num">38%</td>
+            <td class="num">6.2 / 16 GB</td>
+            <td class="num">-</td>
+            <td class="num">3h 48m</td>
+            <td><div class="row-actions"><button class="icon-btn" title="Enter session" data-toast="Confirm: enter alice's running server? (mock)">{ic:play}</button><button class="icon-btn" title="Restart" data-toast="Restarted alice's server (mock)">{ic:restart}</button><button class="icon-btn" title="Stop" data-toast="Stopped alice's server (mock)">{ic:stop}</button></div></td>
+          </tr>
+          <!-- Running admin (role tag), engaged -->
+          <tr>
+            <td><div class="u"><span class="avatar">KO</span><div>konrad <span class="tag accent">admin</span></div></div></td>
+            <td><span class="pill running"><span class="dot"></span>Active</span> <span class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></td>
+            <td class="num">12%</td>
+            <td class="num">3.1 / 32 GB</td>
+            <td class="num">-</td>
+            <td class="num">22h</td>
+            <td><div class="row-actions"><button class="icon-btn" title="Enter session" data-toast="Confirm: enter konrad's running server? (mock)">{ic:play}</button><button class="icon-btn" title="Restart" data-toast="Restarted konrad's server (mock)">{ic:restart}</button><button class="icon-btn" title="Stop" data-toast="Stopped konrad's server (mock)">{ic:stop}</button></div></td>
+          </tr>
+          <!-- Spawning, GPU 0,1: view live log / cancel -->
+          <tr>
+            <td><div class="u"><span class="avatar">MI</span>milan</div></td>
+            <td><span class="pill spawning"><span class="dot"></span>Spawning</span></td>
+            <td class="num">-</td>
+            <td class="num">-</td>
+            <td class="num"><span class="tag accent">0,1</span></td>
+            <td class="num">-</td>
+            <td><div class="row-actions"><button class="icon-btn" title="View spawn log" data-toast="Tail live spawn log (mock)">{ic:activity}</button><button class="icon-btn" title="Cancel spawn" data-toast="Cancelled milan's spawn (mock)">{ic:stop}</button></div></td>
+          </tr>
+          <!-- Running + idle: pill Idle 38m + amber meter (~1 on); near-cull time left -->
+          <tr>
+            <td><div class="u"><span class="avatar">NI</span>nina</div></td>
+            <td><span class="pill idle"><span class="dot"></span>Idle 38m</span> <span class="meter idle"><i class="on"></i><i></i><i></i><i></i><i></i></span></td>
+            <td class="num">2%</td>
+            <td class="num">1.4 / 16 GB</td>
+            <td class="num">-</td>
+            <td class="num"><span style="color:var(--color-warning)">22m</span></td>
+            <td><div class="row-actions"><button class="icon-btn" title="Enter session" data-toast="Confirm: enter nina's running server? (mock)">{ic:play}</button><button class="icon-btn" title="Restart" data-toast="Restarted nina's server (mock)">{ic:restart}</button><button class="icon-btn" title="Stop" data-toast="Stopped nina's server (mock)">{ic:stop}</button></div></td>
+          </tr>
+          <!-- Stopped: admin Start (stays on list, not entering); quota-warning badge -->
+          <tr>
+            <td><div class="u"><span class="avatar">JA</span>jakub</div></td>
+            <td><span class="pill stopped"><span class="dot"></span>Stopped</span></td>
+            <td class="num">-</td>
+            <td class="num">- <span class="tag warn">vol 52GB</span></td>
+            <td class="num">-</td>
+            <td class="num">-</td>
+            <td><div class="row-actions"><button class="icon-btn" title="Start" data-toast="Started jakub's server - you stay here (mock)">{ic:play}</button></div></td>
+          </tr>
+          <!-- Spawn failed: view error / relaunch -->
+          <tr>
+            <td><div class="u"><span class="avatar">EW</span>ewa</div></td>
+            <td><span class="pill error"><span class="dot"></span>Spawn failed</span></td>
+            <td class="num">-</td>
+            <td class="num">-</td>
+            <td class="num">-</td>
+            <td class="num">-</td>
+            <td><div class="row-actions"><button class="icon-btn" title="View error" data-toast="View spawn error (mock)">{ic:activity}</button><button class="icon-btn" title="Relaunch" data-toast="Relaunched ewa's server (mock)">{ic:restart}</button></div></td>
+          </tr>
+          <!-- Stopped / offline holders, preserved in the list (not lost) -->
+          <tr>
+            <td><div class="u"><span class="avatar">PI</span>piotr</div></td>
+            <td><span class="pill stopped"><span class="dot"></span>Stopped</span></td>
+            <td class="num">-</td>
+            <td class="num">-</td>
+            <td class="num">-</td>
+            <td class="num">-</td>
+            <td><div class="row-actions"><button class="icon-btn" title="Start" data-toast="Started piotr's server - you stay here (mock)">{ic:play}</button></div></td>
+          </tr>
+          <tr>
+            <td><div class="u"><span class="avatar">MA</span>marta</div></td>
+            <td><span class="pill stopped"><span class="dot"></span>Stopped</span></td>
+            <td class="num">-</td>
+            <td class="num">-</td>
+            <td class="num"><span class="tag accent">0</span></td>
+            <td class="num">-</td>
+            <td><div class="row-actions"><button class="icon-btn" title="Start" data-toast="Started marta's server - you stay here (mock)">{ic:play}</button></div></td>
+          </tr>
         </tbody>
       </table>
     </div>
   </div>
+
+  <!-- SRV-002 is intentionally light: clicking a row expands an inline detail with current status plus the live spawn log during spawn - no historical timeseries exists, so no separate screen. -->
+  <div class="page-sub" style="margin-top:var(--space-3)">Click a row to expand a light detail - current status plus the live spawn log while a server is spawning; there is no per-server history to chart.</div>
 </main>
 <script src="assets/app.js"></script>
 </body>
