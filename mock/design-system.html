@@ -115,6 +115,19 @@
     </dl>
   </div>
 
+  <!-- Notices: in-UI confirmation / status lines - a subtle bar with a coloured
+       left edge; success carries a small (sized) glyph, the rest are text-only -->
+  <div class="card" style="margin-bottom:var(--space-4)">
+    <div class="section-title" style="margin-top:0">Notices - in-UI confirmations</div>
+    <div class="page-sub" style="margin-bottom:var(--space-3)">Shown directly under the action that produced them - e.g. under Set lab image, after a copy-to-clipboard or a share toggle</div>
+    <div style="display:flex;flex-direction:column;gap:var(--space-2);max-width:560px">
+      <div class="notice success">{ic:check} Image pulled and verified - ready to spawn</div>
+      <div class="notice warning">Cloudflare sharing is not running - link works on this network only</div>
+      <div class="notice info">Sampling resumes when the server becomes active</div>
+      <div class="notice error">Could not reach the server - try again</div>
+    </div>
+  </div>
+
   <!-- Inputs + misc -->
   <div class="card">
     <div class="section-title" style="margin-top:0">Inputs and misc</div>

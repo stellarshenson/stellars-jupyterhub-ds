@@ -16,6 +16,9 @@
       <h1 class="page-title">Settings</h1>
       <div class="page-sub">A read-only reference of the running configuration - no in-place editing (future option)</div>
     </div>
+    <div class="actions">
+      <a class="page-secondary" href="settings-reference.html" title="Every platform environment variable, its value and description">{ic:code} Full reference</a>
+    </div>
   </div>
 
   <div class="grid cols-2">
@@ -23,9 +26,8 @@
       <div class="card-head"><h3>Spawning</h3></div>
       <table class="tbl"><tbody>
         <tr><td>Lab image</td><td class="num mono">stellars-ds:latest</td></tr>
-        <tr><td>Working dir</td><td class="num mono">/home/lab/workspace</td></tr>
         <tr><td>GPU mode</td><td><span class="tag accent">auto-detect</span></td></tr>
-        <tr><td>Idle culler</td><td><span class="tag">on</span></td></tr>
+        <tr><td>Idle culler</td><td><span class="tag ok">enabled</span></td></tr>
       </tbody></table>
     </div>
 
@@ -50,18 +52,19 @@
     <div class="card card-pad-0">
       <div class="card-head"><h3>Activity Monitor</h3></div>
       <table class="tbl"><tbody>
-        <tr><td>Sampling</td><td><span class="tag">on</span></td></tr>
+        <tr><td>Sampling</td><td><span class="tag ok">enabled</span></td></tr>
         <tr><td>Sample interval</td><td class="num">10s</td></tr>
         <tr><td>Score window</td><td class="num">1h</td></tr>
       </tbody></table>
     </div>
 
     <div class="card card-pad-0">
-      <div class="card-head"><h3>Branding</h3></div>
+      <div class="card-head"><h3>Platform</h3></div>
       <table class="tbl"><tbody>
-        <tr><td>Theme</td><td><span class="tag accent">Stellars Sublime</span></td></tr>
-        <tr><td>Logo</td><td class="num mono">file://logo.svg</td></tr>
-        <tr><td>Favicon</td><td class="num mono">file://favicon.ico</td></tr>
+        <tr><td>Version</td><td class="num mono">1.0.0</td></tr>
+        <tr><td>Base URL</td><td class="num mono">/jupyterhub</td></tr>
+        <tr><td>Timezone</td><td class="num mono">Europe/Warsaw</td></tr>
+        <tr><td>SSL</td><td><span class="tag ok">enabled</span></td></tr>
       </tbody></table>
     </div>
 

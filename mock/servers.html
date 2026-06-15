@@ -23,9 +23,9 @@
        Status (instantaneous lifecycle, drives the actions) and Activity (24h
        engagement, the meter; % in the tooltip) are distinct columns.
 
-       At scale: search filters live; the scope pills (Active default, Stopped,
-       Failed, All) double as the summary and keep Stopped out of the default
-       view; columns sort; the pager is illustrative. Quota breaches (memory /
+       At scale: search filters live; the scope pills (Active default, Offline,
+       All) double as the summary and keep Offline out of the default view;
+       columns sort; the pager is illustrative. Quota breaches (memory /
        volumes / writable layer) are colour-only. -->
   <div class="card card-pad-0">
     <div class="card-head">
@@ -33,9 +33,8 @@
       <div class="actions">
         <label class="search">{ic:search}<input type="text" placeholder="Filter by user…" data-list-search></label>
         <span class="pill running active" data-list-scope="active"><span class="dot"></span>Active 18</span>
-        <span class="pill stopped" data-list-scope="stopped"><span class="dot"></span>Stopped 1,240</span>
-        <span class="pill error" data-list-scope="failed"><span class="dot"></span>Failed 4</span>
-        <span class="pill stopped" data-list-scope="all"><span class="dot"></span>All 1,262</span>
+        <span class="pill stopped" data-list-scope="offline"><span class="dot"></span>Offline 1,240</span>
+        <span class="pill stopped" data-list-scope="all"><span class="dot"></span>All 1,258</span>
         <button class="list-secondary" data-toast="Reset activity samples - clears 24h history (mock)">Reset samples</button>
         <button class="list-secondary" data-toast="Downloaded activity report (mock)">{ic:arrowup} Report</button>
         <button class="list-secondary" data-toast="Refreshed (mock)">{ic:restart} Refresh</button>
@@ -46,7 +45,7 @@
         <thead>
           <tr>
             <th class="sortable" data-sort="user" title="User and role; the container is jupyterlab-<user>">User <span class="sort"></span></th>
-            <th class="sortable" data-sort="status" data-sort-type="num" title="Lifecycle: Active / Idle / Spawning / Stopped / Spawn failed">Status <span class="sort"></span></th>
+            <th class="sortable" data-sort="status" data-sort-type="num" title="Lifecycle: Active / Idle / Spawning / Offline">Status <span class="sort"></span></th>
             <th class="sortable" data-sort="act" data-sort-type="num" title="24h engagement meter; the exact % is in each cell">Activity <span class="sort"></span></th>
             <th class="sortable right" data-sort="cpu" data-sort-type="num" title="CPU usage as % of host">CPU <span class="sort"></span></th>
             <th class="sortable right" data-sort="mem" data-sort-type="num" title="Memory used as % of host RAM; warns above the 25% per-user limit">Memory <span class="sort"></span></th>
@@ -132,11 +131,11 @@
             </div></td>
           </tr>
 
-          <!-- Stopped, but storage persists: volumes over the 50 GB quota are
+          <!-- Offline, but storage persists: volumes over the 50 GB quota are
                the reason to act. Start (admin stays here) + Manage volumes. -->
-          <tr data-text="jakub" data-scope="stopped" data-sort-status="4" data-sort-act="0" data-sort-cpu="0" data-sort-mem="0" data-sort-vol="52" data-sort-system="0" data-sort-time="0">
+          <tr data-text="jakub" data-scope="offline" data-sort-status="4" data-sort-act="0" data-sort-cpu="0" data-sort-mem="0" data-sort-vol="52" data-sort-system="0" data-sort-time="0">
             <td><div class="u" title="Container jupyterlab-jakub">jakub</div></td>
-            <td><span class="pill stopped" title="Stopped 2 days ago"><span class="dot"></span>Stopped 2d</span></td>
+            <td><span class="pill stopped" title="Offline 2 days ago"><span class="dot"></span>Offline 2d</span></td>
             <td class="num" title="Not running">-</td>
             <td class="num right" title="Not running">-</td>
             <td class="num right" title="Not running">-</td>
@@ -150,27 +149,10 @@
             </div></td>
           </tr>
 
-          <!-- Spawn failed: red pill, no metrics. Read the error or relaunch. -->
-          <tr data-text="ewa" data-scope="failed" data-sort-status="5" data-sort-act="0" data-sort-cpu="0" data-sort-mem="0" data-sort-vol="3" data-sort-system="0" data-sort-time="0">
-            <td><div class="u" title="Container jupyterlab-ewa">ewa</div></td>
-            <td><span class="pill error" title="Spawn failed 5 hours ago"><span class="dot"></span>Spawn failed 5h</span></td>
-            <td class="num" title="Not running">-</td>
-            <td class="num right" title="Not running">-</td>
-            <td class="num right" title="Not running">-</td>
-            <td title="No GPU assigned">-</td>
-            <td class="num right" title="home 0.8 GB · workspace 2.0 GB · cache 0.2 GB">3 GB</td>
-            <td class="num right" title="Not running">-</td>
-            <td class="num right" title="Not running">-</td>
-            <td><div class="row-actions">
-              <button class="list-icon-secondary" title="View spawn error" data-toast="View spawn error (mock)">{ic:activity}</button>
-              <button class="list-icon-secondary" title="Relaunch" data-toast="Relaunched ewa's server (mock)">{ic:restart}</button>
-            </div></td>
-          </tr>
-
-          <!-- Stopped holder with modest storage. -->
-          <tr data-text="piotr" data-scope="stopped" data-sort-status="4" data-sort-act="0" data-sort-cpu="0" data-sort-mem="0" data-sort-vol="6" data-sort-system="0" data-sort-time="0">
+          <!-- Offline holder with modest storage. -->
+          <tr data-text="piotr" data-scope="offline" data-sort-status="4" data-sort-act="0" data-sort-cpu="0" data-sort-mem="0" data-sort-vol="6" data-sort-system="0" data-sort-time="0">
             <td><div class="u" title="Container jupyterlab-piotr">piotr</div></td>
-            <td><span class="pill stopped" title="Stopped 6 hours ago"><span class="dot"></span>Stopped 6h</span></td>
+            <td><span class="pill stopped" title="Offline 6 hours ago"><span class="dot"></span>Offline 6h</span></td>
             <td class="num" title="Not running">-</td>
             <td class="num right" title="Not running">-</td>
             <td class="num right" title="Not running">-</td>
@@ -185,9 +167,9 @@
           </tr>
 
           <!-- Never spawned: no volumes exist yet, nothing to manage. -->
-          <tr data-text="marta" data-scope="stopped" data-sort-status="4" data-sort-act="0" data-sort-cpu="0" data-sort-mem="0" data-sort-vol="0" data-sort-system="0" data-sort-time="0">
+          <tr data-text="marta" data-scope="offline" data-sort-status="4" data-sort-act="0" data-sort-cpu="0" data-sort-mem="0" data-sort-vol="0" data-sort-system="0" data-sort-time="0">
             <td><div class="u" title="Container jupyterlab-marta - never spawned">marta</div></td>
-            <td><span class="pill stopped" title="Stopped - never spawned"><span class="dot"></span>Stopped</span></td>
+            <td><span class="pill stopped" title="Offline - never spawned"><span class="dot"></span>Offline</span></td>
             <td class="num" title="Never spawned">-</td>
             <td class="num right" title="Never spawned">-</td>
             <td class="num right" title="Never spawned">-</td>

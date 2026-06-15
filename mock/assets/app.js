@@ -66,7 +66,8 @@
   // page.
   var NAV_ADMIN = [
     { group: "", items: [
-      { id: "home",     label: "Overview", icon: "grid",     href: "home.html" }
+      { id: "home",    label: "Home",    icon: "grid", href: "home.html" },
+      { id: "profile", label: "Profile", icon: "user", href: "profile.html" }
     ]},
     { group: "Administration", items: [
       { id: "servers",  label: "Servers",  icon: "server",   href: "servers.html" },
@@ -81,10 +82,12 @@
       ]}
     ]}
   ];
-  // a user has one server, so it lives on their Overview - no fleet pages
+  // a user has one server, so it lives on their Home - no fleet pages; they
+  // still get a personal Profile to edit their own details
   var NAV_USER = [
     { group: "", items: [
-      { id: "home", label: "Overview", icon: "grid", href: "home-user.html" }
+      { id: "home",    label: "Home",    icon: "grid", href: "home-user.html" },
+      { id: "profile", label: "Profile", icon: "user", href: "profile-user.html" }
     ]}
   ];
   function NAV() { return isAdmin() ? NAV_ADMIN : NAV_USER; }
@@ -141,8 +144,22 @@
     var main = document.querySelector("main");
     var mainHTML = expandIcons(main ? main.innerHTML : "");
     var match = navItems().filter(function (n) { return n.id === page; })[0];
-    // off-nav pages (events, user overview) carry their own crumb via data-title
-    var crumb = match ? match.label : (document.body.getAttribute("data-title") || "");
+    // Breadcrumb chain. A sub-page reached from a list (New user, Bulk add,
+    // Configure user/group, Settings reference) sets data-crumb-parent="Label|href"
+    // so the trail reads Optimum Hub / <parent, clickable> / <data-title>, and the
+    // parent crumb lets you abandon the action and return to the list. Other pages
+    // show the nav label (or data-title for off-nav pages like Events).
+    var parentAttr = document.body.getAttribute("data-crumb-parent");
+    var crumb = parentAttr ? (document.body.getAttribute("data-title") || "")
+              : (match ? match.label : (document.body.getAttribute("data-title") || ""));
+    var crumbsHTML = '<span>Optimum Hub</span><span class="sep">/</span>';
+    if (parentAttr) {
+      var pcut = parentAttr.indexOf("|");
+      var plabel = pcut >= 0 ? parentAttr.slice(0, pcut) : parentAttr;
+      var phref = pcut >= 0 ? parentAttr.slice(pcut + 1) : "#";
+      crumbsHTML += '<a href="' + phref + '">' + plabel + '</a><span class="sep">/</span>';
+    }
+    crumbsHTML += '<b>' + crumb + '</b>';
     var home = isAdmin() ? "home.html" : "home-user.html";
     var who = isAdmin()
       ? '<div class="who">admin<small>Administrator</small></div>'
@@ -184,7 +201,7 @@
         '</aside>' +
         '<div class="main">' +
           '<header class="topbar">' +
-            '<div class="crumbs"><span>Optimum Hub</span><span class="sep">/</span><b>' + crumb + '</b></div>' +
+            '<div class="crumbs">' + crumbsHTML + '</div>' +
             themeChangerHTML() +
           '</header>' +
           '<div class="content">' + mainHTML + '</div>' +
@@ -192,6 +209,7 @@
       '</div>' +
       paletteHTML() +
       '<div class="toasts" id="toasts"></div>' +
+      '<div class="version-badge" title="OptimumHub version">OptimumHub 1.0.0</div>' +
       (page === "home" ? mockSwitchHTML() : '');
 
     applyMode(currentMode());
@@ -467,6 +485,23 @@
   // wire toasts, tabs and the scale behaviours within a subtree (document on load)
   function wireRoot(root) {
     forEach(root.querySelectorAll("[data-toast]"), function (el) { el.addEventListener("click", function () { toast(el.getAttribute("data-toast")); }); });
+    // data-confirm: a Save (or similar) reveals an inline success notice right
+    // above its form-foot - the persistent confirmation pattern after saving
+    forEach(root.querySelectorAll("[data-confirm]"), function (el) {
+      el.addEventListener("click", function () {
+        var anchor = el.closest(".form-foot") || el;
+        var slot = anchor.previousElementSibling;
+        if (!slot || !slot.hasAttribute || !slot.hasAttribute("data-confirm-slot")) {
+          slot = document.createElement("div");
+          slot.className = "notice success";
+          slot.setAttribute("data-confirm-slot", "");
+          slot.innerHTML = svg("check") + "<span></span>";
+          anchor.parentNode.insertBefore(slot, anchor);
+        }
+        slot.querySelector("span").textContent = el.getAttribute("data-confirm");
+        slot.style.display = "";
+      });
+    });
     forEach(root.querySelectorAll("[data-tabs]"), function (box) { box.addEventListener("click", tabClick); });
     applyList(root);
     applyCombo(root);

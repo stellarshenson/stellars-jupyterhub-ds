@@ -86,6 +86,8 @@ code, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
 }
 .crumbs { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--color-text-subtle); }
 .crumbs b { color: var(--color-text); font-weight: 600; }
+.crumbs a { color: var(--color-text-muted); text-decoration: none; }
+.crumbs a:hover { color: var(--color-accent); }
 .crumbs .sep { color: var(--color-border-strong); }
 
 /* topbar theme changer - a compact segmented control (light / dark / system) */
@@ -394,6 +396,21 @@ th[data-dir="desc"] .sort { border-top: 5px solid currentColor; opacity: .7; }
 .note { display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: 1px dashed var(--color-border-strong); border-radius: var(--radius-md); background: transparent; color: var(--color-text-muted); font-size: var(--text-xs); }
 .note b { color: var(--color-text-subtle); font-weight: 600; }
 
+/* status / confirmation line - a subtle bar with a coloured left edge and a
+   small leading glyph; mirrors the live hub's share-link notices. Variants by
+   outcome: success / warning / info / error. The glyph is sized here so an
+   inline {ic:} never falls back to its huge intrinsic size. */
+.notice { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); border-left: 3px solid var(--color-border-strong); background: var(--color-bg-subtle); color: var(--color-text-muted); font-size: var(--text-sm); }
+.notice .ic { width: 15px; height: 15px; flex: none; }
+.notice.success { border-left-color: var(--color-success); }
+.notice.success .ic { color: var(--color-success); }
+.notice.warning { border-left-color: var(--color-warning); }
+.notice.warning .ic { color: var(--color-warning); }
+.notice.info { border-left-color: var(--color-info); }
+.notice.info .ic { color: var(--color-info); }
+.notice.error { border-left-color: var(--color-danger); }
+.notice.error .ic { color: var(--color-danger); }
+
 .section-title { font-size: var(--text-sm); text-transform: uppercase; letter-spacing: .5px; color: var(--color-text-subtle); margin: var(--space-6) 0 var(--space-3); }
 
 /* dashboard widgets are mini-views: the whole card drills into its page */
@@ -477,6 +494,16 @@ th[data-dir="desc"] .sort { border-top: 5px solid currentColor; opacity: .7; }
 .toast { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--color-surface-raised); border: 1px solid var(--color-border-strong); box-shadow: var(--shadow-md); font-size: var(--text-sm); animation: slidein .18s ease; }
 .toast .ic { width: 18px; height: 18px; color: var(--color-success); }
 @keyframes slidein { from { opacity: 0; transform: translateY(8px); } }
+
+/* notifications: the sent-history fills the viewport's free height; its list
+   scrolls internally while the pager stays pinned at the card bottom */
+body[data-page="notifications"] .content { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+body[data-page="notifications"] .notif-cols { flex: 1; min-height: 0; }
+.notif-history { display: flex; flex-direction: column; min-height: 0; }
+.notif-history .table-wrap { flex: 1; min-height: 0; overflow-y: auto; }
+
+/* product version, bottom-right of every page (mirrors STELLARS_JUPYTERHUB_VERSION) */
+.version-badge { position: fixed; right: var(--space-4); bottom: var(--space-4); z-index: 40; font-size: 11px; letter-spacing: .3px; color: var(--color-text-subtle); pointer-events: none; }
 
 /* mock-only role switcher - NOT part of the design; a dashed-border helper so a
    reviewer can jump between the admin and user Overview without editing URLs */

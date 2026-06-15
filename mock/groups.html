@@ -24,7 +24,7 @@
   <!-- At scale: search filters live; columns sort; the pager is illustrative.
        Members is a COUNT that drills into the group's Members tab - never a
        name-enumerating tooltip. Active policies are capped (+N reveals the
-       rest). Clicking the group name (or the cog) opens its full config. The #
+       rest). Clicking the group name opens its full config. The #
        column is the drag handle (grab the row by its number); the up/down arrows
        do single-step priority moves. -->
   <div class="card card-pad-0">
@@ -37,69 +37,64 @@
     </div>
     <div class="table-wrap">
       <table class="tbl" data-list>
-        <thead><tr><th>#</th><th class="sortable" data-sort="group">Group <span class="sort"></span></th><th class="sortable right" data-sort="members" data-sort-type="num">Members <span class="sort"></span></th><th>Active policies</th><th class="right">Actions</th></tr></thead>
+        <thead><tr><th>#</th><th class="sortable" data-sort="group">Group <span class="sort"></span></th><th>Description</th><th class="sortable right" data-sort="members" data-sort-type="num">Members <span class="sort"></span></th><th>Active policies</th><th class="right">Actions</th></tr></thead>
         <tbody>
-          <tr data-text="research" data-sort-members="142">
+          <tr data-text="research research staff full gpu raw docker" data-sort-members="142">
             <td class="num drag" title="Drag to reorder by priority"><span class="grip">{ic:grip}</span>1</td>
-            <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer"><b>research</b></a></td>
+            <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer" title="GPU all · Docker raw · Sudo on · Mem 32G · Env 2"><b>research</b></a></td>
+            <td style="color:var(--color-text-muted)">Research staff - full GPU and raw Docker</td>
             <td class="right"><a href="group-config.html" style="color:var(--color-accent)">142 members</a></td>
-            <td><div class="chips" data-fill><span class="tag accent">GPU all</span><span class="tag accent">Docker raw</span><span class="tag warn">Sudo on</span><span class="tag accent">Mem 32G</span><span class="tag accent">Env 2</span></div></td>
+            <td><div class="chips" data-fill><span class="tag accent">GPU</span><span class="tag accent">Docker</span><span class="tag warn">Sudo</span><span class="tag accent">Mem</span><span class="tag accent">Env</span></div></td>
             <td><div class="row-actions">
               <button class="list-icon-disabled" title="Move up" disabled>{ic:arrowup}</button>
-              <button class="list-icon-secondary" title="Move down" data-toast="Moved research down (mock)">{ic:arrowdown}</button>
-              <a class="list-icon-secondary" href="group-config.html" title="Configure">{ic:settings}</a>
-              <button class="list-icon-dangerous" title="Delete" data-toast="Delete group research? removes all members (mock)">{ic:close}</button>
+              <button class="list-icon-secondary" title="Move down" data-toast="Moved research down (mock)">{ic:arrowdown}</button>              <button class="list-icon-dangerous" title="Delete" data-toast="Delete group research? removes all members (mock)">{ic:close}</button>
             </div></td>
           </tr>
-          <tr data-text="data-science" data-sort-members="318">
+          <tr data-text="data-science data science team baseline" data-sort-members="318">
             <td class="num drag" title="Drag to reorder by priority"><span class="grip">{ic:grip}</span>2</td>
-            <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer"><b>data-science</b></a></td>
+            <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer" title="Mem 16G · CPU 4 · Downloads off"><b>data-science</b></a></td>
+            <td style="color:var(--color-text-muted)">Data science team baseline</td>
             <td class="right"><a href="group-config.html" style="color:var(--color-accent)">318 members</a></td>
-            <td><div class="chips" data-fill><span class="tag accent">Mem 16G</span><span class="tag accent">CPU 4</span><span class="tag">Downloads off</span></div></td>
+            <td><div class="chips" data-fill><span class="tag accent">Mem</span><span class="tag accent">CPU</span><span class="tag">Downloads</span></div></td>
             <td><div class="row-actions">
               <button class="list-icon-secondary" title="Move up" data-toast="Moved data-science up (mock)">{ic:arrowup}</button>
-              <button class="list-icon-secondary" title="Move down" data-toast="Moved data-science down (mock)">{ic:arrowdown}</button>
-              <a class="list-icon-secondary" href="group-config.html" title="Configure">{ic:settings}</a>
-              <button class="list-icon-dangerous" title="Delete" data-toast="Delete group data-science? removes all members (mock)">{ic:close}</button>
+              <button class="list-icon-secondary" title="Move down" data-toast="Moved data-science down (mock)">{ic:arrowdown}</button>              <button class="list-icon-dangerous" title="Delete" data-toast="Delete group data-science? removes all members (mock)">{ic:close}</button>
             </div></td>
           </tr>
-          <tr data-text="gpu" data-sort-members="64">
+          <tr data-text="gpu dedicated gpu device access" data-sort-members="64">
             <td class="num drag" title="Drag to reorder by priority"><span class="grip">{ic:grip}</span>3</td>
-            <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer"><b>gpu</b></a></td>
+            <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer" title="GPU 0,1"><b>gpu</b></a></td>
+            <td style="color:var(--color-text-muted)">Dedicated GPU device access</td>
             <td class="right"><a href="group-config.html" style="color:var(--color-accent)">64 members</a></td>
-            <td><div class="chips" data-fill><span class="tag accent">GPU 0,1</span></div></td>
+            <td><div class="chips" data-fill><span class="tag accent">GPU</span></div></td>
             <td><div class="row-actions">
               <button class="list-icon-secondary" title="Move up" data-toast="Moved gpu up (mock)">{ic:arrowup}</button>
-              <button class="list-icon-secondary" title="Move down" data-toast="Moved gpu down (mock)">{ic:arrowdown}</button>
-              <a class="list-icon-secondary" href="group-config.html" title="Configure">{ic:settings}</a>
-              <button class="list-icon-dangerous" title="Delete" data-toast="Delete group gpu? removes all members (mock)">{ic:close}</button>
+              <button class="list-icon-secondary" title="Move down" data-toast="Moved gpu down (mock)">{ic:arrowdown}</button>              <button class="list-icon-dangerous" title="Delete" data-toast="Delete group gpu? removes all members (mock)">{ic:close}</button>
             </div></td>
           </tr>
-          <tr data-text="keys-openai" data-sort-members="37">
+          <tr data-text="keys-openai pooled openai api keys" data-sort-members="37">
             <td class="num drag" title="Drag to reorder by priority"><span class="grip">{ic:grip}</span>4</td>
-            <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer"><b>keys-openai</b></a></td>
+            <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer" title="API keys pool: 3 keys"><b>keys-openai</b></a></td>
+            <td style="color:var(--color-text-muted)">Pooled OpenAI API keys</td>
             <td class="right"><a href="group-config.html" style="color:var(--color-accent)">37 members</a></td>
-            <td><div class="chips" data-fill><span class="tag accent">API keys pool: 3</span></div></td>
+            <td><div class="chips" data-fill><span class="tag accent">API keys</span></div></td>
             <td><div class="row-actions">
               <button class="list-icon-secondary" title="Move up" data-toast="Moved keys-openai up (mock)">{ic:arrowup}</button>
-              <button class="list-icon-secondary" title="Move down" data-toast="Moved keys-openai down (mock)">{ic:arrowdown}</button>
-              <a class="list-icon-secondary" href="group-config.html" title="Configure">{ic:settings}</a>
-              <button class="list-icon-dangerous" title="Delete" data-toast="Delete group keys-openai? removes all members (mock)">{ic:close}</button>
+              <button class="list-icon-secondary" title="Move down" data-toast="Moved keys-openai down (mock)">{ic:arrowdown}</button>              <button class="list-icon-dangerous" title="Delete" data-toast="Delete group keys-openai? removes all members (mock)">{ic:close}</button>
             </div></td>
           </tr>
-          <tr data-text="interns" data-sort-members="0">
+          <tr data-text="interns limited onboarding access" data-sort-members="0">
             <td class="num drag" title="Drag to reorder by priority"><span class="grip">{ic:grip}</span>5</td>
             <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer"><b>interns</b></a></td>
+            <td style="color:var(--color-text-muted)">Limited onboarding access</td>
             <td class="right"><a href="group-config.html" style="color:var(--color-accent)">0 members</a></td>
             <td><span style="color:var(--color-text-subtle)">No policies configured</span></td>
             <td><div class="row-actions">
               <button class="list-icon-secondary" title="Move up" data-toast="Moved interns up (mock)">{ic:arrowup}</button>
-              <button class="list-icon-secondary" title="Move down" data-toast="Moved interns down (mock)">{ic:arrowdown}</button>
-              <a class="list-icon-secondary" href="group-config.html" title="Configure">{ic:settings}</a>
-              <button class="list-icon-dangerous" title="Delete" data-toast="Delete group interns? removes all members (mock)">{ic:close}</button>
+              <button class="list-icon-secondary" title="Move down" data-toast="Moved interns down (mock)">{ic:arrowdown}</button>              <button class="list-icon-dangerous" title="Delete" data-toast="Delete group interns? removes all members (mock)">{ic:close}</button>
             </div></td>
           </tr>
-          <tr data-list-empty hidden><td colspan="5"><div class="empty" style="padding:var(--space-6)"><p>No group matches that search</p></div></td></tr>
+          <tr data-list-empty hidden><td colspan="6"><div class="empty" style="padding:var(--space-6)"><p>No group matches that search</p></div></td></tr>
         </tbody>
       </table>
     </div>
