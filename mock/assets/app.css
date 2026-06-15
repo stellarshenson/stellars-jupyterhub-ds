@@ -131,8 +131,7 @@ code, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
  *             dangerous (red) · disabled (muted, inert)
  */
 .page-primary, .page-secondary, .page-dangerous, .page-disabled,
-.list-primary, .list-secondary, .list-dangerous, .list-disabled,
-.input-primary, .input-secondary, .input-dangerous, .input-disabled {
+.list-primary, .list-secondary, .list-dangerous, .list-disabled {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
   font: inherit; font-weight: 500; white-space: nowrap; text-decoration: none; cursor: pointer;
   border: 1px solid transparent; border-radius: var(--radius-md);
@@ -140,24 +139,43 @@ code, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
 }
 /* size by context (compact) */
 .page-primary, .page-secondary, .page-dangerous, .page-disabled { font-size: var(--text-sm); padding: 5px var(--space-3); }
-.input-primary, .input-secondary, .input-dangerous, .input-disabled { font-size: var(--text-sm); padding: var(--space-2) var(--space-3); }
 .list-primary, .list-secondary, .list-dangerous, .list-disabled { font-size: var(--text-xs); padding: 3px var(--space-2); }
-.page-primary .ic, .page-secondary .ic, .page-dangerous .ic,
-.input-primary .ic, .input-secondary .ic, .input-dangerous .ic { width: 16px; height: 16px; }
+.page-primary .ic, .page-secondary .ic, .page-dangerous .ic { width: 16px; height: 16px; }
 .list-primary .ic, .list-secondary .ic, .list-dangerous .ic { width: 14px; height: 14px; }
 /* colour by variant */
-.page-primary, .list-primary, .input-primary { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-accent-fg); }
-.page-primary:hover, .list-primary:hover, .input-primary:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
-.page-secondary, .list-secondary, .input-secondary { background: var(--color-surface); border-color: var(--color-border); color: var(--color-text); }
-.page-secondary:hover, .list-secondary:hover, .input-secondary:hover { background: var(--color-surface-hover); border-color: var(--color-border-strong); }
-.page-dangerous, .list-dangerous, .input-dangerous { background: var(--color-surface); border-color: var(--color-border); color: var(--color-danger); }
-.page-dangerous:hover, .list-dangerous:hover, .input-dangerous:hover { background: var(--color-danger-soft); border-color: var(--color-danger); }
-.page-disabled, .list-disabled, .input-disabled,
+.page-primary, .list-primary { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-accent-fg); }
+.page-primary:hover, .list-primary:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
+.page-secondary, .list-secondary { background: var(--color-surface); border-color: var(--color-border); color: var(--color-text); }
+.page-secondary:hover, .list-secondary:hover { background: var(--color-surface-hover); border-color: var(--color-border-strong); }
+.page-dangerous, .list-dangerous { background: var(--color-surface); border-color: var(--color-border); color: var(--color-danger); }
+.page-dangerous:hover, .list-dangerous:hover { background: var(--color-danger-soft); border-color: var(--color-danger); }
+.page-disabled, .list-disabled,
 .page-primary[disabled], .page-secondary[disabled], .page-dangerous[disabled],
-.list-primary[disabled], .list-secondary[disabled], .list-dangerous[disabled],
-.input-primary[disabled], .input-secondary[disabled], .input-dangerous[disabled] {
+.list-primary[disabled], .list-secondary[disabled], .list-dangerous[disabled] {
   background: var(--color-surface); border-color: var(--color-border-subtle);
   color: var(--color-text-subtle); opacity: .55; cursor: default; pointer-events: none;
+}
+
+/* input-context buttons: sit flush with a field, match its height and almost
+   blend into it. Variants primary / secondary / warning / disabled; content can
+   be text, icon+text, or icon-only. */
+.input-primary, .input-secondary, .input-warning, .input-disabled {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  font: inherit; font-size: var(--text-sm); font-weight: 500; white-space: nowrap;
+  text-decoration: none; cursor: pointer; padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
+}
+.input-primary .ic, .input-secondary .ic, .input-warning .ic, .input-disabled .ic { width: 15px; height: 15px; }
+.input-primary { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-accent-fg); }
+.input-primary:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
+.input-secondary { background: var(--color-bg); color: var(--color-text-muted); }
+.input-secondary:hover { background: var(--color-surface-hover); color: var(--color-text); border-color: var(--color-border-strong); }
+.input-warning { background: var(--color-bg); color: var(--color-warning); }
+.input-warning:hover { background: var(--color-warning-soft); border-color: var(--color-warning); }
+.input-disabled, .input-primary[disabled], .input-secondary[disabled], .input-warning[disabled] {
+  background: var(--color-bg-subtle); border-color: var(--color-border-subtle); color: var(--color-text-subtle);
+  cursor: default; pointer-events: none;
 }
 
 /* list-icon: icon-only square buttons (own reset, no text) - rows and sidebar foot */
