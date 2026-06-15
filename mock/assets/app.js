@@ -41,6 +41,7 @@
     gpu:     'M3 6h18v12H3zM8 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M14 10h4M14 14h4',
     memory:  'M3 8h18v8H3zM7 11v2M11 11v2M15 11v2M6 16v2M10 16v2M14 16v2M18 16v2',
     download:'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
+    upload:  'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
     box:     'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96 12 12.01l8.73-5.05M12 22.08V12',
     code:    'm18 16 4-4-4-4M6 8l-4 4 4 4M14.5 4l-5 16'
   };
@@ -514,6 +515,14 @@
       });
     });
     forEach(root.querySelectorAll("[data-tabs]"), function (box) { box.addEventListener("click", tabClick); applyTabWidth(box); });
+    // data-check-all: a header checkbox toggles every row checkbox in its table
+    forEach(root.querySelectorAll("[data-check-all]"), function (master) {
+      master.addEventListener("change", function () {
+        var table = master.closest ? master.closest("table") : null;
+        if (!table) return;
+        forEach(table.querySelectorAll("tbody input[type=checkbox]"), function (cb) { cb.checked = master.checked; });
+      });
+    });
     applyList(root);
     applyCombo(root);
     applyChips(root);

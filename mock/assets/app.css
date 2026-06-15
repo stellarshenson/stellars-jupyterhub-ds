@@ -249,8 +249,9 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .tbl tbody tr.alt { background: color-mix(in srgb, var(--color-text) 3%, transparent); }
 .tbl tbody tr:hover { background: var(--color-surface-hover); }
 .tbl .u { display: inline-flex; align-items: center; gap: var(--space-3); }
-/* full name shown beside a username as a plain muted hint (not a link) */
-.tbl .name-hint { color: var(--color-text-subtle); margin-left: var(--space-3); }
+/* full name shown BELOW the username as a plain muted hint (not a link); when a
+   user has no full name the username stays single-line and the cell centres it */
+.tbl .name-hint { display: block; color: var(--color-text-subtle); font-size: var(--text-xs); margin-top: 2px; }
 /* a clickable username reads as a link (accent), underlines on hover */
 .tbl a.u { color: var(--color-accent); cursor: pointer; }
 .tbl a.u:hover { text-decoration: underline; }
