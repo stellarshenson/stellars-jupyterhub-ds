@@ -74,7 +74,6 @@
         <thead>
           <tr>
             <th class="sortable" data-sort="user">User <span class="sort"></span></th>
-            <th>Role</th>
             <th>Authorised</th>
             <th class="right">Groups</th>
             <th class="sortable right" data-sort="seen" data-sort-type="num">Last seen <span class="sort"></span></th>
@@ -83,8 +82,7 @@
         </thead>
         <tbody>
           <tr data-text="admin" data-scope="authorised" data-sort-seen="0">
-            <td><div class="u"><span class="avatar">AD</span>admin</div></td>
-            <td><span class="tag accent">admin</span></td>
+            <td><div class="u"><span class="avatar">AD</span>admin <span class="tag accent">admin</span></div></td>
             <td><span class="switch on" data-toast="Cannot de-authorise yourself (mock)"><span class="track"></span></span></td>
             <td class="right"><a href="user-config.html" style="color:var(--color-accent)">1 group</a></td>
             <td class="num right">now</td>
@@ -92,7 +90,6 @@
           </tr>
           <tr data-text="alice" data-scope="authorised" data-sort-seen="2">
             <td><div class="u"><span class="avatar">AL</span>alice</div></td>
-            <td><span class="tag">user</span></td>
             <td><span class="switch on" data-toast="De-authorised alice (mock)"><span class="track"></span></span></td>
             <td class="right"><a href="user-config.html" style="color:var(--color-accent)">4 groups</a></td>
             <td class="num right">2m ago</td>
@@ -100,7 +97,6 @@
           </tr>
           <tr data-text="milan" data-scope="authorised" data-sort-seen="1">
             <td><div class="u"><span class="avatar">MI</span>milan</div></td>
-            <td><span class="tag">user</span></td>
             <td><span class="switch on" data-toast="De-authorised milan (mock)"><span class="track"></span></span></td>
             <td class="right"><a href="user-config.html" style="color:var(--color-accent)">2 groups</a></td>
             <td class="num right">now</td>
@@ -108,13 +104,12 @@
           </tr>
           <tr data-text="jakub" data-scope="deauthorised" data-sort-seen="1440">
             <td><div class="u"><span class="avatar">JA</span>jakub</div></td>
-            <td><span class="tag">user</span></td>
             <td><span class="switch" data-toast="Re-authorised jakub (mock)"><span class="track"></span></span></td>
             <td class="right"><span style="color:var(--color-text-subtle)">de-authorised</span></td>
             <td class="num right">1d ago</td>
             <td class="right"><a class="icon-btn" href="user-config.html" title="Configure">{ic:settings}</a></td>
           </tr>
-          <tr data-list-empty hidden><td colspan="6"><div class="empty" style="padding:var(--space-6)"><p>No user matches that filter</p></div></td></tr>
+          <tr data-list-empty hidden><td colspan="5"><div class="empty" style="padding:var(--space-6)"><p>No user matches that filter</p></div></td></tr>
         </tbody>
       </table>
     </div>
