@@ -1,0 +1,109 @@
+/* Stellars portal mock - design tokens
+ *
+ * Theme = JupyterLab "Stellars Sublime" surfaces + Stellars-Tech accents.
+ * Dark-first in :root (Sublime blue-grey, = optimum-hub-dark);
+ * light via [data-theme="optimum-hub-light"].
+ * Components reference ONLY these semantic vars - swap a handful to retheme.
+ *
+ * Palette sources:
+ *   Sublime layout   #252b32 #303841 #404b54 #4d5a65 #5d6d7a
+ *   Sublime text     rgb(195,195,195) / (165,165,165) / (125,135,145)
+ *   Stellars-Tech    accent-1 #0096d1 (cyan)  accent-2 #da8230 (orange)
+ */
+
+:root,
+[data-theme="optimum-hub-dark"] {
+  color-scheme: dark;
+
+  /* --- surfaces (Sublime layered greys) --- */
+  --color-bg:               #252b32;   /* layout-0, app background   */
+  --color-bg-subtle:        #2a313a;   /* striped rows, inset        */
+  --color-surface:          #303841;   /* layout-1, cards/panels     */
+  --color-surface-hover:    #374049;
+  --color-surface-active:   #404b54;   /* layout-2                   */
+  --color-surface-raised:   #343d47;   /* popovers, menus, palette   */
+  --color-overlay:          rgba(15, 18, 22, .66);
+
+  /* --- borders --- */
+  --color-border-subtle:    #363f49;
+  --color-border:           #404b54;   /* layout-2                   */
+  --color-border-strong:    #4d5a65;   /* layout-3, hover/focus edge */
+
+  /* --- text (Sublime) --- */
+  --color-text:             #c3c3c3;
+  --color-text-muted:       #a5a5a5;
+  --color-text-subtle:      #7d8791;
+
+  /* --- accent: Stellars-Tech cyan --- */
+  --color-accent:           #0096d1;
+  --color-accent-hover:     #1aa6e0;
+  --color-accent-active:    #007fb3;
+  --color-accent-fg:        #ffffff;
+  --color-accent-soft:      rgba(0, 150, 209, .14);  /* tinted bg     */
+  --color-accent-ring:      rgba(0, 150, 209, .45);  /* focus ring    */
+
+  /* --- accent-2: Stellars-Tech orange (secondary highlight) --- */
+  --color-accent-2:         #da8230;
+  --color-accent-2-soft:    rgba(218, 130, 48, .16);
+
+  /* --- status (tuned for dark) --- */
+  --color-success: #3fb950;  --color-success-fg: #0b1410;  --color-success-soft: rgba(63,185,80,.15);
+  --color-warning: #da8230;  --color-warning-fg: #1a1209;  --color-warning-soft: rgba(218,130,48,.16);
+  --color-danger:  #f85149;  --color-danger-fg:  #1a0c0b;  --color-danger-soft:  rgba(248,81,73,.15);
+  --color-info:    #0096d1;  --color-info-fg:    #06141a;  --color-info-soft:    rgba(0,150,209,.15);
+
+  /* --- spacing / radius / type / elevation (theme-agnostic) --- */
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px;
+  --space-5:24px; --space-6:32px; --space-8:48px;
+  --radius-sm:4px; --radius-md:6px; --radius-lg:10px; --radius-full:9999px;
+  --text-xs:12px; --text-sm:13px; --text-base:14px; --text-lg:16px;
+  --text-xl:20px; --text-2xl:26px;
+  --leading-tight:1.25; --leading-normal:1.5;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.35);
+  --shadow-md: 0 6px 18px rgba(0,0,0,.4);
+  --shadow-overlay: 0 16px 48px rgba(0,0,0,.5);
+
+  --sidebar-w: 248px;
+  --topbar-h: 56px;
+}
+
+[data-theme="optimum-hub-light"] {
+  color-scheme: light;
+
+  --color-bg:               #f5f7fa;   /* stellars-tech light bg     */
+  --color-bg-subtle:        #eef1f5;
+  --color-surface:          #ffffff;
+  --color-surface-hover:    #f1f4f7;
+  --color-surface-active:   #e6ebf0;
+  --color-surface-raised:   #ffffff;
+  --color-overlay:          rgba(26, 35, 41, .38);
+
+  --color-border-subtle:    #e7ecf1;
+  --color-border:           #d4dde3;
+  --color-border-strong:    #b7c4cc;
+
+  --color-text:             #1a3540;   /* deep teal-slate, AA on white */
+  --color-text-muted:       #46606c;
+  --color-text-subtle:      #6c828d;
+
+  --color-accent:           #0a82b8;   /* darkened for AA on light    */
+  --color-accent-hover:     #0096d1;
+  --color-accent-active:    #086f9c;
+  --color-accent-fg:        #ffffff;
+  --color-accent-soft:      rgba(10, 130, 184, .10);
+  --color-accent-ring:      rgba(10, 130, 184, .35);
+
+  --color-accent-2:         #b5641b;
+  --color-accent-2-soft:    rgba(181, 100, 27, .12);
+
+  --color-success: #1a7f37;  --color-success-fg: #ffffff;  --color-success-soft: rgba(26,127,55,.12);
+  --color-warning: #9a6700;  --color-warning-fg: #ffffff;  --color-warning-soft: rgba(154,103,0,.12);
+  --color-danger:  #cf222e;  --color-danger-fg:  #ffffff;  --color-danger-soft:  rgba(207,34,46,.10);
+  --color-info:    #0a82b8;  --color-info-fg:    #ffffff;  --color-info-soft:    rgba(10,130,184,.12);
+
+  --shadow-sm: 0 1px 2px rgba(16,40,56,.08);
+  --shadow-md: 0 6px 18px rgba(16,40,56,.10);
+  --shadow-overlay: 0 16px 48px rgba(16,40,56,.18);
+}

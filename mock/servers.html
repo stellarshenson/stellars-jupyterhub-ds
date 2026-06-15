@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="optimum-hub-dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optimum Hub - Servers</title>
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/app.css">
+  <link rel="icon" href="assets/brand/favicon.ico">
+  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<body data-page="servers">
+<main>
+  <div class="page-head">
+    <div class="titles">
+      <h1 class="page-title">Servers</h1>
+      <div class="page-sub">Every spawned lab - the single pane for what is running and healthy</div>
+    </div>
+    <div class="actions">
+      <div class="kbar" style="min-width:200px" data-toast="Filter (mock)">{ic:search}<span>Filter servers…</span></div>
+    </div>
+  </div>
+
+  <div class="card card-pad-0">
+    <div class="card-head">
+      <h3>16 servers</h3>
+      <div class="actions">
+        <span class="pill running"><span class="dot"></span>3 running</span>
+        <span class="pill idle"><span class="dot"></span>1 idle</span>
+        <span class="pill stopped"><span class="dot"></span>12 stopped</span>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="tbl">
+        <thead><tr><th>User</th><th>Status</th><th>Image</th><th>Uptime</th><th>CPU</th><th>Memory</th><th>Last activity</th><th class="right">Actions</th></tr></thead>
+        <tbody>
+          <tr><td><div class="u"><span class="avatar">AL</span>alice</div></td><td><span class="pill running"><span class="dot"></span>Running</span></td><td><span class="tag">stellars-ds:latest</span></td><td class="num">4h 12m</td><td class="num">38%</td><td class="num">6.2 / 16 GB</td><td class="num">2m ago</td><td><div class="row-actions"><button class="icon-btn" data-toast="Open (mock)">{ic:play}</button><button class="icon-btn" data-toast="Restart (mock)">{ic:restart}</button><button class="icon-btn" data-toast="Stop (mock)">{ic:stop}</button></div></td></tr>
+          <tr><td><div class="u"><span class="avatar">KO</span>konrad</div></td><td><span class="pill running"><span class="dot"></span>Running</span></td><td><span class="tag">stellars-ds:latest</span></td><td class="num">1d 3h</td><td class="num">12%</td><td class="num">3.1 / 32 GB</td><td class="num">just now</td><td><div class="row-actions"><button class="icon-btn" data-toast="Open (mock)">{ic:play}</button><button class="icon-btn" data-toast="Restart (mock)">{ic:restart}</button><button class="icon-btn" data-toast="Stop (mock)">{ic:stop}</button></div></td></tr>
+          <tr><td><div class="u"><span class="avatar">MI</span>milan</div></td><td><span class="pill spawning"><span class="dot"></span>Spawning</span></td><td><span class="tag accent">gpu</span></td><td class="num">-</td><td class="num">-</td><td class="num">-</td><td class="num">-</td><td><div class="row-actions"><button class="icon-btn" data-toast="Logs (mock)">{ic:activity}</button><button class="icon-btn" data-toast="Cancel (mock)">{ic:stop}</button></div></td></tr>
+          <tr><td><div class="u"><span class="avatar">NI</span>nina</div></td><td><span class="pill idle"><span class="dot"></span>Idle 38m</span></td><td><span class="tag">stellars-ds:latest</span></td><td class="num">2h 50m</td><td class="num">2%</td><td class="num">1.4 / 16 GB</td><td class="num">38m ago</td><td><div class="row-actions"><button class="icon-btn" data-toast="Open (mock)">{ic:play}</button><button class="icon-btn" data-toast="Restart (mock)">{ic:restart}</button><button class="icon-btn" data-toast="Stop (mock)">{ic:stop}</button></div></td></tr>
+          <tr><td><div class="u"><span class="avatar">JA</span>jakub</div></td><td><span class="pill stopped"><span class="dot"></span>Stopped</span></td><td class="num">-</td><td class="num">-</td><td class="num">-</td><td class="num">-</td><td class="num">1h ago</td><td><div class="row-actions"><button class="icon-btn" data-toast="Start (mock)">{ic:play}</button><button class="icon-btn" data-toast="More (mock)">{ic:dots}</button></div></td></tr>
+          <tr><td><div class="u"><span class="avatar">EW</span>ewa</div></td><td><span class="pill error"><span class="dot"></span>Spawn failed</span></td><td class="num">-</td><td class="num">-</td><td class="num">-</td><td class="num">-</td><td class="num">20m ago</td><td><div class="row-actions"><button class="icon-btn" data-toast="View error (mock)">{ic:activity}</button><button class="icon-btn" data-toast="Relaunch (mock)">{ic:restart}</button></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+<script src="assets/app.js"></script>
+</body>
+</html>
