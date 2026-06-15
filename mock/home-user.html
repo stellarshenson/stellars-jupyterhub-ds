@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/tokens.css">
   <link rel="stylesheet" href="assets/app.css">
   <link rel="icon" href="assets/brand/favicon.ico">
-  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <script>try{var m=localStorage.getItem("optimum-hub-theme");var d=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches;var t=(m==="optimum-hub-dark"||m==="dark")?"optimum-hub-dark":(m==="optimum-hub-light"||m==="light")?"optimum-hub-light":(d?"optimum-hub-dark":"optimum-hub-light");document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 </head>
 <!-- data-role="user" tells the shell to drop the Administration section, the
      broadcast action and the fleet pages - a plain user only operates one lab. -->
@@ -38,9 +38,9 @@
       <div class="page-sub" style="margin-top:var(--space-3)">Time left <b style="color:var(--color-text)">3h 48m</b></div>
     </div>
     <div class="row-actions" style="margin-left:auto;gap:var(--space-2)">
-      <button class="btn btn-primary" data-toast="Opening your lab (mock)">{ic:play} Open lab</button>
-      <button class="btn" data-toast="Restarting your lab (mock)">{ic:restart} Restart</button>
-      <button class="btn btn-danger" data-toast="Stopping your lab (mock)">{ic:stop} Stop</button>
+      <button class="page-primary" data-toast="Opening your lab (mock)">{ic:play} Open lab</button>
+      <button class="page-secondary" data-toast="Restarting your lab (mock)">{ic:restart} Restart</button>
+      <button class="page-dangerous" data-toast="Stopping your lab (mock)">{ic:stop} Stop</button>
     </div>
   </div>
 
@@ -53,7 +53,7 @@
         <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>CPU</b><div class="g-from">group data-science</div></div><span class="g-val">4 cores</span></div>
         <div class="grant"><span class="g-ic">{ic:download}</span><div><b>Downloads</b><div class="g-from">group data-science</div></div><span class="g-val">blocked</span></div>
       </div>
-      <div style="padding:var(--space-3) var(--space-4);align-items:center" class="chips" data-chips="4">
+      <div style="padding:var(--space-3) var(--space-4);align-items:center" class="chips" data-chips="3">
         <span class="page-sub" style="margin-right:var(--space-2)">Groups:</span>
         <span class="chip">data-science</span><span class="chip">gpu</span><span class="chip">ml-platform</span><span class="chip">vision-lab</span><span class="chip">nlp</span><span class="chip">robotics</span>
       </div>
@@ -68,7 +68,7 @@
             <dt>workspace</dt><dd class="mono">9.8 GB</dd>
             <dt>cache</dt><dd class="mono">0.5 GB</dd>
           </dl>
-          <div style="margin-top:var(--space-3)"><button class="btn btn-danger" data-toast="Manage volumes - stop server first (mock)">Manage volumes</button></div>
+          <div style="margin-top:var(--space-3)"><button class="page-dangerous" data-toast="Manage volumes - stop server first (mock)">Manage volumes</button></div>
         </div>
       </div>
 

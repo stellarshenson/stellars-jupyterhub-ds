@@ -7,21 +7,18 @@
   <link rel="stylesheet" href="assets/tokens.css">
   <link rel="stylesheet" href="assets/app.css">
   <link rel="icon" href="assets/brand/favicon.ico">
-  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <script>try{var m=localStorage.getItem("optimum-hub-theme");var d=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches;var t=(m==="optimum-hub-dark"||m==="dark")?"optimum-hub-dark":(m==="optimum-hub-light"||m==="light")?"optimum-hub-light":(d?"optimum-hub-dark":"optimum-hub-light");document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 </head>
 <!-- Configure group is a full screen, tabbed and symmetric with Configure user:
      General (metadata) | Policy (the nine sections) | Members (membership at
-     scale). One Save (top-right) for the whole group. -->
+     scale). Form actions (Delete group / Cancel / Save) sit in a footer at the
+     bottom, matching Configure user. -->
 <body data-page="groups" data-title="Configure group - research">
 <main>
   <div class="page-head">
     <div class="titles">
       <h1 class="page-title">Configure group - research <span class="tag accent" style="vertical-align:middle">Priority 1</span></h1>
       <div class="page-sub"><a href="groups.html" style="color:var(--color-accent);cursor:pointer">Back to Groups</a></div>
-    </div>
-    <div class="actions">
-      <a class="btn" href="groups.html">Cancel</a>
-      <button class="btn btn-primary" data-toast="Saved group research (mock)">Save</button>
     </div>
   </div>
 
@@ -46,7 +43,7 @@
       <div class="page-sub" style="margin-bottom:var(--space-4)">Toggle a policy on to grant it to every member; the hub combines policies across a user's groups by priority</div>
 
       <div class="grant"><span class="g-ic">{ic:code}</span><div><b>Environment</b><div class="g-from">inject env vars, reserved names rejected</div></div><span class="g-val">2 vars</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle env (mock)"><span class="track"></span></span></div>
-      <div style="padding:var(--space-2) 0 var(--space-3) calc(28px + var(--space-3));color:var(--color-danger);font-size:var(--text-xs)">JUPYTERHUB_API_TOKEN is reserved and was rejected - pick a different variable name</div>
+      <div style="padding:var(--space-2) 0 var(--space-3) calc(28px + var(--space-3));color:var(--color-text-subtle);font-size:var(--text-xs)">Reserved names (e.g. JUPYTERHUB_API_TOKEN) are rejected on save</div>
 
       <div class="grant"><span class="g-ic">{ic:gpu}</span><div><b>GPU</b><div class="g-from">all or specific device ids</div></div><span class="g-val">all</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle gpu (mock)"><span class="track"></span></span></div>
       <div style="padding:var(--space-2) 0 var(--space-3) calc(28px + var(--space-3))">
@@ -94,12 +91,12 @@
           <table class="tbl" data-list>
             <thead><tr><th class="sortable" data-sort="user">Member <span class="sort"></span></th><th>Joined</th><th class="right">Remove</th></tr></thead>
             <tbody>
-              <tr data-text="milan"><td><div class="u"><span class="avatar">MI</span>milan</div></td><td class="num">2026-03-01</td><td class="right"><button class="icon-btn" title="Remove from group" data-toast="Removed milan from research (mock)">{ic:close}</button></td></tr>
-              <tr data-text="alice"><td><div class="u"><span class="avatar">AL</span>alice</div></td><td class="num">2026-03-04</td><td class="right"><button class="icon-btn" title="Remove from group" data-toast="Removed alice from research (mock)">{ic:close}</button></td></tr>
-              <tr data-text="ola"><td><div class="u"><span class="avatar">OL</span>ola</div></td><td class="num">2026-03-09</td><td class="right"><button class="icon-btn" title="Remove from group" data-toast="Removed ola from research (mock)">{ic:close}</button></td></tr>
-              <tr data-text="piotr"><td><div class="u"><span class="avatar">PI</span>piotr</div></td><td class="num">2026-04-02</td><td class="right"><button class="icon-btn" title="Remove from group" data-toast="Removed piotr from research (mock)">{ic:close}</button></td></tr>
-              <tr data-text="tomek"><td><div class="u"><span class="avatar">TO</span>tomek</div></td><td class="num">2026-04-18</td><td class="right"><button class="icon-btn" title="Remove from group" data-toast="Removed tomek from research (mock)">{ic:close}</button></td></tr>
-              <tr data-text="ewa"><td><div class="u"><span class="avatar">EW</span>ewa</div></td><td class="num">2026-05-06</td><td class="right"><button class="icon-btn" title="Remove from group" data-toast="Removed ewa from research (mock)">{ic:close}</button></td></tr>
+              <tr data-text="milan"><td><div class="u">milan</div></td><td class="num">2026-03-01</td><td class="right"><button class="list-icon-dangerous" title="Remove from group" data-toast="Removed milan from research (mock)">{ic:close}</button></td></tr>
+              <tr data-text="alice"><td><div class="u">alice</div></td><td class="num">2026-03-04</td><td class="right"><button class="list-icon-dangerous" title="Remove from group" data-toast="Removed alice from research (mock)">{ic:close}</button></td></tr>
+              <tr data-text="ola"><td><div class="u">ola</div></td><td class="num">2026-03-09</td><td class="right"><button class="list-icon-dangerous" title="Remove from group" data-toast="Removed ola from research (mock)">{ic:close}</button></td></tr>
+              <tr data-text="piotr"><td><div class="u">piotr</div></td><td class="num">2026-04-02</td><td class="right"><button class="list-icon-dangerous" title="Remove from group" data-toast="Removed piotr from research (mock)">{ic:close}</button></td></tr>
+              <tr data-text="tomek"><td><div class="u">tomek</div></td><td class="num">2026-04-18</td><td class="right"><button class="list-icon-dangerous" title="Remove from group" data-toast="Removed tomek from research (mock)">{ic:close}</button></td></tr>
+              <tr data-text="ewa"><td><div class="u">ewa</div></td><td class="num">2026-05-06</td><td class="right"><button class="list-icon-dangerous" title="Remove from group" data-toast="Removed ewa from research (mock)">{ic:close}</button></td></tr>
               <tr data-list-empty hidden><td colspan="3"><div class="empty" style="padding:var(--space-6)"><p>No member matches that search</p></div></td></tr>
             </tbody>
           </table>
@@ -118,6 +115,13 @@
         </div>
       </div>
     </section>
+    <div class="form-foot">
+      <button class="page-dangerous" data-toast="Delete group research? removes all members (mock)">{ic:close} Delete group</button>
+      <div class="foot-right">
+        <a class="page-secondary" href="groups.html">Cancel</a>
+        <button class="page-primary" data-toast="Saved group research (mock)">Save</button>
+      </div>
+    </div>
   </div>
 </main>
 <script src="assets/app.js"></script>

@@ -7,12 +7,13 @@
   <link rel="stylesheet" href="assets/tokens.css">
   <link rel="stylesheet" href="assets/app.css">
   <link rel="icon" href="assets/brand/favicon.ico">
-  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <script>try{var m=localStorage.getItem("optimum-hub-theme");var d=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches;var t=(m==="optimum-hub-dark"||m==="dark")?"optimum-hub-dark":(m==="optimum-hub-light"||m==="light")?"optimum-hub-light":(d?"optimum-hub-dark":"optimum-hub-light");document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 </head>
 <!-- USR-005 is a full screen, not a drawer: the user carries too much config
-     (avatar, names, email, password, groups, volumes) for a side panel, and a
-     list row should never open a cramped panel for a heavy entity. Symmetric
-     with Configure group. One Save for the whole screen (top-right). -->
+     (names, email, password, groups, volumes) for a side panel, and a list row
+     should never open a cramped panel for a heavy entity. Symmetric with
+     Configure group. Form actions (Remove user / Cancel / Save) sit in a footer
+     at the bottom; changing the password is its own action. -->
 <body data-page="users" data-title="Configure user - alice">
 <main>
   <div class="page-head">
@@ -20,13 +21,9 @@
       <h1 class="page-title">Configure user - alice</h1>
       <div class="page-sub"><a href="users.html" style="color:var(--color-accent);cursor:pointer">Back to Users</a></div>
     </div>
-    <div class="actions">
-      <a class="btn" href="users.html">Cancel</a>
-      <button class="btn btn-primary" data-toast="Saved alice (mock)">Save</button>
-    </div>
   </div>
 
-  <div class="card" style="max-width:760px">
+  <div class="card">
     <div data-tabs>
       <div class="tab-bar">
         <button class="tab active" data-tab="profile">Profile</button>
@@ -34,15 +31,16 @@
         <button class="tab" data-tab="volumes">Volumes</button>
       </div>
 
-      <!-- Profile: identity + the change-password section. Avatar, first/last
-           name and email are editable; username/role/dates are read-only fact. -->
-      <section class="tab-panel active" data-panel="profile">
-        <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-5)">
-          <div class="avatar" style="width:64px;height:64px;font-size:22px">AL</div>
-          <div>
-            <button class="btn btn-sm" data-toast="Upload avatar (mock)">Change avatar</button>
-            <div class="page-sub" style="margin-top:var(--space-2)">PNG or JPG, square, up to 1 MB</div>
-          </div>
+      <!-- Profile: identity + password. Username, names and email are editable;
+           an Admin toggle replaces the old role display; dates are read-only.
+           Renaming asks for an explicit acknowledgement. -->
+      <section class="tab-panel active" data-panel="profile" style="max-width:720px">
+        <div class="field">
+          <label>Username</label>
+          <input class="input mono" type="text" value="alice">
+          <label style="display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-2);font-size:var(--text-sm);color:var(--color-text-muted)">
+            <input type="checkbox"> I understand this renames the account and changes the user's login
+          </label>
         </div>
 
         <div class="grid" style="grid-template-columns:1fr 1fr;gap:var(--space-4)">
@@ -51,61 +49,113 @@
         </div>
         <div class="field" style="margin-top:var(--space-4)"><label>Email</label><input class="input mono" type="email" value="alice@stellars-tech.eu"></div>
 
-        <dl class="kv" style="margin-top:var(--space-2)">
-          <dt>Username</dt><dd class="mono">alice</dd>
-          <dt>Role</dt><dd><span class="tag">user</span></dd>
+        <dl class="kv" style="margin-top:var(--space-4)">
+          <dt>Admin</dt><dd><span class="switch" data-toast="Granted admin to alice (mock)"><span class="track"></span></span></dd>
           <dt>Authorised</dt><dd><span class="switch on" data-toast="De-authorised alice (mock)"><span class="track"></span></span></dd>
-          <dt>Signed up</dt><dd>2026-03-04</dd>
-          <dt>Last active</dt><dd>2m ago</dd>
+          <dt>Created</dt><dd title="2026-03-04 09:12 UTC">2026-03-04</dd>
+          <dt>Last active</dt><dd title="2026-06-15 14:42 UTC">2m ago</dd>
         </dl>
 
         <div class="section-title">Password</div>
-        <div class="field" style="margin-bottom:0">
-          <label>Set a new password</label>
-          <div style="display:flex;gap:var(--space-2);align-items:center;max-width:420px">
-            <input class="input mono" type="text" placeholder="leave blank to keep current">
-            <button class="btn btn-sm" data-toast="Generated a password (mock)">Generate</button>
-          </div>
-          <div class="page-sub" style="margin-top:var(--space-2)">Typing a value resets the password on Save; blank keeps the current one</div>
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:var(--space-4);max-width:520px">
+          <div class="field" style="margin-bottom:var(--space-3)"><label>New password</label><input class="input" type="password" autocomplete="new-password" placeholder="new password"></div>
+          <div class="field" style="margin-bottom:var(--space-3)"><label>Repeat password</label><input class="input" type="password" autocomplete="new-password" placeholder="repeat password"></div>
         </div>
+        <div style="display:flex;gap:var(--space-2);align-items:center">
+          <button class="input-secondary" data-toast="Generated a password (mock)">Generate</button>
+          <button class="input-primary" title="Applied immediately, separate from Save" data-toast="Password changed for alice (mock)">Set password</button>
+        </div>
+        <dl class="kv" style="margin-top:var(--space-4)">
+          <dt>Require change at first login</dt>
+          <dd><span class="switch" title="Clears automatically once the user signs in and sets a new password" data-toast="Toggled require-password-change for alice (mock)"><span class="track"></span></span></dd>
+        </dl>
       </section>
 
-      <!-- Groups: membership is the only lever - a typeahead combobox scales to
-           hundreds of groups. Effective access below is read-only (the hub
-           resolves it across her groups). -->
+      <!-- Groups: membership grants policy. Current memberships are name-only
+           chips (no icon - a group is its name + policies). Below, a searchable
+           list adds any group with an explicit + Add; each row shows the group's
+           description and an abbreviated policy list (data-fill: visible tags +
+           a (N) counter whose tooltip lists them all), same philosophy as the
+           Groups page. Add by name via the typeahead, or browse the list. -->
       <section class="tab-panel" data-panel="groups">
-        <div class="page-sub" style="margin-bottom:var(--space-3)">Membership is the only lever - it grants policy. Type to add, x to remove.</div>
-        <div class="combo" data-combo="groups" style="max-width:420px">
+        <div class="combo" data-combo="groups" style="max-width:520px">
           <div class="chips" data-combo-chips>
             <span class="chip" data-val="data-science"><span>data-science</span><span class="x">{ic:close}</span></span>
             <span class="chip" data-val="gpu"><span>gpu</span><span class="x">{ic:close}</span></span>
           </div>
-          <input class="combo-input" type="text" placeholder="Add to group…">
+          <input class="combo-input" type="text" placeholder="Add a group by name…">
           <div class="combo-pop" data-combo-pop></div>
         </div>
 
-        <div class="section-title">Effective access</div>
-        <div class="grant"><span class="g-ic">{ic:gpu}</span><div><b>GPU</b><div class="g-from">from group gpu</div></div><span class="g-val">0,1</span></div>
-        <div class="grant"><span class="g-ic">{ic:memory}</span><div><b>Memory</b><div class="g-from">from group data-science</div></div><span class="g-val">16 GB</span></div>
-        <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>CPU</b><div class="g-from">from group data-science</div></div><span class="g-val">4 cores</span></div>
-        <div class="grant"><span class="g-ic">{ic:download}</span><div><b>Downloads</b><div class="g-from">from group data-science</div></div><span class="g-val">blocked</span></div>
+        <div class="card card-pad-0" style="margin-top:var(--space-4)">
+          <div class="card-head">
+            <h3>Add a group</h3>
+            <div class="actions"><label class="search">{ic:search}<input type="text" placeholder="Filter groups…" data-list-search></label></div>
+          </div>
+          <div class="table-wrap">
+            <table class="tbl" data-list>
+              <thead><tr><th>Group</th><th>Description</th><th>Policies</th><th class="right">Add</th></tr></thead>
+              <tbody>
+                <tr data-text="research">
+                  <td><b>research</b></td>
+                  <td style="color:var(--color-text-muted)">Research staff - full GPU and raw Docker</td>
+                  <td><div class="chips" data-fill><span class="tag accent">GPU all</span><span class="tag accent">Docker raw</span><span class="tag warn">Sudo on</span><span class="tag accent">Mem 32G</span><span class="tag accent">Env 2</span></div></td>
+                  <td class="right"><button class="list-secondary" data-toast="Added research to alice (mock)">{ic:plus} Add</button></td>
+                </tr>
+                <tr data-text="ml-platform">
+                  <td><b>ml-platform</b></td>
+                  <td style="color:var(--color-text-muted)">Shared ML tooling and runtimes</td>
+                  <td><div class="chips" data-fill><span class="tag accent">GPU all</span><span class="tag accent">Mem 24G</span><span class="tag accent">CPU 8</span></div></td>
+                  <td class="right"><button class="list-secondary" data-toast="Added ml-platform to alice (mock)">{ic:plus} Add</button></td>
+                </tr>
+                <tr data-text="vision-lab">
+                  <td><b>vision-lab</b></td>
+                  <td style="color:var(--color-text-muted)">Computer-vision research group</td>
+                  <td><div class="chips" data-fill><span class="tag accent">GPU 0,1</span><span class="tag">Downloads off</span></div></td>
+                  <td class="right"><button class="list-secondary" data-toast="Added vision-lab to alice (mock)">{ic:plus} Add</button></td>
+                </tr>
+                <tr data-text="interns">
+                  <td><b>interns</b></td>
+                  <td style="color:var(--color-text-muted)">Limited onboarding access</td>
+                  <td><span style="color:var(--color-text-subtle)">No policies</span></td>
+                  <td class="right"><button class="list-secondary" data-toast="Added interns to alice (mock)">{ic:plus} Add</button></td>
+                </tr>
+                <tr data-text="finance">
+                  <td><b>finance</b></td>
+                  <td style="color:var(--color-text-muted)">Finance analytics team</td>
+                  <td><div class="chips" data-fill><span class="tag accent">Mem 8G</span><span class="tag">Downloads off</span></div></td>
+                  <td class="right"><button class="list-secondary" data-toast="Added finance to alice (mock)">{ic:plus} Add</button></td>
+                </tr>
+                <tr data-list-empty hidden><td colspan="4"><div class="empty" style="padding:var(--space-6)"><p>No group matches that filter</p></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
-      <!-- Volumes: reset needs the server stopped. -->
+      <!-- Volumes: names, mount points and descriptions come from the lab
+           container descriptor (see the proposed Lab Container admin page). Reset
+           needs the server stopped. -->
       <section class="tab-panel" data-panel="volumes">
-        <div class="page-sub" style="margin-bottom:var(--space-3)">Reset needs the server stopped</div>
         <div class="table-wrap">
           <table class="tbl">
-            <thead><tr><th></th><th>Volume</th><th class="right">Size</th></tr></thead>
+            <thead><tr><th></th><th>Volume</th><th>Mount</th><th>Description</th><th class="right">Size</th></tr></thead>
             <tbody>
-              <tr><td><input type="checkbox"></td><td>home</td><td class="num right">2.1 GB</td></tr>
-              <tr><td><input type="checkbox"></td><td>workspace</td><td class="num right">9.8 GB</td></tr>
-              <tr><td><input type="checkbox"></td><td>cache</td><td class="num right">0.5 GB</td></tr>
+              <tr><td><input type="checkbox"></td><td>home</td><td class="mono">/home</td><td style="color:var(--color-text-muted)">User home - dotfiles and shell configuration</td><td class="num right">2.1 GB</td></tr>
+              <tr><td><input type="checkbox"></td><td>workspace</td><td class="mono">/home/lab/workspace</td><td style="color:var(--color-text-muted)">Project files, notebooks and code</td><td class="num right">9.8 GB</td></tr>
+              <tr><td><input type="checkbox"></td><td>cache</td><td class="mono">/home/lab/.cache</td><td style="color:var(--color-text-muted)">Package and build caches (pip, conda)</td><td class="num right">0.5 GB</td></tr>
             </tbody>
           </table>
         </div>
-        <div style="margin-top:var(--space-4)"><button class="btn btn-danger" data-toast="Reset selected volumes (mock)">Reset selected</button></div>
+        <div style="margin-top:var(--space-4)"><button class="page-dangerous" title="Needs the server stopped" data-toast="Reset selected volumes (mock)">Reset selected</button></div>
       </section>
+    </div>
+    <div class="form-foot">
+      <button class="page-dangerous" data-toast="Remove alice? deletes account, servers and volumes (mock)">{ic:close} Remove user</button>
+      <div class="foot-right">
+        <a class="page-secondary" href="users.html">Cancel</a>
+        <button class="page-primary" data-toast="Saved alice (mock)">Save</button>
+      </div>
     </div>
   </div>
 </main>
