@@ -14,12 +14,11 @@
      should never open a cramped panel for a heavy entity. Symmetric with
      Configure group. Form actions (Remove user / Cancel / Save) sit in a footer
      at the bottom; changing the password is its own action. -->
-<body data-page="users" data-title="Configure user - alice">
+<body data-page="users" data-title="Configure user - alice" data-crumb-parent="Users|users.html">
 <main>
   <div class="page-head">
     <div class="titles">
       <h1 class="page-title">Configure user - alice</h1>
-      <div class="page-sub"><a href="users.html" style="color:var(--color-accent);cursor:pointer">Back to Users</a></div>
     </div>
   </div>
 
@@ -63,8 +62,8 @@
         </div>
         <div style="display:flex;gap:var(--space-2);align-items:center">
           <button class="input-secondary" data-toast="Generated a password (mock)">Generate</button>
-          <button class="input-primary" title="Applied immediately, separate from Save" data-toast="Password changed for alice (mock)">Set password</button>
         </div>
+        <div class="page-sub" style="margin-top:var(--space-2)">Applied with Save, together with the rest of the user's changes</div>
         <dl class="kv" style="margin-top:var(--space-4)">
           <dt>Require change at first login</dt>
           <dd><span class="switch" title="Clears automatically once the user signs in and sets a new password" data-toast="Toggled require-password-change for alice (mock)"><span class="track"></span></span></dd>
@@ -154,7 +153,7 @@
       <button class="page-dangerous" data-toast="Remove alice? deletes account, servers and volumes (mock)">{ic:close} Remove user</button>
       <div class="foot-right">
         <a class="page-secondary" href="users.html">Cancel</a>
-        <button class="page-primary" data-toast="Saved alice (mock)">Save</button>
+        <button class="page-primary" data-confirm="User saved">Save</button>
       </div>
     </div>
   </div>

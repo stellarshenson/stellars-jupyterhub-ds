@@ -23,9 +23,9 @@
     </div>
   </div>
 
-  <div class="grid" style="grid-template-columns:1fr 1fr;gap:var(--space-4);align-items:start">
+  <div class="notif-cols" style="display:flex;gap:var(--space-4);align-items:stretch">
     <!-- Left: compose + send -->
-    <div class="card">
+    <div class="card" style="flex:1;align-self:flex-start">
       <div class="card-head" style="padding:0 0 var(--space-3)"><h3>Send a notification</h3></div>
       <div class="field">
         <label>Message</label>
@@ -52,7 +52,7 @@
 
     <!-- Right: past notifications (sent history) - searchable, paged at scale.
          Message on top, the meta line carries type, delivery count and time. -->
-    <div class="card card-pad-0">
+    <div class="card card-pad-0 notif-history" style="flex:1">
       <div class="card-head">
         <h3>Past notifications</h3>
         <div class="actions"><label class="search">{ic:search}<input type="text" placeholder="Filter sent…" data-list-search></label></div>
@@ -90,12 +90,48 @@
                 <div class="page-sub" style="margin-top:2px"><span class="tag warn">warning</span> · delivered 14/14 · last week</div>
               </td>
             </tr>
+            <tr data-text="maintenance window extended one hour warning">
+              <td>
+                <div>Maintenance window extended by one hour</div>
+                <div class="page-sub" style="margin-top:2px"><span class="tag warn">warning</span> · delivered 16/18 · last week</div>
+              </td>
+            </tr>
+            <tr data-text="mlflow upgraded 2.x tracking info">
+              <td>
+                <div>MLflow upgraded to 2.x - tracking unaffected</div>
+                <div class="page-sub" style="margin-top:2px"><span class="tag accent">info</span> · delivered 12/12 · last week</div>
+              </td>
+            </tr>
+            <tr data-text="restart kernels after cuda update warning">
+              <td>
+                <div>Please restart kernels after the CUDA update</div>
+                <div class="page-sub" style="margin-top:2px"><span class="tag warn">warning</span> · delivered 15/15 · 2 weeks ago</div>
+              </td>
+            </tr>
+            <tr data-text="welcome optimum hub 1.0 success">
+              <td>
+                <div>Welcome to Optimum Hub 1.0</div>
+                <div class="page-sub" style="margin-top:2px"><span class="tag ok">success</span> · delivered 20/20 · 2 weeks ago</div>
+              </td>
+            </tr>
+            <tr data-text="shared dataset volume mounted mnt shared info">
+              <td>
+                <div>Shared dataset volume mounted at /mnt/shared</div>
+                <div class="page-sub" style="margin-top:2px"><span class="tag accent">info</span> · delivered 14/14 · 3 weeks ago</div>
+              </td>
+            </tr>
+            <tr data-text="tensorboard service enabled all labs success">
+              <td>
+                <div>TensorBoard service enabled for all labs</div>
+                <div class="page-sub" style="margin-top:2px"><span class="tag ok">success</span> · delivered 11/11 · last month</div>
+              </td>
+            </tr>
             <tr data-list-empty hidden><td><div class="empty" style="padding:var(--space-6)"><p>No notification matches that filter</p></div></td></tr>
           </tbody>
         </table>
       </div>
       <div class="pager">
-        <span>Showing <b>1-5</b> of <b>112</b> · last 30 days</span>
+        <span>Showing <b>1-12</b> of <b>112</b> · last 30 days</span>
         <span class="pages">
           <button class="pg" disabled data-toast="Page navigation is illustrative (mock)">Prev</button>
           <button class="pg on" data-toast="Page 1 (mock)">1</button>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="optimum-hub-dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optimum Hub - Profile</title>
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/app.css">
+  <link rel="icon" href="assets/brand/favicon.ico">
+  <script>try{var m=localStorage.getItem("optimum-hub-theme");var d=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches;var t=(m==="optimum-hub-dark"||m==="dark")?"optimum-hub-dark":(m==="optimum-hub-light"||m==="light")?"optimum-hub-light":(d?"optimum-hub-dark":"optimum-hub-light");document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<!-- Self-service Profile (admin view). Anyone edits only their OWN details:
+     name, email and password. Username is read-only, and the admin-only controls
+     from Configure user (authorisation, admin flag, require-change-at-first-login)
+     are absent - a profile is just the account holder's own information, no tabs. -->
+<body data-page="profile">
+<main>
+  <div class="page-head">
+    <div class="titles">
+      <h1 class="page-title">Profile</h1>
+      <div class="page-sub">Your account details - update your name, email and password</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <section style="max-width:720px">
+      <div class="field">
+        <label>Username</label>
+        <input class="input mono" type="text" value="admin" disabled title="Your username cannot be changed">
+      </div>
+
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div class="field" style="margin-bottom:0"><label>First name</label><input class="input" type="text" value="Konrad"></div>
+        <div class="field" style="margin-bottom:0"><label>Last name</label><input class="input" type="text" value="Jelen"></div>
+      </div>
+      <div class="field" style="margin-top:var(--space-4)"><label>Email</label><input class="input mono" type="email" value="admin@stellars-tech.eu"></div>
+
+      <dl class="kv" style="margin-top:var(--space-4)">
+        <dt>Created</dt><dd title="2026-01-10 08:30 UTC">2026-01-10</dd>
+        <dt>Last active</dt><dd title="2026-06-15 14:44 UTC">just now</dd>
+      </dl>
+
+      <div class="section-title">Password</div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:var(--space-4);max-width:520px">
+        <div class="field" style="margin-bottom:var(--space-3)"><label>New password</label><input class="input" type="password" autocomplete="new-password" placeholder="new password"></div>
+        <div class="field" style="margin-bottom:var(--space-3)"><label>Repeat password</label><input class="input" type="password" autocomplete="new-password" placeholder="repeat password"></div>
+      </div>
+      <div style="display:flex;gap:var(--space-2);align-items:center">
+        <button class="input-secondary" data-toast="Generated a password (mock)">Generate</button>
+      </div>
+      <div class="page-sub" style="margin-top:var(--space-2)">Saved together with the rest of your profile when you press Save</div>
+    </section>
+    <div class="form-foot" style="justify-content:flex-end">
+      <div class="foot-right">
+        <a class="page-secondary" href="home.html">Cancel</a>
+        <button class="page-primary" data-confirm="Profile saved">Save</button>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="assets/app.js"></script>
+</body>
+</html>

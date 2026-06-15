@@ -31,7 +31,7 @@
       <div style="margin-top:var(--space-2)"><button class="input-primary" data-toast="Pulling and checking the image… (mock)">{ic:download} Set lab image</button></div>
       <!-- on click the platform pulls + verifies the image (spinner), then this
            success line appears under the input -->
-      <div class="page-sub" style="margin-top:var(--space-2);color:var(--color-success);display:flex;align-items:center;gap:6px">{ic:check} Image pulled and verified - ready to spawn</div>
+      <div class="notice success" style="margin-top:var(--space-2)">{ic:check} Image pulled and verified - ready to spawn</div>
     </div>
 
     <div class="section-title">Volumes</div>
@@ -59,7 +59,7 @@
 
     <div class="form-foot" style="justify-content:flex-end">
       <a class="page-secondary" href="home.html">Cancel</a>
-      <button class="page-primary" data-toast="Saved lab container config (mock)">Save</button>
+      <button class="page-primary" data-confirm="Lab container settings saved">Save</button>
     </div>
   </div>
 </main>
