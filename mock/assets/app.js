@@ -31,7 +31,8 @@
     cpu:     'M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3M5 5h14v14H5zM9 9h6v6H9z',
     check:   'M20 6L9 17l-5-5',
     arrowup: 'M12 19V5M5 12l7-7 7 7',
-    chevron: 'M9 18l6-6-6-6'
+    chevron: 'M9 18l6-6-6-6',
+    disk:    'M22 12H2M5.45 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.9A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.1z M6 16h.01M10 16h.01'
   };
   function svg(name) {
     return '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="' + (I[name] || '') + '"/></svg>';
@@ -271,6 +272,147 @@
         '<button class="btn btn-primary" data-toast="Broadcast delivered 3/3 (mock)" data-close-drawer>Send</button></div>';
   }
 
+  // ---------- scale behaviours (lists, comboboxes, capped chips) ----------
+  // Demonstrated for real over the static sample rows / in-script corpora so
+  // the scale story is credible: search, scope and sort actually work. The
+  // pager (in markup) is illustrative - nothing pages a real dataset here.
+  var SAMPLE_GROUPS = ['research','data-science','gpu','keys-openai','interns','admins','staff','students','ml-platform','vision-lab','nlp','robotics','finance','bioinformatics','physics'];
+  var SAMPLE_USERS = ['alice','milan','nina','jakub','konrad','ola','piotr','marta','ewa','tomek','dawid','kasia','marek','agnieszka','bartek','sofia','hugo','lena'];
+  var CORPORA = { groups: SAMPLE_GROUPS, users: SAMPLE_USERS };
+
+  function debounce(fn, ms) {
+    var t;
+    return function () { var a = arguments, c = this; clearTimeout(t); t = setTimeout(function () { fn.apply(c, a); }, ms || 120); };
+  }
+
+  // data-list: a .tbl whose rows carry data-text (searchable) + data-scope
+  // (space-separated state tokens). The enclosing .card supplies an optional
+  // [data-list-search] input and [data-list-scope] filter pills; one pill may
+  // start .active to set the default scope. Sortable columns use
+  // th.sortable[data-sort][data-sort-type] with matching data-sort-<key> on the
+  // row (falls back to data-text). An optional [data-list-empty] tr shows when
+  // nothing matches.
+  function applyList(root) {
+    forEach(root.querySelectorAll("[data-list]"), function (table) {
+      if (table.getAttribute("data-list-done")) return;
+      table.setAttribute("data-list-done", "1");
+      var card = table.closest(".card") || document;
+      var search = card.querySelector("[data-list-search]");
+      var scopes = card.querySelectorAll("[data-list-scope]");
+      var tbody = table.tBodies[0];
+      if (!tbody) return;
+      var emptyRow = table.querySelector("[data-list-empty]");
+      var st = { q: "", scope: "all" };
+      var act = card.querySelector("[data-list-scope].active");
+      if (act) st.scope = act.getAttribute("data-list-scope");
+      function dataRows() { return Array.prototype.slice.call(tbody.querySelectorAll("tr[data-text]")); }
+      function refresh() {
+        var q = st.q.toLowerCase(), sc = st.scope, shown = 0;
+        dataRows().forEach(function (r) {
+          var okT = !q || (r.getAttribute("data-text") || "").toLowerCase().indexOf(q) > -1;
+          var okS = sc === "all" || (" " + (r.getAttribute("data-scope") || "") + " ").indexOf(" " + sc + " ") > -1;
+          var vis = okT && okS; r.hidden = !vis; if (vis) shown++;
+        });
+        if (emptyRow) emptyRow.hidden = shown > 0;
+      }
+      if (search) search.addEventListener("input", debounce(function () { st.q = search.value; refresh(); }));
+      forEach(scopes, function (p) {
+        p.addEventListener("click", function () {
+          forEach(scopes, function (x) { x.classList.toggle("active", x === p); });
+          st.scope = p.getAttribute("data-list-scope"); refresh();
+        });
+      });
+      forEach(table.querySelectorAll("th.sortable"), function (th) {
+        th.addEventListener("click", function () {
+          var key = th.getAttribute("data-sort"), type = th.getAttribute("data-sort-type") || "text";
+          var asc = th.getAttribute("data-dir") !== "asc";
+          forEach(table.querySelectorAll("th.sortable"), function (x) { x.removeAttribute("data-dir"); });
+          th.setAttribute("data-dir", asc ? "asc" : "desc");
+          function val(r) {
+            var v = r.getAttribute("data-sort-" + key);
+            if (v === null) v = r.getAttribute("data-text") || "";
+            return type === "num" ? (parseFloat(v) || 0) : ("" + v).toLowerCase();
+          }
+          var rs = dataRows().sort(function (a, b) { var av = val(a), bv = val(b); return (av < bv ? -1 : av > bv ? 1 : 0) * (asc ? 1 : -1); });
+          rs.forEach(function (r) { tbody.appendChild(r); });
+          if (emptyRow) tbody.appendChild(emptyRow);
+        });
+      });
+      refresh();
+    });
+  }
+
+  // data-combo="groups|users": typeahead chip-input (port of the live hub's
+  // admin chip editor). Pre-seed chosen chips inside [data-combo-chips]. Type to
+  // filter the corpus, Enter/Tab/click adds, x removes, Backspace on empty pops
+  // the last. Replaces every <select>/fake-autocomplete membership picker.
+  function applyCombo(root) {
+    forEach(root.querySelectorAll("[data-combo]"), function (box) {
+      if (box.getAttribute("data-combo-done")) return;
+      box.setAttribute("data-combo-done", "1");
+      var corpus = CORPORA[box.getAttribute("data-combo")] || [];
+      var label = box.getAttribute("data-combo");
+      var chipsEl = box.querySelector("[data-combo-chips]");
+      var input = box.querySelector(".combo-input");
+      var pop = box.querySelector("[data-combo-pop]");
+      if (!chipsEl || !input || !pop) return;
+      var sel = -1, matches = [];
+      function chosen() { return Array.prototype.map.call(chipsEl.querySelectorAll(".chip"), function (c) { return c.getAttribute("data-val"); }); }
+      function wireRemove(c) { var x = c.querySelector(".x"); if (x) x.addEventListener("click", function () { c.remove(); }); }
+      function addChip(v) {
+        if (!v || chosen().indexOf(v) > -1) return;
+        var c = document.createElement("span");
+        c.className = "chip"; c.setAttribute("data-val", v);
+        c.innerHTML = "<span>" + v + "</span><span class=\"x\">" + svg("stop") + "</span>";
+        wireRemove(c); chipsEl.appendChild(c);
+      }
+      function close() { pop.classList.remove("open"); pop.innerHTML = ""; matches = []; sel = -1; }
+      function paint() { forEach(pop.querySelectorAll(".combo-opt"), function (el, i) { el.classList.toggle("sel", i === sel); }); }
+      function render() {
+        var q = (input.value || "").trim().toLowerCase();
+        if (!q) { close(); return; }
+        var have = chosen();
+        matches = corpus.filter(function (g) { return have.indexOf(g) < 0 && g.toLowerCase().indexOf(q) > -1; }).slice(0, 8);
+        sel = matches.length ? 0 : -1;
+        pop.innerHTML = matches.length
+          ? matches.map(function (g, i) { return '<div class="combo-opt' + (i === sel ? " sel" : "") + '" data-v="' + g + '">' + g + "</div>"; }).join("")
+          : '<div class="combo-opt" data-empty>No matching ' + label + "</div>";
+        pop.classList.add("open");
+        forEach(pop.querySelectorAll("[data-v]"), function (el) {
+          el.addEventListener("mousedown", function (e) { e.preventDefault(); addChip(el.getAttribute("data-v")); input.value = ""; close(); input.focus(); });
+        });
+      }
+      input.addEventListener("input", render);
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowDown" && matches.length) { e.preventDefault(); sel = (sel + 1) % matches.length; paint(); }
+        else if (e.key === "ArrowUp" && matches.length) { e.preventDefault(); sel = (sel - 1 + matches.length) % matches.length; paint(); }
+        else if ((e.key === "Enter" || e.key === "Tab") && sel > -1 && matches[sel]) { e.preventDefault(); addChip(matches[sel]); input.value = ""; close(); }
+        else if (e.key === "Backspace" && !input.value) { var cs = chipsEl.querySelectorAll(".chip"); if (cs.length) cs[cs.length - 1].remove(); }
+        else if (e.key === "Escape") { close(); }
+      });
+      input.addEventListener("blur", function () { setTimeout(close, 150); });
+      forEach(chipsEl.querySelectorAll(".chip"), wireRemove);
+    });
+  }
+
+  // data-chips[="N"]: cap a DISPLAY chip list at N (default 3); the rest collapse
+  // behind a +N pill that reveals them in place. Keeps a many-membership cell
+  // from overflowing the row.
+  function applyChips(root) {
+    forEach(root.querySelectorAll("[data-chips]"), function (box) {
+      if (box.getAttribute("data-chips-done")) return;
+      box.setAttribute("data-chips-done", "1");
+      var cap = parseInt(box.getAttribute("data-chips"), 10) || 3;
+      var chips = Array.prototype.slice.call(box.querySelectorAll(".chip, .tag"));
+      if (chips.length <= cap) return;
+      chips.forEach(function (c, i) { if (i >= cap) c.hidden = true; });
+      var more = document.createElement("button");
+      more.type = "button"; more.className = "chip-more"; more.textContent = "+" + (chips.length - cap);
+      more.addEventListener("click", function () { chips.forEach(function (c) { c.hidden = false; }); more.remove(); });
+      box.appendChild(more);
+    });
+  }
+
   // ---------- wiring ----------
   function tabClick(e) {
     var box = e.currentTarget;
@@ -285,6 +427,9 @@
     forEach(root.querySelectorAll("[data-toast]"), function (el) { el.addEventListener("click", function () { toast(el.getAttribute("data-toast")); }); });
     forEach(root.querySelectorAll("[data-tabs]"), function (box) { box.addEventListener("click", tabClick); });
     forEach(root.querySelectorAll("[data-open-drawer]"), function (el) { el.addEventListener("click", function () { openTemplateDrawer(el.getAttribute("data-open-drawer")); }); });
+    applyList(root);
+    applyCombo(root);
+    applyChips(root);
   }
   function wire() {
     document.getElementById("theme-toggle").addEventListener("click", toggleTheme);

@@ -17,15 +17,13 @@
       <div class="page-sub">People, their authorisation state and group membership</div>
     </div>
     <div class="actions">
-      <label class="search">{ic:search}<input type="text" placeholder="Filter users…"></label>
       <a class="btn btn-primary" href="new-user.html">{ic:plus} Add user</a>
       <a class="btn" href="bulk-users.html">Bulk add</a>
     </div>
   </div>
 
   <!-- Pending authorisation: a transient top section, shown ONLY when signups
-       wait (Flow 4). Hidden entirely when empty - it is not a column state
-       mixed into the main list. Each row authorises or discards in place. -->
+       wait. Each row authorises or discards in place. No email on the list. -->
   <div class="card card-pad-0" style="border-color:color-mix(in srgb, var(--color-accent-2) 35%, transparent)">
     <div class="card-head">
       <h3>Pending authorisation</h3>
@@ -35,7 +33,7 @@
       <table class="tbl">
         <tbody>
           <tr>
-            <td><div class="u"><span class="avatar">BA</span><div>bartek<br><small>bartek@stellars-tech.eu</small></div></div></td>
+            <td><div class="u"><span class="avatar">BA</span>bartek</div></td>
             <td class="num">signed up 12m ago</td>
             <td class="right"><div class="row-actions">
               <button class="btn btn-sm btn-primary" data-toast="Authorised bartek (mock)">Authorize</button>
@@ -43,7 +41,7 @@
             </div></td>
           </tr>
           <tr>
-            <td><div class="u"><span class="avatar">NI</span><div>nina<br><small>nina@stellars-tech.eu</small></div></div></td>
+            <td><div class="u"><span class="avatar">NI</span>nina</div></td>
             <td class="num">signed up 6m ago</td>
             <td class="right"><div class="row-actions">
               <button class="btn btn-sm btn-primary" data-toast="Authorised nina (mock)">Authorize</button>
@@ -55,92 +53,84 @@
     </div>
   </div>
 
-  <!-- Authorised users. The Authorised switch is the admin's inline lever - a
-       cheap toggle needs no drawer (off = deliberately de-authorised, not
-       pending). Configure opens the edit drawer over the list (Flow 3). -->
+  <!-- Authorised users. At scale: search filters live; scope pills (Authorised
+       default / De-authorised / All) keep the default view clean; columns sort;
+       the pager is illustrative. The Authorised switch is the cheap inline lever
+       (off = deliberate de-authorisation). Groups is a COUNT that drills into
+       the user's config - never enumerated chips (a user may be in dozens).
+       Configure opens the full Configure-user screen (no drawer). -->
   <div class="card card-pad-0" style="margin-top:var(--space-4)">
-    <div class="card-head"><h3>22 authorised users</h3></div>
+    <div class="card-head">
+      <h3>Authorised users</h3>
+      <div class="actions">
+        <label class="search">{ic:search}<input type="text" placeholder="Filter by user…" data-list-search></label>
+        <span class="pill running active" data-list-scope="authorised"><span class="dot"></span>Authorised 1,284</span>
+        <span class="pill stopped" data-list-scope="deauthorised"><span class="dot"></span>De-authorised 12</span>
+        <span class="pill stopped" data-list-scope="all"><span class="dot"></span>All 1,296</span>
+      </div>
+    </div>
     <div class="table-wrap">
-      <table class="tbl">
-        <thead><tr><th>User</th><th>Role</th><th>Authorised</th><th>Groups</th><th>Last seen</th><th class="right">Configure</th></tr></thead>
+      <table class="tbl" data-list>
+        <thead>
+          <tr>
+            <th class="sortable" data-sort="user">User <span class="sort"></span></th>
+            <th>Role</th>
+            <th>Authorised</th>
+            <th class="right">Groups</th>
+            <th class="sortable right" data-sort="seen" data-sort-type="num">Last seen <span class="sort"></span></th>
+            <th class="right">Configure</th>
+          </tr>
+        </thead>
         <tbody>
-          <tr><td><div class="u"><span class="avatar">AD</span><div>admin<br><small>you</small></div></div></td><td><span class="tag accent">admin</span></td><td><span class="switch on" data-toast="Cannot de-authorise yourself (mock)"><span class="track"></span></span></td><td><div class="chips"><span class="chip">data-science</span></div></td><td class="num">now</td><td class="right"><button class="icon-btn" title="Configure" data-open-drawer="user-edit">{ic:settings}</button></td></tr>
-          <tr><td><div class="u"><span class="avatar">AL</span>alice</div></td><td><span class="tag">user</span></td><td><span class="switch on" data-toast="De-authorised alice (mock)"><span class="track"></span></span></td><td><div class="chips"><span class="chip">data-science</span><span class="chip">gpu</span></div></td><td class="num">2m ago</td><td class="right"><button class="icon-btn" title="Configure" data-open-drawer="user-edit">{ic:settings}</button></td></tr>
-          <tr><td><div class="u"><span class="avatar">MI</span>milan</div></td><td><span class="tag">user</span></td><td><span class="switch on" data-toast="De-authorised milan (mock)"><span class="track"></span></span></td><td><div class="chips"><span class="chip">research</span><span class="chip">gpu</span></div></td><td class="num">now</td><td class="right"><button class="icon-btn" title="Configure" data-open-drawer="user-edit">{ic:settings}</button></td></tr>
-          <tr><td><div class="u"><span class="avatar">JA</span>jakub</div></td><td><span class="tag">user</span></td><td><span class="switch" data-toast="Re-authorised jakub (mock)"><span class="track"></span></span></td><td><span style="color:var(--color-text-subtle)">de-authorised</span></td><td class="num">1d ago</td><td class="right"><button class="icon-btn" title="Configure" data-open-drawer="user-edit">{ic:settings}</button></td></tr>
+          <tr data-text="admin" data-scope="authorised" data-sort-seen="0">
+            <td><div class="u"><span class="avatar">AD</span>admin</div></td>
+            <td><span class="tag accent">admin</span></td>
+            <td><span class="switch on" data-toast="Cannot de-authorise yourself (mock)"><span class="track"></span></span></td>
+            <td class="right"><a href="user-config.html" style="color:var(--color-accent)">1 group</a></td>
+            <td class="num right">now</td>
+            <td class="right"><a class="icon-btn" href="user-config.html" title="Configure">{ic:settings}</a></td>
+          </tr>
+          <tr data-text="alice" data-scope="authorised" data-sort-seen="2">
+            <td><div class="u"><span class="avatar">AL</span>alice</div></td>
+            <td><span class="tag">user</span></td>
+            <td><span class="switch on" data-toast="De-authorised alice (mock)"><span class="track"></span></span></td>
+            <td class="right"><a href="user-config.html" style="color:var(--color-accent)">4 groups</a></td>
+            <td class="num right">2m ago</td>
+            <td class="right"><a class="icon-btn" href="user-config.html" title="Configure">{ic:settings}</a></td>
+          </tr>
+          <tr data-text="milan" data-scope="authorised" data-sort-seen="1">
+            <td><div class="u"><span class="avatar">MI</span>milan</div></td>
+            <td><span class="tag">user</span></td>
+            <td><span class="switch on" data-toast="De-authorised milan (mock)"><span class="track"></span></span></td>
+            <td class="right"><a href="user-config.html" style="color:var(--color-accent)">2 groups</a></td>
+            <td class="num right">now</td>
+            <td class="right"><a class="icon-btn" href="user-config.html" title="Configure">{ic:settings}</a></td>
+          </tr>
+          <tr data-text="jakub" data-scope="deauthorised" data-sort-seen="1440">
+            <td><div class="u"><span class="avatar">JA</span>jakub</div></td>
+            <td><span class="tag">user</span></td>
+            <td><span class="switch" data-toast="Re-authorised jakub (mock)"><span class="track"></span></span></td>
+            <td class="right"><span style="color:var(--color-text-subtle)">de-authorised</span></td>
+            <td class="num right">1d ago</td>
+            <td class="right"><a class="icon-btn" href="user-config.html" title="Configure">{ic:settings}</a></td>
+          </tr>
+          <tr data-list-empty hidden><td colspan="6"><div class="empty" style="padding:var(--space-6)"><p>No user matches that filter</p></div></td></tr>
         </tbody>
       </table>
     </div>
+    <div class="pager">
+      <span>Showing <b>1-4</b> of <b>1,284</b></span>
+      <span class="pages">
+        <button class="pg" disabled data-toast="Page navigation is illustrative (mock)">Prev</button>
+        <button class="pg on" data-toast="Page 1 (mock)">1</button>
+        <button class="pg" data-toast="Page 2 (mock)">2</button>
+        <button class="pg" data-toast="Page 3 (mock)">3</button>
+        <span style="padding:0 4px">…</span>
+        <button class="pg" data-toast="Page 64 (mock)">64</button>
+        <button class="pg" data-toast="Next page (mock)">Next</button>
+      </span>
+    </div>
   </div>
-
-  <!-- USR-005 user edit drawer: opened by a row's Configure button. One Save for
-       the whole user (not per tab). Tabs: Profile / Groups (+ read-only
-       effective access) / Volumes. app.js wires open/close/tabs/toasts. -->
-  <template data-drawer="user-edit">
-    <div class="drawer-head">{ic:user}<h3>Configure alice</h3><button class="icon-btn" data-close-drawer style="margin-left:auto">{ic:stop}</button></div>
-    <div class="drawer-body">
-      <div data-tabs>
-        <div class="tab-bar">
-          <button class="tab active" data-tab="profile">Profile</button>
-          <button class="tab" data-tab="groups">Groups</button>
-          <button class="tab" data-tab="volumes">Volumes</button>
-        </div>
-
-        <section class="tab-panel active" data-panel="profile">
-          <dl class="kv">
-            <dt>Username</dt><dd class="mono">alice</dd>
-            <dt>Full name</dt><dd>Alice Kowalska</dd>
-            <dt>Email</dt><dd class="mono">alice@stellars-tech.eu</dd>
-            <dt>Role</dt><dd><span class="tag">user</span></dd>
-            <dt>Authorised</dt><dd><span class="switch on" data-toast="De-authorised alice (mock)"><span class="track"></span></span></dd>
-            <dt>Signed up</dt><dd>2026-03-04</dd>
-            <dt>Last active</dt><dd>2m ago</dd>
-          </dl>
-          <div style="margin-top:var(--space-4)"><button class="btn" data-toast="Password change link sent (mock)">{ic:key} Change password</button></div>
-        </section>
-
-        <section class="tab-panel" data-panel="groups">
-          <div class="page-sub" style="margin-bottom:var(--space-3)">Membership is the only lever - it grants policy</div>
-          <div class="chips" style="margin-bottom:var(--space-4)">
-            <span class="chip">data-science <span class="x" data-toast="Removed from data-science (mock)">{ic:stop}</span></span>
-            <span class="chip">gpu <span class="x" data-toast="Removed from gpu (mock)">{ic:stop}</span></span>
-          </div>
-          <div style="display:flex;gap:var(--space-2);max-width:360px">
-            <select class="select"><option>Add to group…</option><option>research</option><option>keys-openai</option><option>interns</option></select>
-            <button class="btn" data-toast="Added to group (mock)">Add</button>
-          </div>
-
-          <!-- Read-only effective access: the policy resolved across her groups,
-               each grant citing the winning group. Membership without its
-               resolved result is half the picture (critic P2). -->
-          <div class="section-title">Effective access</div>
-          <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>GPU</b><div class="g-from">from group gpu</div></div><span class="g-val">0,1</span></div>
-          <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>Memory</b><div class="g-from">from group data-science</div></div><span class="g-val">16 GB</span></div>
-          <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>CPU</b><div class="g-from">from group data-science</div></div><span class="g-val">4 cores</span></div>
-          <div class="grant"><span class="g-ic">{ic:shield}</span><div><b>Downloads</b><div class="g-from">from group data-science</div></div><span class="g-val">blocked</span></div>
-        </section>
-
-        <section class="tab-panel" data-panel="volumes">
-          <div class="page-sub" style="margin-bottom:var(--space-3)">Reset needs the server stopped</div>
-          <div class="table-wrap">
-            <table class="tbl">
-              <thead><tr><th></th><th>Volume</th><th class="right">Size</th></tr></thead>
-              <tbody>
-                <tr><td><input type="checkbox"></td><td>home</td><td class="num right">2.1 GB</td></tr>
-                <tr><td><input type="checkbox"></td><td>workspace</td><td class="num right">9.8 GB</td></tr>
-                <tr><td><input type="checkbox"></td><td>cache</td><td class="num right">0.5 GB</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div style="margin-top:var(--space-4)"><button class="btn btn-danger" data-toast="Reset selected volumes (mock)">Reset selected</button></div>
-        </section>
-      </div>
-    </div>
-    <div class="drawer-foot">
-      <button class="btn" data-close-drawer>Cancel</button>
-      <button class="btn btn-primary" data-toast="Saved alice (mock)" data-close-drawer>Save</button>
-    </div>
-  </template>
 </main>
 <script src="assets/app.js"></script>
 </body>

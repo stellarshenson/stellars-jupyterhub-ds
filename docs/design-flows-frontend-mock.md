@@ -12,7 +12,7 @@ Three success criteria, every decision is judged against them:
 - **Admin friction minimal** - fewest clicks, page loads and context losses for the common admin tasks
 - **Navigation integrity maximal** - every screen reachable, every action has a clear back-path, placement is consistent, role-gating is correct
 
-Status (this revision): all three locked, no open decisions remain - the Tokens, Activity and per-tab resolutions are recorded under Critic pass.
+Status (this revision): all three locked, no open decisions remain - the Tokens, Activity and per-tab resolutions are recorded under Critic pass. A later **Refinement round - scale and coherence** (see that section) supersedes the edit-as-drawer decision: Configure user and Configure group are now full tabbed screens, and the lists are built to hold up at large user/group counts.
 
 ## How to read this
 
@@ -73,10 +73,10 @@ The split is live-system vs configuration, not frequency: **Operate** is the run
 | USR-002 | New user (single) | USR-001 Add | `POST /api/users`, `POST /api/admin/credentials` |
 | USR-003 | Bulk add users (input) | USR-001 Bulk add | `POST /api/users` |
 | USR-004 | Bulk result (credentials + download) | USR-003 confirm | `POST /api/admin/credentials` |
-| USR-005 | User edit (drawer) - Profile / Groups (+ effective access) / Volumes | USR-001 row | `PATCH /api/users/{user}`, manage-volumes, authorize, change-password, per-user resolve |
+| USR-005 | Configure user (full screen `user-config.html`) - Profile (avatar, names, email, password) / Groups (+ effective access) / Volumes | USR-001 row | `PATCH /api/users/{user}`, manage-volumes, authorize, change-password, per-user resolve |
 | GRP-001 | Groups list (priority-ordered) | sidebar | `GET /api/admin/groups` |
 | GRP-002 | New group (name + description) | GRP-001 Add | `POST /api/admin/groups/create` |
-| GRP-003 | Group config - nine policy sections | GRP-001 row | `GET|PUT /api/admin/groups/{name}/config` |
+| GRP-003 | Configure group (full screen, tabbed) - General / Policy (nine sections) / Members | GRP-001 row | `GET|PUT /api/admin/groups/{name}/config`, group-users add/remove |
 | EVT-001 | Events (audit timeline) | OVR-001 feed, palette | net-new - no event source exists yet |
 | SET-001 | Settings (read-only reference) | Advanced menu | settings dictionary |
 | BRD-001 | Broadcast composer (drawer) | topbar megaphone | `POST /api/notifications/broadcast` |
@@ -157,17 +157,17 @@ The highest-stakes surface. Same create/detail laws as Users; the detail is heav
 
 ### Domain: Servers
 
-The daily operate surface. One list, lifecycle and engagement on every row, detail for the rare deep look.
+The daily operate surface. One list carrying the live monitor's columns and the lifecycle actions on every row, with a light detail for the rare deep look.
 
 **Flow 8 - Triage and reclaim a server**
 
-1. Admin on **SRV-001**; scans the single Status column (Active / Idle Xm / Spawning / Stopped / Failed, with the 5-segment meter inline on running rows) + Time-left to find idle holders of resources
+1. Admin on **SRV-001**; scans Status (Active / Idle Xm / Spawning / Stopped / Failed) alongside the resource columns - Activity (24h engagement meter + %), CPU, Memory, GPU, Volumes, System (writable layer), Time-left - to find idle or wasteful holders of resources
 2. Per-row actions by state: Stopped -> **Start** (spawns for the user; admin stays on the list - starting is not entering); Running -> **Enter** (confirm popup "Enter <user>'s running server? You will be acting in their session" before navigating) / Restart / Stop; Spawning -> view live log / Cancel; Failed -> view error / Relaunch
 3. SRV-001 also sorts by any column, badges quota overflow (volume / memory / container-extra-space) and carries Reset-samples + Report in its toolbar - the old Activity page is fully absorbed, nothing lost
 4. For the deep look the row expands to current status + the live spawn log (during spawn); **SRV-002** stays light because no per-server history or persistent log exists
 5. Stop -> `DELETE /api/users/{user}/server`; start -> `POST /api/users/{user}/server`; restart -> `POST .../restart-server`; enter -> admin spawn/open for that user
 
-- Slop cut: image column gone (uniform, no decision); uptime gone (Time-left is the actionable countdown); the separate Activity column gone (Status already encodes engagement: Active / Idle); Activity-as-a-page gone (its deep tools moved to the Servers toolbar)
+- Slop cut: image column gone (uniform, no decision); uptime gone (Time-left is the actionable countdown); Auth column dropped here (authorisation is a Users-page concern); Activity-as-a-page gone (its columns and deep tools moved onto Servers, not a second surface)
 - Admin safety: start any server freely, but entering another user's session is always a deliberate, confirmed second click
 
 ### Domain: Self-service (user)
@@ -209,11 +209,26 @@ Every cut traces to a flow that did not need the thing.
 - **Events, not Logs** - the "recent events" widget drills into **EVT-001 Events**, an audit timeline of actions (user created, group policy changed, server culled, broadcast sent); "Logs" (raw hub/container process output) is a separate technical concern, out of scope now, a future Advanced item if ever needed
 - **Broadcast vs Notifications - two concepts, two controls** - **Broadcast** (BRD-001) is outgoing: admin -> all or selected active labs, from the topbar megaphone (the current hub mislabels this page "Notifications"); the **bell** is incoming - the admin's own notification inbox; naming the outgoing one with the verb "Broadcast" ends the ambiguity; BRD-001 is a focused composer, not embedded in Servers or Activity, and reads the active-server list only to target per-user recipients
 - **Resources wide widget, Groups card dropped** - on OVR-001 the Groups count card is removed (a group count is not a monitoring signal; Groups stays in the sidebar) and the GPU card becomes a wide **Resources** widget spanning two columns: three bars (CPU, Memory, GPU) for platform/host utilisation; the top row reads Servers | Users | Resources (x2). On OVR-100 the user hero shows the same three bars for their own server
-- **One Status column - lifecycle and engagement are one thing** - a server's state is a single axis: Active / Idle Xm / Spawning / Stopped / Failed; there is no separate "Activity" column (that was proliferation - a running server simply reads Active or Idle). The 5-segment meter is the inline engagement visual *within* that column on running rows, not a second column
+- **Status and Activity are distinct columns (reversal)** - an earlier revision merged them into one column on the theory that a running server "simply reads Active or Idle". Reviewing the live hub's Activity Monitor (which the operator endorsed) reversed that: the two answer different questions. **Status** is the instantaneous lifecycle that drives the action set (Active / Idle Xm / Spawning / Stopped / Failed); **Activity** is the 24h engagement trend (5-segment meter + %, red low / amber mid / green high, from `activity_score`) that drives capacity and cleanup decisions. The meter is the Activity column, not an inline badge on the Status pill. Every column and its manifestation was thought out against the live page rather than copied
 - **User cells show identity, not membership** - the Servers list shows the username and role (admin is a role, fine to show), never a group name under it; a user can be in dozens of groups, so a single group sub-line is arbitrary and misleading - membership belongs to Users/Groups, not the server list
 - **Admin starts a server without entering it** - SRV-001 play is state-aware: Stopped -> Start (admin stays on the list); Running -> Enter, gated by a confirm popup; starting is never entering, entering another user's lab is always a deliberate confirmed act
-- **Activity fully absorbed into Servers** - columns plus sortable headers, quota-warning badges and Reset/Report in the toolbar; the Activity page retires with nothing lost and no second surface
+- **The Activity Monitor is absorbed into Servers, columns and all** - SRV-001 carries the live monitor's columns (Status, Activity, CPU, Memory, GPU, Volumes, System, Time-left), sortable headers, quota-warning cells (memory / total volumes / container writable layer turn danger with a triangle and the threshold in the tooltip) and Reset-samples / Report / Refresh in the toolbar, and adds the lifecycle actions the monitor lacked (start / stop / restart / enter / manage-volumes). The standalone Activity page retires with nothing lost. Resource cells show `--` when the server is stopped, except Volumes which persists; per-mount, memory-total and writable-vs-base breakdowns live in each cell's tooltip
 - **SRV-002 stays light** - no per-server history and the spawn log is live-only, so the deep view is current status + live spawn log; likely an inline expandable row, not a full screen
+
+## Refinement round - scale and coherence
+
+Driven by the operator after reviewing the rebuilt mock: make it logical and make it hold up when users number in the hundreds-to-thousands and groups in the dozens-to-hundreds. The mock stays static (no real API); interaction-critical behaviour is wired for real over the sample rows / in-script corpora, and pagination is represented visually.
+
+**Design principles (govern every choice here):** purpose first - a control earns its place by the decision it drives; the visual metaphor (bar / meter / pill) carries the glance while precise values live in the tooltip; colour alone signals a threshold breach (no warning icon); the mock shows the target design - no implementation-tracking badges ("net-new") on screen, backend gaps tracked in this doc only.
+
+**Three reusable patterns** (in `assets/app.js` / `assets/app.css`, applied across pages):
+- **Scaled list** (`data-list`) - servers, users, groups, events, tokens each lead with a wired search, scope-filter pills (the default scope is never "everything" - Servers default to Active, Stopped behind its pill), sortable headers, a no-results state, and a visual pager. Rows carry `data-text` / `data-scope` / `data-sort-<key>`
+- **Typeahead combobox** (`data-combo="groups|users"`) - replaces every `<select>` / fake-autocomplete membership picker (a port of the live hub's admin chip editor): type to filter the corpus, Enter/Tab/click to add, x to remove. Used in Configure user (groups), new-user, bulk-users, Configure group (members)
+- **Relationship at scale** - Configure group gains a **Members** tab (typeahead add + a searchable, paged member list with per-row remove); display chip lists cap at a few with a `+N` that expands (`data-chips`); the Users list shows a group **count** that drills in, and group member counts drill in - neither enumerates names in a tooltip
+
+**Configure user / group are full screens (supersedes the P5 edit-as-drawer decision):** both entities carry too much config for a side panel, and a list row should never open a cramped panel for a heavy entity. `user-config.html` (USR-005): Profile (avatar, first/last name, email, change-password, role, authorised) / Groups / Volumes. `group-config.html` (GRP-003): General (name, description, priority) / Policy (the nine sections) / Members. One Save per screen. The user-edit drawer is removed; BRD-001 broadcast remains a drawer (it is a transient composer, not a heavy entity).
+
+**Per-element refinements:** Activity is a meter only, the % in its tooltip (not inline); quota breaches (memory / volumes / writable layer) are colour-only; the Users list drops the email sub-line (email lives on the Profile tab); new-user has one password field pre-filled with a generated value that the admin types over (no "set manually" mode); the Overview active-servers mini-table un-clubs Status and Activity into separate columns to match Servers.
 
 ## Backend reality - corrections and net-new
 
@@ -250,7 +265,7 @@ An independent xhigh review attacked the scheme adversarially (separate model, n
 Resolved calls (no open decisions remain):
 
 - **Tokens + Advanced (P4) - resolved (a)** - Advanced now holds **Settings + Tokens** (both occasional), so the primary rail is lean (Overview, Servers, Users, Groups) and Advanced is no longer a one-item menu; Tokens stays under Advanced per the operator's instruction, with `Cmd-K` as the admin fast-path (one keystroke, not two disclosure clicks). Reversible if the operator prefers Tokens in the user-menu for everyone
-- **Activity merge (P3) - resolved (merge)** - merged per the operator's instruction; the critic's losses are mitigated, not incurred: SRV-001 lists every user's server state (offline preserved), lean default columns with deep metrics on row-expand, Reset/Report/Sample in the Servers toolbar. The critic's un-merge is recorded as dissent, the decision is the operator's
+- **Activity merge (P3) - reversed (un-merge)** - the brief one-column merge was undone after the operator reviewed the live Activity Monitor and asked for its full column set restored. SRV-001 now carries Status and Activity as distinct columns plus the live monitor's resource columns, and adds the lifecycle actions the monitor lacked. This lands where the critic originally argued (un-merge); the decision is the operator's, grounded in the live page
 - **Per-tab save (P5) - resolved** - USR-005 commits once for the whole user, not per tab (Flow 3)
 
 ## Build backlog (mock, next)
@@ -258,8 +273,8 @@ Resolved calls (no open decisions remain):
 What the mock becomes once the scheme is agreed, by ref. Net new screens are the create/detail/bulk ones the laws demand.
 
 - New screens (full): **USR-002** new user, **USR-003** bulk input, **USR-004** bulk result, **GRP-002** new group, **GRP-003** group config
-- New drawers: **USR-005** user edit (Profile / Groups + effective access / Volumes), **BRD-001** broadcast composer
+- New full screens: **USR-005** Configure user (`user-config.html`: Profile / Groups + effective access / Volumes); **GRP-003** gains General + Members tabs. New drawer: **BRD-001** broadcast composer (the user-edit drawer was reversed to a full screen - see Refinement round)
 - New: **EVT-001** Events timeline (needs the net-new event source), **SRV-002** light row-expand (current status + live spawn log)
-- Changed: **USR-001** (Add + Bulk lead to full screens; row opens the edit drawer; authorize inline; pending-on-top kept), **GRP-001** (Add + row navigate; drop bottom preview), **SRV-001** (all users' server state, lean columns + expand, sort + quota badges + Reset/Report toolbar), **OVR-001** (Groups card -> wide Resources widget; events widget -> EVT-001)
+- Changed: **USR-001** (Add + Bulk lead to full screens; row opens the edit drawer; authorize inline; pending-on-top kept), **GRP-001** (Add + row navigate; drop bottom preview), **SRV-001** (all users' server state; full monitor columns - Status, Activity, CPU, Memory, GPU, Volumes, System, Time-left - plus lifecycle actions, sort, quota-warning cells, Reset/Report/Refresh toolbar, light row-expand), **OVR-001** (Groups card -> wide Resources widget; events widget -> EVT-001)
 - Removed from v2: the inline "Configure user"/"Configure group" preview panels; the Keys user tab; the topbar notifications bell (no backend)
 - Unchanged: the role-aware shell, the token system, the visual language

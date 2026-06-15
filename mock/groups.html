@@ -17,25 +17,32 @@
       <div class="page-sub">Priority-ordered groups - each carries a policy applied at spawn</div>
     </div>
     <div class="actions">
-      <label class="search">{ic:search}<input type="text" placeholder="Filter groups…"></label>
-      <a class="btn btn-primary" href="new-group.html">+ Add group</a>
+      <a class="btn btn-primary" href="new-group.html">{ic:plus} Add group</a>
     </div>
   </div>
 
-  <!-- Priority-ordered: higher rows win on conflict. Reorder by dragging the
-       handle, or by move-up / move-down for keyboard users. Clicking the group
-       NAME opens its config (the nine policy sections) on a dedicated screen. -->
+  <!-- At scale: search filters live; columns sort; the pager is illustrative.
+       Members is a COUNT that drills into the group's Members tab - never a
+       name-enumerating tooltip. Active policies are capped (+N reveals the
+       rest). Clicking the group name (or the cog) opens its full config. Drag
+       the handle / move-up for local priority moves; priority is the # column. -->
   <div class="card card-pad-0">
-    <div class="card-head"><h3>6 groups</h3><div class="actions"><span class="page-sub">Higher priority wins on conflict</span></div></div>
+    <div class="card-head">
+      <h3><span class="list-count">142</span> groups</h3>
+      <div class="actions">
+        <label class="search">{ic:search}<input type="text" placeholder="Filter groups…" data-list-search></label>
+        <span class="page-sub">higher priority wins on conflict</span>
+      </div>
+    </div>
     <div class="table-wrap">
-      <table class="tbl">
-        <thead><tr><th>#</th><th>Group</th><th>Members</th><th>Active policies</th><th class="right">Actions</th></tr></thead>
+      <table class="tbl" data-list>
+        <thead><tr><th>#</th><th class="sortable" data-sort="group">Group <span class="sort"></span></th><th class="sortable right" data-sort="members" data-sort-type="num">Members <span class="sort"></span></th><th>Active policies</th><th class="right">Actions</th></tr></thead>
         <tbody>
-          <tr>
+          <tr data-text="research" data-sort-members="142">
             <td class="num">1</td>
             <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer"><b>research</b></a></td>
-            <td class="num" title="milan, alice, ola, piotr">4</td>
-            <td><div class="chips"><span class="tag accent">GPU all</span><span class="tag accent">Docker raw</span><span class="tag warn">Sudo on</span><span class="tag accent">Mem 32G</span></div></td>
+            <td class="right"><a href="group-config.html" style="color:var(--color-accent)">142 members</a></td>
+            <td><div class="chips" data-chips="3"><span class="tag accent">GPU all</span><span class="tag accent">Docker raw</span><span class="tag warn">Sudo on</span><span class="tag accent">Mem 32G</span><span class="tag accent">Env 2</span></div></td>
             <td><div class="row-actions">
               <button class="icon-btn" title="Move up" data-toast="Moved research up (mock)">{ic:arrowup}</button>
               <button class="icon-btn" title="Drag to reorder" data-toast="Drag to reorder (mock)">{ic:dots}</button>
@@ -43,11 +50,11 @@
               <button class="icon-btn" title="Delete" data-toast="Delete group research? removes all members (mock)">{ic:stop}</button>
             </div></td>
           </tr>
-          <tr>
+          <tr data-text="data-science" data-sort-members="318">
             <td class="num">2</td>
             <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer"><b>data-science</b></a></td>
-            <td class="num" title="alice, jakub, nina, marek, kasia, +6 more">11</td>
-            <td><div class="chips"><span class="tag accent">Mem 16G</span><span class="tag accent">CPU 4</span><span class="tag">Downloads off</span></div></td>
+            <td class="right"><a href="group-config.html" style="color:var(--color-accent)">318 members</a></td>
+            <td><div class="chips" data-chips="3"><span class="tag accent">Mem 16G</span><span class="tag accent">CPU 4</span><span class="tag">Downloads off</span></div></td>
             <td><div class="row-actions">
               <button class="icon-btn" title="Move up" data-toast="Moved data-science up (mock)">{ic:arrowup}</button>
               <button class="icon-btn" title="Drag to reorder" data-toast="Drag to reorder (mock)">{ic:dots}</button>
@@ -55,11 +62,11 @@
               <button class="icon-btn" title="Delete" data-toast="Delete group data-science? removes all members (mock)">{ic:stop}</button>
             </div></td>
           </tr>
-          <tr>
+          <tr data-text="gpu" data-sort-members="64">
             <td class="num">3</td>
             <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer"><b>gpu</b></a></td>
-            <td class="num" title="milan, alice, tomek, ewa, dawid">5</td>
-            <td><div class="chips"><span class="tag accent">GPU 0,1</span></div></td>
+            <td class="right"><a href="group-config.html" style="color:var(--color-accent)">64 members</a></td>
+            <td><div class="chips" data-chips="3"><span class="tag accent">GPU 0,1</span></div></td>
             <td><div class="row-actions">
               <button class="icon-btn" title="Move up" data-toast="Moved gpu up (mock)">{ic:arrowup}</button>
               <button class="icon-btn" title="Drag to reorder" data-toast="Drag to reorder (mock)">{ic:dots}</button>
@@ -67,11 +74,11 @@
               <button class="icon-btn" title="Delete" data-toast="Delete group gpu? removes all members (mock)">{ic:stop}</button>
             </div></td>
           </tr>
-          <tr>
+          <tr data-text="keys-openai" data-sort-members="37">
             <td class="num">4</td>
             <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer"><b>keys-openai</b></a></td>
-            <td class="num" title="alice, nina, kasia">3</td>
-            <td><div class="chips"><span class="tag accent">API keys pool: 3</span></div></td>
+            <td class="right"><a href="group-config.html" style="color:var(--color-accent)">37 members</a></td>
+            <td><div class="chips" data-chips="3"><span class="tag accent">API keys pool: 3</span></div></td>
             <td><div class="row-actions">
               <button class="icon-btn" title="Move up" data-toast="Moved keys-openai up (mock)">{ic:arrowup}</button>
               <button class="icon-btn" title="Drag to reorder" data-toast="Drag to reorder (mock)">{ic:dots}</button>
@@ -79,10 +86,10 @@
               <button class="icon-btn" title="Delete" data-toast="Delete group keys-openai? removes all members (mock)">{ic:stop}</button>
             </div></td>
           </tr>
-          <tr>
+          <tr data-text="interns" data-sort-members="0">
             <td class="num">5</td>
             <td><a href="group-config.html" style="color:var(--color-accent);cursor:pointer"><b>interns</b></a></td>
-            <td class="num" title="no members yet">0</td>
+            <td class="right"><a href="group-config.html" style="color:var(--color-accent)">0 members</a></td>
             <td><span style="color:var(--color-text-subtle)">No policies configured</span></td>
             <td><div class="row-actions">
               <button class="icon-btn" title="Move up" data-toast="Moved interns up (mock)">{ic:arrowup}</button>
@@ -91,12 +98,25 @@
               <button class="icon-btn" title="Delete" data-toast="Delete group interns? removes all members (mock)">{ic:stop}</button>
             </div></td>
           </tr>
+          <tr data-list-empty hidden><td colspan="5"><div class="empty" style="padding:var(--space-6)"><p>No group matches that search</p></div></td></tr>
         </tbody>
       </table>
     </div>
+    <div class="pager">
+      <span>Showing <b>1-5</b> of <b>142</b></span>
+      <span class="pages">
+        <button class="pg" disabled data-toast="Page navigation is illustrative (mock)">Prev</button>
+        <button class="pg on" data-toast="Page 1 (mock)">1</button>
+        <button class="pg" data-toast="Page 2 (mock)">2</button>
+        <button class="pg" data-toast="Page 3 (mock)">3</button>
+        <span style="padding:0 4px">…</span>
+        <button class="pg" data-toast="Page 8 (mock)">8</button>
+        <button class="pg" data-toast="Next page (mock)">Next</button>
+      </span>
+    </div>
   </div>
 
-  <div class="page-sub" style="margin-top:var(--space-3)">There is no separate Policies page - a policy is an attribute of a group, edited in group config. Drag the {ic:dots} handle to reorder, or use move-up / move-down (keyboard-friendly); higher priority wins on conflict.</div>
+  <div class="page-sub" style="margin-top:var(--space-3)">No separate Policies page - a policy is an attribute of a group, edited in its config. Drag the {ic:dots} handle or use move-up to reorder; higher priority wins on conflict.</div>
 </main>
 <script src="assets/app.js"></script>
 </body>

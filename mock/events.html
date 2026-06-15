@@ -16,28 +16,52 @@
       <h1 class="page-title">Events</h1>
       <div class="page-sub">The audit log behind the Overview feed - who did what, when</div>
     </div>
-    <div class="actions">
-      <label class="search">{ic:search}<input type="text" placeholder="Filter events…"></label>
-      <select class="select" style="width:auto"><option>All types</option><option>Server</option><option>User</option><option>Policy</option><option>Cull</option><option>Notify</option><option>Error</option></select>
-    </div>
   </div>
 
+  <!-- At scale the log is huge: search filters live, the type scope pills narrow
+       it, and the pager (with a date range) walks the history. Default is all
+       types, newest first. -->
   <div class="card card-pad-0">
-    <div class="card-head"><h3>Today</h3><div class="actions"><span class="page-sub">newest first</span></div></div>
+    <div class="card-head">
+      <h3>Events</h3>
+      <div class="actions">
+        <label class="search">{ic:search}<input type="text" placeholder="Filter events…" data-list-search></label>
+        <span class="pill stopped active" data-list-scope="all"><span class="dot"></span>All</span>
+        <span class="pill stopped" data-list-scope="server"><span class="dot"></span>Server</span>
+        <span class="pill stopped" data-list-scope="user"><span class="dot"></span>User</span>
+        <span class="pill stopped" data-list-scope="policy"><span class="dot"></span>Policy</span>
+        <span class="pill stopped" data-list-scope="cull"><span class="dot"></span>Cull</span>
+        <span class="pill stopped" data-list-scope="notify"><span class="dot"></span>Notify</span>
+        <span class="pill stopped" data-list-scope="error"><span class="dot"></span>Error</span>
+      </div>
+    </div>
     <div class="table-wrap">
-      <table class="tbl">
+      <table class="tbl" data-list>
         <thead><tr><th>Time</th><th>Actor</th><th>Event</th><th class="right">Type</th></tr></thead>
         <tbody>
-          <tr><td class="num">just now</td><td><div class="u"><span class="avatar">MI</span>milan</div></td><td>started a server with <span class="tag accent">gpu</span></td><td class="right"><span class="tag accent">server</span></td></tr>
-          <tr><td class="num">6m ago</td><td><div class="u"><span class="avatar">NI</span>nina</div></td><td>signed up - awaiting approval</td><td class="right"><span class="tag warn">user</span></td></tr>
-          <tr><td class="num">22m ago</td><td><div class="u"><span class="avatar">AD</span>admin</div></td><td>changed policy <b>docker</b> on group <b>research</b></td><td class="right"><span class="tag">policy</span></td></tr>
-          <tr><td class="num">1h ago</td><td><div class="u"><span class="avatar">SY</span>system</div></td><td><b>jakub</b>'s server was culled (idle 2h)</td><td class="right"><span class="tag">cull</span></td></tr>
-          <tr><td class="num">2h ago</td><td><div class="u"><span class="avatar">AD</span>admin</div></td><td>added <b>alice</b> to group <b>data-science</b></td><td class="right"><span class="tag">user</span></td></tr>
-          <tr><td class="num">3h ago</td><td><div class="u"><span class="avatar">AL</span>alice</div></td><td>restarted her server</td><td class="right"><span class="tag accent">server</span></td></tr>
-          <tr><td class="num">4h ago</td><td><div class="u"><span class="avatar">AD</span>admin</div></td><td>broadcast a notification to all labs</td><td class="right"><span class="tag">notify</span></td></tr>
-          <tr><td class="num">5h ago</td><td><div class="u"><span class="avatar">EW</span>ewa</div></td><td>server <b>spawn failed</b> - image pull error</td><td class="right"><span class="tag warn">error</span></td></tr>
+          <tr data-text="milan started server gpu" data-scope="server"><td class="num">just now</td><td><div class="u"><span class="avatar">MI</span>milan</div></td><td>started a server with <span class="tag accent">gpu</span></td><td class="right"><span class="tag accent">server</span></td></tr>
+          <tr data-text="nina signed up awaiting approval" data-scope="user"><td class="num">6m ago</td><td><div class="u"><span class="avatar">NI</span>nina</div></td><td>signed up - awaiting approval</td><td class="right"><span class="tag warn">user</span></td></tr>
+          <tr data-text="admin changed policy docker research" data-scope="policy"><td class="num">22m ago</td><td><div class="u"><span class="avatar">AD</span>admin</div></td><td>changed policy <b>docker</b> on group <b>research</b></td><td class="right"><span class="tag">policy</span></td></tr>
+          <tr data-text="jakub server culled idle" data-scope="cull"><td class="num">1h ago</td><td><div class="u"><span class="avatar">SY</span>system</div></td><td><b>jakub</b>'s server was culled (idle 2h)</td><td class="right"><span class="tag">cull</span></td></tr>
+          <tr data-text="admin added alice group data-science" data-scope="user"><td class="num">2h ago</td><td><div class="u"><span class="avatar">AD</span>admin</div></td><td>added <b>alice</b> to group <b>data-science</b></td><td class="right"><span class="tag">user</span></td></tr>
+          <tr data-text="alice restarted her server" data-scope="server"><td class="num">3h ago</td><td><div class="u"><span class="avatar">AL</span>alice</div></td><td>restarted her server</td><td class="right"><span class="tag accent">server</span></td></tr>
+          <tr data-text="admin broadcast notification all labs" data-scope="notify"><td class="num">4h ago</td><td><div class="u"><span class="avatar">AD</span>admin</div></td><td>broadcast a notification to all labs</td><td class="right"><span class="tag">notify</span></td></tr>
+          <tr data-text="ewa server spawn failed image pull error" data-scope="error"><td class="num">5h ago</td><td><div class="u"><span class="avatar">EW</span>ewa</div></td><td>server <b>spawn failed</b> - image pull error</td><td class="right"><span class="tag warn">error</span></td></tr>
+          <tr data-list-empty hidden><td colspan="4"><div class="empty" style="padding:var(--space-6)"><p>No event matches that filter</p></div></td></tr>
         </tbody>
       </table>
+    </div>
+    <div class="pager">
+      <span>Showing <b>1-8</b> of <b>12,431</b> · last 7 days</span>
+      <span class="pages">
+        <button class="pg" disabled data-toast="Page navigation is illustrative (mock)">Prev</button>
+        <button class="pg on" data-toast="Page 1 (mock)">1</button>
+        <button class="pg" data-toast="Page 2 (mock)">2</button>
+        <button class="pg" data-toast="Page 3 (mock)">3</button>
+        <span style="padding:0 4px">…</span>
+        <button class="pg" data-toast="Page 1554 (mock)">1554</button>
+        <button class="pg" data-toast="Next page (mock)">Next</button>
+      </span>
     </div>
   </div>
 </main>

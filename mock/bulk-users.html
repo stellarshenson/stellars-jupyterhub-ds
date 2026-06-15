@@ -29,12 +29,12 @@
 
     <div class="field">
       <label>Groups</label>
-      <div class="chips" style="margin-bottom:var(--space-3)">
-        <span class="chip">interns <span class="x" data-toast="Removed interns (mock)">{ic:stop}</span></span>
-      </div>
-      <div style="display:flex;gap:var(--space-2);max-width:360px">
-        <input class="input" type="text" placeholder="Add to group… (autocomplete)">
-        <button class="btn" data-toast="Added to group (mock)">Add</button>
+      <div class="combo" data-combo="groups" style="max-width:420px">
+        <div class="chips" data-combo-chips>
+          <span class="chip" data-val="interns"><span>interns</span><span class="x">{ic:stop}</span></span>
+        </div>
+        <input class="combo-input" type="text" placeholder="Add to group…">
+        <div class="combo-pop" data-combo-pop></div>
       </div>
     </div>
 

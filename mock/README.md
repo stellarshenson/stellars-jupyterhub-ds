@@ -38,18 +38,29 @@ Role-aware via `<body data-role>`:
 
 ## Key decisions in the mock
 
-- **One Status column** - lifecycle and engagement are one axis: Active / Idle Xm / Spawning / Stopped / Failed, with a 5-segment engagement meter inline on running rows. No separate Activity column or page (its Reset/Report tools live in the Servers toolbar)
+- **Servers fuses the live Activity Monitor with lifecycle actions** - the rich monitor columns (Status, Activity, CPU, Memory, GPU, Volumes, System, Time-left) plus start/stop/restart/enter/manage-volumes the monitor lacked. Status and Activity are kept as distinct columns - Status is the instantaneous lifecycle that drives the actions, Activity is the 24h engagement meter (the exact % in its tooltip). Quota breaches (memory / volumes / writable layer) are colour-only; Reset-samples / Report / Refresh sit in the toolbar. The standalone Activity page retires
 - **Resources widget** - CPU / Memory / GPU as three bars (a wide widget on the admin Overview, the hero block on the user launchpad); the lone GPU tile and the Groups count card are gone
 - **Admin starts a server without entering it** - Start spawns it for the user and the admin stays on the list; entering a running server is a second, confirmed action
-- **User cells show identity, not membership** - username and role only; a user can be in dozens of groups, so no group sub-line
-- **Edit = drawer, create = full screen** - editing a user opens a drawer over the list (one Save, tabs Profile / Groups + effective access / Volumes); creating is a dedicated screen
+- **User cells show identity, not membership** - username and role only; a user can be in dozens of groups, so no group sub-line (the Users list shows a group *count* that drills in)
+- **Configure user / group = full screens** - both carry too much config for a side panel, so each opens a dedicated tabbed screen from its list row (`user-config.html`: Profile / Groups / Volumes; `group-config.html`: General / Policy / Members). One Save per screen
 - **Events, not Logs** - the audit timeline behind the Overview feed; **Broadcast** (outgoing) is a topbar drawer, distinct from any inbox (the bell was removed - no backend for it)
+
+## Built for scale (many users, many groups)
+
+The mock holds up at hundreds-to-thousands of users and dozens-to-hundreds of groups. Three reusable patterns, wired for real over the sample rows (the pager is the only illustrative part):
+
+- **Scaled list** - every list (servers, users, groups, events, tokens) leads with a wired search, scope-filter pills (default never "everything"), sortable headers, a no-results state and a pager. Try typing in a filter, clicking a scope pill, or a column header
+- **Typeahead combobox** - every membership picker (add to group, add a member) is a type-to-filter chip input, not a `<select>` - it scales to hundreds of options. A port of the live hub's admin chip editor
+- **Relationship at scale** - `group-config.html` gains a Members tab (typeahead add + a searchable, paged member list) so a 500-member group is manageable; long chip lists cap at a few with a `+N` that expands; counts drill in instead of tooltips enumerating every name
+
+Design principles applied throughout: purpose first; the visual metaphor (bar / meter / pill) carries the glance while precise values live in the tooltip; colour alone signals a threshold breach; the mock shows the target design (no implementation-tracking badges - backend gaps are tracked in the design doc).
 
 ## Try it
 
 - Toggle theme with the sun/moon button (persists in `localStorage`)
 - `Cmd/Ctrl+K` for the command palette (role-scoped); `Advanced` in the sidebar expands to Settings + Tokens
-- Click a user's Configure to open the edit drawer; the topbar megaphone opens Broadcast
+- Type in any list's filter, click a scope pill, sort a column; add a group via the typeahead in Configure user; open Configure group -> Members
+- Click a user's Configure to open its full screen; the topbar megaphone opens Broadcast
 - Buttons fire mock toasts; nothing calls a real API
 
 ## Layout
@@ -59,15 +70,16 @@ mock/
   index.html         redirect to home
   home.html          admin Overview (fleet dashboard)
   home-user.html     plain-user Overview (launchpad)
-  servers.html       every lab - one Status column, resources, time-left
-  users.html         pending-on-top + authorised list + USR-005 edit drawer
-  new-user.html      single create (full screen)
-  bulk-users.html    bulk create input (full screen)
+  servers.html       every lab - monitor columns (status/activity/cpu/mem/gpu/volumes/system/time-left) + lifecycle actions + scope/search/sort
+  users.html         pending-on-top + scaled authorised list (groups as a count drill-in)
+  user-config.html   Configure user - full tabbed screen (Profile / Groups / Volumes)
+  new-user.html      single create (full screen) - one password field + typeahead groups
+  bulk-users.html    bulk create input (full screen) - typeahead groups
   bulk-result.html   bulk credentials + download
-  groups.html        priority groups -> policy
+  groups.html        priority groups -> policy - scaled list, member-count drill-in, capped policy chips
   new-group.html     create group (full screen)
-  group-config.html  the nine policy sections (full screen)
-  events.html        audit timeline
+  group-config.html  Configure group - full tabbed screen (General / Policy / Members)
+  events.html        audit timeline - scaled list (type scope pills, search, pager)
   settings.html      read-only configuration reference
   tokens.html        personal API tokens + OAuth apps
   assets/
