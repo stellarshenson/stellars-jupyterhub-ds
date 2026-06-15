@@ -55,13 +55,13 @@
       <div class="m-top"><span class="m-ic">{ic:server}</span><span>Servers</span><span class="m-go">{ic:chevron}</span></div>
       <div class="m-val">1,262</div>
       <div class="spark"><span style="width:1.5%;background:var(--color-success)"></span><span style="width:0.5%;background:var(--color-warning)"></span><span style="width:98%;background:var(--color-border)"></span></div>
-      <div class="m-break"><span><b>18</b> running</span><span><b>4</b> idle</span><span><b>1,240</b> offline</span></div>
+      <div class="m-break"><span style="color:var(--color-success)" title="Running with recent activity"><b>18</b> running</span><span style="color:var(--color-warning)" title="Running but idle - subject to the culler"><b>4</b> idle</span><span title="Stopped"><b>1,240</b> offline</span></div>
     </a>
     <a class="card metric card-link" href="users.html">
       <div class="m-top"><span class="m-ic">{ic:users}</span><span>Users</span><span class="m-go">{ic:chevron}</span></div>
       <div class="m-val">1,296</div>
-      <div class="spark"><span style="width:0.2%;background:var(--color-accent-2)"></span><span style="width:88%;background:var(--color-success)"></span><span style="width:9%;background:var(--color-text-subtle)"></span><span style="width:2.6%;background:var(--color-accent)"></span></div>
-      <div class="m-break"><span style="color:var(--color-accent-2)" title="Signed up, awaiting admin authorisation"><b>2</b> pending</span><span style="color:var(--color-success)" title="Activity above 0%"><b>1,142</b> active</span><span title="Activity at 0%"><b>118</b> inactive</span><span style="color:var(--color-accent)" title="Authorised but never signed in"><b>34</b> new</span></div>
+      <div class="spark"><span style="width:0.2%;background:var(--color-accent-2)"></span><span style="width:88%;background:var(--color-success)"></span><span style="width:2.6%;background:var(--color-accent)"></span><span style="width:9%;background:var(--color-text-subtle)"></span></div>
+      <div class="m-break"><span style="color:var(--color-accent-2)" title="Signed up, awaiting admin authorisation"><b>2</b> pending</span><span style="color:var(--color-success)" title="Activity above 0%"><b>1,142</b> active</span><span style="color:var(--color-accent)" title="Authorised but never signed in"><b>34</b> new</span><span title="Activity at 0%"><b>118</b> inactive</span></div>
     </a>
     <div class="card span-2">
       <div class="card-head" style="padding:0 0 var(--space-3);border-bottom:0">
@@ -89,12 +89,15 @@
 
     <div class="card card-pad-0">
       <a class="card-head card-head-link" href="servers.html" title="View all servers">
-        <h3>Active servers</h3>
+        <h3>Active servers <span class="list-count">· top 10 by status</span></h3>
         <span class="head-go">{ic:chevron}</span>
       </a>
-      <!-- Status and Activity are SEPARATE columns (never clubbed): Status the
+      <!-- A capped preview: the top 10 servers sorted by status (active first,
+           then spawning, then idle); the chevron opens the full Servers page.
+           Status and Activity are SEPARATE columns (never clubbed): Status the
            lifecycle pill, Activity the meter with its % in the tooltip - matches
-           the Servers page exactly. -->
+           the Servers page exactly. Time left turns amber below the warning
+           threshold (a UI config option, default < 1h) - see nina's row. -->
       <div class="table-wrap">
         <table class="tbl">
           <thead><tr><th>User</th><th>Status</th><th>Activity</th><th class="right">CPU</th><th class="right">Memory</th><th class="right">Time left</th><th class="right">Actions</th></tr></thead>
