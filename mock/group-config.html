@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="optimum-hub-dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optimum Hub - Configure group</title>
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/app.css">
+  <link rel="icon" href="assets/brand/favicon.ico">
+  <script>try{var t=localStorage.getItem("optimum-hub-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<body data-page="groups" data-title="Configure group - research">
+<main>
+  <div class="page-head">
+    <div class="titles">
+      <h1 class="page-title">Configure group - research <span class="tag accent" style="vertical-align:middle">Priority 1</span></h1>
+      <div class="page-sub">Toggle a policy on to grant it to every member; the hub combines policies across a user's groups by priority</div>
+      <div class="page-sub" style="margin-top:var(--space-2)"><a href="groups.html" style="color:var(--color-accent);cursor:pointer">{ic:arrowup} Back to Groups</a></div>
+    </div>
+  </div>
+
+  <!-- The nine policy sections, in registry order. Each is a grant row: icon +
+       name + one-line hint, the current value, and an enable toggle. A section
+       that is off collapses and is omitted from the saved payload. Some sections
+       reveal extra controls when on - GPU and Docker shown expanded below. -->
+  <div class="card">
+    <div class="grant"><span class="g-ic">{ic:settings}</span><div><b>Environment</b><div class="g-from">inject env vars, reserved names rejected</div></div><span class="g-val">2 vars</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle env (mock)"><span class="track"></span></span></div>
+
+    <!-- reserved-env-var inline error: surfaced when a forbidden name is entered -->
+    <div style="padding:var(--space-2) 0 var(--space-3) calc(28px + var(--space-3));color:var(--color-danger);font-size:var(--text-xs)">JUPYTERHUB_API_TOKEN is reserved and was rejected - pick a different variable name</div>
+
+    <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>GPU</b><div class="g-from">all or specific device ids</div></div><span class="g-val">all</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle gpu (mock)"><span class="track"></span></span></div>
+
+    <!-- GPU expanded: a section is more than a toggle. When on it reveals its
+         own controls - here an "all devices" switch and a device-ids input. -->
+    <div style="padding:var(--space-2) 0 var(--space-3) calc(28px + var(--space-3))">
+      <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3)">
+        <span class="switch on" data-toast="Toggle all devices (mock)"><span class="track"></span></span>
+        <span class="page-sub">grant all devices</span>
+      </div>
+      <div class="field" style="max-width:280px;margin-bottom:0">
+        <label>Device ids</label>
+        <input class="input" type="text" placeholder="0,1,2" value="" disabled>
+        <div class="page-sub" style="margin-top:var(--space-2)">enabled when "all devices" is off</div>
+      </div>
+    </div>
+
+    <div class="grant"><span class="g-ic">{ic:server}</span><div><b>Docker</b><div class="g-from">raw socket or limited quotas</div></div><span class="g-val">raw</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle docker (mock)"><span class="track"></span></span></div>
+    <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>CPU</b><div class="g-from">core limit, biggest enabled wins</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle cpu (mock)"><span class="track"></span></span></div>
+    <div class="grant"><span class="g-ic">{ic:cpu}</span><div><b>Memory</b><div class="g-from">GB limit + swap</div></div><span class="g-val">32 GB</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle mem (mock)"><span class="track"></span></span></div>
+    <div class="grant"><span class="g-ic">{ic:shield}</span><div><b>Sudo</b><div class="g-from">root inside the lab</div></div><span class="g-val">on</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle sudo (mock)"><span class="track"></span></span></div>
+    <div class="grant"><span class="g-ic">{ic:shield}</span><div><b>Downloads</b><div class="g-from">block or allow downloads</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle downloads (mock)"><span class="track"></span></span></div>
+    <div class="grant"><span class="g-ic">{ic:key}</span><div><b>API keys</b><div class="g-from">credential pool, one slot per user, single|pair mode</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle api-keys (mock)"><span class="track"></span></span></div>
+    <div class="grant"><span class="g-ic">{ic:server}</span><div><b>Volume mounts</b><div class="g-from">shared volumes, protected paths barred</div></div><span class="g-val">-</span><span class="switch" style="margin-left:var(--space-3)" data-toast="Toggle volumes (mock)"><span class="track"></span></span></div>
+
+    <div class="page-sub" style="margin-top:var(--space-4)">Docker reveals quota fields (max containers, cpu-cap, mem-cap) when switched from raw to limited; API keys reveals single-var vs pair-var inputs when on.</div>
+
+    <div style="margin-top:var(--space-4);display:flex;gap:var(--space-2);justify-content:flex-end">
+      <a class="btn" href="groups.html">Cancel</a>
+      <button class="btn btn-primary" data-toast="Saved group policy (mock)">Save policy</button>
+    </div>
+  </div>
+</main>
+<script src="assets/app.js"></script>
+</body>
+</html>

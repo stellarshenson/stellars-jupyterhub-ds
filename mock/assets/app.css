@@ -57,6 +57,15 @@ code, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
 .nav-item .ic { flex: none; width: 18px; height: 18px; color: var(--color-text-subtle); }
 .nav-item .badge-count { margin-left: auto; }
 
+/* expandable nav parent (Advanced) + its children */
+.nav-parent { cursor: pointer; }
+.nav-parent .caret { margin-left: auto; display: inline-flex; color: var(--color-text-subtle); transition: transform .15s ease; }
+.nav-parent .caret .ic { width: 16px; height: 16px; }
+.nav-parent.expanded .caret { transform: rotate(90deg); }
+.nav-sub { display: none; }
+.nav-sub.open { display: block; }
+.nav-sub .nav-item { padding-left: calc(18px + var(--space-3) + var(--space-3)); }
+
 .sidebar-foot {
   border-top: 1px solid var(--color-border-subtle); padding: var(--space-3);
   display: flex; align-items: center; gap: var(--space-3);
@@ -149,6 +158,7 @@ code, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
 .grid { display: grid; gap: var(--space-4); }
 .cols-4 { grid-template-columns: repeat(4, 1fr); }
 .cols-2 { grid-template-columns: 1.6fr 1fr; }
+.span-2 { grid-column: span 2; }
 .card {
   background: var(--color-surface); border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg); padding: var(--space-4);
@@ -215,6 +225,20 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .act.active::before { background: var(--color-success); box-shadow: 0 0 0 3px var(--color-success-soft); }
 .act.idle { color: var(--color-warning); }
 .act.idle::before { background: var(--color-warning); }
+
+/* 5-segment engagement meter - inline in the Status column on running rows */
+.meter { display: inline-flex; gap: 2px; vertical-align: middle; }
+.meter i { display: block; width: 4px; height: 12px; border-radius: 1px; background: var(--color-border-strong); }
+.meter i.on { background: var(--color-success); }
+.meter.idle i.on { background: var(--color-warning); }
+
+/* resources widget - three labelled bars (CPU / Memory / GPU) */
+.res { display: flex; flex-direction: column; gap: var(--space-3); }
+.res-row { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-sm); }
+.res-row .res-label { width: 52px; flex: none; color: var(--color-text-muted); }
+.res-row .res-bar { flex: 1; height: 8px; border-radius: var(--radius-full); background: var(--color-bg-subtle); overflow: hidden; }
+.res-row .res-bar > i { display: block; height: 100%; background: var(--color-accent); }
+.res-row .res-val { width: 76px; flex: none; text-align: right; font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
 
 .badge-count { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: var(--radius-full); background: var(--color-surface-active); color: var(--color-text-muted); }
 .tag { font-size: var(--text-xs); padding: 1px 8px; border-radius: var(--radius-sm); background: var(--color-bg-subtle); border: 1px solid var(--color-border-subtle); color: var(--color-text-muted); }
