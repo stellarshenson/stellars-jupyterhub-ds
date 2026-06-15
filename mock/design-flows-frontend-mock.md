@@ -6,6 +6,8 @@ This is the navigation scheme first. The mock is rebuilt against these refs afte
 
 ## Goal
 
+**Philosophy** - reduce the cognitive and navigation burden on users and admins, surface actionable information, and let the most frequent and necessary actions be done simply. Scale target: dozens up to a few hundred users (not thousands) and dozens of policies - so the list machinery is about comfort at hundreds, not survival at thousands (no virtualization).
+
 Three success criteria, every decision is judged against them:
 
 - **Flows clean and converged** - one way to do each task, no contradictions, no duplicate surfaces
@@ -68,8 +70,8 @@ The split is live-system vs configuration, not frequency: **Operate** is the run
 
 | Ref | Screen | Reached from | Backing endpoint(s) |
 |-----|--------|--------------|---------------------|
-| OVR-001 | Admin Overview (dashboard) | sidebar | aggregates of the below |
-| OVR-100 | User Overview (launchpad) | sidebar (user) | `GET /api/users/{user}` |
+| OVR-001 | Admin Home (dashboard + own server hero) | sidebar | aggregates of the below |
+| OVR-100 | User Home (launchpad) | sidebar (user) | `GET /api/users/{user}` |
 | SRV-001 | Servers list | sidebar | `GET /api/activity`, `/api/users` |
 | SRV-002 | Server detail (logs, resources) | SRV-001 row | spawn `progress_url`, `GET /api/users/{user}` |
 | USR-001 | Users list (+ pending section) | sidebar | `GET /api/users`, authorize links |
@@ -77,15 +79,18 @@ The split is live-system vs configuration, not frequency: **Operate** is the run
 | USR-003 | Bulk add users (input) | USR-001 Bulk add | `POST /api/users` |
 | USR-004 | Bulk result (credentials + download) | USR-003 confirm | `POST /api/admin/credentials` |
 | USR-005 | Configure user (full screen `user-config.html`) - Profile (username, names, email, admin toggle, password) / Groups (typeahead add + browse-list) / Volumes; bottom action footer (Remove/Cancel/Save) | USR-001 row | `PATCH /api/users/{user}`, manage-volumes, authorize, change-password |
-| GRP-001 | Groups list (priority-ordered) | sidebar | `GET /api/admin/groups` |
+| GRP-001 | Groups list (priority-ordered, + JSON import / export) | sidebar | `GET /api/admin/groups`, bundle import/export |
 | GRP-002 | New group (name + description) | GRP-001 Add | `POST /api/admin/groups/create` |
-| GRP-003 | Configure group (full screen, tabbed) - General / Policy (nine sections) / Members; bottom action footer (Delete/Cancel/Save) | GRP-001 row | `GET|PUT /api/admin/groups/{name}/config`, group-users add/remove |
+| GRP-003 | Configure group (full screen, tabbed) - General / Policy (nine sections, + download / upload validated) / Members; bottom action footer (Delete/Cancel/Save) | GRP-001 row | `GET|PUT /api/admin/groups/{name}/config`, group-users add/remove |
+| GRP-004 | Export groups (`groups-export.html`) - check/uncheck, download one JSON bundle | GRP-001 Export | per-group `.../config` |
 | LAB-001 | Lab Container (full screen `lab-container.html`) - spawned image + volume set (core home/workspace/cache locked, add custom) | sidebar | `JUPYTERHUB_LAB_IMAGE`, `DOCKER_SPAWNER_VOLUMES`, `VOLUME_DESCRIPTIONS` |
 | EVT-001 | Events (audit timeline) | Administration nav, OVR-001 feed, palette | net-new - no event source exists yet |
-| SET-001 | Settings (read-only reference) | Advanced menu | settings dictionary |
+| SET-001 | Settings (read-only summary) | Advanced menu | settings dictionary |
+| SET-002 | Settings reference (`settings-reference.html`) - every env var, value + description | SET-001 Full reference | settings dictionary |
 | BRD-001 | Notifications (full screen) - send (left) + sent history (right) | Notifications nav item, palette | `POST /api/notifications/broadcast` |
 | SELF-001 | Manage volumes (user) | OVR-100 | `GET|DELETE .../manage-volumes` |
 | SELF-002 | Extend session | OVR-100 | `GET|POST .../session-info`,`.../extend-session` |
+| SELF-003 | Profile (self-service `profile.html` / `profile-user.html`) - own name / email / password | sidebar (both roles) | `PATCH /api/users/{self}`, change-password |
 | AUTH-* | login / signup / oauth / change-pw / error | pre-session | NativeAuthenticator (kept server-rendered) |
 | SPN-* | spawn options / pending / stop / not-running | protocol-bound | spawner + SSE (kept, reskinned) |
 
@@ -253,6 +258,21 @@ The control layer was unified into one named system (live reference: `design-sys
 - **Extend session** - reflects the platform's idle-culler extension (`session-timer.js`, `extend-session` / `session-info`, `IDLE_CULLER_MAX_EXTENSION_MINUTES`): the TTL gadget's Extend adds hours up to the available headroom
 - **Sortable monitors, tooltips everywhere** - Servers and Users sort on every meaningful column (Servers added Status + System; Users added Authorised); every column header explains the field and every cell carries a precise-value / context tooltip
 - **Users list** - no Actions column (every action lives in the panel reached by the username link, now an accent link with a muted full-name hint); Created shows time-ago with the exact date in tooltip; active / inactive / new scopes are activity-driven (inactive = activity 0%); the Overview Users widget breaks down pending / active / inactive / new
+
+## Latest round - philosophy, navigation, policy I/O
+
+A long rapid session, framed by the stated philosophy (above). These supersede earlier bullets where they conflict (notably the server-hero left panel and the Users "new" scope).
+
+- **Home, not Overview** - the dashboard nav item and admin heading are now **Home**; both roles also get a self-service **Profile** (`profile.html` / `profile-user.html`): own name/email/password only, username read-only, no admin-only controls (authorisation / admin flag / require-change) and no Groups or Volumes tabs
+- **Breadcrumb returns to the list** - a sub-page sets `data-crumb-parent="Label|href"`; the shell renders `Optimum Hub / <parent, clickable> / <title>` and the parent crumb abandons the action and returns to the list. The in-page "Back to X" links were removed (breadcrumb + footer Cancel are the back paths)
+- **Navigate out by chevron** - a dashboard widget's whole card-head is a link to its full page (title + chevron, no "View all" text), reusing the metric cards' chevron - one "go to section" affordance
+- **Notice = in-UI confirmation** - a coloured-left-edge status bar with a sized glyph (success / warning / info / error) mirroring the live hub; shown under Set lab image and as the **post-save** confirmation (a `data-confirm` reveals it above the form-foot). Save validates and persists - the separate "Set password" button was dropped from Profile and Configure user
+- **Server hero relabelled** - the left panel header is now **Server status** with a state pill (active / inactive / offline), a one-line TTL gadget (bar + clock + Extend inline, matching `session-timer.js`), and a wider gap to the controls; the per-user panel is **Server resources** and the admin fleet panel **Total resources**; activity moved into Resources as a 5-segment bar (no % value)
+- **Scope filters colour by state** - servers Active green / Idle amber / Offline grey, users Authorised green / Inactive amber / Unauthorised red; the aggregate `All` is the accent blue (`pill accent`); enumeration columns (Status, Authorised) note "filter with the pills above". Servers now say **Offline** not Stopped and the spawn-failed status is gone; users dropped the **New** filter and "De-authorised" became **Unauthorised**
+- **Adaptive config width** - a tabbed config card resizes to its active tab (`data-tab-w`): narrow Profile / General, wider Groups / Members, so Save / Cancel stay beside the content
+- **Policy as data** - Configure group can download its policy as JSON and upload a validated policy (applied, screen refreshed); the Groups list imports a JSON of many groups and exports a chosen subset via a check/uncheck **Export** screen (`groups-export.html`)
+- **Settings** - a Platform card (version, base URL, timezone, SSL) replaced Branding; a **Full reference** link opens `settings-reference.html` listing every env var (value + description) across all 11 dictionary categories; state tags unified (enabled green, disabled/closed grey)
+- **Identity, pills, version** - Users list shows the full name stacked under the username (centred when none); policy pills are type-only (`GPU`, `Mem`, ...) with the valued detail in a group-hover tooltip; `Optimum Hub 1.0.0` sits bottom-right on every page
 
 ## Backend reality - corrections and net-new
 

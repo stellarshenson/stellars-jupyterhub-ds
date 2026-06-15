@@ -39,6 +39,10 @@
          name, one-line hint, current value, enable toggle. Off collapses and is
          omitted from the saved payload. Some reveal extra controls when on. -->
     <section class="tab-panel" data-panel="policy">
+      <div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-4)">
+        <button class="page-secondary" title="Download this group's policy as JSON" data-toast="Downloaded research.policy.json (mock)">{ic:download} Download policy</button>
+        <button class="page-secondary" title="Upload a policy JSON - validated, then applied to this group and the screen refreshed" data-toast="Policy validated and applied - group configuration refreshed (mock)">{ic:upload} Upload policy</button>
+      </div>
       <div class="page-sub" style="margin-bottom:var(--space-4)">Toggle a policy on to grant it to every member; the hub combines policies across a user's groups by priority</div>
 
       <div class="grant"><span class="g-ic">{ic:code}</span><div><b>Environment</b><div class="g-from">inject env vars, reserved names rejected</div></div><span class="g-val">2 vars</span><span class="switch on" style="margin-left:var(--space-3)" data-toast="Toggle env (mock)"><span class="track"></span></span></div>

@@ -54,11 +54,11 @@
   </div>
 
   <!-- Authorised users. At scale: search filters live; activity-driven scope
-       pills (Authorised default / Inactive = activity 0% / New = never signed in
-       / De-authorised / All) keep the default view clean and drill in from the
+       pills (Authorised default / Inactive = activity 0% / Unauthorised = cannot
+       sign in / All) keep the default view clean and drill in from the
        Overview widget; columns sort (User / Created / Last seen / Activity, the
        5-segment meter); the pager is illustrative. The Authorised switch is the
-       cheap inline lever (off = deliberate de-authorisation). Groups shows
+       cheap inline lever (off = deliberate unauthorisation). Groups shows
        capped name chips (+N reveals the rest). No Actions column - the username
        links to the full Configure-user screen where every action lives (change
        password, groups, volumes, remove), so nothing is duplicated on the row. -->
@@ -69,8 +69,7 @@
         <label class="search">{ic:search}<input type="text" placeholder="Filter by user…" data-list-search></label>
         <span class="pill running active" data-list-scope="authorised"><span class="dot"></span>Authorised 1,284</span>
         <span class="pill idle" data-list-scope="inactive" title="Activity at 0%"><span class="dot"></span>Inactive 118</span>
-        <span class="pill stopped" data-list-scope="new" title="Authorised but never signed in"><span class="dot"></span>New 34</span>
-        <span class="pill error" data-list-scope="deauthorised" title="Blocked - cannot sign in"><span class="dot"></span>De-authorised 12</span>
+        <span class="pill error" data-list-scope="unauthorised" title="Cannot sign in"><span class="dot"></span>Unauthorised 12</span>
         <span class="pill accent" data-list-scope="all"><span class="dot"></span>All 1,296</span>
       </div>
     </div>
@@ -79,7 +78,7 @@
         <thead>
           <tr>
             <th class="sortable" data-sort="user" title="Username; click a name to open its configuration. Grey text is the full name">User <span class="sort"></span></th>
-            <th class="sortable" data-sort="auth" data-sort-type="num" title="Authorisation - on = can sign in, off = de-authorised">Authorised <span class="sort"></span></th>
+            <th class="sortable" data-sort="auth" data-sort-type="num" title="Authorisation - on = can sign in, off = unauthorised - filter with the pills above">Authorised <span class="sort"></span></th>
             <th title="Group memberships; +N reveals the rest">Groups</th>
             <th class="sortable" data-sort="created" title="When the account was created; exact date in each cell">Created <span class="sort"></span></th>
             <th class="sortable right" data-sort="seen" data-sort-type="num" title="Time since the user last signed in">Last seen <span class="sort"></span></th>
@@ -89,7 +88,7 @@
         <tbody>
           <tr data-text="admin" data-scope="authorised" data-sort-auth="1" data-sort-seen="0" data-sort-created="2025-09-01" data-sort-activity="99">
             <td><a class="u" href="user-config.html" title="Open admin's configuration">admin <span class="tag accent">admin</span></a></td>
-            <td><span class="switch on" title="Authorised - you cannot de-authorise yourself" data-toast="Cannot de-authorise yourself (mock)"><span class="track"></span></span></td>
+            <td><span class="switch on" title="Authorised - you cannot unauthorise yourself" data-toast="Cannot unauthorise yourself (mock)"><span class="track"></span></span></td>
             <td title="Member of 1 group"><div class="chips" data-chips="3"><span class="chip">admins</span></div></td>
             <td class="num" title="2025-09-01 08:00 UTC">9mo ago</td>
             <td class="num right" title="Active now">now</td>
@@ -97,7 +96,7 @@
           </tr>
           <tr data-text="alice" data-scope="authorised" data-sort-auth="1" data-sort-seen="2" data-sort-created="2026-03-04" data-sort-activity="86">
             <td><a class="u" href="user-config.html" title="Open alice's configuration">alice</a><span class="name-hint">Alice Kowalska</span></td>
-            <td><span class="switch on" title="Authorised - click to de-authorise" data-toast="De-authorised alice (mock)"><span class="track"></span></span></td>
+            <td><span class="switch on" title="Authorised - click to unauthorise" data-toast="Unauthorised alice (mock)"><span class="track"></span></span></td>
             <td title="Member of 5 groups"><div class="chips" data-chips="3"><span class="chip">data-science</span><span class="chip">gpu</span><span class="chip">ml-platform</span><span class="chip">vision-lab</span><span class="chip">nlp</span></div></td>
             <td class="num" title="2026-03-04 09:12 UTC">3mo ago</td>
             <td class="num right" title="Last seen 2 minutes ago">2m ago</td>
@@ -105,23 +104,23 @@
           </tr>
           <tr data-text="milan" data-scope="authorised" data-sort-auth="1" data-sort-seen="1" data-sort-created="2026-02-10" data-sort-activity="71">
             <td><a class="u" href="user-config.html" title="Open milan's configuration">milan</a><span class="name-hint">Milan Novak</span></td>
-            <td><span class="switch on" title="Authorised - click to de-authorise" data-toast="De-authorised milan (mock)"><span class="track"></span></span></td>
+            <td><span class="switch on" title="Authorised - click to unauthorise" data-toast="Unauthorised milan (mock)"><span class="track"></span></span></td>
             <td title="Member of 2 groups"><div class="chips" data-chips="3"><span class="chip">data-science</span><span class="chip">nlp</span></div></td>
             <td class="num" title="2026-02-10 11:30 UTC">4mo ago</td>
             <td class="num right" title="Active now">now</td>
             <td><span class="meter idle" title="71% active (24h)"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span></td>
           </tr>
-          <tr data-text="jakub" data-scope="deauthorised" data-sort-auth="0" data-sort-seen="1440" data-sort-created="2025-11-20" data-sort-activity="5">
+          <tr data-text="jakub" data-scope="unauthorised" data-sort-auth="0" data-sort-seen="1440" data-sort-created="2025-11-20" data-sort-activity="5">
             <td><a class="u" href="user-config.html" title="Open jakub's configuration">jakub</a><span class="name-hint">Jakub Wojcik</span></td>
-            <td><span class="switch" title="De-authorised - click to re-authorise" data-toast="Re-authorised jakub (mock)"><span class="track"></span></span></td>
+            <td><span class="switch" title="Unauthorised - click to authorise" data-toast="Authorised jakub (mock)"><span class="track"></span></span></td>
             <td title="Member of 3 groups"><div class="chips" data-chips="3"><span class="chip">interns</span><span class="chip">students</span><span class="chip">finance</span></div></td>
             <td class="num" title="2025-11-20 14:05 UTC">7mo ago</td>
             <td class="num right" title="Last seen 1 day ago">1d ago</td>
             <td><span class="meter low" title="5% active (24h)"><i class="on"></i><i></i><i></i><i></i><i></i></span></td>
           </tr>
-          <tr data-text="ewa" data-scope="authorised new" data-sort-auth="1" data-sort-seen="999999" data-sort-created="2026-06-10" data-sort-activity="0">
+          <tr data-text="ewa" data-scope="authorised" data-sort-auth="1" data-sort-seen="999999" data-sort-created="2026-06-10" data-sort-activity="0">
             <td><a class="u" href="user-config.html" title="Open ewa's configuration">ewa</a><span class="name-hint">Ewa Nowak</span></td>
-            <td><span class="switch on" title="Authorised - click to de-authorise" data-toast="De-authorised ewa (mock)"><span class="track"></span></span></td>
+            <td><span class="switch on" title="Authorised - click to unauthorise" data-toast="Unauthorised ewa (mock)"><span class="track"></span></span></td>
             <td title="Member of 1 group"><div class="chips" data-chips="3"><span class="chip">interns</span></div></td>
             <td class="num" title="2026-06-10 16:20 UTC">5d ago</td>
             <td class="num right" title="Account created, never signed in">never</td>
@@ -129,7 +128,7 @@
           </tr>
           <tr data-text="tomek" data-scope="authorised inactive" data-sort-auth="1" data-sort-seen="132480" data-sort-created="2026-01-15" data-sort-activity="0">
             <td><a class="u" href="user-config.html" title="Open tomek's configuration">tomek</a><span class="name-hint">Tomek Zielinski</span></td>
-            <td><span class="switch on" title="Authorised - click to de-authorise" data-toast="De-authorised tomek (mock)"><span class="track"></span></span></td>
+            <td><span class="switch on" title="Authorised - click to unauthorise" data-toast="Unauthorised tomek (mock)"><span class="track"></span></span></td>
             <td title="Member of 2 groups"><div class="chips" data-chips="3"><span class="chip">students</span><span class="chip">finance</span></div></td>
             <td class="num" title="2026-01-15 10:00 UTC">5mo ago</td>
             <td class="num right" title="Last seen 92 days ago">92d ago</td>
