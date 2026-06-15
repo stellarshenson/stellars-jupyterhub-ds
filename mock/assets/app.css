@@ -274,6 +274,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .pill.spawning .dot { background: var(--color-info); animation: pulse 1.2s ease-in-out infinite; }
 .pill.error { background: var(--color-danger-soft); color: var(--color-danger); }
 .pill.error .dot { background: var(--color-danger); }
+.pill.accent { background: var(--color-accent-soft); color: var(--color-accent); }
+.pill.accent .dot { background: var(--color-accent); }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
 
 /* 5-segment engagement meter - the Activity column (24h trend, distinct from

@@ -23,8 +23,8 @@
        Status (instantaneous lifecycle, drives the actions) and Activity (24h
        engagement, the meter; % in the tooltip) are distinct columns.
 
-       At scale: search filters live; the scope pills (Active default, Offline,
-       All) double as the summary and keep Offline out of the default view;
+       At scale: search filters live; the scope pills (Active default, Idle,
+       Offline, All) double as the summary and keep Offline out of the default view;
        columns sort; the pager is illustrative. Quota breaches (memory /
        volumes / writable layer) are colour-only. -->
   <div class="card card-pad-0">
@@ -33,8 +33,9 @@
       <div class="actions">
         <label class="search">{ic:search}<input type="text" placeholder="Filter by user…" data-list-search></label>
         <span class="pill running active" data-list-scope="active"><span class="dot"></span>Active 18</span>
+        <span class="pill idle" data-list-scope="idle"><span class="dot"></span>Idle 4</span>
         <span class="pill stopped" data-list-scope="offline"><span class="dot"></span>Offline 1,240</span>
-        <span class="pill stopped" data-list-scope="all"><span class="dot"></span>All 1,258</span>
+        <span class="pill accent" data-list-scope="all"><span class="dot"></span>All 1,262</span>
         <button class="list-secondary" data-toast="Reset activity samples - clears 24h history (mock)">Reset samples</button>
         <button class="list-secondary" data-toast="Downloaded activity report (mock)">{ic:arrowup} Report</button>
         <button class="list-secondary" data-toast="Refreshed (mock)">{ic:restart} Refresh</button>
@@ -114,7 +115,7 @@
 
           <!-- Running but idle 38m: amber pill, activity meter 1/5 red (12%).
                Time left amber - the culler is close. -->
-          <tr data-text="nina" data-scope="active" data-sort-status="2" data-sort-act="12" data-sort-cpu="2" data-sort-mem="2" data-sort-vol="8" data-sort-system="0.4" data-sort-time="22">
+          <tr data-text="nina" data-scope="idle" data-sort-status="2" data-sort-act="12" data-sort-cpu="2" data-sort-mem="2" data-sort-vol="8" data-sort-system="0.4" data-sort-time="22">
             <td><div class="u" title="Container jupyterlab-nina">nina</div></td>
             <td><span class="pill idle" title="Idle for 38m"><span class="dot"></span>Idle 38m</span></td>
             <td><span class="meter low" title="Activity 12% · 24h sampled"><i class="on"></i><i></i><i></i><i></i><i></i></span></td>
@@ -187,7 +188,7 @@
       </table>
     </div>
     <div class="pager">
-      <span>Showing <b>1-4</b> of <b>18</b> active</span>
+      <span>Showing <b>1-3</b> of <b>18</b> active</span>
       <span class="pages">
         <button class="pg" disabled data-toast="Page navigation is illustrative (mock)">Prev</button>
         <button class="pg on" data-toast="Page 1 (mock)">1</button>
