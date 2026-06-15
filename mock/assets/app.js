@@ -23,12 +23,15 @@
     play:    'M5 3l14 9-14 9z',
     restart: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5',
     stop:    'M6 6h12v12H6z',
+    megaphone:'M3 11l18-5v12L3 14v-3z M11.6 16.8a3 3 0 1 1-5.8-1.6',
+    logout:  'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
     dots:    'M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2M19 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2M5 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2',
     key:     'M21 2l-2 2m-3.5 3.5a5 5 0 1 0-2 2l1.5-1.5 2 2 2-2-2-2 2.5-2.5',
     user:    'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8',
     cpu:     'M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3M5 5h14v14H5zM9 9h6v6H9z',
     check:   'M20 6L9 17l-5-5',
-    arrowup: 'M12 19V5M5 12l7-7 7 7'
+    arrowup: 'M12 19V5M5 12l7-7 7 7',
+    chevron: 'M9 18l6-6-6-6'
   };
   function svg(name) {
     return '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="' + (I[name] || '') + '"/></svg>';
@@ -38,34 +41,53 @@
     return html.replace(/\{ic:(\w+)\}/g, function (m, n) { return svg(n); });
   }
 
+  // ---------- role ----------
+  // The portal is role-aware: an admin watches the fleet and administers it;
+  // a plain user only operates their own server. <body data-role="user">
+  // collapses the chrome to the personal launchpad.
+  function role() { return document.body.getAttribute("data-role") || "admin"; }
+  function isAdmin() { return role() !== "user"; }
+
   // ---------- navigation model ----------
-  var NAV = [
-    { group: "Overview", items: [
-      { id: "home",     label: "Home",     icon: "grid",     href: "home.html" },
-      { id: "servers",  label: "Servers",  icon: "server",   href: "servers.html", badge: "3" },
-      { id: "activity", label: "Activity", icon: "activity", href: "activity.html" }
+  // Operate = what you watch daily; Administration = occasional management
+  // (admin-only). One entity, one destination: Servers absorbs live activity,
+  // Groups absorbs policy editing - no standalone Activity or Policies page.
+  var NAV_ADMIN = [
+    { group: "Operate", items: [
+      { id: "home",     label: "Overview", icon: "grid",     href: "home.html" },
+      { id: "servers",  label: "Servers",  icon: "server",   href: "servers.html", badge: "3" }
     ]},
-    { group: "Access", items: [
+    { group: "Administration", items: [
       { id: "users",    label: "Users",    icon: "users",    href: "users.html", badge: "2" },
       { id: "groups",   label: "Groups",   icon: "group",    href: "groups.html" },
-      { id: "policies", label: "Policies", icon: "shield",   href: "policies.html" }
-    ]},
-    { group: "System", items: [
       { id: "settings", label: "Settings", icon: "settings", href: "settings.html" }
     ]}
   ];
+  // a user has one server, so it lives on their Overview - no fleet pages
+  var NAV_USER = [
+    { group: "Operate", items: [
+      { id: "home", label: "Overview", icon: "grid", href: "home-user.html" }
+    ]}
+  ];
+  function NAV() { return isAdmin() ? NAV_ADMIN : NAV_USER; }
 
-  // command palette actions
-  var ACTIONS = [
+  // command palette actions, scoped to the role
+  var ACTIONS_ADMIN = [
     { group: "Create", icon: "plus", label: "Add user",        hint: "U", run: function(){ toast("Add-user drawer (mock)"); } },
     { group: "Create", icon: "plus", label: "Create group",    hint: "G", run: function(){ toast("Create-group drawer (mock)"); } },
-    { group: "Create", icon: "plus", label: "New policy",      hint: "P", run: function(){ toast("New-policy editor (mock)"); } },
-    { group: "Actions", icon: "bell", label: "Broadcast notification", run: function(){ toast("Broadcast composer (mock)"); } },
-    { group: "Actions", icon: "stop", label: "Stop server: jupyterlab-alice", run: function(){ toast("Stopping jupyterlab-alice (mock)"); } }
+    { group: "Actions", icon: "megaphone", label: "Broadcast notification", run: function(){ toast("Broadcast composer (mock)"); } },
+    { group: "Actions", icon: "stop", label: "Stop server: jupyterlab-alice", run: function(){ toast("Stopping jupyterlab-alice (mock)"); } },
+    { group: "Navigate", icon: "activity", label: "Events log", run: function(){ location.href = "events.html"; } }
   ];
+  var ACTIONS_USER = [
+    { group: "My server", icon: "play",    label: "Open my server",    run: function(){ toast("Opening your lab (mock)"); } },
+    { group: "My server", icon: "restart", label: "Restart my server", run: function(){ toast("Restarting your lab (mock)"); } },
+    { group: "My server", icon: "server",  label: "Manage volumes",    run: function(){ toast("Manage-volumes (stop server first) (mock)"); } }
+  ];
+  function ACTIONS() { return isAdmin() ? ACTIONS_ADMIN : ACTIONS_USER; }
 
   function navItems() {
-    return NAV.reduce(function (a, g) { return a.concat(g.items); }, []);
+    return NAV().reduce(function (a, g) { return a.concat(g.items); }, []);
   }
 
   // ---------- theme ----------
@@ -88,9 +110,15 @@
     var page = document.body.getAttribute("data-page") || "home";
     var main = document.querySelector("main");
     var mainHTML = expandIcons(main ? main.innerHTML : "");
-    var active = navItems().filter(function (n) { return n.id === page; })[0] || navItems()[0];
+    var match = navItems().filter(function (n) { return n.id === page; })[0];
+    // off-nav pages (events, user overview) carry their own crumb via data-title
+    var crumb = match ? match.label : (document.body.getAttribute("data-title") || "");
+    var home = isAdmin() ? "home.html" : "home-user.html";
+    var who = isAdmin()
+      ? '<div class="avatar">AD</div><div class="who">admin<small>Administrator</small></div>'
+      : '<div class="avatar">AL</div><div class="who">alice<small>Data scientist</small></div>';
 
-    var navHTML = NAV.map(function (g) {
+    var navHTML = NAV().map(function (g) {
       return '<div class="nav-group-label">' + g.group + '</div>' +
         g.items.map(function (n) {
           return '<a class="nav-item' + (n.id === page ? ' active' : '') + '" href="' + n.href + '">' +
@@ -103,19 +131,19 @@
     document.body.innerHTML =
       '<div class="app">' +
         '<aside class="sidebar">' +
-          '<a class="brand" href="home.html" title="Optimum Hub">' +
+          '<a class="brand" href="' + home + '" title="Optimum Hub">' +
             '<img class="brand-logo" src="assets/brand/jh-logo.svg" alt="Stellars Tech AI Lab"></a>' +
           '<nav class="nav">' + navHTML + '</nav>' +
-          '<div class="sidebar-foot"><div class="avatar">AD</div>' +
-            '<div class="who">admin<small>Administrator</small></div>' +
-            '<button class="icon-btn" style="margin-left:auto" title="Sign out">' + svg("settings") + '</button>' +
+          '<div class="sidebar-foot">' + who +
+            '<button class="icon-btn" style="margin-left:auto" title="Sign out">' + svg("logout") + '</button>' +
           '</div>' +
         '</aside>' +
         '<div class="main">' +
           '<header class="topbar">' +
-            '<div class="crumbs"><span>Optimum Hub</span><span class="sep">/</span><b>' + active.label + '</b></div>' +
+            '<div class="crumbs"><span>Optimum Hub</span><span class="sep">/</span><b>' + crumb + '</b></div>' +
             '<div class="kbar" id="kbar-open"><span>' + svg("search") + '</span><span>Search or jump to…</span><span class="kbd">⌘K</span></div>' +
             '<button class="icon-btn" id="theme-toggle" title="Toggle theme"></button>' +
+            (isAdmin() ? '<button class="icon-btn" id="broadcast-open" title="Broadcast to all labs">' + svg("megaphone") + '</button>' : '') +
             '<button class="icon-btn" title="Notifications">' + svg("bell") + '</button>' +
           '</header>' +
           '<div class="content">' + mainHTML + '</div>' +
@@ -146,7 +174,7 @@
     var nav = navItems().map(function (n) {
       return { group: "Go to", icon: n.icon, label: n.label, hint: "", run: function(){ location.href = n.href; } };
     });
-    var all = nav.concat(ACTIONS).filter(function (r) { return r.label.toLowerCase().indexOf(q) > -1; });
+    var all = nav.concat(ACTIONS()).filter(function (r) { return r.label.toLowerCase().indexOf(q) > -1; });
     pRows = all;
     if (pSel >= all.length) pSel = 0;
     var byGroup = {};
@@ -188,6 +216,8 @@
   // ---------- wiring ----------
   function wire() {
     document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
+    var bc = document.getElementById("broadcast-open");
+    if (bc) bc.addEventListener("click", function () { toast("Broadcast composer (mock)"); });
     document.getElementById("kbar-open").addEventListener("click", openPalette);
     document.getElementById("scrim").addEventListener("click", closePalette);
     document.getElementById("palette-q").addEventListener("input", function (e) { buildPalette(e.target.value); });
@@ -195,6 +225,17 @@
     // demo: any [data-toast] element fires a toast (quick-action buttons, kebabs)
     Array.prototype.forEach.call(document.querySelectorAll("[data-toast]"), function (el) {
       el.addEventListener("click", function () { toast(el.getAttribute("data-toast")); });
+    });
+
+    // tabbed detail panels (data-tabs container, .tab buttons, .tab-panel sections)
+    Array.prototype.forEach.call(document.querySelectorAll("[data-tabs]"), function (box) {
+      box.addEventListener("click", function (e) {
+        var b = e.target.closest ? e.target.closest(".tab") : null;
+        if (!b || !box.contains(b)) return;
+        var k = b.getAttribute("data-tab");
+        Array.prototype.forEach.call(box.querySelectorAll(".tab"), function (x) { x.classList.toggle("active", x === b); });
+        Array.prototype.forEach.call(box.querySelectorAll(".tab-panel"), function (p) { p.classList.toggle("active", p.getAttribute("data-panel") === k); });
+      });
     });
   }
 
