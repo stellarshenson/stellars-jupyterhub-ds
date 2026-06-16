@@ -17,6 +17,16 @@ body { margin: 0; font-family: var(--font-sans); }
 .oh-name-hint { display: block; color: var(--color-text-subtle); font-size: 10px; line-height: 1; margin-top: 1px; }
 /* user cell: reserve a constant height so rows with a full name match rows without */
 .oh-user-cell { display: flex; flex-direction: column; justify-content: center; min-height: 32px; }
+/* pending-authorisation panel: aligned columns (user / groups / signed-up / actions) */
+.oh-pending-table { width: calc(100% - 48px); margin: 0 24px; border-collapse: collapse; font-size: 13px; }
+.oh-pending-table th { text-align: left; padding: 10px 8px; font-weight: 500; color: var(--color-text-subtle); border-bottom: 1px solid var(--color-border-subtle); white-space: nowrap; }
+.oh-pending-table td { padding: 10px 8px; border-bottom: 1px solid var(--color-border-subtle); vertical-align: middle; }
+.oh-pending-table td:nth-child(2) { width: 100%; }
+.oh-pending-table tbody tr:last-child td { border-bottom: 0; }
+.oh-pending-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--color-text) 3%, transparent); }
+.oh-pending-table th:last-child, .oh-pending-table .oh-pending-when, .oh-pending-table .oh-pending-act { text-align: right; white-space: nowrap; }
+.oh-pending-table .oh-pending-when { color: var(--color-text-subtle); }
+.oh-pending-table .oh-pending-act > button { margin-left: 8px; }
 .oh-kbd { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-muted); background: var(--color-bg-subtle); border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 1px 6px; }
 .oh-row { display: flex; align-items: center; gap: var(--space-2); }
 .oh-section-title { font-size: var(--text-sm); text-transform: uppercase; letter-spacing: .5px; color: var(--color-text-subtle); margin: var(--space-6) 0 var(--space-3); }
@@ -133,6 +143,10 @@ body { margin: 0; font-family: var(--font-sans); }
 .oh-qa-btn:hover { border-color: var(--color-accent); background: var(--color-surface-hover); }
 .oh-qa-btn .anticon { font-size: 18px; color: var(--color-accent); flex: none; }
 .oh-qa-btn small { display: block; color: var(--color-text-subtle); font-size: 11px; }
+
+/* sider collapse handle: thin bar on the sider edge, accent on hover */
+.oh-sider-handle { background: var(--color-border-strong); }
+.oh-sider-handle:hover { background: var(--color-accent); }
 
 /* ---- mock-only chrome: version badge + role/design switch ---- */
 .oh-version-badge { position: fixed; right: var(--space-4); bottom: var(--space-4); z-index: 40; font-size: 11px; letter-spacing: .3px; color: var(--color-text-subtle); pointer-events: none; }

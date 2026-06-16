@@ -132,6 +132,16 @@ export default function DesignLanguage() {
             ]}
           />
         </Row>
+        <Row label="Scope states">
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span className="oh-pill oh-scope accent active"><span className="oh-dot" />All 131</span>
+            <span className="oh-page-sub">active - lit with accent ring</span>
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span className="oh-pill oh-scope running"><span className="oh-dot" />Active 18</span>
+            <span className="oh-page-sub">inactive - dimmed to .6</span>
+          </span>
+        </Row>
       </Card>
 
       <Card title="Meters, bars and widgets" style={{ marginBottom: 16 }}>

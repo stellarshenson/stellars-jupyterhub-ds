@@ -133,6 +133,7 @@ export interface PlatformSetting {
   value: string
   state?: 'ok' | 'neutral' | 'accent'
   tip?: string
+  control?: 'switch'
 }
 
 export interface SettingsGroup {

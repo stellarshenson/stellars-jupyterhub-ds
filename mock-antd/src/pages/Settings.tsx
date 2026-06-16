@@ -1,13 +1,16 @@
-/* Settings - a read-only reference of the running configuration (not an editor).
- * In-place editing is a future option. */
-import { Card, Tag } from 'antd'
+/* Settings - the running configuration; mostly a reference, with the admin-
+ * overridable controls (signup) rendered as live toggles. */
+import { Card, Switch, Tag } from 'antd'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { Icon } from '../components/Icon'
 import { useSettings } from '../hooks/queries'
+import { mockAction } from '../services/actions'
 import type { PlatformSetting } from '../services/types'
 
 function value(row: PlatformSetting) {
+  if (row.control === 'switch')
+    return <Switch size="small" defaultChecked={row.value === 'enabled'} onChange={(v) => mockAction(`${row.key} ${v ? 'enabled' : 'disabled'}`)} />
   if (row.state === 'ok') return <Tag bordered={false} style={{ background: 'var(--color-success-soft)', color: 'var(--color-success)', borderRadius: 4 }}>{row.value}</Tag>
   if (row.state === 'accent') return <Tag bordered={false} style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4 }}>{row.value}</Tag>
   if (row.state === 'neutral') return <span className="oh-mono">{row.value}</span>
@@ -20,7 +23,7 @@ export default function Settings() {
     <>
       <PageHeader
         title="Settings"
-        sub="A read-only reference of the running configuration - no in-place editing (future option)"
+        sub="Review the running platform configuration"
         actions={
           <Link to="/settings/reference">
             <span className="oh-pill accent" style={{ cursor: 'pointer' }}>
@@ -48,7 +51,6 @@ export default function Settings() {
           </Card>
         ))}
       </div>
-      <div className="oh-page-sub" style={{ marginTop: 16 }}>Note: JUPYTERHUB_ADMIN_PASSWORD is deliberately not shown.</div>
     </>
   )
 }
