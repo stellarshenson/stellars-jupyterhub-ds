@@ -1,14 +1,16 @@
-/* Configure group - full tabbed screen (General / Policy / Members). Policy is
- * nine enable-toggle sections; it downloads / uploads as validated JSON. Members
- * is a typeahead add plus the member list. All writes mocked. */
+/* Configure group - full tabbed screen (General / Policy / Members), symmetric
+ * with Configure user. General is metadata; Policy is the complete nine-section
+ * policy form (GroupPolicyTab); Members is a typeahead at scale. Policy JSON can
+ * be downloaded / uploaded. All writes mocked. */
 import { useEffect, useState } from 'react'
-import { Button, Card, Form, Input, InputNumber, Switch, Tabs } from 'antd'
+import { Button, Card, Form, Input, InputNumber, Tabs } from 'antd'
 import { useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { FormFooter } from '../components/FormFooter'
 import { Combo } from '../components/Combo'
 import { Icon } from '../components/Icon'
 import { Notice } from '../components/Notice'
+import { GroupPolicyTab } from '../components/GroupPolicyTab'
 import { useGroupConfig, useUserCorpus } from '../hooks/queries'
 import { mockAction, mockSuccess } from '../services/actions'
 
@@ -29,38 +31,30 @@ export default function GroupConfig() {
     <Form key={cfg ? `g-${cfg.name}` : 'loading'} layout="vertical" initialValues={{ name: cfg?.name, description: cfg?.description, priority: cfg?.priority }}>
       <Form.Item label="Name" name="name"><Input /></Form.Item>
       <Form.Item label="Description" name="description"><Input.TextArea rows={2} /></Form.Item>
-      <Form.Item label="Priority" name="priority" extra="Higher priority wins on conflict"><InputNumber min={1} /></Form.Item>
+      <Form.Item label="Priority" name="priority" extra="Lower number wins when policies conflict across a user's groups"><InputNumber min={1} /></Form.Item>
     </Form>
   )
 
   const policy = (
     <div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        <Button icon={<Icon name="download" size={14} />} onClick={() => mockAction(`Downloaded ${name} policy as JSON`)}>Download JSON</Button>
-        <Button icon={<Icon name="upload" size={14} />} onClick={() => { setUploaded(true); mockAction('Uploaded and validated policy') }}>Upload JSON</Button>
+        <Button icon={<Icon name="download" size={14} />} onClick={() => mockAction(`Downloaded ${name}.policy.json`)}>Download policy</Button>
+        <Button icon={<Icon name="upload" size={14} />} onClick={() => { setUploaded(true); mockAction('Policy validated and applied') }}>Upload policy</Button>
       </div>
       {uploaded && <Notice type="success">Policy validated and applied - screen refreshed.</Notice>}
-      <div style={{ marginTop: 12, border: '1px solid var(--color-border-subtle)', borderRadius: 8, overflow: 'hidden' }}>
-        {cfg?.sections.map((s) => (
-          <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '1px solid var(--color-border-subtle)' }}>
-            <span className="oh-g-ic" style={{ width: 24, height: 24 }}><Icon name={(s.key === 'mem' ? 'memory' : s.key === 'volume_mounts' ? 'disk' : s.key === 'api_keys' ? 'key' : s.key === 'docker' ? 'box' : s.key === 'sudo' ? 'shield' : s.key === 'downloads' ? 'download' : s.key === 'env_vars' ? 'code' : s.key) as 'gpu'} size={14} /></span>
-            <div style={{ minWidth: 120, fontWeight: 500 }}>{s.label}</div>
-            <div className="oh-muted" style={{ flex: 1 }}>{s.summary}</div>
-            <Switch size="small" defaultChecked={s.enabled} onChange={(v) => mockAction(`${v ? 'Enabled' : 'Disabled'} ${s.label} policy`)} />
-          </div>
-        ))}
-      </div>
+      <div className="oh-pol-hint" style={{ margin: '12px 0' }}>Toggle a section on to grant it to every member; off keeps its data but the hub ignores it at spawn.</div>
+      <GroupPolicyTab cfg={cfg} />
     </div>
   )
 
   const membersTab = (
     <div>
       <div style={{ marginBottom: 8, color: 'var(--color-text-muted)', fontSize: 13 }}>Members <span className="oh-muted">· {members.length}</span></div>
-      <Combo corpus={corpus} value={members} onChange={setMembers} placeholder="Add members…" />
+      <Combo corpus={corpus} value={members} onChange={setMembers} placeholder="Add a member…" />
     </div>
   )
 
-  const widths: Record<string, number> = { general: 640, policy: 820, members: 760 }
+  const widths: Record<string, number> = { general: 640, policy: 900, members: 760 }
 
   return (
     <>

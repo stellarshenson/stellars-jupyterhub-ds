@@ -3,13 +3,16 @@
 import { useMemo, useState } from 'react'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
-import { Input } from 'antd'
+import { Input, Segmented } from 'antd'
 import { PageHeader } from '../components/PageHeader'
 import { ScopeFilterPills } from '../components/ScopeFilterPills'
 import { Icon } from '../components/Icon'
 import { useEvents } from '../hooks/queries'
-import { timeAgo, exactDate } from '../lib/format'
+import { timeAgoShort, exactDate } from '../lib/format'
 import type { EventRow, EventType } from '../services/types'
+
+type Range = '24h' | '7d' | '30d'
+const RANGE_MS: Record<Range, number> = { '24h': 864e5, '7d': 6.048e8, '30d': 2.592e9 }
 
 const TYPE_TONE: Record<EventType, 'ok' | 'warn' | 'grey' | 'accent' | 'danger'> = {
   server: 'ok',
@@ -24,17 +27,22 @@ export default function Events() {
   const { data = [], isLoading } = useEvents()
   const [scope, setScope] = useState('all')
   const [q, setQ] = useState('')
+  const [range, setRange] = useState<Range>('7d')
+
+  // everything inside the current time range + search, before the type scope -
+  // the type pill counts read off this so they track the time filter
+  const rangeFiltered = useMemo(
+    () => data.filter((e) => e.text.toLowerCase().includes(q.toLowerCase()) && Date.now() - new Date(e.whenISO).getTime() <= RANGE_MS[range]),
+    [data, q, range],
+  )
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {}
-    data.forEach((e) => (c[e.type] = (c[e.type] ?? 0) + 1))
+    rangeFiltered.forEach((e) => (c[e.type] = (c[e.type] ?? 0) + 1))
     return c
-  }, [data])
+  }, [rangeFiltered])
 
-  const filtered = useMemo(
-    () => data.filter((e) => (scope === 'all' || e.type === scope) && e.text.toLowerCase().includes(q.toLowerCase())),
-    [data, scope, q],
-  )
+  const filtered = useMemo(() => rangeFiltered.filter((e) => scope === 'all' || e.type === scope), [rangeFiltered, scope])
 
   const columns: ProColumns<EventRow>[] = [
     {
@@ -61,7 +69,7 @@ export default function Events() {
       width: 160,
       align: 'right',
       sorter: (a, b) => b.whenISO.localeCompare(a.whenISO),
-      render: (_, e) => <span title={exactDate(e.whenISO)} className="oh-muted">{timeAgo(e.whenISO)}</span>,
+      render: (_, e) => <span title={exactDate(e.whenISO)} className="oh-muted">{timeAgoShort(e.whenISO)}</span>,
     },
   ]
 
@@ -82,7 +90,7 @@ export default function Events() {
             value={scope}
             onChange={setScope}
             scopes={[
-              { key: 'all', label: 'All', count: data.length, tone: 'accent' },
+              { key: 'all', label: 'All', count: rangeFiltered.length, tone: 'accent' },
               { key: 'server', label: 'Server', count: counts.server, tone: 'ok' },
               { key: 'user', label: 'User', count: counts.user, tone: 'accent' },
               { key: 'policy', label: 'Policy', count: counts.policy, tone: 'warn' },
@@ -91,6 +99,16 @@ export default function Events() {
           />
         }
         toolBarRender={() => [
+          <Segmented
+            key="range"
+            value={range}
+            onChange={(v) => setRange(v as Range)}
+            options={[
+              { label: 'Last 24h', value: '24h' },
+              { label: 'Last 7 days', value: '7d' },
+              { label: 'Last 30 days', value: '30d' },
+            ]}
+          />,
           <Input
             key="search"
             allowClear

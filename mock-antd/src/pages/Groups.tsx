@@ -1,8 +1,8 @@
 /* Groups - priority-ordered (higher wins on conflict), each row a link to its
  * policy config. Policy tags are type-only with the valued detail in a tooltip;
  * reorder by the up/down arrows; import / export a JSON of many groups. */
-import { useMemo, useState } from 'react'
-import { ProTable } from '@ant-design/pro-components'
+import { useEffect, useMemo, useState } from 'react'
+import { DragSortTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
 import { Button, Input } from 'antd'
 import { Link } from 'react-router-dom'
@@ -17,24 +17,20 @@ import type { GroupRow } from '../services/types'
 export default function Groups() {
   const { data = [], isLoading } = useGroups()
   const [q, setQ] = useState('')
+  const [rows, setRows] = useState<GroupRow[]>([])
 
-  const filtered = useMemo(
-    () => [...data].sort((a, b) => a.priority - b.priority).filter((g) => g.name.toLowerCase().includes(q.toLowerCase())),
-    [data, q],
-  )
+  useEffect(() => {
+    setRows([...data].sort((a, b) => a.priority - b.priority))
+  }, [data])
+
+  const filtered = useMemo(() => rows.filter((g) => g.name.toLowerCase().includes(q.toLowerCase())), [rows, q])
 
   const columns: ProColumns<GroupRow>[] = [
     {
       title: '#',
       dataIndex: 'priority',
-      width: 96,
-      render: (_, g, i) => (
-        <div className="oh-row" title="Higher priority wins on conflict">
-          <span className="oh-num">{g.priority}</span>
-          <IconAction icon="arrowup" title="Move up" disabled={i === 0} onClick={() => mockAction(`Moved ${g.name} up`)} />
-          <IconAction icon="arrowdown" title="Move down" disabled={i === filtered.length - 1} onClick={() => mockAction(`Moved ${g.name} down`)} />
-        </div>
-      ),
+      width: 72,
+      render: (_, g) => <span className="oh-num" title="Drag to reorder - lower number wins on conflict">{g.priority}</span>,
     },
     {
       title: 'Group',
@@ -83,13 +79,15 @@ export default function Groups() {
           </>
         }
       />
-      <ProTable<GroupRow>
+      <DragSortTable<GroupRow>
         rowKey="name"
         columns={columns}
         dataSource={filtered}
         loading={isLoading}
         search={false}
         options={false}
+        dragSortKey="priority"
+        onDragSortEnd={(_b, _a, newData) => { if (!q) setRows(newData); mockAction('Reordered groups by priority') }}
         rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
         pagination={{ pageSize: 12, showSizeChanger: false }}
         headerTitle={`${data.length} groups by priority`}

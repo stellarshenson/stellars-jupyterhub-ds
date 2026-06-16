@@ -18,10 +18,14 @@ function countBadge(n: number) {
     <span
       style={{
         marginLeft: 'auto',
+        display: 'inline-flex',
+        alignItems: 'center',
+        height: 18,
+        lineHeight: 1,
         fontSize: 11,
         fontWeight: 600,
-        padding: '0 7px',
-        borderRadius: 4,
+        padding: '0 6px',
+        borderRadius: 9,
         background: 'var(--color-surface-active)',
         color: 'var(--color-text-muted)',
       }}

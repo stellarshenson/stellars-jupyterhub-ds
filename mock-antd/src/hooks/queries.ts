@@ -5,6 +5,7 @@ import { getDataSource } from '../services/datasource'
 
 const ds = () => getDataSource()
 
+export const useHubInfo = () => useQuery({ queryKey: ['hub-info'], queryFn: () => ds().getHubInfo() })
 export const useStats = () => useQuery({ queryKey: ['stats'], queryFn: () => ds().getStats() })
 export const useServers = () => useQuery({ queryKey: ['servers'], queryFn: () => ds().getServers() })
 export const useUsers = () => useQuery({ queryKey: ['users'], queryFn: () => ds().getUsers() })

@@ -93,7 +93,8 @@ export interface TokenRow {
 export interface ResourceSnapshot {
   cpu: number // % host
   mem: number // % host
-  gpu: number // % host
+  gpu: number // % host (aggregate)
+  gpus?: number[] // per-GPU utilisation - drives the segmented GPU meter + the count
   memTip?: string
 }
 

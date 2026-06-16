@@ -11,12 +11,14 @@ export function IconAction({
   onClick,
   danger,
   disabled,
+  filled,
 }: {
   icon: IconKey
   title: string
   onClick?: () => void
   danger?: boolean
   disabled?: boolean
+  filled?: boolean // solid glyph - used for stop (a stroked square reads as a stray box)
 }) {
   return (
     <Tooltip title={title}>
@@ -26,7 +28,7 @@ export function IconAction({
         danger={danger}
         disabled={disabled}
         onClick={onClick}
-        icon={<Icon name={icon} size={16} />}
+        icon={<Icon name={icon} size={filled ? 14 : 16} filled={filled} />}
         aria-label={title}
       />
     </Tooltip>

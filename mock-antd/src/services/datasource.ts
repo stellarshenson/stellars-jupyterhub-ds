@@ -23,6 +23,7 @@ import type {
 } from './types'
 
 export interface DataSource {
+  getHubInfo(): Promise<{ version: string }>
   getStats(): Promise<Stats>
   getServers(): Promise<ServerRow[]>
   getServerHero(user: string): Promise<ServerHero>

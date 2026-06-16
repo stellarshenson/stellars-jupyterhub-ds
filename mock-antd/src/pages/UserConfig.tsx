@@ -2,14 +2,14 @@
  * Volumes) with one action footer. The username link on the Users list opens
  * this. All writes mocked. */
 import { useEffect, useState } from 'react'
-import { Button, Card, Form, Input, Switch, Table, Tabs } from 'antd'
+import { Button, Card, Form, Input, Switch, Table, Tabs, Tooltip } from 'antd'
 import { useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { FormFooter } from '../components/FormFooter'
-import { Combo } from '../components/Combo'
+import { GroupPicker } from '../components/GroupPicker'
 import { Icon } from '../components/Icon'
 import { Notice } from '../components/Notice'
-import { useEffectiveGrants, useGroupCorpus, useUser, useUserVolumes } from '../hooks/queries'
+import { useEffectiveGrants, useUser, useUserVolumes } from '../hooks/queries'
 import { mockAction, mockSuccess } from '../services/actions'
 import type { Volume } from '../services/types'
 
@@ -19,7 +19,6 @@ export default function UserConfig() {
   const { data: user } = useUser(name)
   const { data: volumes = [] } = useUserVolumes(name)
   const { data: grants = [] } = useEffectiveGrants(name)
-  const { data: corpus = [] } = useGroupCorpus()
   const [groups, setGroups] = useState<string[]>([])
   const [tab, setTab] = useState('profile')
 
@@ -40,6 +39,11 @@ export default function UserConfig() {
       <Form.Item label="Change password" extra="Admin override - no current password needed">
         <Input.Password placeholder="Leave blank to keep" />
       </Form.Item>
+      <Form.Item label="Require password change at next login">
+        <Tooltip title="Cleared automatically once the user signs in and sets a new password">
+          <Switch />
+        </Tooltip>
+      </Form.Item>
       <Form.Item label="Administrator" name="admin" valuePropName="checked"><Switch /></Form.Item>
       <Form.Item label="Authorised" name="authorized" valuePropName="checked"><Switch /></Form.Item>
     </Form>
@@ -47,9 +51,9 @@ export default function UserConfig() {
 
   const groupsTab = (
     <div>
-      <div style={{ marginBottom: 8, color: 'var(--color-text-muted)', fontSize: 13 }}>Groups</div>
-      <Combo corpus={corpus} value={groups} onChange={setGroups} placeholder="Add to groups…" />
-      <div className="oh-section-title">Effective access</div>
+      <GroupPicker value={groups} onChange={setGroups} />
+
+      <div className="oh-section-title">Effective policies</div>
       <div className="oh-page-sub" style={{ marginBottom: 12 }}>The policy resolved across this user's groups - each grant cites the group that won.</div>
       {grants.map((g) => (
         <div className="oh-grant" key={g.key}>
@@ -86,7 +90,7 @@ export default function UserConfig() {
     </div>
   )
 
-  const widths: Record<string, number> = { profile: 680, groups: 760, volumes: 880 }
+  const widths: Record<string, number> = { profile: 680, groups: 1000, volumes: 880 }
 
   return (
     <>
