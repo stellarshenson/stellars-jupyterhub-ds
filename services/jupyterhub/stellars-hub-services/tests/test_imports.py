@@ -124,10 +124,12 @@ def test_handlers():
         GroupsDeleteHandler,
         GroupsConfigHandler,
         GroupsReorderHandler,
+        NativeUsersHandler,
+        NativeUserAuthorizationHandler,
     )
     # Verify handler count matches expected
     from stellars_hub_services import handlers
-    assert len(handlers.__all__) == 22
+    assert len(handlers.__all__) == 24
 
 
 def test_auth():
@@ -349,6 +351,7 @@ def test_all_modules_importable():
         'stellars_hub_services.handlers.settings',
         'stellars_hub_services.handlers.volumes',
         'stellars_hub_services.handlers.groups',
+        'stellars_hub_services.handlers.native_users',
         'stellars_hub_services.groups_config',
         'stellars_hub_services.policy',
         'stellars_hub_services.policy.registry',
