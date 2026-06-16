@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { Button, Card, Input, Radio, Select, Switch, Table } from 'antd'
 import { PageHeader } from '../components/PageHeader'
 import { Icon } from '../components/Icon'
-import { useSentNotifications } from '../hooks/queries'
+import { Combo } from '../components/Combo'
+import { useSentNotifications, useServers } from '../hooks/queries'
 import { broadcast } from '../services/ops'
 import { timeAgoShort, exactDate } from '../lib/format'
 import type { SentNotification } from '../services/types'
@@ -16,12 +17,16 @@ const TYPE_PILL: Record<string, string> = {
 
 export default function Notifications() {
   const { data: history = [] } = useSentNotifications()
+  const { data: servers = [] } = useServers()
+  const activeUsers = servers.filter((s) => s.status !== 'offline' && s.status !== 'error').map((s) => s.user)
   const [msg, setMsg] = useState('')
   const [variant, setVariant] = useState('default')
   const [autoClose, setAutoClose] = useState(false)
+  const [mode, setMode] = useState<'all' | 'selected'>('all')
+  const [recipients, setRecipients] = useState<string[]>([])
   const send = async () => {
     try {
-      await broadcast(msg.trim(), variant, autoClose)
+      await broadcast(msg.trim(), variant, autoClose, mode === 'selected' ? recipients : undefined)
       setMsg('')
     } catch {
       /* ops surfaced the error */
@@ -49,13 +54,18 @@ export default function Notifications() {
           </div>
           <div style={{ marginTop: 12 }}>
             <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 6 }}>Recipients</div>
-            <Radio.Group defaultValue="all">
+            <Radio.Group value={mode} onChange={(e) => setMode(e.target.value)}>
               <Radio value="all">All active servers</Radio>
               <Radio value="selected">Selected users</Radio>
             </Radio.Group>
+            {mode === 'selected' && (
+              <div style={{ marginTop: 8 }}>
+                <Combo corpus={activeUsers} value={recipients} onChange={setRecipients} placeholder="Add an active user…" />
+              </div>
+            )}
           </div>
           <div style={{ marginTop: 16 }}>
-            <Button type="primary" icon={<Icon name="megaphone" size={14} />} disabled={!msg.trim()} onClick={send}>
+            <Button type="primary" icon={<Icon name="megaphone" size={14} />} disabled={!msg.trim() || (mode === 'selected' && recipients.length === 0)} onClick={send}>
               Send broadcast
             </Button>
           </div>

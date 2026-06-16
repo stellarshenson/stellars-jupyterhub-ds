@@ -68,7 +68,7 @@ function PendingSection({ users }: { users: UserRow[] }) {
 
 export default function Users() {
   const { data = [], isLoading } = useUsers()
-  const [scope, setScope] = useState('authorized')
+  const [scope, setScope] = useState('all')
   const [q, setQ] = useState('')
 
   const pending = useMemo(() => data.filter((u) => u.pending), [data])

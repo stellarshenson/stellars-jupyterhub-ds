@@ -100,6 +100,19 @@ def test_volume_cache():
     assert needs_refresh is True  # No data cached yet
 
 
+def test_gpu_cache():
+    from stellars_hub_services.gpu_cache import (
+        GpuUtilizationRefresher,
+        configure_gpu_cache,
+        get_gpu_utilization_with_refresh,
+    )
+    configure_gpu_cache('nvidia/cuda:13.0.2-base-ubuntu24.04')
+    # No GPU/docker in the test env -> sample fails gracefully, cache stays {}.
+    data = get_gpu_utilization_with_refresh()
+    assert isinstance(data, dict)
+    assert GpuUtilizationRefresher.get_instance() is not None
+
+
 def test_handlers():
     from stellars_hub_services.handlers import (
         ManageVolumesHandler,
@@ -110,6 +123,7 @@ def test_handlers():
         BroadcastNotificationHandler,
         GetUserCredentialsHandler,
         SettingsPageHandler,
+        SettingsDataHandler,
         SessionInfoHandler,
         ExtendSessionHandler,
         ActivityPageHandler,
@@ -126,10 +140,12 @@ def test_handlers():
         GroupsReorderHandler,
         NativeUsersHandler,
         NativeUserAuthorizationHandler,
+        UserProfileHandler,
+        EventsDataHandler,
     )
     # Verify handler count matches expected
     from stellars_hub_services import handlers
-    assert len(handlers.__all__) == 24
+    assert len(handlers.__all__) == 27
 
 
 def test_auth():
@@ -335,6 +351,7 @@ def test_all_modules_importable():
         'stellars_hub_services.password_cache',
         'stellars_hub_services.services',
         'stellars_hub_services.volume_cache',
+        'stellars_hub_services.gpu_cache',
         'stellars_hub_services.volumes',
         'stellars_hub_services.activity',
         'stellars_hub_services.activity.model',
@@ -352,7 +369,11 @@ def test_all_modules_importable():
         'stellars_hub_services.handlers.volumes',
         'stellars_hub_services.handlers.groups',
         'stellars_hub_services.handlers.native_users',
+        'stellars_hub_services.handlers.user_profile',
+        'stellars_hub_services.handlers.events_data',
         'stellars_hub_services.groups_config',
+        'stellars_hub_services.user_profiles',
+        'stellars_hub_services.event_log',
         'stellars_hub_services.policy',
         'stellars_hub_services.policy.registry',
         'stellars_hub_services.policy.engine',

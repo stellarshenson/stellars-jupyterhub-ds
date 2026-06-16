@@ -15,9 +15,12 @@ import { Icon } from '../components/Icon'
 import { useNavigate } from 'react-router-dom'
 import { useServers } from '../hooks/queries'
 import { mockAction, invalidate } from '../services/actions'
-import { startServer, stopServer, restartServer, resetActivity } from '../services/ops'
+import { resetActivity } from '../services/ops'
 import { userServerUrl } from '../services/hub/client'
+import { useServerLifecycle } from '../app/ServerLifecycle'
 import type { ServerRow, ServerStatus } from '../services/types'
+
+type Lifecycle = ReturnType<typeof useServerLifecycle>
 
 const STATUS_ORDER: Record<ServerStatus, number> = { active: 1, idle: 2, spawning: 3, offline: 4, error: 5 }
 
@@ -35,30 +38,29 @@ function num(v: number | null) {
   return v == null ? <span className="oh-muted">-</span> : <span className="oh-num">{v}%</span>
 }
 
-function rowActions(r: ServerRow, nav: (to: string) => void) {
+function rowActions(r: ServerRow, nav: (to: string) => void, lf: Lifecycle) {
+  const busy = !!lf.busyOf(r.user)
   if (r.status === 'spawning') {
     return (
       <div className="oh-row" style={{ justifyContent: 'flex-end' }}>
         <IconAction icon="activity" title="View spawn log" onClick={() => mockAction('Tail live spawn log')} />
-        <IconAction icon="stop" title="Cancel spawn" danger filled onClick={() => stopServer(r.user)} />
+        <IconAction icon="stop" title="Cancel spawn" danger filled disabled={busy} onClick={() => lf.stop(r.user)} />
       </div>
     )
   }
   if (r.status === 'offline') {
     return (
       <div className="oh-row" style={{ justifyContent: 'flex-end' }}>
-        <IconAction icon="play" title="Start (you stay here)" onClick={() => startServer(r.user)} />
-        {r.volumesGB != null && (
-          <IconAction icon="disk" title="Manage volumes" onClick={() => nav(`/users/${r.user}`)} />
-        )}
+        <IconAction icon="play" title="Start server" disabled={busy} onClick={() => lf.start(r.user)} />
+        <IconAction icon="disk" title="Manage volumes" disabled={busy} onClick={() => nav(`/servers/${r.user}/volumes`)} />
       </div>
     )
   }
   return (
     <div className="oh-row" style={{ justifyContent: 'flex-end' }}>
-      <IconAction icon="play" title="Enter session" onClick={() => window.location.assign(userServerUrl(r.user))} />
-      <IconAction icon="restart" title="Restart" onClick={() => restartServer(r.user)} />
-      <IconAction icon="stop" title="Stop" danger filled onClick={() => stopServer(r.user)} />
+      <IconAction icon="play" title="Enter session" disabled={busy} onClick={() => window.location.assign(userServerUrl(r.user))} />
+      <IconAction icon="restart" title="Restart" disabled={busy} onClick={() => lf.restart(r.user)} />
+      <IconAction icon="stop" title="Stop" danger filled disabled={busy} onClick={() => lf.stop(r.user)} />
     </div>
   )
 }
@@ -66,7 +68,8 @@ function rowActions(r: ServerRow, nav: (to: string) => void) {
 export default function Servers() {
   const { data = [], isLoading } = useServers()
   const navigate = useNavigate()
-  const [scope, setScope] = useState('active')
+  const lifecycle = useServerLifecycle()
+  const [scope, setScope] = useState('all')
   const [q, setQ] = useState('')
 
   const counts = useMemo(() => {
@@ -148,7 +151,7 @@ export default function Servers() {
       render: (_, r) =>
         r.timeLeftMin == null ? <span className="oh-muted">-</span> : <span className={r.timeLeftWarn ? 'oh-cell-amber' : 'oh-num'}>{r.timeLeftLabel}</span>,
     },
-    { title: 'Actions', align: 'right', render: (_, r) => rowActions(r, navigate) },
+    { title: 'Actions', align: 'right', render: (_, r) => rowActions(r, navigate, lifecycle) },
   ]
 
   return (
@@ -162,7 +165,7 @@ export default function Servers() {
         search={false}
         options={false}
         rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
-        pagination={{ defaultPageSize: 25, pageSizeOptions: [25, 50, 100], showSizeChanger: true, showTotal: (t) => `${t} servers in scope` }}
+        pagination={{ defaultPageSize: 25, pageSizeOptions: [25, 50, 100], showSizeChanger: { showSearch: false }, showTotal: (t) => `${t} servers in scope` }}
         headerTitle={
           <ScopeFilterPills
             value={scope}

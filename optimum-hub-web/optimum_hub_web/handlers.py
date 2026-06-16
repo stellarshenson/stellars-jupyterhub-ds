@@ -43,6 +43,12 @@ def template_dir():
     return TEMPLATE_DIR
 
 
+def brand_dir():
+    """Absolute path of the bundled brand assets (logo/favicon), served publicly
+    so the unauthenticated login/signup pages can show the logo."""
+    return os.path.join(STATIC_DIR, "brand")
+
+
 def _entry_assets():
     """(js, css) for the SPA entry, read once from the vite build manifest.
 
@@ -73,6 +79,12 @@ def _entry_assets():
     css_list = entry.get("css") or []
     _entry_cache = (entry["file"], css_list[0] if css_list else "")
     return _entry_cache
+
+
+def entry_assets():
+    """Public (js, css) entry pair from the vite manifest, for callers that render
+    the shell outside PortalHandler (e.g. the login/signup template vars)."""
+    return _entry_assets()
 
 
 class ImmutableStaticFileHandler(web.StaticFileHandler):

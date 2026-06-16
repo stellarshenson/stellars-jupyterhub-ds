@@ -1,5 +1,6 @@
 """SQLAlchemy event listeners for user lifecycle synchronization."""
 
+import html
 import os
 
 
@@ -36,6 +37,16 @@ def register_events():
             rename_activity_user(oldvalue, value)
         except Exception as e:
             print(f"[ActivityMonitor Sync] Error renaming: {e}")
+
+        # Sync the display profile (first/last name + email) to the new username
+        try:
+            from .user_profiles import UserProfileManager
+            UserProfileManager.get_instance().rename_user(oldvalue, value)
+        except Exception as e:
+            print(f"[UserProfile Sync] Error renaming: {e}")
+
+        from .event_log import record_event
+        record_event('user', f'<b>{html.escape(str(oldvalue))}</b> renamed to <b>{html.escape(str(value))}</b>')
 
     @event.listens_for(orm.User, 'after_insert')
     def create_nativeauth_on_user_insert(mapper, connection, target):
@@ -83,6 +94,9 @@ def register_events():
         except Exception as e:
             print(f"[NativeAuth Auto-Create] Error for {username}: {e}")
 
+        from .event_log import record_event
+        record_event('user', f'<b>{html.escape(str(username))}</b> was created')
+
     @event.listens_for(orm.User, 'after_delete')
     def remove_nativeauth_on_user_delete(mapper, connection, target):
         """Remove NativeAuthenticator UserInfo and ActivityMonitor data when a User is deleted."""
@@ -111,3 +125,12 @@ def register_events():
             delete_activity_user(username)
         except Exception as e:
             print(f"[ActivityMonitor Cleanup] Error removing data for {username}: {e}")
+
+        try:
+            from .user_profiles import UserProfileManager
+            UserProfileManager.get_instance().delete_profile(username)
+        except Exception as e:
+            print(f"[UserProfile Cleanup] Error removing profile for {username}: {e}")
+
+        from .event_log import record_event
+        record_event('user', f'<b>{html.escape(str(username))}</b> was deleted')

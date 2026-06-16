@@ -8,13 +8,13 @@
  * through the standard JupyterHub API or the custom stellars-hub-services API;
  * authorize/discard + change-password go through NativeAuthenticator's handlers.
  *
- * The deep per-field group-policy editor (GroupPolicyTab) and a few unsupported
- * or client-only actions (signup-enable env, image pull, JSON export/download)
- * are intentionally not wired here - they keep their existing mock/client-side
- * behaviour. */
+ * The group-policy editor PUTs the full flat config (the hub coerces +
+ * validates); a few unsupported or client-only actions (signup-enable env, image
+ * pull) keep their existing mock/client-side behaviour. */
 import { isMock } from './dataMode'
 import { hubAuthForm, hubAuthGet, hubSend } from './hub/client'
 import { invalidate, mockSuccess, notify } from './actions'
+import type { PolicyConfig, UserProfile } from './types'
 
 /** Run a live write with success/error toasts + cache invalidation; in mock mode
  * just toast. Returns the run() result (or undefined in mock mode). */
@@ -84,6 +84,14 @@ export const setAdmin = (name: string, admin: boolean) =>
 export const renameUser = (name: string, newName: string) =>
   run(`Renamed ${name} to ${newName}`, () => hubSend('PATCH', `/users/${encodeURIComponent(name)}`, { name: newName }), USER_KEYS(name))
 
+/** Persist a user's display profile (first/last name + email). Admin or self. */
+export const saveUserProfile = (name: string, profile: UserProfile) =>
+  run(`Saved ${name}'s profile`, () => hubSend('PUT', `/users/${encodeURIComponent(name)}/profile`, {
+    first_name: profile.firstName,
+    last_name: profile.lastName,
+    email: profile.email,
+  }), [['user-profile', name], ['user', name]])
+
 /** Admin sets another user's password (NativeAuth admin change-password). */
 export const setUserPassword = (name: string, password: string) =>
   run(`Set password for ${name}`, async () => {
@@ -134,8 +142,8 @@ export const reorderGroups = (order: Array<{ name: string; priority: number }>) 
   run('Reordered groups by priority', () => hubSend('POST', '/admin/groups/reorder', { groups: order }), [['groups']])
 
 /** Save a group's general fields (description). Priority is owned by reorder. */
-export const saveGroupConfig = (name: string, description: string) =>
-  run(`Saved ${name}`, () => hubSend('PUT', `/admin/groups/${encodeURIComponent(name)}/config`, { description }), GROUP_KEYS(name))
+export const saveGroupConfig = (name: string, description: string, config?: PolicyConfig) =>
+  run(`Saved ${name}`, () => hubSend('PUT', `/admin/groups/${encodeURIComponent(name)}/config`, { description, ...(config ?? {}) }), GROUP_KEYS(name))
 
 // ── Tokens ────────────────────────────────────────────────────────────────--
 export interface NewToken {
@@ -168,13 +176,14 @@ export interface BroadcastResult {
   successful: number
   failed: number
 }
-export async function broadcast(message: string, variant: string, autoClose: boolean): Promise<BroadcastResult | undefined> {
+export async function broadcast(message: string, variant: string, autoClose: boolean, recipients?: string[]): Promise<BroadcastResult | undefined> {
   if (isMock()) {
-    mockSuccess('Broadcast sent to 18 active servers')
-    return { total: 18, successful: 18, failed: 0 }
+    const n = recipients?.length ?? 18
+    mockSuccess(recipients?.length ? `Broadcast sent to ${n} selected server(s)` : 'Broadcast sent to active servers')
+    return { total: n, successful: n, failed: 0 }
   }
   try {
-    const r = await hubSend<BroadcastResult>('POST', '/notifications/broadcast', { message, variant, autoClose })
+    const r = await hubSend<BroadcastResult>('POST', '/notifications/broadcast', { message, variant, autoClose, recipients })
     notify.success(`Broadcast delivered to ${r.successful}/${r.total} server(s)`)
     invalidate(['sent-notifications'])
     return r

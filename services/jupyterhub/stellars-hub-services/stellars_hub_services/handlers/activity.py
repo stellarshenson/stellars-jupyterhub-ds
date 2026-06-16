@@ -15,6 +15,7 @@ from ..activity.helpers import (
 )
 from ..docker_utils import encode_username_for_docker, get_container_stats_async
 from ..container_size_cache import get_container_sizes_with_refresh, ContainerSizeRefresher
+from ..gpu_cache import GpuUtilizationRefresher, get_gpu_utilization_with_refresh
 from ..idle_culler import calc_ceiling, remaining_seconds_for
 from ..volume_cache import VolumeSizeRefresher, get_volume_sizes_with_refresh
 
@@ -51,6 +52,13 @@ class ActivityDataHandler(BaseHandler):
         ctr_refresher = ContainerSizeRefresher.get_instance()
         if ctr_refresher.periodic_callback is None:
             ctr_refresher.start()
+        # GPU utilisation is only worth sampling when the host actually has GPUs
+        # (enumerated once at startup). The sampler spins a CUDA container, so we
+        # gate it on a non-empty inventory to avoid pointless container churn.
+        if (self.settings.get('stellars_config') or {}).get('gpu_list'):
+            gpu_refresher = GpuUtilizationRefresher.get_instance()
+            if gpu_refresher.periodic_callback is None:
+                gpu_refresher.start()
 
         self.log.info(f"[Activity Data] Admin {current_user.name} requested activity data")
 
@@ -158,11 +166,42 @@ class ActivityDataHandler(BaseHandler):
         volume_max = stellars_config.get('volume_max_total_size_mb', 51200)
         memory_max = stellars_config.get('memory_max_usage_mb', 0)
 
+        # Host GPU inventory enumerated once at startup (cached read, no container
+        # spin per request); empty when GPU is disabled or none are present. Live
+        # per-GPU utilisation is sampled in the background by GpuUtilizationRefresher
+        # (an ephemeral nvidia-smi container) and merged in by index - so each
+        # device carries its real load and used memory when a sample exists, and
+        # falls back to inventory-only (utilization absent) otherwise.
+        gpu_list = stellars_config.get('gpu_list', []) or []
+        gpu_util = get_gpu_utilization_with_refresh() if gpu_list else {}
+        gpus = []
+        for g in gpu_list:
+            idx = g.get("index")
+            entry = {
+                "index": idx,
+                "name": g.get("name"),
+                "memory_mb": g.get("memory_mb", 0),
+            }
+            sample = gpu_util.get(str(idx)) if idx is not None else None
+            if sample:
+                entry["utilization"] = sample.get("utilization")
+                entry["memory_used_mb"] = sample.get("memory_used_mb")
+            gpus.append(entry)
+
+        # Lab Container page facts: the spawn image and the standard per-user
+        # volumes every lab gets (cached config reads). Shared/extra volumes are
+        # granted per group via the volume-mounts policy, not platform-wide here.
+        lab_image = stellars_config.get('lab_image', '')
+        lab_volumes = stellars_config.get('lab_volumes', []) or []
+
         response = {
             "users": users_data,
             "container_max_extra_space_mb": container_max,
             "volume_max_total_size_mb": volume_max,
             "memory_max_usage_mb": memory_max,
+            "gpus": gpus,
+            "lab_image": lab_image,
+            "lab_volumes": lab_volumes,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "sampling_status": get_activity_sampling_status(),
             "inactive_after_seconds": get_inactive_after_seconds(),

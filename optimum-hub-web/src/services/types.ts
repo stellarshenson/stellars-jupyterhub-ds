@@ -30,6 +30,12 @@ export interface ServerRow {
 
 export type UserScope = 'authorized' | 'inactive' | 'unauthorized' | 'all'
 
+export interface UserProfile {
+  firstName: string
+  lastName: string
+  email: string
+}
+
 export interface UserRow {
   name: string
   fullName?: string
@@ -53,6 +59,7 @@ export interface GroupRow {
   priority: number
   description?: string
   members: number
+  memberNames?: string[] // for the members tooltip
   policies: PolicyTag[]
 }
 
@@ -62,6 +69,7 @@ export interface GroupConfig {
   priority: number
   members: string[]
   sections: PolicySection[]
+  config: PolicyConfig // the real flat policy config (read + write)
 }
 
 export interface PolicySection {
@@ -69,6 +77,73 @@ export interface PolicySection {
   label: string
   enabled: boolean
   summary: string // human summary of the configured value
+}
+
+// The hub stores group policy as one FLAT dict (every section's fields at the top
+// level - see policy/registry.py default_config). The PUT body is {description,
+// ...this}; coerce_config + validate_all on the hub are the safety net. Field
+// names here MUST match the registry exactly. All fields optional - unset keys
+// fall back to the stored config (PUT merges onto existing).
+export interface PolicyEnvVar {
+  name: string
+  value: string
+  description?: string
+}
+
+export interface PolicyVolumeMount {
+  volume: string
+  mountpoint: string
+}
+
+export interface PolicyApiCred {
+  slot?: string // stable slot id - round-tripped so a running container keeps its credential
+  id?: string // pair mode
+  secret?: string // pair mode
+  key?: string // single mode
+  description?: string
+}
+
+export interface PolicyApiKeysPool {
+  enabled: boolean
+  mode: '' | 'single' | 'pair'
+  env_var_id: string
+  env_var_secret: string
+  env_var_key: string
+  credentials: PolicyApiCred[]
+}
+
+export interface PolicyConfig {
+  env_vars_active?: boolean
+  env_vars?: PolicyEnvVar[]
+  gpu_access?: boolean
+  gpu_all?: boolean
+  gpu_device_ids?: string[]
+  docker_active?: boolean
+  docker_access?: boolean
+  docker_limited?: boolean
+  docker_privileged?: boolean
+  docker_limited_max_containers?: number
+  docker_limited_max_volumes?: number
+  docker_limited_max_networks?: number
+  docker_limited_max_storage_gb?: number
+  docker_limited_cpu_cap_cores?: number
+  docker_limited_mem_cap_gb?: number
+  docker_limited_allow_dangerous_flags?: boolean
+  docker_limited_user_compose_project_enabled?: boolean
+  docker_limited_user_compose_project_allow_override?: boolean
+  docker_limited_hub_network_access?: boolean
+  cpu_limit_enabled?: boolean
+  cpu_limit_cores?: number
+  mem_limit_enabled?: boolean
+  mem_limit_gb?: number
+  mem_swap_disabled?: boolean
+  sudo_active?: boolean
+  sudo_enable?: boolean
+  downloads_active?: boolean
+  downloads_allow?: boolean
+  api_keys_pool?: PolicyApiKeysPool
+  volume_mounts_active?: boolean
+  volume_mounts?: PolicyVolumeMount[]
 }
 
 export type EventType = 'server' | 'user' | 'group' | 'policy' | 'broadcast' | 'cull'
@@ -91,11 +166,20 @@ export interface TokenRow {
   scopes?: string
 }
 
+export interface GpuDevice {
+  index: string // nvidia-smi index ("0", "1", ...)
+  name: string // e.g. "NVIDIA A100-SXM4-80GB"
+  memoryMb: number // total device memory
+  utilizationPct?: number // live per-GPU load % (sampled); absent = not sampled
+  memoryUsedMb?: number // live used memory (sampled)
+}
+
 export interface ResourceSnapshot {
   cpu: number // % host
   mem: number // % host
   gpu: number // % host (aggregate)
-  gpus?: number[] // per-GPU utilisation - drives the segmented GPU meter + the count
+  gpus?: number[] // per-GPU utilisation % - segmented GPU meter (only when utilisation is sampled)
+  gpuDevices?: GpuDevice[] // real host GPU inventory; drives the device count when utilisation is not sampled
   memTip?: string
 }
 
@@ -120,6 +204,19 @@ export interface Volume {
   description?: string
   sizeGB?: number
   standard: boolean // platform-managed core volume vs custom mount
+}
+
+// Lab Container page: the spawn image + the standard per-user volumes every lab
+// gets (read-only deployment facts; shared/extra volumes are granted per group)
+export interface LabMount {
+  name: string // home | workspace | cache
+  mount: string // /home, /home/lab/workspace, /home/lab/.cache
+  description?: string
+}
+
+export interface LabContainerInfo {
+  image: string
+  volumes: LabMount[]
 }
 
 export interface EffectiveGrant {

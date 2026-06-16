@@ -13,7 +13,7 @@ export const useGroups = () => useQuery({ queryKey: ['groups'], queryFn: () => d
 export const useEvents = () => useQuery({ queryKey: ['events'], queryFn: () => ds().getEvents() })
 export const useTokens = () => useQuery({ queryKey: ['tokens'], queryFn: () => ds().getTokens() })
 export const useTotalResources = () => useQuery({ queryKey: ['resources'], queryFn: () => ds().getTotalResources() })
-export const useLabVolumes = () => useQuery({ queryKey: ['lab-volumes'], queryFn: () => ds().getLabVolumes() })
+export const useLabContainer = () => useQuery({ queryKey: ['lab-container'], queryFn: () => ds().getLabContainer() })
 export const useSettings = () => useQuery({ queryKey: ['settings'], queryFn: () => ds().getSettings() })
 export const useSettingsReference = () => useQuery({ queryKey: ['settings-ref'], queryFn: () => ds().getSettingsReference() })
 export const useSentNotifications = () => useQuery({ queryKey: ['sent-notifications'], queryFn: () => ds().getSentNotifications() })
@@ -22,6 +22,8 @@ export const useUserCorpus = () => useQuery({ queryKey: ['user-corpus'], queryFn
 
 export const useUser = (name: string) =>
   useQuery({ queryKey: ['user', name], queryFn: () => ds().getUser(name), enabled: !!name })
+export const useUserProfile = (name: string) =>
+  useQuery({ queryKey: ['user-profile', name], queryFn: () => ds().getUserProfile(name), enabled: !!name })
 export const useGroupConfig = (name: string) =>
   useQuery({ queryKey: ['group-config', name], queryFn: () => ds().getGroupConfig(name), enabled: !!name })
 export const useServerHero = (user: string) =>

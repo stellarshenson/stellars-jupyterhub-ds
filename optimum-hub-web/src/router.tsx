@@ -12,6 +12,7 @@ import NewUser from './pages/NewUser'
 import BulkUsers from './pages/BulkUsers'
 import BulkResult from './pages/BulkResult'
 import UserConfig from './pages/UserConfig'
+import ManageVolumes from './pages/ManageVolumes'
 import Groups from './pages/Groups'
 import NewGroup from './pages/NewGroup'
 import GroupsExport from './pages/GroupsExport'
@@ -53,6 +54,7 @@ export const router = createBrowserRouter(
           element: <RequireAdmin />,
           children: [
             { path: 'servers', handle: { crumb: 'Servers' }, element: <Servers /> },
+            { path: 'servers/:name/volumes', handle: { crumb: 'Manage volumes', parent: { label: 'Servers', to: '/servers' } }, element: <ManageVolumes /> },
 
             { path: 'users', handle: { crumb: 'Users' }, element: <Users /> },
             { path: 'users/new', handle: { crumb: 'New user', parent: usersParent }, element: <NewUser /> },

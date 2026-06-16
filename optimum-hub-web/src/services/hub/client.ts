@@ -60,6 +60,14 @@ interface JhData {
   user?: string
   admin_access?: boolean
   xsrf_token?: string
+  // Set only on the overridden login/signup pages: the SPA renders the matching
+  // antd auth screen instead of the app, and these carry the NativeAuth context.
+  authPage?: 'login' | 'signup'
+  authError?: string // login: failed-login message
+  authNext?: string // login: url-escaped `next` to return to after auth
+  authMessage?: string // signup: result message from NativeAuth
+  authAlert?: string // signup: 'alert-success' | 'alert-danger' | 'alert-info'
+  askEmail?: boolean // signup: whether NativeAuth asks for an email
 }
 declare global {
   interface Window {
@@ -93,6 +101,12 @@ function xsrf(): string {
   if (typeof document === 'undefined') return ''
   const m = document.cookie.match(/(?:^|;\s*)_xsrf=([^;]+)/)
   return m ? decodeURIComponent(m[1]) : ''
+}
+
+/** The hub XSRF token, for callers that can't use the fetch helpers (e.g. an
+ * EventSource, which cannot set headers, must pass `_xsrf` as a query param). */
+export function xsrfToken(): string {
+  return xsrf()
 }
 
 /** Absolute URL for a hub page under {hubBase}/hub (login, logout, signup). */
