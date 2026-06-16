@@ -16,7 +16,7 @@ export const IDLE_CULLER = {
 
 export const PLATFORM = {
   version: '1.0.0',
-  jupyterhubVersion: '4.1.6',
+  jupyterhubVersion: '3.3.6',
   admin: 'admin',
   baseUrl: '/jupyterhub',
   timezone: 'Europe/Warsaw',

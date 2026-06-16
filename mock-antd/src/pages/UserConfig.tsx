@@ -11,6 +11,7 @@ import { Icon } from '../components/Icon'
 import { Notice } from '../components/Notice'
 import { useEffectiveGrants, useUser, useUserVolumes } from '../hooks/queries'
 import { mockAction, mockSuccess } from '../services/actions'
+import { PLATFORM } from '../services/config'
 import type { Volume } from '../services/types'
 
 export default function UserConfig() {
@@ -22,6 +23,10 @@ export default function UserConfig() {
   const [groups, setGroups] = useState<string[]>([])
   const [tab, setTab] = useState('profile')
 
+  // the platform-configured admin (JUPYTERHUB_ADMIN): always admin + authorised,
+  // never removable - those controls are owned by system config, not this screen
+  const isBuiltinAdmin = name === PLATFORM.admin
+
   // React Query resolves after mount, so sync the combo + re-key the Form to
   // re-apply initialValues once the user is loaded (antd captures them at mount).
   useEffect(() => {
@@ -32,6 +37,13 @@ export default function UserConfig() {
 
   const profile = (
     <Form key={user ? `u-${user.name}` : 'loading'} layout="vertical" initialValues={{ username: name, first, last, email: `${name}@lab.stellars-tech.eu`, admin: user?.admin, authorized: user?.authorized }}>
+      {isBuiltinAdmin && (
+        <div style={{ marginBottom: 16 }}>
+          <Notice type="warning">
+            <span><b>Built-in admin account.</b> Admin role and authorisation are set by the platform; this account cannot be de-authorised or removed.</span>
+          </Notice>
+        </div>
+      )}
       <Form.Item label="Username" name="username"><Input disabled /></Form.Item>
       <Form.Item label="First name" name="first"><Input /></Form.Item>
       <Form.Item label="Last name" name="last"><Input /></Form.Item>
@@ -44,8 +56,8 @@ export default function UserConfig() {
           <Switch />
         </Tooltip>
       </Form.Item>
-      <Form.Item label="Administrator" name="admin" valuePropName="checked"><Switch /></Form.Item>
-      <Form.Item label="Authorised" name="authorized" valuePropName="checked"><Switch /></Form.Item>
+      {!isBuiltinAdmin && <Form.Item label="Administrator" name="admin" valuePropName="checked"><Switch /></Form.Item>}
+      {!isBuiltinAdmin && <Form.Item label="Authorised" name="authorized" valuePropName="checked"><Switch /></Form.Item>}
     </Form>
   )
 
@@ -106,7 +118,7 @@ export default function UserConfig() {
           ]}
         />
         <FormFooter
-          destructive={<Button danger icon={<Icon name="close" size={14} />} onClick={() => mockAction(`Remove user ${name}`)}>Remove user</Button>}
+          destructive={isBuiltinAdmin ? undefined : <Button danger icon={<Icon name="close" size={14} />} onClick={() => mockAction(`Remove user ${name}`)}>Remove user</Button>}
           onCancel={() => navigate('/users')}
           onSave={() => mockSuccess(`Saved ${name}`)}
         />

@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
-import { Button, Card, Input, Switch, Tag } from 'antd'
+import { Button, Card, Input, Switch, Tag, Tooltip } from 'antd'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { ScopeFilterPills } from '../components/ScopeFilterPills'
@@ -13,6 +13,7 @@ import { CappedTags } from '../components/CappedTags'
 import { Icon } from '../components/Icon'
 import { useUsers } from '../hooks/queries'
 import { mockAction } from '../services/actions'
+import { PLATFORM } from '../services/config'
 import { exactDate, timeAgoShort } from '../lib/format'
 import type { UserRow } from '../services/types'
 
@@ -97,9 +98,14 @@ export default function Users() {
       title: 'Authorised',
       dataIndex: 'authorized',
       width: 110,
-      render: (_, u) => (
-        <Switch size="small" defaultChecked={u.authorized} onChange={(v) => mockAction(`${v ? 'Authorized' : 'De-authorized'} ${u.name}`)} />
-      ),
+      render: (_, u) =>
+        u.name === PLATFORM.admin ? (
+          <Tooltip title="Built-in admin - authorisation controlled by system config">
+            <Switch size="small" checked disabled />
+          </Tooltip>
+        ) : (
+          <Switch size="small" defaultChecked={u.authorized} onChange={(v) => mockAction(`${v ? 'Authorized' : 'Unauthorised'} ${u.name}`)} />
+        ),
     },
     {
       title: 'Created',

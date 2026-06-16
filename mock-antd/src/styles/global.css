@@ -184,9 +184,17 @@ body { margin: 0; font-family: var(--font-sans); }
 /* ---- add-a-group browse list (Configure user) ---- */
 .oh-addgrp-tags { display: flex; flex-wrap: wrap; gap: 4px; }
 
+/* ---- tech-stack chips (footer "built with" badges, shields.io style) ---- */
+.oh-techchips { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.oh-chip { display: inline-flex; align-items: stretch; border-radius: 5px; overflow: hidden; font-size: 11px; font-weight: 600; line-height: 1.6; box-shadow: var(--shadow-sm); }
+.oh-chip > .k { padding: 1px 8px; background: var(--color-surface-active); color: var(--color-text-muted); }
+.oh-chip > .v { padding: 1px 8px; color: #fff; }
+
 /* ---- group policy form: foldable sections (Configure group / Policy) ---- */
 .oh-pol-sec { border-bottom: 1px solid var(--color-border-subtle); padding: 14px 0; }
 .oh-pol-sec:last-child { border-bottom: 0; }
+/* zebra the collapsed sections so the folded policy list alternates (open ones stay plain) */
+.oh-pol-sec.collapsed:nth-child(even) { background: color-mix(in srgb, var(--color-text) 3%, transparent); margin: 0 -16px; padding-left: 16px; padding-right: 16px; }
 .oh-pol-head { display: flex; align-items: center; gap: 10px; }
 .oh-pol-head .anticon, .oh-pol-head svg { color: var(--color-text-muted); }
 .oh-pol-title { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; color: var(--color-text-muted); }
