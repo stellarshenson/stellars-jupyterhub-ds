@@ -6,6 +6,19 @@
 ##############################################################################################
 ##############################################################################################
 
+# Web builder stage: build the Optimum Hub SPA bundle (React/vite) for the
+# hub-served portal. Output (/web/dist) is bundled into the optimum-hub-web wheel
+# by the Python builder below. node_modules is excluded via .dockerignore so the
+# COPY uses the npm-ci layer, not the host's.
+FROM node:20-slim AS webbuilder
+WORKDIR /web
+COPY optimum-hub-web/package.json optimum-hub-web/package-lock.json ./
+RUN npm ci
+COPY optimum-hub-web/ ./
+RUN npm run build:hub
+
+##############################################################################################
+
 # Builder stage: build and test stellars_hub_services using uv in a venv
 FROM python:3.12-slim AS builder
 
@@ -27,6 +40,21 @@ COPY services/jupyterhub/stellars-docker-proxy /src/stellars-docker-proxy
 RUN python -m build /src/stellars-docker-proxy --outdir /dist
 RUN uv pip install /dist/stellars_docker_proxy-*.whl pytest pytest-asyncio \
     && pytest /src/stellars-docker-proxy/tests/ -v
+
+# Build the Optimum Hub portal wheel: the Python integration package plus the
+# SPA bundle from the web builder, packaged together (UI shipped inside the wheel).
+COPY optimum-hub-web/pyproject.toml optimum-hub-web/README.md /src/optimum-hub-web/
+COPY optimum-hub-web/optimum_hub_web /src/optimum-hub-web/optimum_hub_web
+COPY --from=webbuilder /web/dist /src/optimum-hub-web/optimum_hub_web/static
+RUN <<-EOF
+    set -e
+    # the shell is rendered dynamically by PortalHandler, not served as a file
+    rm -f /src/optimum-hub-web/optimum_hub_web/static/index.html
+    python -m build --wheel /src/optimum-hub-web --outdir /dist
+    # import smoke-test (jupyterhub present via the nativeauthenticator dep above)
+    uv pip install /dist/optimum_hub_web-*.whl
+    python -c "import optimum_hub_web as p; assert p.portal_handlers(); print('optimum_hub_web', p.__version__, 'ok')"
+EOF
 
 ##############################################################################################
 
@@ -107,13 +135,14 @@ RUN <<-EOF
 EOF
 
 
-## install stellars_hub_services + stellars-docker-proxy packages (carry all pip dependencies)
+## install stellars_hub_services + stellars-docker-proxy + optimum-hub-web packages (carry all pip dependencies)
 COPY --from=builder /dist/*.whl /tmp/
 RUN <<-EOF
     echo "installing platform packages"
     pip install -U --no-cache-dir \
 	/tmp/stellars_hub_services-*.whl \
 	/tmp/stellars_docker_proxy-*.whl \
+	/tmp/optimum_hub_web-*.whl \
     && rm -f /tmp/*.whl
 EOF
 
