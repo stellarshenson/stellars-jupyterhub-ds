@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gpuinfo-nvidia"
+version = "0.1.0"
+description = "NVIDIA implementation of the Stellars GPU-info sidecar API"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+]
+
+[project.optional-dependencies]
+test = ["pytest", "httpx"]
+
+[project.scripts]
+gpuinfo-nvidia = "gpuinfo_nvidia.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["gpuinfo_nvidia"]

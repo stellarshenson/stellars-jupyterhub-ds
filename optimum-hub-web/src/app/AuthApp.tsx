@@ -7,12 +7,7 @@
 import { Alert, Button, Form, Input } from 'antd'
 import { ThemeProvider } from '../theme/ThemeProvider'
 import { Notice } from '../components/Notice'
-import { portalAssetBase, xsrfToken } from '../services/hub/client'
-
-function hubBase(): string {
-  const b = window.jhdata?.base_url || '/'
-  return b.endsWith('/') ? b : `${b}/`
-}
+import { hubUrl, portalAssetBase, xsrfToken } from '../services/hub/client'
 
 // Native browser POST so the hub's 302 redirect + Set-Cookie work as on the stock
 // form (fetch can't follow the auth redirect / set the session cookie cleanly).
@@ -41,11 +36,10 @@ function Brand() {
 }
 
 function AuthLogin() {
-  const base = hubBase()
   const error = window.jhdata?.authError || ''
   const next = window.jhdata?.authNext || ''
   const submit = (v: { username: string; password: string }) =>
-    postForm(`${base}hub/login${next ? `?next=${next}` : ''}`, { username: v.username, password: v.password, _xsrf: xsrfToken() })
+    postForm(`${hubUrl('/login')}${next ? `?next=${next}` : ''}`, { username: v.username, password: v.password, _xsrf: xsrfToken() })
   return (
     <div className="oh-auth">
       <div className="oh-auth-card">
@@ -62,21 +56,20 @@ function AuthLogin() {
           </Form.Item>
           <Button type="primary" htmlType="submit" block>Sign in</Button>
         </Form>
-        <div className="oh-auth-foot">New here? <a href={`${base}hub/signup`}>Create an account</a></div>
+        <div className="oh-auth-foot">New here? <a href={hubUrl('/signup')}>Create an account</a></div>
       </div>
     </div>
   )
 }
 
 function AuthSignup() {
-  const base = hubBase()
   const message = window.jhdata?.authMessage || ''
   const alert = window.jhdata?.authAlert || ''
   const askEmail = !!window.jhdata?.askEmail
   // NativeAuth alert classes -> notice tone
   const tone = alert.includes('success') ? 'success' : alert.includes('danger') ? 'error' : 'info'
   const submit = (v: { username: string; email?: string; password: string; repeat: string }) =>
-    postForm(`${base}hub/signup`, {
+    postForm(hubUrl('/signup'), {
       username: v.username,
       email: v.email ?? '',
       signup_password: v.password,
@@ -117,7 +110,7 @@ function AuthSignup() {
           </Form.Item>
           <Button type="primary" htmlType="submit" block>Create account</Button>
         </Form>
-        <div className="oh-auth-foot">Already have an account? <a href={`${base}hub/login`}>Sign in</a></div>
+        <div className="oh-auth-foot">Already have an account? <a href={hubUrl('/login')}>Sign in</a></div>
       </div>
     </div>
   )

@@ -7,7 +7,7 @@
  * on every change (the parent PUTs it; the hub coerces + validates). */
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Button, Checkbox, Input, InputNumber, Select, Switch, Table } from 'antd'
+import { Button, Checkbox, Input, InputNumber, Radio, Select, Switch, Table } from 'antd'
 import { Icon } from './Icon'
 import type { IconKey } from './Icon'
 import { useTotalResources } from '../hooks/queries'
@@ -234,8 +234,21 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       {/* Docker */}
       <Section icon="box" title="Docker access" on={on.docker ?? false} onToggle={toggle('docker')}>
         <div className="oh-pol-hint">Across groups the most permissive wins. Standard supersedes Limited; Privileged is orthogonal.</div>
-        <CheckRow checked={dStd} onChange={(v) => { setDStd(v); if (v) setDLim(false) }} label="Standard Docker access" desc="Mounts the raw /var/run/docker.sock - sees all containers, no quota. For trusted users." />
-        <CheckRow checked={dLim} onChange={(v) => { setDLim(v); if (v) setDStd(false) }} label="Limited Docker access" desc="Per-user filtered socket: users manage only their own containers, up to a quota. Mutually exclusive with Standard." />
+        <Radio.Group
+          value={dStd ? 'std' : dLim ? 'limited' : 'none'}
+          onChange={(e) => { const v = e.target.value as string; setDStd(v === 'std'); setDLim(v === 'limited') }}
+          style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}
+        >
+          <Radio value="none">No Docker access</Radio>
+          <Radio value="std">
+            Standard Docker access
+            <div className="desc">Mounts the raw /var/run/docker.sock - sees all containers, no quota. For trusted users.</div>
+          </Radio>
+          <Radio value="limited">
+            Limited Docker access
+            <div className="desc">Per-user filtered socket: users manage only their own containers, up to a quota.</div>
+          </Radio>
+        </Radio.Group>
         {dLim && (
           <div style={{ marginLeft: 24, marginTop: 8 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, maxWidth: 560 }}>

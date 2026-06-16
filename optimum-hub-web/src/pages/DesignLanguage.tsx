@@ -92,10 +92,16 @@ export default function DesignLanguage() {
           <Button danger size="small">Discard</Button>
         </Row>
         <Row label="list-icon (incl. filled stop)">
-          <IconAction icon="play" title="Enter" />
+          <IconAction icon="play" title="Enter" tone="primary" />
           <IconAction icon="restart" title="Restart" />
-          <IconAction icon="stop" title="Stop" danger filled />
-          <IconAction icon="close" title="Remove" danger />
+          <IconAction icon="stop" title="Stop" tone="danger" filled />
+          <IconAction icon="close" title="Remove" tone="danger" />
+        </Row>
+        <Row label="icon tones">
+          <IconAction icon="play" title="primary - blue (active / go-to)" tone="primary" />
+          <IconAction icon="restart" title="secondary - gray (neutral, default)" tone="secondary" />
+          <IconAction icon="stop" title="danger - red (destructive)" tone="danger" filled />
+          <IconAction icon="activity" title="warning - yellow (caution)" tone="warning" />
         </Row>
         <Row label="text / link">
           <Button type="text" icon={<GlobalOutlined />} />

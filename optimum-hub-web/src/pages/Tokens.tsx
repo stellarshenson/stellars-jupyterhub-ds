@@ -39,14 +39,14 @@ export default function Tokens() {
     { title: 'Created', dataIndex: 'createdISO', render: (_, t) => <span title={exactDate(t.createdISO)}>{timeAgo(t.createdISO)}</span> },
     { title: 'Last used', dataIndex: 'lastUsedISO', render: (_, t) => <span title={t.lastUsedISO ? exactDate(t.lastUsedISO) : 'never'}>{timeAgo(t.lastUsedISO)}</span> },
     { title: 'Expires', dataIndex: 'expiresISO', render: (_, t) => (t.expiresISO ? exactDate(t.expiresISO) : <span className="oh-muted">never</span>) },
-    { title: 'Actions', align: 'right', width: 80, render: (_, t) => <IconAction icon="close" title="Revoke" danger onClick={() => revokeToken(username, t.id, t.note)} /> },
+    { title: 'Actions', align: 'right', width: 80, render: (_, t) => <IconAction icon="close" title="Revoke" tone="danger" onClick={() => revokeToken(username, t.id, t.note)} /> },
   ]
 
   const appCols: ProColumns<TokenRow>[] = [
     { title: 'Application', dataIndex: 'note', render: (_, t) => t.note },
     { title: 'Authorised', dataIndex: 'createdISO', render: (_, t) => <span title={exactDate(t.createdISO)}>{timeAgo(t.createdISO)}</span> },
     { title: 'Last used', dataIndex: 'lastUsedISO', render: (_, t) => <span title={t.lastUsedISO ? exactDate(t.lastUsedISO) : 'never'}>{timeAgo(t.lastUsedISO)}</span> },
-    { title: 'Actions', align: 'right', width: 80, render: (_, t) => <IconAction icon="close" title="Revoke access" danger onClick={() => revokeToken(username, t.id, t.note)} /> },
+    { title: 'Actions', align: 'right', width: 80, render: (_, t) => <IconAction icon="close" title="Revoke access" tone="danger" onClick={() => revokeToken(username, t.id, t.note)} /> },
   ]
 
   return (

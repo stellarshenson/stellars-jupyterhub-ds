@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
-import { Button, Input, Tag } from 'antd'
+import { Button, Input, Modal, Tag } from 'antd'
 import { PageHeader } from '../components/PageHeader'
 import { StatusPill } from '../components/StatusPill'
 import { ActivityMeter } from '../components/meters'
@@ -17,6 +17,7 @@ import { useServers } from '../hooks/queries'
 import { mockAction, invalidate } from '../services/actions'
 import { resetActivity } from '../services/ops'
 import { userServerUrl } from '../services/hub/client'
+import { useRole } from '../app/RoleContext'
 import { useServerLifecycle } from '../app/ServerLifecycle'
 import type { ServerRow, ServerStatus } from '../services/types'
 
@@ -38,13 +39,27 @@ function num(v: number | null) {
   return v == null ? <span className="oh-muted">-</span> : <span className="oh-num">{v}%</span>
 }
 
-function rowActions(r: ServerRow, nav: (to: string) => void, lf: Lifecycle) {
+function enterSession(user: string, me: string) {
+  if (user === me) {
+    window.location.assign(userServerUrl(user))
+    return
+  }
+  Modal.confirm({
+    title: `Open ${user}'s server?`,
+    content: `You are about to enter another user's lab. Everything you do happens inside ${user}'s environment.`,
+    okText: `Open ${user}'s server`,
+    cancelText: 'Cancel',
+    onOk: () => window.location.assign(userServerUrl(user)),
+  })
+}
+
+function rowActions(r: ServerRow, nav: (to: string) => void, lf: Lifecycle, me: string) {
   const busy = !!lf.busyOf(r.user)
   if (r.status === 'spawning') {
     return (
       <div className="oh-row" style={{ justifyContent: 'flex-end' }}>
         <IconAction icon="activity" title="View spawn log" onClick={() => mockAction('Tail live spawn log')} />
-        <IconAction icon="stop" title="Cancel spawn" danger filled disabled={busy} onClick={() => lf.stop(r.user)} />
+        <IconAction icon="stop" title="Cancel spawn" tone="danger" filled disabled={busy} onClick={() => lf.stop(r.user)} />
       </div>
     )
   }
@@ -58,9 +73,9 @@ function rowActions(r: ServerRow, nav: (to: string) => void, lf: Lifecycle) {
   }
   return (
     <div className="oh-row" style={{ justifyContent: 'flex-end' }}>
-      <IconAction icon="play" title="Enter session" disabled={busy} onClick={() => window.location.assign(userServerUrl(r.user))} />
+      <IconAction icon="play" title={r.user === me ? 'Enter session' : `Open ${r.user}'s session`} tone="primary" disabled={busy} onClick={() => enterSession(r.user, me)} />
       <IconAction icon="restart" title="Restart" disabled={busy} onClick={() => lf.restart(r.user)} />
-      <IconAction icon="stop" title="Stop" danger filled disabled={busy} onClick={() => lf.stop(r.user)} />
+      <IconAction icon="stop" title="Stop" tone="danger" filled disabled={busy} onClick={() => lf.stop(r.user)} />
     </div>
   )
 }
@@ -69,6 +84,7 @@ export default function Servers() {
   const { data = [], isLoading } = useServers()
   const navigate = useNavigate()
   const lifecycle = useServerLifecycle()
+  const { username: me } = useRole()
   const [scope, setScope] = useState('all')
   const [q, setQ] = useState('')
 
@@ -151,7 +167,7 @@ export default function Servers() {
       render: (_, r) =>
         r.timeLeftMin == null ? <span className="oh-muted">-</span> : <span className={r.timeLeftWarn ? 'oh-cell-amber' : 'oh-num'}>{r.timeLeftLabel}</span>,
     },
-    { title: 'Actions', align: 'right', render: (_, r) => rowActions(r, navigate, lifecycle) },
+    { title: 'Actions', align: 'right', render: (_, r) => rowActions(r, navigate, lifecycle, me) },
   ]
 
   return (

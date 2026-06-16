@@ -1,34 +1,48 @@
 /* Icon-only row action (the `list-icon` button). Text-button square with a
- * tooltip; danger turns it red on hover. The single affordance for per-row
- * lifecycle actions. */
+ * tooltip. Tone follows the icon design language:
+ *   primary   - blue  (var(--color-accent))  - the active / go-to affordance
+ *   secondary - gray  (antd text default)    - neutral, the default
+ *   danger    - red   (antd danger)          - destructive / stop
+ *   warning   - yellow(var(--color-warning)) - caution
+ * The single affordance for per-row lifecycle actions. */
 import { Button, Tooltip } from 'antd'
 import { Icon } from './Icon'
 import type { IconKey } from './Icon'
+
+export type IconTone = 'primary' | 'secondary' | 'danger' | 'warning'
 
 export function IconAction({
   icon,
   title,
   onClick,
-  danger,
+  tone = 'secondary',
   disabled,
   filled,
 }: {
   icon: IconKey
   title: string
   onClick?: () => void
-  danger?: boolean
+  tone?: IconTone
   disabled?: boolean
   filled?: boolean // solid glyph - used for stop (a stroked square reads as a stray box)
 }) {
+  const color = disabled
+    ? undefined
+    : tone === 'primary'
+      ? 'var(--color-accent)'
+      : tone === 'warning'
+        ? 'var(--color-warning)'
+        : undefined // secondary -> antd default; danger -> antd danger handles red
   return (
     <Tooltip title={title}>
       <Button
         type="text"
         size="small"
-        danger={danger}
+        danger={tone === 'danger'}
         disabled={disabled}
         onClick={onClick}
         icon={<Icon name={icon} size={filled ? 14 : 16} filled={filled} />}
+        style={color ? { color } : undefined}
         aria-label={title}
       />
     </Tooltip>

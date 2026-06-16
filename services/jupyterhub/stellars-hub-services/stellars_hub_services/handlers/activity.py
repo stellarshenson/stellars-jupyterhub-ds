@@ -169,9 +169,9 @@ class ActivityDataHandler(BaseHandler):
         # Host GPU inventory enumerated once at startup (cached read, no container
         # spin per request); empty when GPU is disabled or none are present. Live
         # per-GPU utilisation is sampled in the background by GpuUtilizationRefresher
-        # (an ephemeral nvidia-smi container) and merged in by index - so each
-        # device carries its real load and used memory when a sample exists, and
-        # falls back to inventory-only (utilization absent) otherwise.
+        # (querying the GPU-info sidecar) and merged in by index - so each device
+        # carries its real load, used memory and the processes holding it when a
+        # sample exists, and falls back to inventory-only otherwise.
         gpu_list = stellars_config.get('gpu_list', []) or []
         gpu_util = get_gpu_utilization_with_refresh() if gpu_list else {}
         gpus = []
@@ -186,6 +186,7 @@ class ActivityDataHandler(BaseHandler):
             if sample:
                 entry["utilization"] = sample.get("utilization")
                 entry["memory_used_mb"] = sample.get("memory_used_mb")
+                entry["processes"] = sample.get("processes", [])
             gpus.append(entry)
 
         # Lab Container page facts: the spawn image and the standard per-user

@@ -9,9 +9,11 @@ icon URIs. Each policy model owns its own apply + restart lifecycle in
 survived a hub restart.
 """
 
+import html
 from dataclasses import replace
 from urllib.parse import urlparse
 
+from .event_log import record_event
 from .groups_config import GroupsConfigManager
 from .policy import ApplyContext, apply_policies, resolve_policies, run_hub_startup
 
@@ -70,6 +72,7 @@ def make_pre_spawn_hook(
         from jupyterhub.app import JupyterHub
 
         username = spawner.user.name
+        record_event('server', f'<b>{html.escape(str(username))}</b> server starting')
         user_group_names = [g.name for g in spawner.user.groups]
 
         # Resolve effective configuration by collapsing all of the user's groups.

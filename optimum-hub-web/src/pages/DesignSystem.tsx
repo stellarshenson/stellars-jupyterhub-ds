@@ -46,10 +46,10 @@ export default function DesignSystem() {
           <Button danger size="small">Discard</Button>
         </Row>
         <Row label="list-icon">
-          <IconAction icon="play" title="Enter" />
+          <IconAction icon="play" title="Enter" tone="primary" />
           <IconAction icon="restart" title="Restart" />
-          <IconAction icon="stop" title="Stop" danger />
-          <IconAction icon="close" title="Remove" danger />
+          <IconAction icon="stop" title="Stop" tone="danger" />
+          <IconAction icon="close" title="Remove" tone="danger" />
         </Row>
       </Card>
 

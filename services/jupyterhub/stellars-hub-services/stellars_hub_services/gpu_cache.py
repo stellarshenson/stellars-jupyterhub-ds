@@ -1,16 +1,15 @@
 """Background GPU utilisation cache with periodic refresh.
 
-The hub container has no GPU access of its own, so host GPU load is sampled the
-same way the startup inventory is enumerated: by running ``nvidia-smi`` in an
-ephemeral CUDA container (runtime=nvidia). That call is slow (~1-3s of container
-spin) so it runs in a background thread on a periodic tick - the activity page
-returns the last cached sample immediately and never blocks on it.
+The hub queries the GPU-info sidecar (see ``gpu_client``) for live per-GPU load
+instead of spinning an ephemeral nvidia container per sample. The HTTP call is
+fast, but it still runs on a background tick so the activity page returns the
+last cached sample immediately and never blocks on it.
 
-Cache shape: ``{index(str): {utilization(int %), memory_used_mb(int)}}`` keyed by
-the nvidia-smi GPU index, so the activity handler can merge it onto the static
-inventory (``stellars_config['gpu_list']``) by index. Empty on any failure (no
-GPU, no nvidia runtime, docker error) so callers never crash and the UI falls
-back to plain inventory chips.
+Cache shape: ``{index(str): {utilization(int %), memory_used_mb(int),
+processes(list)}}`` keyed by GPU index, so the activity handler can merge it onto
+the static inventory (``stellars_config['gpu_list']``) by index. Empty on any
+failure (sidecar down, no GPU) so callers never crash and the UI falls back to
+plain inventory chips.
 """
 
 import logging
@@ -21,11 +20,8 @@ from .docker_utils import get_executor
 
 log = logging.getLogger('jupyterhub.custom_handlers')
 
-# Cache: {'data': {index: {utilization, memory_used_mb}}, 'timestamp': datetime, 'refreshing': bool}
+# Cache: {'data': {index: {utilization, memory_used_mb, processes}}, 'timestamp': datetime, 'refreshing': bool}
 _gpu_util_cache = {'data': {}, 'timestamp': None, 'refreshing': False}
-
-# Nvidia image used for the sampling container (set at hub startup).
-_nvidia_image = 'nvidia/cuda:13.0.2-base-ubuntu24.04'
 
 
 def _get_logger():
@@ -45,57 +41,28 @@ def _get_update_interval():
     return int(os.environ.get('JUPYTERHUB_GPU_UTIL_UPDATE_INTERVAL', 30))
 
 
-def configure_gpu_cache(nvidia_image):
-    """Set the CUDA image the sampler runs nvidia-smi in (called at hub startup)."""
-    global _nvidia_image
-    if nvidia_image:
-        _nvidia_image = nvidia_image
-    _get_logger().info(f"[GPU Util] Configured sampler image: {_nvidia_image}")
+def configure_gpu_cache(gpuinfo_url=None):
+    """Point the sampler at the GPU-info sidecar URL (called at hub startup)."""
+    from . import gpu_client
+    if gpuinfo_url:
+        gpu_client.configure(gpuinfo_url)
+    _get_logger().info(f"[GPU Util] Sidecar endpoint: {gpu_client.get_url()}")
 
 
 def _fetch_gpu_utilization():
-    """Sample per-GPU utilisation via nvidia-smi in a CUDA container (blocking)."""
-    import docker
+    """Sample per-GPU utilisation from the sidecar (blocking HTTP, fast)."""
+    from . import gpu_client
 
     data = {}
-    client = None
-    try:
-        client = docker.DockerClient('unix://var/run/docker.sock')
-        output = client.containers.run(
-            image=_nvidia_image,
-            command=(
-                'nvidia-smi '
-                '--query-gpu=index,utilization.gpu,memory.used '
-                '--format=csv,noheader,nounits'
-            ),
-            runtime='nvidia',
-            name='jupyterhub_gpu_util',
-            stderr=False,
-            stdout=True,
-            remove=False,
-        )
-        for line in output.decode('utf-8', 'replace').strip().splitlines():
-            parts = [p.strip() for p in line.split(',')]
-            if len(parts) < 3:
-                continue
-            index = parts[0]
-            try:
-                util = int(parts[1])
-            except ValueError:
-                util = 0
-            try:
-                mem_used = int(parts[2])
-            except ValueError:
-                mem_used = 0
-            data[index] = {'utilization': util, 'memory_used_mb': mem_used}
-    except Exception as e:
-        _get_logger().warning(f"[GPU Util] Sample failed: {e}")
-        data = {}
-    if client is not None:
-        try:
-            client.containers.get('jupyterhub_gpu_util').remove(force=True)
-        except Exception:
-            pass
+    for g in gpu_client.fetch_gpus():
+        idx = g.get('index')
+        if idx is None:
+            continue
+        data[str(idx)] = {
+            'utilization': int(g.get('utilization') or 0),
+            'memory_used_mb': int(g.get('memory_used_mb') or 0),
+            'processes': g.get('processes', []) or [],
+        }
     return data
 
 
@@ -121,7 +88,7 @@ def _refresh_sync():
 
 
 def get_gpu_utilization_with_refresh():
-    """Return the cached {index: {utilization, memory_used_mb}}, refreshing if stale.
+    """Return the cached {index: {utilization, memory_used_mb, processes}}, refreshing if stale.
 
     Non-blocking: a stale cache triggers a background sample and returns the
     previous sample (or {} on first call) immediately.

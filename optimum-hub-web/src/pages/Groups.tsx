@@ -133,7 +133,7 @@ export default function Groups() {
           <div className="oh-row" style={{ justifyContent: 'flex-end' }}>
             <IconAction icon="arrowup" title="Move up" disabled={!!q || i <= 0} onClick={() => move(i, i - 1)} />
             <IconAction icon="arrowdown" title="Move down" disabled={!!q || i < 0 || i >= rows.length - 1} onClick={() => move(i, i + 1)} />
-            <IconAction icon="close" title="Delete group" danger onClick={() => deleteGroup(g.name)} />
+            <IconAction icon="close" title="Delete group" tone="danger" onClick={() => deleteGroup(g.name)} />
           </div>
         )
       },
