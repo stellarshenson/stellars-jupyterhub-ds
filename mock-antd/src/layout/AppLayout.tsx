@@ -98,14 +98,30 @@ function SiderFoot() {
   )
 }
 
+const STACK_CHIPS = [
+  { k: 'JupyterHub', v: '3', c: '#d97f3f' },
+  { k: 'JupyterLab', v: '4', c: '#d97f3f' },
+  { k: 'Ant Design Pro', v: '6', c: '#4f86d6' },
+]
+
 function VersionFooter() {
   const { data: hub } = useHubInfo()
   const tag = { background: 'var(--color-surface-active)', color: 'var(--color-text-muted)', borderRadius: 4, marginInline: 4 }
   return (
     <div style={{ textAlign: 'center', padding: '14px 0', color: 'var(--color-text-subtle)', fontSize: 12 }}>
-      Optimum Hub<Tag bordered={false} style={tag}>v{PLATFORM.version}</Tag>
-      <span style={{ margin: '0 6px' }}>·</span>
-      JupyterHub<Tag bordered={false} style={tag}>v{hub?.version ?? '…'}</Tag>
+      <div>
+        Optimum Hub<Tag bordered={false} style={tag}>v{PLATFORM.version}</Tag>
+        <span style={{ margin: '0 6px' }}>·</span>
+        JupyterHub<Tag bordered={false} style={tag}>v{hub?.version ?? '…'}</Tag>
+      </div>
+      <div className="oh-techchips">
+        {STACK_CHIPS.map((c) => (
+          <span className="oh-chip" key={c.k}>
+            <span className="k">{c.k}</span>
+            <span className="v" style={{ background: c.c }}>{c.v}</span>
+          </span>
+        ))}
+      </div>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 /* Typeahead membership picker - a port of the live hub's admin chip editor, here
  * a native antd multi-select (type to filter, click to add, x to remove). Used by
  * every group/member picker. */
-import { Select } from 'antd'
+import { Select, Tag } from 'antd'
 
 export function Combo({
   corpus,
@@ -24,6 +24,11 @@ export function Combo({
       style={{ width: '100%' }}
       optionFilterProp="label"
       options={corpus.map((c) => ({ label: c, value: c }))}
+      tagRender={({ label, closable, onClose }) => (
+        <Tag closable={closable} onClose={onClose} style={{ marginInlineEnd: 4 }}>
+          {label}
+        </Tag>
+      )}
     />
   )
 }

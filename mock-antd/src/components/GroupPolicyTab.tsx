@@ -19,13 +19,21 @@ const GPU_DEVICES = [
 ]
 const HOST_CPUS = 32
 
+// platform-managed volumes that can be mounted into members' containers - system
+// volumes (jupyterhub_data, cookie/cert stores) are intentionally excluded; these
+// can be opted in/out and their mountpoint changed, but never created or removed here
+const HUB_VOLUMES = [
+  { name: 'jupyterhub_shared', mount: '/mnt/shared' },
+  { name: 'jupyterhub_datasets', mount: '/mnt/datasets' },
+  { name: 'jupyterhub_scratch', mount: '/mnt/scratch' },
+]
+
 interface EnvVar { name: string; value: string; desc: string }
-interface VolMount { volume: string; mountpoint: string }
 interface ApiCred { a: string; b: string; desc: string }
 
 function Section({ icon, title, on, onToggle, children }: { icon: IconKey; title: string; on: boolean; onToggle: (v: boolean) => void; children: ReactNode }) {
   return (
-    <div className="oh-pol-sec">
+    <div className={on ? 'oh-pol-sec' : 'oh-pol-sec collapsed'}>
       <div className="oh-pol-head">
         <Switch size="small" checked={on} onChange={onToggle} />
         <Icon name={icon} size={15} />
@@ -63,7 +71,8 @@ export function GroupPolicyTab({ cfg }: { cfg?: GroupConfig }) {
   const [dPriv, setDPriv] = useState(false)
   const [dq, setDq] = useState({ maxContainers: 10, maxVolumes: 10, maxNetworks: 3, maxStorage: 50, cpuCap: 2, memCap: 8 })
   const [dFlags, setDFlags] = useState({ dangerous: false, composeEnabled: true, composeOverride: true, hubNetwork: true })
-  const [mounts, setMounts] = useState<VolMount[]>([{ volume: 'jupyterhub_shared', mountpoint: '/mnt/shared' }])
+  const [volIncluded, setVolIncluded] = useState<Set<string>>(new Set(['jupyterhub_shared']))
+  const [volMount, setVolMount] = useState<Record<string, string>>(() => Object.fromEntries(HUB_VOLUMES.map((v) => [v.name, v.mount])))
   const [apiMode, setApiMode] = useState<'' | 'single' | 'pair'>('pair')
   const [apiVarKey, setApiVarKey] = useState('')
   const [apiVarId, setApiVarId] = useState('OPENAI_ORG_ID')
@@ -162,23 +171,40 @@ export function GroupPolicyTab({ cfg }: { cfg?: GroupConfig }) {
 
       {/* Volume mounts */}
       <Section icon="disk" title="Volume mounts" on={on.volume_mounts ?? false} onToggle={toggle('volume_mounts', 'volume mounts')}>
-        <div className="oh-pol-hint">Mounts named Docker volumes into members' containers. System paths (/etc, /usr, /home, …) are rejected; use /mnt or /data.</div>
-        <Table<VolMount>
+        <div className="oh-pol-hint">Include or exclude platform-managed volumes for this group and set where each mounts. System volumes (e.g. jupyterhub_data) are not mountable; volumes can't be created or removed here, only included and remapped.</div>
+        <Table<{ name: string; mount: string }>
           size="small"
           pagination={false}
-          dataSource={mounts}
-          rowKey={(_, i) => `vol-${i}`}
-          rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+          dataSource={HUB_VOLUMES}
+          rowKey="name"
           columns={[
-            { title: 'Volume name', width: '45%', render: (_, r, i) => <Input size="small" className="oh-mono" value={r.volume} onChange={(e) => setMounts((p) => p.map((x, j) => (j === i ? { ...x, volume: e.target.value } : x)))} /> },
-            { title: 'Mountpoint', render: (_, r, i) => <Input size="small" className="oh-mono" value={r.mountpoint} placeholder="/mnt/data" onChange={(e) => setMounts((p) => p.map((x, j) => (j === i ? { ...x, mountpoint: e.target.value } : x)))} /> },
-            { title: '', width: 40, render: (_, __, i) => <span style={{ cursor: 'pointer', color: 'var(--color-text-subtle)' }} onClick={() => setMounts((p) => p.filter((_, j) => j !== i))}><Icon name="close" size={14} /></span> },
+            {
+              title: 'Include',
+              width: 80,
+              render: (_, v) => (
+                <Switch
+                  size="small"
+                  checked={volIncluded.has(v.name)}
+                  onChange={(c) => setVolIncluded((prev) => { const n = new Set(prev); if (c) n.add(v.name); else n.delete(v.name); return n })}
+                />
+              ),
+            },
+            { title: 'Volume', dataIndex: 'name', width: '40%', render: (n) => <span className="oh-mono">{n}</span> },
+            {
+              title: 'Mountpoint',
+              render: (_, v) => (
+                <Input
+                  size="small"
+                  className="oh-mono"
+                  disabled={!volIncluded.has(v.name)}
+                  value={volMount[v.name]}
+                  placeholder="/mnt/…"
+                  onChange={(e) => setVolMount((prev) => ({ ...prev, [v.name]: e.target.value }))}
+                />
+              ),
+            },
           ]}
         />
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <Button size="small" icon={<Icon name="plus" size={13} />} onClick={() => setMounts((p) => [...p, { volume: '', mountpoint: '' }])}>Add volume</Button>
-          <Button size="small" onClick={() => setMounts((p) => [...p, { volume: 'jupyterhub_shared', mountpoint: '/mnt/shared' }])}>Add shared volume</Button>
-        </div>
       </Section>
 
       {/* API keys pool */}
