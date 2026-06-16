@@ -6,11 +6,11 @@ import { Button, Form, Input } from 'antd'
 import { Link } from 'react-router-dom'
 import { Notice } from '../components/Notice'
 import { isMock } from '../services/dataMode'
-import { hubUrl } from '../services/hub/client'
+import { hubUrl, portalAssetBase } from '../services/hub/client'
 
 export default function Signup() {
   const [done, setDone] = useState(false)
-  const logoSrc = `${import.meta.env.BASE_URL}brand/jh-logo.svg`
+  const logoSrc = `${portalAssetBase()}brand/jh-logo.svg`
   useEffect(() => {
     if (!isMock()) window.location.assign(hubUrl('/signup'))
   }, [])

@@ -12,7 +12,7 @@ import { Notice } from '../components/Notice'
 import { useEffectiveGrants, useUser, useUserVolumes } from '../hooks/queries'
 import { mockSuccess } from '../services/actions'
 import { isMock } from '../services/dataMode'
-import { addMember, authorizeUser, deleteUser, removeMember, resetVolumes, setAdmin, setUserPassword } from '../services/ops'
+import { addMember, setUserAuthorization, deleteUser, removeMember, resetVolumes, setAdmin, setUserPassword } from '../services/ops'
 import { PLATFORM } from '../services/config'
 import { genPassword } from '../lib/password'
 import type { Volume } from '../services/types'
@@ -47,7 +47,7 @@ export default function UserConfig() {
     try {
       const v = await form.validateFields()
       if (!isBuiltinAdmin && user && !!v.admin !== user.admin) await setAdmin(name, !!v.admin)
-      if (!isBuiltinAdmin && user && !!v.authorized !== user.authorized) await authorizeUser(name)
+      if (!isBuiltinAdmin && user && !!v.authorized !== user.authorized) await setUserAuthorization(name, !!v.authorized)
       if (pw) await setUserPassword(name, pw)
       const before = new Set(user?.groups ?? [])
       const after = new Set(groups)

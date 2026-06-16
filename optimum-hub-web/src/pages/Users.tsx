@@ -12,7 +12,7 @@ import { ActivityMeter } from '../components/meters'
 import { CappedTags } from '../components/CappedTags'
 import { Icon } from '../components/Icon'
 import { useUsers } from '../hooks/queries'
-import { authorizeUser, discardUser } from '../services/ops'
+import { setUserAuthorization, discardUser } from '../services/ops'
 import { PLATFORM } from '../services/config'
 import { exactDate, timeAgoShort } from '../lib/format'
 import type { UserRow } from '../services/types'
@@ -55,7 +55,7 @@ function PendingSection({ users }: { users: UserRow[] }) {
               <td><CappedTags items={u.groups.map((g) => ({ key: g, label: g }))} cap={4} /></td>
               <td className="oh-pending-when">{timeAgoShort(u.createdISO)}</td>
               <td className="oh-pending-act">
-                <Button type="primary" size="small" onClick={() => authorizeUser(u.name)}>Authorize</Button>
+                <Button type="primary" size="small" onClick={() => setUserAuthorization(u.name, true)}>Authorize</Button>
                 <Button danger size="small" onClick={() => discardUser(u.name)}>Discard</Button>
               </td>
             </tr>
@@ -114,7 +114,7 @@ export default function Users() {
             <Switch size="small" checked disabled />
           </Tooltip>
         ) : (
-          <Switch size="small" defaultChecked={u.authorized} onChange={() => authorizeUser(u.name)} />
+          <Switch size="small" defaultChecked={u.authorized} onChange={(checked) => setUserAuthorization(u.name, checked)} />
         ),
     },
     {

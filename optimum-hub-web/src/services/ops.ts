@@ -59,8 +59,15 @@ export const resetActivity = () =>
   run('Reset activity samples', () => hubSend('POST', '/activity/reset'), [['servers'], ['stats'], ['resources']])
 
 // ── Users ─────────────────────────────────────────────────────────────────--
-export const authorizeUser = (name: string) =>
-  run(`Toggled authorisation for ${name}`, () => hubAuthGet(`/authorize/${encodeURIComponent(name)}`), USER_KEYS(name))
+/** Idempotently set a user's NativeAuth authorisation. Unlike NativeAuth's
+ * /authorize/{name} GET-toggle, this sets the requested state directly, so a
+ * checkbox or stale value can never flip the wrong way. */
+export const setUserAuthorization = (name: string, authorized: boolean) =>
+  run(
+    `${authorized ? 'Authorised' : 'De-authorised'} ${name}`,
+    () => hubSend('POST', `/native-users/${encodeURIComponent(name)}/authorization`, { authorized }),
+    USER_KEYS(name),
+  )
 
 export const discardUser = (name: string) =>
   run(`Discarded ${name}`, () => hubAuthGet(`/discard/${encodeURIComponent(name)}`), USER_KEYS(name))

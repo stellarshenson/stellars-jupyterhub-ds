@@ -14,6 +14,7 @@ from .groups import (
     GroupsPageHandler, GroupsDataHandler, GroupsCreateHandler,
     GroupsDeleteHandler, GroupsConfigHandler, GroupsReorderHandler,
 )
+from .native_users import NativeUsersHandler, NativeUserAuthorizationHandler
 
 __all__ = [
     "ManageVolumesHandler",
@@ -38,4 +39,6 @@ __all__ = [
     "GroupsDeleteHandler",
     "GroupsConfigHandler",
     "GroupsReorderHandler",
+    "NativeUsersHandler",
+    "NativeUserAuthorizationHandler",
 ]

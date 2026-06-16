@@ -3,7 +3,9 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist', 'public', 'node_modules'] },
+  // Generated / vendored output - never lint (the SPA bundle staged into the
+  // Python package is minified and would emit thousands of false errors).
+  { ignores: ['dist', 'dist-wheel', 'public', 'node_modules', 'optimum_hub_web/static', 'test-results', 'playwright-report'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

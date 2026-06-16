@@ -143,8 +143,9 @@ function timeAgoShort(iso: string): string {
 }
 
 function AdminHome() {
+  const { username } = useRole()
   const { data: stats } = useStats()
-  const { data: hero } = useServerHero('konrad')
+  const { data: hero } = useServerHero(username)
   const { data: total } = useTotalResources()
   const s = stats?.servers
   const u = stats?.users
@@ -225,9 +226,10 @@ function AdminHome() {
 }
 
 function UserHome() {
-  const { data: hero } = useServerHero('alice')
-  const { data: me } = useUser('alice')
-  const { data: grants = [] } = useEffectiveGrants('alice')
+  const { username } = useRole()
+  const { data: hero } = useServerHero(username)
+  const { data: me } = useUser(username)
+  const { data: grants = [] } = useEffectiveGrants(username)
 
   return (
     <>

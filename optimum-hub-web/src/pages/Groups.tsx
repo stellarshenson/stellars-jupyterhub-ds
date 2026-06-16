@@ -21,7 +21,10 @@ export default function Groups() {
   const [rows, setRows] = useState<GroupRow[]>([])
 
   useEffect(() => {
-    setRows([...data].sort((a, b) => a.priority - b.priority))
+    // Higher priority wins on conflict (server resolves priority-descending), so
+    // the highest-priority group sits at the top - matching the reorder below,
+    // which assigns the top row the highest number.
+    setRows([...data].sort((a, b) => b.priority - a.priority))
   }, [data])
 
   const filtered = useMemo(() => rows.filter((g) => g.name.toLowerCase().includes(q.toLowerCase())), [rows, q])
@@ -31,7 +34,7 @@ export default function Groups() {
       title: '#',
       dataIndex: 'priority',
       width: 72,
-      render: (_, g) => <span className="oh-num" title="Drag to reorder - lower number wins on conflict">{g.priority}</span>,
+      render: (_, g) => <span className="oh-num" title="Drag to reorder - higher number wins on conflict">{g.priority}</span>,
     },
     {
       title: 'Group',

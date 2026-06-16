@@ -1,5 +1,10 @@
+# hatchling is major-pinned: the wheel hinges on the SPA bundle + vite
+# `.vite/manifest.json` being captured by the `artifacts` glob below (gitignore
+# semantics, where `**` traverses dot-directories). A hatchling major bump could
+# change that glob engine, so cap it; the Docker smoke test independently asserts
+# the manifest + entry JS resolve in the installed wheel.
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 
 [project]

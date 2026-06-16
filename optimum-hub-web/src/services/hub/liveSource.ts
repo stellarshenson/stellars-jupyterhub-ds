@@ -122,6 +122,22 @@ function fmtMinutes(min: number): string {
 async function fetchUsers(): Promise<RawUser[]> {
   return hubGet<RawUser[]>('/users')
 }
+interface NativeUser {
+  username: string
+  is_authorized: boolean
+  is_hub_user: boolean
+}
+/** NativeAuth signups + authorisation state. Surfaces pending (signed-up,
+ * not-yet-authorised) users that have no hub User row and so never appear in
+ * /hub/api/users. Fails soft to an empty list. */
+async function fetchNativeUsers(): Promise<NativeUser[]> {
+  try {
+    const r = await hubGet<{ users: NativeUser[] }>('/native-users')
+    return r.users ?? []
+  } catch {
+    return []
+  }
+}
 async function fetchActivity(): Promise<RawActivity> {
   try {
     return await hubGet<RawActivity>('/activity')
@@ -182,21 +198,40 @@ export const liveSource: DataSource = {
   },
 
   async getUsers(): Promise<UserRow[]> {
-    const [users, activity] = await Promise.all([fetchUsers(), fetchActivity()])
+    const [users, activity, native] = await Promise.all([fetchUsers(), fetchActivity(), fetchNativeUsers()])
     const byName = activityByName(activity)
-    return users.map((u) => {
+    const authByName = new Map(native.map((n) => [n.username, n.is_authorized]))
+    const hubNames = new Set(users.map((u) => u.name))
+    const rows: UserRow[] = users.map((u) => {
       const a = byName.get(u.name)
       return {
         name: u.name,
         admin: !!u.admin,
-        authorized: a?.is_authorized ?? true,
-        pending: false, // unauthorized users have no JSON list endpoint (see file header)
+        // NativeAuth is_authorized is authoritative; fall back to activity, then true.
+        authorized: authByName.get(u.name) ?? a?.is_authorized ?? true,
+        pending: false,
         activity: clampPct(a?.activity_score ?? 0),
         createdISO: u.created ?? new Date().toISOString(),
         lastSeenISO: u.last_activity ?? undefined,
         groups: u.groups ?? [],
       }
     })
+    // Pending: signed up via NativeAuth, not yet authorised, no hub User row yet.
+    for (const n of native) {
+      if (!n.is_authorized && !hubNames.has(n.username)) {
+        rows.push({
+          name: n.username,
+          admin: false,
+          authorized: false,
+          pending: true,
+          activity: 0,
+          createdISO: new Date().toISOString(),
+          lastSeenISO: undefined,
+          groups: [],
+        })
+      }
+    }
+    return rows
   },
 
   async getUser(name: string): Promise<UserRow | undefined> {
@@ -286,7 +321,7 @@ export const liveSource: DataSource = {
 
   async getSessionInfo(user: string): Promise<SessionInfo> {
     try {
-      const r = await hubGet<{ time_remaining_seconds?: number | null; max_extension_hours?: number }>(`/users/${user}/session-info`)
+      const r = await hubGet<{ time_remaining_seconds?: number | null; max_extension_hours?: number }>(`/users/${encodeURIComponent(user)}/session-info`)
       return {
         timeLeftMin: r.time_remaining_seconds != null ? Math.round(r.time_remaining_seconds / 60) : 0,
         maxMin: (r.max_extension_hours ?? IDLE_CULLER.maxExtensionH) * 60,
@@ -299,7 +334,7 @@ export const liveSource: DataSource = {
   async getUserVolumes(user: string): Promise<Volume[]> {
     try {
       const [resp, activity] = await Promise.all([
-        hubGet<{ volumes: Array<{ suffix: string; name: string; description?: string }> }>(`/users/${user}/manage-volumes`),
+        hubGet<{ volumes: Array<{ suffix: string; name: string; description?: string }> }>(`/users/${encodeURIComponent(user)}/manage-volumes`),
         fetchActivity(),
       ])
       const breakdown = activityByName(activity).get(user)?.volume_breakdown ?? {}
@@ -322,7 +357,7 @@ export const liveSource: DataSource = {
       const r = await hubGet<{
         api_tokens?: Array<{ id: number | string; note?: string; created?: string; last_activity?: string | null; expires_at?: string | null; scopes?: string[] }>
         oauth_tokens?: Array<{ id: number | string; oauth_client?: string; note?: string; created?: string; last_activity?: string | null }>
-      }>(`/users/${me.name}/tokens`)
+      }>(`/users/${encodeURIComponent(me.name)}/tokens`)
       const toks: TokenRow[] = []
       for (const t of r.api_tokens ?? []) {
         toks.push({

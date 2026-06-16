@@ -6,11 +6,11 @@ import { useEffect } from 'react'
 import { Button, Form, Input } from 'antd'
 import { Link, useNavigate } from 'react-router-dom'
 import { isMock } from '../services/dataMode'
-import { hubUrl } from '../services/hub/client'
+import { hubUrl, portalAssetBase } from '../services/hub/client'
 
 export default function Login() {
   const navigate = useNavigate()
-  const logoSrc = `${import.meta.env.BASE_URL}brand/jh-logo.svg`
+  const logoSrc = `${portalAssetBase()}brand/jh-logo.svg`
   useEffect(() => {
     if (!isMock()) window.location.assign(hubUrl('/login'))
   }, [])
