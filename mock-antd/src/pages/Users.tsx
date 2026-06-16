@@ -13,7 +13,7 @@ import { CappedTags } from '../components/CappedTags'
 import { Icon } from '../components/Icon'
 import { useUsers } from '../hooks/queries'
 import { mockAction } from '../services/actions'
-import { exactDate, timeAgo } from '../lib/format'
+import { exactDate, timeAgoShort } from '../lib/format'
 import type { UserRow } from '../services/types'
 
 const accentTag = { background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4, marginInlineStart: 6 }
@@ -33,14 +33,20 @@ function PendingSection({ users }: { users: UserRow[] }) {
       <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-subtle)', fontWeight: 600 }}>
         Pending authorisation <span className="oh-muted">· {users.length}</span>
       </div>
-      {users.map((u) => (
-        <div key={u.name} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '1px solid var(--color-border-subtle)' }}>
-          <Icon name="user" size={16} />
-          <div style={{ minWidth: 0 }}>
-            {u.name}
+      {users.map((u, i) => (
+        <div
+          key={u.name}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px',
+            borderBottom: '1px solid var(--color-border-subtle)',
+            background: i % 2 ? 'color-mix(in srgb, var(--color-text) 3%, transparent)' : 'transparent',
+          }}
+        >
+          <div className="oh-user-cell" style={{ minWidth: 0 }}>
+            <span>{u.name}</span>
             {u.fullName && <span className="oh-name-hint">{u.fullName}</span>}
           </div>
-          <div style={{ marginLeft: 'auto', color: 'var(--color-text-subtle)', fontSize: 12 }}>signed up {timeAgo(u.createdISO)}</div>
+          <div style={{ marginLeft: 'auto', color: 'var(--color-text-subtle)', fontSize: 12 }}>signed up {timeAgoShort(u.createdISO)}</div>
           <Button type="primary" size="small" onClick={() => mockAction(`Authorized ${u.name}`)}>Authorize</Button>
           <Button danger size="small" onClick={() => mockAction(`Discarded ${u.name}`)}>Discard</Button>
         </div>
@@ -76,11 +82,13 @@ export default function Users() {
       dataIndex: 'name',
       sorter: (a, b) => a.name.localeCompare(b.name),
       render: (_, u) => (
-        <div>
-          <Link to={`/users/${u.name}`} style={{ color: 'var(--color-accent)' }}>
-            {u.name}
-          </Link>
-          {u.admin && <Tag bordered={false} style={accentTag}>admin</Tag>}
+        <div className="oh-user-cell">
+          <div>
+            <Link to={`/users/${u.name}`} style={{ color: 'var(--color-accent)' }}>
+              {u.name}
+            </Link>
+            {u.admin && <Tag bordered={false} style={accentTag}>admin</Tag>}
+          </div>
           {u.fullName && <span className="oh-name-hint">{u.fullName}</span>}
         </div>
       ),
@@ -97,13 +105,13 @@ export default function Users() {
       title: 'Created',
       dataIndex: 'createdISO',
       sorter: (a, b) => a.createdISO.localeCompare(b.createdISO),
-      render: (_, u) => <span title={exactDate(u.createdISO)}>{timeAgo(u.createdISO)}</span>,
+      render: (_, u) => <span title={exactDate(u.createdISO)}>{timeAgoShort(u.createdISO)}</span>,
     },
     {
       title: 'Last seen',
       dataIndex: 'lastSeenISO',
       sorter: (a, b) => (a.lastSeenISO ?? '').localeCompare(b.lastSeenISO ?? ''),
-      render: (_, u) => <span title={u.lastSeenISO ? exactDate(u.lastSeenISO) : 'never signed in'}>{timeAgo(u.lastSeenISO)}</span>,
+      render: (_, u) => <span title={u.lastSeenISO ? exactDate(u.lastSeenISO) : 'never signed in'}>{timeAgoShort(u.lastSeenISO)}</span>,
     },
     {
       title: 'Activity',
@@ -114,7 +122,7 @@ export default function Users() {
     {
       title: 'Groups',
       dataIndex: 'groups',
-      render: (_, u) => <CappedTags items={u.groups.map((g) => ({ key: g, label: g }))} cap={3} />,
+      render: (_, u) => <CappedTags items={u.groups.map((g) => ({ key: g, label: g }))} cap={5} />,
     },
   ]
 

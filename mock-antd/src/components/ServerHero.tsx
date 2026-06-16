@@ -17,13 +17,13 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
           <StatusPill status={hero.status} label={hero.statusLabel} />
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 24, flexWrap: 'wrap' }}>
-          <Button type="primary" icon={<Icon name="play" size={16} />} onClick={() => mockAction('Opening your lab')}>
+          <Button type="primary" icon={<Icon name="play" size={15} filled />} onClick={() => mockAction('Opening your lab')}>
             Open lab
           </Button>
           <Button icon={<Icon name="restart" size={16} />} onClick={() => mockAction('Restarting your lab')}>
             Restart
           </Button>
-          <Button danger icon={<Icon name="stop" size={16} />} onClick={() => mockAction('Stopping your lab')}>
+          <Button danger icon={<Icon name="stop" size={14} filled />} onClick={() => mockAction('Stopping your lab')}>
             Stop
           </Button>
         </div>
@@ -37,7 +37,7 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
           rows={[
             { label: 'CPU', value: hero.resources.cpu },
             { label: 'Memory', value: hero.resources.mem, tip: hero.resources.memTip },
-            { label: 'GPU', value: hero.resources.gpu },
+            { label: 'GPU', value: hero.resources.gpu, gpus: hero.resources.gpus },
             {
               label: 'Activity',
               value: 0,

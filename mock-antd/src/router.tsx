@@ -1,5 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppLayout } from './layout/AppLayout'
+import Login from './pages/Login'
+import Signup from './pages/Signup'
 import Home from './pages/Home'
 import Profile from './pages/Profile'
 import Servers from './pages/Servers'
@@ -19,6 +21,7 @@ import Settings from './pages/Settings'
 import SettingsReference from './pages/SettingsReference'
 import Tokens from './pages/Tokens'
 import DesignSystem from './pages/DesignSystem'
+import DesignLanguage from './pages/DesignLanguage'
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/'
 
@@ -27,6 +30,8 @@ const groupsParent = { label: 'Groups', to: '/groups' }
 
 export const router = createBrowserRouter(
   [
+    { path: '/login', element: <Login /> },
+    { path: '/signup', element: <Signup /> },
     {
       path: '/',
       element: <AppLayout />,
@@ -55,6 +60,7 @@ export const router = createBrowserRouter(
         { path: 'settings/reference', handle: { crumb: 'Full reference', parent: { label: 'Settings', to: '/settings' } }, element: <SettingsReference /> },
         { path: 'tokens', handle: { crumb: 'Tokens' }, element: <Tokens /> },
         { path: 'design-system', handle: { crumb: 'Design system' }, element: <DesignSystem /> },
+        { path: 'design-language', handle: { crumb: 'Design language' }, element: <DesignLanguage /> },
 
         { path: '*', element: <Navigate to="/home" replace /> },
       ],

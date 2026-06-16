@@ -7,8 +7,7 @@ import { Button, Card, Form, Input, Space, Switch } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { FormFooter } from '../components/FormFooter'
-import { Combo } from '../components/Combo'
-import { useGroupCorpus } from '../hooks/queries'
+import { GroupPicker } from '../components/GroupPicker'
 import { mockSuccess } from '../services/actions'
 
 const WORDS = ['correct', 'horse', 'battery', 'staple', 'amber', 'cyan', 'lab', 'spawn', 'kernel', 'matrix', 'vector', 'tensor']
@@ -22,26 +21,25 @@ function genPassword(): string {
 
 export default function NewUser() {
   const navigate = useNavigate()
-  const { data: corpus = [] } = useGroupCorpus()
   const [groups, setGroups] = useState<string[]>([])
   const [pw, setPw] = useState(genPassword())
 
   return (
     <>
       <PageHeader title="New user" sub="Create an account and optionally authorise it now" />
-      <Card style={{ maxWidth: 680 }}>
+      <Card style={{ maxWidth: 760 }}>
         <Form layout="vertical" initialValues={{ authorize: true, require: false }}>
           <Form.Item label="Username" name="username" rules={[{ required: true, message: 'Username is required' }]}>
             <Input placeholder="e.g. jdoe" />
           </Form.Item>
-          <Form.Item label="Initial password" extra="Auto-generated - type to override. Surfaced once on the result screen.">
+          <Form.Item label="Initial password" extra="Auto-generated - type to override">
             <Space.Compact style={{ width: '100%' }}>
               <Input className="oh-mono" value={pw} onChange={(e) => setPw(e.target.value)} />
               <Button onClick={() => setPw(genPassword())}>Generate</Button>
             </Space.Compact>
           </Form.Item>
           <Form.Item label="Groups">
-            <Combo corpus={corpus} value={groups} onChange={setGroups} placeholder="Add to groups…" />
+            <GroupPicker value={groups} onChange={setGroups} label="" />
           </Form.Item>
           <Form.Item label="Authorise now" name="authorize" valuePropName="checked">
             <Switch />

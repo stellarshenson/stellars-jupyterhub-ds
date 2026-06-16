@@ -14,7 +14,9 @@ body { margin: 0; font-family: var(--font-sans); }
 .oh-right { text-align: right; }
 .oh-cell-warn { color: var(--color-danger); font-variant-numeric: tabular-nums; }
 .oh-cell-amber { color: var(--color-warning); font-variant-numeric: tabular-nums; }
-.oh-name-hint { display: block; color: var(--color-text-subtle); font-size: var(--text-xs); margin-top: 2px; }
+.oh-name-hint { display: block; color: var(--color-text-subtle); font-size: 10px; line-height: 1; margin-top: 1px; }
+/* user cell: reserve a constant height so rows with a full name match rows without */
+.oh-user-cell { display: flex; flex-direction: column; justify-content: center; min-height: 32px; }
 .oh-kbd { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-muted); background: var(--color-bg-subtle); border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 1px 6px; }
 .oh-row { display: flex; align-items: center; gap: var(--space-2); }
 .oh-section-title { font-size: var(--text-sm); text-transform: uppercase; letter-spacing: .5px; color: var(--color-text-subtle); margin: var(--space-6) 0 var(--space-3); }
@@ -38,8 +40,8 @@ body { margin: 0; font-family: var(--font-sans); }
 @keyframes oh-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 
 /* scope-filter pills: dim by default, lit (accent ring) when active */
-.oh-pill.oh-scope { cursor: pointer; opacity: .5; transition: opacity .12s ease, box-shadow .12s ease; }
-.oh-pill.oh-scope:hover { opacity: .85; }
+.oh-pill.oh-scope { cursor: pointer; opacity: .6; transition: opacity .12s ease, box-shadow .12s ease; }
+.oh-pill.oh-scope:hover { opacity: .88; }
 .oh-pill.oh-scope.active { opacity: 1; box-shadow: 0 0 0 2px var(--color-accent-ring); }
 
 /* ---- activity meter (5-segment engagement) ---- */
@@ -62,6 +64,12 @@ body { margin: 0; font-family: var(--font-sans); }
 .oh-res-row .oh-res-bar { flex: 1; height: 8px; border-radius: var(--radius-full); background: var(--color-bg-subtle); overflow: hidden; }
 .oh-res-row .oh-res-bar > i { display: block; height: 100%; background: var(--color-accent); }
 .oh-res-row .oh-res-val { width: 84px; flex: none; text-align: right; font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
+/* per-GPU bars - one labelled horizontal bar per device, fill width = load */
+.oh-gpurows { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.oh-gpurow { display: flex; align-items: center; gap: 7px; }
+.oh-gpurow > small { width: 8px; flex: none; text-align: right; font-size: 10px; line-height: 1; color: var(--color-text-subtle); font-variant-numeric: tabular-nums; }
+.oh-gpurow > .track { flex: 1; height: 6px; border-radius: var(--radius-full); background: var(--color-bg-subtle); overflow: hidden; }
+.oh-gpurow > .track > i { display: block; height: 100%; background-color: var(--color-accent); border-radius: var(--radius-full); }
 
 /* ---- TTL (idle-session timer) gadget ---- */
 .oh-ttl { display: flex; align-items: center; gap: var(--space-2); }
@@ -113,7 +121,10 @@ body { margin: 0; font-family: var(--font-sans); }
 .oh-head-go { color: var(--color-text-subtle); display: inline-flex; transition: color .12s ease, transform .12s ease; }
 .oh-head-link:hover .oh-head-go { color: var(--color-accent); transform: translateX(2px); }
 
-/* ---- zebra rows in ProTable (survives filter/sort via rowClassName) ---- */
+/* ---- alternating rows: MANDATORY across every table (design-language rule) ----
+ * Applied globally so any antd Table / ProTable / DragSortTable gets zebra without
+ * per-table wiring; the explicit .oh-row-alt rowClassName lands on the same rows. */
+.ant-table-tbody > tr:nth-child(even) > td.ant-table-cell { background: color-mix(in srgb, var(--color-text) 3%, transparent); }
 .oh-row-alt > td.ant-table-cell { background: color-mix(in srgb, var(--color-text) 3%, transparent); }
 
 /* ---- quick-action tiles ---- */
@@ -138,8 +149,9 @@ body { margin: 0; font-family: var(--font-sans); }
 .oh-cmdk-item.sel .anticon { color: var(--color-accent); }
 .oh-cmdk-group { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--color-text-subtle); padding: var(--space-3) var(--space-3) var(--space-2); }
 
-/* identity + brand in the sider */
-.oh-brand-logo { height: 30px; width: auto; max-width: 100%; display: block; }
+/* identity + brand in the sider - tight logo well so the mark can run larger */
+.ant-pro-sider-logo { padding-block: 9px !important; padding-inline: 14px !important; }
+.oh-brand-logo { height: 38px; width: auto; max-width: 100%; display: block; }
 .oh-sider-foot { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-top: 1px solid var(--color-border-subtle); }
 .oh-sider-foot .who { font-size: var(--text-sm); line-height: 1.2; min-width: 0; }
 .oh-sider-foot .who small { display: block; color: var(--color-text-subtle); font-size: 11px; }
@@ -157,3 +169,29 @@ body { margin: 0; font-family: var(--font-sans); }
 /* form footer: destructive left, cancel/save right */
 .oh-form-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--color-border-subtle); }
 .oh-form-foot .right { display: flex; gap: var(--space-2); }
+
+/* ---- auth screens (login / sign up) - standalone, outside the app shell ---- */
+.oh-auth { min-height: 100vh; display: grid; place-items: center; padding: var(--space-6); background: var(--color-bg); }
+.oh-auth-card { width: 100%; max-width: 380px; background: var(--color-surface); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-lg); padding: var(--space-6) var(--space-5) var(--space-5); box-shadow: var(--shadow-md); }
+.oh-auth-brand { display: flex; justify-content: center; margin-bottom: var(--space-5); }
+.oh-auth-brand img { height: 40px; }
+.oh-auth-title { font-size: var(--text-lg); font-weight: 650; text-align: center; margin: 0 0 4px; color: var(--color-text); }
+.oh-auth-sub { text-align: center; color: var(--color-text-subtle); font-size: var(--text-sm); margin: 0 0 var(--space-5); }
+.oh-auth-foot { text-align: center; margin-top: var(--space-4); font-size: var(--text-sm); color: var(--color-text-muted); }
+.oh-auth-foot a { color: var(--color-accent); cursor: pointer; }
+.oh-auth-theme { position: fixed; top: var(--space-4); right: var(--space-4); }
+
+/* ---- add-a-group browse list (Configure user) ---- */
+.oh-addgrp-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* ---- group policy form: foldable sections (Configure group / Policy) ---- */
+.oh-pol-sec { border-bottom: 1px solid var(--color-border-subtle); padding: 14px 0; }
+.oh-pol-sec:last-child { border-bottom: 0; }
+.oh-pol-head { display: flex; align-items: center; gap: 10px; }
+.oh-pol-head .anticon, .oh-pol-head svg { color: var(--color-text-muted); }
+.oh-pol-title { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; color: var(--color-text-muted); }
+.oh-pol-body { padding: 12px 0 2px 38px; }
+.oh-pol-hint { color: var(--color-text-subtle); font-size: var(--text-xs); margin-bottom: 10px; }
+.oh-pol-check { display: flex; gap: 8px; padding: 6px 0; }
+.oh-pol-check .desc { color: var(--color-text-subtle); font-size: var(--text-xs); margin-top: 2px; }
+.oh-pol-field-label { font-size: 13px; color: var(--color-text-muted); margin-bottom: 4px; }

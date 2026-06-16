@@ -6,12 +6,12 @@ import { PageHeader } from '../components/PageHeader'
 import { Icon } from '../components/Icon'
 import { useSentNotifications } from '../hooks/queries'
 import { mockSuccess } from '../services/actions'
-import { timeAgo, exactDate } from '../lib/format'
+import { timeAgoShort, exactDate } from '../lib/format'
 import type { SentNotification } from '../services/types'
 
-const TYPE_COLORS: Record<string, string> = {
-  info: 'var(--color-info)', success: 'var(--color-success)', warning: 'var(--color-warning)',
-  error: 'var(--color-danger)', default: 'var(--color-text-muted)', 'in-progress': 'var(--color-accent)',
+// notification type -> status-pill tone (same coloured-pill vocabulary as the rest)
+const TYPE_PILL: Record<string, string> = {
+  info: 'spawning', success: 'running', warning: 'idle', error: 'error', default: 'stopped', 'in-progress': 'accent',
 }
 
 export default function Notifications() {
@@ -57,9 +57,9 @@ export default function Notifications() {
             dataSource={history}
             columns={[
               { title: 'Message', dataIndex: 'message' },
-              { title: 'Type', dataIndex: 'type', width: 110, render: (v) => <span style={{ color: TYPE_COLORS[v] }}>{v}</span> },
+              { title: 'Type', dataIndex: 'type', width: 120, render: (v) => <span className={`oh-pill ${TYPE_PILL[v] ?? 'stopped'}`}>{v}</span> },
               { title: 'Delivered', dataIndex: 'delivered', align: 'right', width: 100, render: (_, n) => <span className="oh-num">{n.delivered}/{n.total}</span> },
-              { title: 'Sent', dataIndex: 'sentISO', align: 'right', width: 120, render: (v) => <span className="oh-muted" title={exactDate(v)}>{timeAgo(v)}</span> },
+              { title: 'Sent', dataIndex: 'sentISO', align: 'right', width: 120, render: (v) => <span className="oh-muted" title={exactDate(v)}>{timeAgoShort(v)}</span> },
             ]}
           />
         </Card>

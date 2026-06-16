@@ -37,7 +37,7 @@ function rowActions(r: ServerRow) {
     return (
       <div className="oh-row" style={{ justifyContent: 'flex-end' }}>
         <IconAction icon="activity" title="View spawn log" onClick={() => mockAction('Tail live spawn log')} />
-        <IconAction icon="stop" title="Cancel spawn" danger onClick={() => mockAction(`Cancelled ${r.user}'s spawn`)} />
+        <IconAction icon="stop" title="Cancel spawn" danger filled onClick={() => mockAction(`Cancelled ${r.user}'s spawn`)} />
       </div>
     )
   }
@@ -55,7 +55,7 @@ function rowActions(r: ServerRow) {
     <div className="oh-row" style={{ justifyContent: 'flex-end' }}>
       <IconAction icon="play" title="Enter session (confirm)" onClick={() => mockAction(`Confirm: enter ${r.user}'s running server?`)} />
       <IconAction icon="restart" title="Restart" onClick={() => mockAction(`Restarted ${r.user}'s server`)} />
-      <IconAction icon="stop" title="Stop" danger onClick={() => mockAction(`Stopped ${r.user}'s server`)} />
+      <IconAction icon="stop" title="Stop" danger filled onClick={() => mockAction(`Stopped ${r.user}'s server`)} />
     </div>
   )
 }
@@ -116,7 +116,9 @@ export default function Servers() {
     {
       title: 'GPU',
       dataIndex: 'gpu',
-      render: (_, r) => (r.gpu ? <Tag bordered={false} style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4 }}>{r.gpu}</Tag> : <span className="oh-muted">-</span>),
+      align: 'center',
+      width: 96,
+      render: (_, r) => (r.gpu ? <Tag bordered={false} style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4, marginInlineEnd: 0 }}>{r.gpu}</Tag> : <span className="oh-muted">-</span>),
     },
     {
       title: 'Volumes',
@@ -147,7 +149,7 @@ export default function Servers() {
 
   return (
     <>
-      <PageHeader title="Servers" sub="Every lab in one pane - live state, resources, storage and the lever to act" />
+      <PageHeader title="Servers" sub="Start, stop and restart labs; act on quota breaches and sessions about to be culled" />
       <ProTable<ServerRow>
         rowKey="user"
         columns={columns}
@@ -180,7 +182,7 @@ export default function Servers() {
             style={{ width: 200 }}
           />,
           <Button key="reset" onClick={() => mockAction('Reset activity samples')}>Reset samples</Button>,
-          <Button key="report" icon={<Icon name="arrowup" size={14} />} onClick={() => mockAction('Downloaded activity report')}>Report</Button>,
+          <Button key="report" icon={<Icon name="download" size={14} />} onClick={() => mockAction('Downloaded activity report')}>Report</Button>,
           <Button key="refresh" icon={<Icon name="restart" size={14} />} onClick={() => mockAction('Refreshed')}>Refresh</Button>,
         ]}
       />

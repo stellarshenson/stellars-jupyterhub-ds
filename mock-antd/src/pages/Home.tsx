@@ -61,16 +61,14 @@ function ActiveServersPreview() {
       render: (_, r) => (
         <div className="oh-row" style={{ justifyContent: 'flex-end' }}>
           <IconAction icon="restart" title="Restart" onClick={() => mockAction(`Restart jupyterlab-${r.user}`)} />
-          <IconAction icon="stop" title="Stop" danger onClick={() => mockAction(`Stop jupyterlab-${r.user}`)} />
+          <IconAction icon="stop" title="Stop" danger filled onClick={() => mockAction(`Stop jupyterlab-${r.user}`)} />
         </div>
       ),
     },
   ]
   return (
-    <Card styles={{ body: { padding: 0 } }}>
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-subtle)' }}>
-        <CardHeadLink title="Active servers" to="/servers" suffix="· top 10 by status" />
-      </div>
+    <Card>
+      <CardHeadLink title="Active servers" to="/servers" suffix="· top 10 by status" />
       <ProTable<ServerRow>
         rowKey="user"
         columns={columns}
@@ -78,7 +76,7 @@ function ActiveServersPreview() {
         search={false}
         options={false}
         ghost
-        rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+        style={{ marginTop: 12 }}
         pagination={false}
       />
     </Card>
@@ -205,7 +203,7 @@ function AdminHome() {
               rows={[
                 { label: 'CPU', value: total.cpu },
                 { label: 'Memory', value: total.mem },
-                { label: 'GPU', value: total.gpu },
+                { label: 'GPU', value: total.gpu, gpus: total.gpus },
               ]}
             />
           )}

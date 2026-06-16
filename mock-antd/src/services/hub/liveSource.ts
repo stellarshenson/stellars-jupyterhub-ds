@@ -147,6 +147,16 @@ export const liveSource: DataSource = {
     }
   },
 
+  async getHubInfo() {
+    try {
+      const raw = await hubGet<{ version?: string }>('/info')
+      if (raw.version) return { version: raw.version }
+      return mockSource.getHubInfo()
+    } catch {
+      return mockSource.getHubInfo()
+    }
+  },
+
   async getSessionInfo(user: string) {
     try {
       const raw = await hubGet<{ time_left_minutes?: number; max_minutes?: number }>(`/users/${user}/session-info`)

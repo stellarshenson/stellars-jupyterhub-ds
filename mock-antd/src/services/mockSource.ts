@@ -87,12 +87,12 @@ const CAST: Person[] = [
   {
     name: 'alice', authorized: true, fullName: 'Alice Nowak', activity: 96, createdDaysAgo: 210,
     lastSeenMinAgo: 1, groups: ['research', 'data-science', 'gpu', 'ml-platform', 'vision-lab'],
-    server: { status: 'active', since: '1m', cpu: 38, memPct: 30, memGB: 19.2, volumesGB: 12, volMounts: 'home 2.1 GB · workspace 9.8 GB · cache 0.5 GB', systemGB: 11.2, timeLeftMin: 228 },
+    server: { status: 'active', since: '1m', cpu: 38, memPct: 30, memGB: 19.2, gpu: '0,1', volumesGB: 12, volMounts: 'home 2.1 GB · workspace 9.8 GB · cache 0.5 GB', systemGB: 11.2, timeLeftMin: 228 },
   },
   {
     name: 'konrad', admin: true, authorized: true, fullName: 'Konrad Jelen', activity: 78,
     createdDaysAgo: 300, lastSeenMinAgo: 5, groups: ['admins', 'research', 'gpu'],
-    server: { status: 'active', since: '5m', cpu: 12, memPct: 5, memGB: 3.1, volumesGB: 28, volMounts: 'home 4.0 GB · workspace 22.5 GB · cache 1.5 GB', systemGB: 1.1, timeLeftMin: 1320 },
+    server: { status: 'active', since: '5m', cpu: 12, memPct: 5, memGB: 3.1, gpu: '0', volumesGB: 28, volMounts: 'home 4.0 GB · workspace 22.5 GB · cache 1.5 GB', systemGB: 1.1, timeLeftMin: 1320 },
   },
   {
     name: 'milan', authorized: true, fullName: 'Milan Kovac', activity: 0, createdDaysAgo: 64,
@@ -296,12 +296,24 @@ function memberCount(group: string): number {
   return PEOPLE.filter((p) => p.groups.includes(group)).length
 }
 
+// per-GPU utilisation from a device spec ("0", "0,1") - drives the segmented meter
+function gpuUtils(spec?: string): number[] | undefined {
+  if (!spec) return undefined
+  const n = spec.split(',').filter(Boolean).length || 1
+  const base = [82, 57, 34, 13]
+  return Array.from({ length: n }, (_, i) => base[i % base.length])
+}
+
 // ---------- the source ----------
 function delay<T>(value: T): Promise<T> {
   return Promise.resolve(value)
 }
 
 export const mockSource: DataSource = {
+  getHubInfo() {
+    return delay({ version: PLATFORM.jupyterhubVersion })
+  },
+
   async getStats(): Promise<Stats> {
     const servers = PEOPLE.map(statusOf)
     const running = servers.filter((s) => s === 'active').length
@@ -333,13 +345,13 @@ export const mockSource: DataSource = {
       activity: p.activity,
       ttl: { timeLeftMin: s ? s.timeLeftMin : 0, maxMin: IDLE_CULLER.maxExtensionH * 60 },
       resources: s
-        ? { cpu: s.cpu, mem: s.memPct, gpu: s.gpu ? 100 : 0, memTip: `${s.memGB} GB of host RAM` }
+        ? { cpu: s.cpu, mem: s.memPct, gpu: s.gpu ? 100 : 0, gpus: gpuUtils(s.gpu), memTip: `${s.memGB} GB of host RAM` }
         : { cpu: 0, mem: 0, gpu: 0 },
     })
   },
 
   getTotalResources() {
-    return delay<ResourceSnapshot>({ cpu: 41, mem: 63, gpu: 33 })
+    return delay<ResourceSnapshot>({ cpu: 41, mem: 63, gpu: 33, gpus: [62, 41, 18, 9] })
   },
 
   getUsers() {

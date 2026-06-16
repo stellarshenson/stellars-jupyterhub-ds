@@ -1,45 +1,111 @@
 /* The app frame on ProLayout: fixed sider (brand + role-gated menu + identity /
- * theme / sign-out foot), header breadcrumb, and the routed content. The command
- * palette, readonly banner, version badge and (Home-only) mock switch live here. */
+ * sign-out foot), a top header carrying the breadcrumb (left) and the standard
+ * antd header controls - language + theme dropdowns (right) - and a footer with
+ * the platform + JupyterHub versions shown antd-style as tags. The command
+ * palette, readonly banner and (Home-only) mock switch live in the content. */
 import { ProLayout } from '@ant-design/pro-components'
-import { Tooltip } from 'antd'
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Button, Dropdown, Tag, Tooltip } from 'antd'
+import { GlobalOutlined } from '@ant-design/icons'
+import { useState } from 'react'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '../components/Icon'
+import type { IconKey } from '../components/Icon'
 import { useRole } from '../app/RoleContext'
 import { useTheme } from '../theme/ThemeProvider'
 import { PALETTES } from '../theme/tokens'
+import type { ThemeMode } from '../theme/tokens'
+import { PLATFORM } from '../services/config'
+import { useHubInfo } from '../hooks/queries'
 import { mockAction } from '../services/actions'
 import { SiderMenu } from './SiderMenu'
 import { Breadcrumbs } from './Breadcrumbs'
-import { ThemeChanger } from './ThemeChanger'
 import { MockSwitch } from './MockSwitch'
-import { VersionBadge } from './VersionBadge'
 import { CommandPalette } from './CommandPalette'
 import { MessageBinder } from './MessageBinder'
 import { ReadonlyBanner } from './ReadonlyBanner'
 
+const THEME_MODES: Array<{ mode: ThemeMode; icon: IconKey; label: string }> = [
+  { mode: 'light', icon: 'sun', label: 'Light' },
+  { mode: 'dark', icon: 'moon', label: 'Dark' },
+  { mode: 'system', icon: 'monitor', label: 'System' },
+]
+
+const LANGS: Array<{ key: string; label: string }> = [
+  { key: 'en', label: 'English' },
+  { key: 'pl', label: 'Polski' },
+]
+
+function LanguageControl() {
+  const [lang, setLang] = useState('en')
+  return (
+    <Dropdown
+      trigger={['click']}
+      menu={{
+        items: LANGS,
+        selectable: true,
+        selectedKeys: [lang],
+        onClick: ({ key }) => { setLang(key); mockAction(`Language: ${LANGS.find((l) => l.key === key)?.label}`) },
+      }}
+    >
+      <Tooltip title="Language">
+        <Button type="text" icon={<GlobalOutlined />} aria-label="Language" />
+      </Tooltip>
+    </Dropdown>
+  )
+}
+
+function ThemeControl() {
+  const { mode, setMode } = useTheme()
+  const current = THEME_MODES.find((m) => m.mode === mode) ?? THEME_MODES[0]
+  return (
+    <Dropdown
+      trigger={['click']}
+      menu={{
+        items: THEME_MODES.map((m) => ({ key: m.mode, label: m.label, icon: <Icon name={m.icon} size={14} /> })),
+        selectable: true,
+        selectedKeys: [mode],
+        onClick: ({ key }) => setMode(key as ThemeMode),
+      }}
+    >
+      <Tooltip title="Theme">
+        <Button type="text" icon={<Icon name={current.icon} size={16} />} aria-label="Theme" />
+      </Tooltip>
+    </Dropdown>
+  )
+}
+
 function SiderFoot() {
   const { role } = useRole()
+  const navigate = useNavigate()
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 12, borderTop: '1px solid var(--color-border-subtle)' }}>
-      <div style={{ fontSize: 13, lineHeight: 1.2 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: 12, borderTop: '1px solid var(--color-border-subtle)' }}>
+      <div style={{ fontSize: 13, lineHeight: 1.2, minWidth: 0 }}>
         {role === 'admin' ? 'admin' : 'alice'}
         <small style={{ display: 'block', color: 'var(--color-text-subtle)', fontSize: 11 }}>
           {role === 'admin' ? 'Administrator' : 'Data scientist'}
         </small>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <ThemeChanger />
-        <Tooltip title="Sign out">
-          <button
-            onClick={() => mockAction('Sign out')}
-            style={{ width: 28, height: 28, display: 'inline-grid', placeItems: 'center', border: 0, background: 'transparent', color: 'var(--color-text-muted)', cursor: 'pointer', borderRadius: 6 }}
-            aria-label="Sign out"
-          >
-            <Icon name="logout" size={16} />
-          </button>
-        </Tooltip>
-      </div>
+      <Tooltip title="Sign out">
+        <button
+          onClick={() => { mockAction('Signed out'); navigate('/login') }}
+          style={{ width: 28, height: 28, display: 'inline-grid', placeItems: 'center', border: 0, background: 'transparent', color: 'var(--color-text-muted)', cursor: 'pointer', borderRadius: 6 }}
+          aria-label="Sign out"
+        >
+          <Icon name="logout" size={16} />
+        </button>
+      </Tooltip>
+    </div>
+  )
+}
+
+function VersionFooter() {
+  const { data: hub } = useHubInfo()
+  const tag = { background: 'var(--color-surface-active)', color: 'var(--color-text-muted)', borderRadius: 4, marginInline: 4 }
+  return (
+    <div style={{ textAlign: 'center', padding: '14px 0', color: 'var(--color-text-subtle)', fontSize: 12 }}>
+      Optimum Hub<Tag bordered={false} style={tag}>v{PLATFORM.version}</Tag>
+      <span style={{ margin: '0 6px' }}>·</span>
+      JupyterHub<Tag bordered={false} style={tag}>v{hub?.version ?? '…'}</Tag>
     </div>
   )
 }
@@ -69,15 +135,15 @@ export function AppLayout() {
         </Link>
       )}
       menuFooterRender={(props) => (props?.collapsed ? null : <SiderFoot />)}
-      headerRender={false}
+      actionsRender={() => [<LanguageControl key="lang" />, <ThemeControl key="theme" />]}
       collapsedButtonRender={false}
-      footerRender={false}
+      footerRender={() => <VersionFooter />}
       token={{
         bgLayout: p.bg,
         header: { colorBgHeader: p.bg, heightLayoutHeader: 56 },
         sider: { colorMenuBackground: p.bg, colorTextMenu: p.textMuted, colorTextMenuSelected: p.text, colorBgMenuItemSelected: p.accentSoft },
       }}
-      contentStyle={{ padding: '28px 24px', background: p.bg }}
+      contentStyle={{ padding: '24px 24px 8px', background: p.bg }}
     >
       <MessageBinder />
       <CommandPalette />
@@ -88,7 +154,6 @@ export function AppLayout() {
         <ReadonlyBanner />
         <Outlet />
       </div>
-      <VersionBadge />
       {isHome && <MockSwitch />}
     </ProLayout>
   )
