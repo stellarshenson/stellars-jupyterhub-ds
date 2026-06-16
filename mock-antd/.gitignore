@@ -28,3 +28,7 @@ tests/__screens__
 *.njsproj
 *.sln
 *.sw?
+
+# Source lib dir - the repo-root .gitignore `lib/` (Python build convention)
+# would otherwise silently exclude this TypeScript source directory
+!src/lib/

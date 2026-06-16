@@ -9,15 +9,7 @@ import { PageHeader } from '../components/PageHeader'
 import { FormFooter } from '../components/FormFooter'
 import { GroupPicker } from '../components/GroupPicker'
 import { mockSuccess } from '../services/actions'
-
-const WORDS = ['correct', 'horse', 'battery', 'staple', 'amber', 'cyan', 'lab', 'spawn', 'kernel', 'matrix', 'vector', 'tensor']
-
-function genPassword(): string {
-  // deterministic-ish xkcd style from the current time (mock only)
-  const t = Date.now()
-  const pick = (n: number) => WORDS[(Math.floor(t / Math.pow(10, n)) + n) % WORDS.length]
-  return `${pick(2)}-${pick(4)}-${pick(6)}-${pick(8)}`
-}
+import { genPassword } from '../lib/password'
 
 export default function NewUser() {
   const navigate = useNavigate()
