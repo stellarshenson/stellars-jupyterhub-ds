@@ -112,7 +112,7 @@ function QuickActions() {
 function RecentEvents() {
   const { data = [] } = useEvents()
   return (
-    <Card styles={{ body: { padding: 0 } }}>
+    <Card style={{ flex: 1 }} styles={{ body: { padding: 0 } }}>
       <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-subtle)' }}>
         <CardHeadLink title="Recent events" to="/events" />
       </div>
