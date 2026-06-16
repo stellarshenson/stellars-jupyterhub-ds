@@ -8,7 +8,7 @@ import { PageHeader } from '../components/PageHeader'
 import { FormFooter } from '../components/FormFooter'
 import { GroupPicker } from '../components/GroupPicker'
 import { isMock } from '../services/dataMode'
-import { addMember, authorizeUser, createUser, getCredentials } from '../services/ops'
+import { addMember, setUserAuthorization, createUser, getCredentials } from '../services/ops'
 
 export default function BulkUsers() {
   const navigate = useNavigate()
@@ -32,7 +32,7 @@ export default function BulkUsers() {
       for (const name of names) {
         await createUser(name)
         for (const g of groups) await addMember(g, name)
-        if (!v.authorize) await authorizeUser(name)
+        if (!v.authorize) await setUserAuthorization(name, false) // create auto-authorises; turn it back off
       }
       const creds = await getCredentials(names)
       navigate('/users/bulk/result', { state: { creds, groups: groups.join(', '), requested: names.length } })

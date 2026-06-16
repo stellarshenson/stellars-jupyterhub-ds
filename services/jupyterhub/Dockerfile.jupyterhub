@@ -51,9 +51,12 @@ RUN <<-EOF
     # the shell is rendered dynamically by PortalHandler, not served as a file
     rm -f /src/optimum-hub-web/optimum_hub_web/static/index.html
     python -m build --wheel /src/optimum-hub-web --outdir /dist
-    # import smoke-test (jupyterhub present via the nativeauthenticator dep above)
+    # smoke-test the INSTALLED wheel (jupyterhub present via nativeauthenticator
+    # dep above): assert handlers register AND the vite manifest + entry JS are in
+    # the wheel - a manifest-less wheel renders a blank portal, so fail the build
+    # here rather than ship it silently.
     uv pip install /dist/optimum_hub_web-*.whl
-    python -c "import optimum_hub_web as p; assert p.portal_handlers(); print('optimum_hub_web', p.__version__, 'ok')"
+    python -c "import optimum_hub_web as p; from optimum_hub_web.handlers import _entry_assets; js, css = _entry_assets(); assert p.portal_handlers(); assert js, 'no entry JS - vite manifest missing from wheel'; print('optimum_hub_web', p.__version__, 'ok; entry', js)"
 EOF
 
 ##############################################################################################
@@ -171,9 +174,20 @@ RUN <<-EOF
     cp /tmp/session-timer.js /srv/venv/share/jupyterhub/static/js/session-timer.js
     cp /tmp/mobile.js /srv/venv/share/jupyterhub/static/js/mobile.js
     # remove the original JupyterHub admin React app - the Optimum Hub SPA fully
-    # replaces it (/hub/admin, /hub/home, /hub/token all redirect to /hub/portal)
-    rm -f /srv/venv/share/jupyterhub/static/js/admin-react.js \
-          /srv/venv/share/jupyterhub/static/js/admin-react.js.map
+    # replaces it (/hub/admin, /hub/home, /hub/token all redirect to /hub/portal).
+    # Assert the expected path first: a silent no-op would ship the stock admin
+    # bundle while we claim a full replacement.
+    ADMIN_JS=/srv/venv/share/jupyterhub/static/js/admin-react.js
+    if [ ! -f "$ADMIN_JS" ]; then
+        echo "ERROR: stock admin bundle not at $ADMIN_JS - did JupyterHub move it?" >&2
+        exit 1
+    fi
+    rm -f "$ADMIN_JS" "$ADMIN_JS.map"
+    # The enhanced admin.html (stock-style, still references the removed
+    # admin-react.js) is permanently shadowed by the optimum-hub-web wheel's
+    # admin.html redirect stub (its template dir is first in template_paths).
+    # Drop the dead copy so no image template references the removed bundle.
+    rm -f /srv/jupyterhub/templates/admin.html
 EOF
 
 ## default environment variables

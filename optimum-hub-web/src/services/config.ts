@@ -14,9 +14,12 @@ export const IDLE_CULLER = {
   maxExtensionH: 12,
 }
 
+// Mock-mode display fixtures only. Live mode never reads jupyterhubVersion or
+// baseUrl from here - it fetches the real version from GET /hub/api/info
+// (liveSource.getHubInfo) and the real settings from the settings handler.
 export const PLATFORM = {
   version: '1.0.0',
-  jupyterhubVersion: '3.3.6',
+  jupyterhubVersion: '5.4.6',
   admin: 'admin',
   baseUrl: '/jupyterhub',
   timezone: 'Europe/Warsaw',

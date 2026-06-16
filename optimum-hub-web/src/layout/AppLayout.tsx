@@ -15,6 +15,7 @@ import { useTheme } from '../theme/ThemeProvider'
 import { PALETTES } from '../theme/tokens'
 import type { ThemeMode } from '../theme/tokens'
 import { PLATFORM } from '../services/config'
+import { portalAssetBase } from '../services/hub/client'
 import { useHubInfo } from '../hooks/queries'
 import { mockAction } from '../services/actions'
 import { hubUrl } from '../services/hub/client'
@@ -160,8 +161,8 @@ export function AppLayout() {
   const { live } = useRole()
   const p = PALETTES[resolved]
   const isHome = pathname === '/home' || pathname === '/'
-  const logoSrc = `${import.meta.env.BASE_URL}brand/jh-logo.svg`
-  const markSrc = `${import.meta.env.BASE_URL}brand/jl-logo.svg`
+  const logoSrc = `${portalAssetBase()}brand/jh-logo.svg`
+  const markSrc = `${portalAssetBase()}brand/jl-logo.svg`
   const [collapsed, setCollapsed] = useState(false)
 
   return (

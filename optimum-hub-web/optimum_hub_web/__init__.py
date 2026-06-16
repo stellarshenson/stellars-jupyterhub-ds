@@ -17,12 +17,23 @@ portal lives at ``/hub/portal``; ``PORTAL_URL`` is the full hub path for
 ``default_url``.
 """
 
-from .handlers import PortalHandler, static_dir, template_dir
+import os
 
-__version__ = "0.1.0"
+from .handlers import ImmutableStaticFileHandler, PortalHandler, static_dir, template_dir
 
+try:
+    # Single source of truth: the wheel version from pyproject (set at build).
+    from importlib.metadata import version as _pkg_version
+
+    __version__ = _pkg_version("optimum-hub-web")
+except Exception:
+    __version__ = "0.1.0"  # editable/uninstalled fallback
+
+# Hashed SPA bundle: served by StaticFileHandler (async, ETag/304) and matched
+# before the catch-all so it never falls through to the shell renderer.
+ASSETS_ROUTE = r"/portal/assets/(.*)"
 # Tornado route, relative to the hub prefix. The catch-all serves the shell for
-# client-side routes and the bundled file for real asset paths.
+# client-side routes and any other real bundled file (favicon, brand).
 PORTAL_ROUTE = r"/portal/?(.*)"
 # Full hub path (the caller prefixes the deploy base_url) for default_url.
 PORTAL_URL = "/hub/portal"
@@ -34,10 +45,18 @@ __all__ = [
     "static_dir",
     "PORTAL_URL",
     "PORTAL_ROUTE",
+    "ASSETS_ROUTE",
     "__version__",
 ]
 
 
 def portal_handlers():
-    """``extra_handlers`` tuples registering the portal (auto-prefixed with /hub)."""
-    return [(PORTAL_ROUTE, PortalHandler)]
+    """``extra_handlers`` tuples registering the portal (auto-prefixed with /hub).
+
+    Order matters - Tornado matches first: the hashed-assets static route comes
+    before the SPA catch-all so ``/hub/portal/assets/*`` is served as a file.
+    """
+    return [
+        (ASSETS_ROUTE, ImmutableStaticFileHandler, {"path": os.path.join(static_dir(), "assets")}),
+        (PORTAL_ROUTE, PortalHandler),
+    ]

@@ -1,14 +1,16 @@
 /* Hub REST client. Same-origin, cookie-authenticated (auth rides the hub
- * session cookie, credentials: include). Every call - GET included - carries
- * the hub's XSRF submit-token as the X-XSRFToken header.
+ * session cookie, credentials: include). Every call carries the hub's XSRF
+ * submit-token as the X-XSRFToken header.
  *
- * JupyterHub 4 enforces XSRF on cookie-authenticated API requests, GETs too
- * (`403 '_xsrf' argument missing`). The valid submit-token is NOT the raw
- * `_xsrf` cookie value: it is hub-signed (`_get_signed_value_urlsafe` with the
- * hub secret) and handed only to pages the hub itself renders, where it lands
- * in `window.jhdata.xsrf_token`. The portal is served by the hub (PortalHandler
- * renders the shell, so `BaseHandler.render_template` injects the token), so we
- * read it from there. The `_xsrf` cookie is a dev-proxy fallback only.
+ * JupyterHub enforces XSRF on cookie-authenticated state-changing requests
+ * (POST/DELETE/PATCH); GET/HEAD/OPTIONS are exempt (`_xsrf_safe_methods`), so
+ * the header on GETs is inert but harmless and kept for uniformity. The valid
+ * submit-token is NOT the raw `_xsrf` cookie value: it is hub-signed
+ * (`_get_signed_value_urlsafe` with the hub secret) and handed only to pages the
+ * hub itself renders, where it lands in `window.jhdata.xsrf_token`. The portal
+ * is served by the hub (PortalHandler renders the shell, so
+ * `BaseHandler.render_template` injects the token), so we read it from there.
+ * The `_xsrf` cookie is a dev-proxy fallback only.
  *
  * Two surfaces:
  *   - the JSON REST API under {hubBase}/hub/api  (hubGet / hubSend)
@@ -20,9 +22,35 @@
  * (base_url=/), '/jupyterhub' for the repo-default path mount. Set at build
  * time via VITE_HUB_BASE; same-origin so a relative path is all that's needed. */
 
-const HUB_BASE = (import.meta.env.VITE_HUB_BASE ?? '').replace(/\/$/, '')
-const API_BASE = `${HUB_BASE}/hub/api`
-const HUB_ROOT = `${HUB_BASE}/hub`
+/* Deploy prefix resolved at RUNTIME from the hub-injected shell, so one build
+ * works under any base_url (/, /jupyterhub, ...). window.jhdata.base_url is the
+ * hub prefix with a trailing slash (`/hub/`, `/jupyterhub/hub/`); strip it to get
+ * HUB_ROOT. Falls back to the build-time VITE_HUB_BASE for the dev proxy / mock
+ * mode, where the shell is absent. */
+function pageHubRoot(): string | null {
+  const b = typeof window !== 'undefined' ? window.jhdata?.base_url : undefined
+  return b ? b.replace(/\/$/, '') : null // '/hub' or '/jupyterhub/hub'
+}
+const HUB_ROOT = pageHubRoot() ?? `${(import.meta.env.VITE_HUB_BASE ?? '').replace(/\/$/, '')}/hub`
+const HUB_BASE = HUB_ROOT.replace(/\/hub$/, '') // '' or '/jupyterhub'
+const API_BASE = `${HUB_ROOT}/api`
+
+/** Router basename for the hub-served SPA, resolved at runtime so one build works
+ * under any base_url. Mock/dev (no shell) uses the build-time base. */
+export function portalBasename(): string {
+  const root = pageHubRoot()
+  if (root) return `${root}/portal`
+  return import.meta.env.BASE_URL.replace(/\/$/, '') || '/'
+}
+
+/** Runtime URL prefix (trailing slash) for bundled portal assets served by the
+ * hub - brand images, favicon. One build works under any base_url; mock/dev uses
+ * the build-time base. */
+export function portalAssetBase(): string {
+  const root = pageHubRoot()
+  if (root) return `${root}/portal/`
+  return import.meta.env.BASE_URL // already ends with '/'
+}
 
 /** Bootstrap data the hub injects into every page it renders (see page.html /
  * the portal shell). Present on the hub-served portal; absent under the dev proxy. */

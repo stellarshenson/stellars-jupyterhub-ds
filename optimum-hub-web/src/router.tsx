@@ -1,5 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppLayout } from './layout/AppLayout'
+import { RequireAdmin } from './app/RequireAdmin'
+import { portalBasename } from './services/hub/client'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Home from './pages/Home'
@@ -23,7 +25,9 @@ import Tokens from './pages/Tokens'
 import DesignSystem from './pages/DesignSystem'
 import DesignLanguage from './pages/DesignLanguage'
 
-const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/'
+// Runtime-derived from the hub-injected shell (window.jhdata.base_url), so one
+// build serves any base_url (/, /jupyterhub). Mock/dev falls back to BASE_URL.
+const basename = portalBasename()
 
 const usersParent = { label: 'Users', to: '/users' }
 const groupsParent = { label: 'Groups', to: '/groups' }
@@ -39,28 +43,36 @@ export const router = createBrowserRouter(
         { index: true, element: <Navigate to="/home" replace /> },
         { path: 'home', handle: { crumb: 'Home' }, element: <Home /> },
         { path: 'profile', handle: { crumb: 'Profile' }, element: <Profile /> },
-
-        { path: 'servers', handle: { crumb: 'Servers' }, element: <Servers /> },
-
-        { path: 'users', handle: { crumb: 'Users' }, element: <Users /> },
-        { path: 'users/new', handle: { crumb: 'New user', parent: usersParent }, element: <NewUser /> },
-        { path: 'users/bulk', handle: { crumb: 'Bulk add', parent: usersParent }, element: <BulkUsers /> },
-        { path: 'users/bulk/result', handle: { crumb: 'Bulk result', parent: usersParent }, element: <BulkResult /> },
-        { path: 'users/:name', handle: { crumb: 'Configure user', parent: usersParent }, element: <UserConfig /> },
-
-        { path: 'groups', handle: { crumb: 'Groups' }, element: <Groups /> },
-        { path: 'groups/new', handle: { crumb: 'New group', parent: groupsParent }, element: <NewGroup /> },
-        { path: 'groups/export', handle: { crumb: 'Export groups', parent: groupsParent }, element: <GroupsExport /> },
-        { path: 'groups/:name', handle: { crumb: 'Configure group', parent: groupsParent }, element: <GroupConfig /> },
-
-        { path: 'lab-container', handle: { crumb: 'Lab Container' }, element: <LabContainer /> },
-        { path: 'events', handle: { crumb: 'Events' }, element: <Events /> },
-        { path: 'notifications', handle: { crumb: 'Notifications' }, element: <Notifications /> },
-        { path: 'settings', handle: { crumb: 'Settings' }, element: <Settings /> },
-        { path: 'settings/reference', handle: { crumb: 'Full reference', parent: { label: 'Settings', to: '/settings' } }, element: <SettingsReference /> },
-        { path: 'tokens', handle: { crumb: 'Tokens' }, element: <Tokens /> },
         { path: 'design-system', handle: { crumb: 'Design system' }, element: <DesignSystem /> },
         { path: 'design-language', handle: { crumb: 'Design language' }, element: <DesignLanguage /> },
+
+        // Admin-only surfaces. RequireAdmin bounces non-admins to /home before
+        // any admin-only query mounts. Server-side enforcement is the real
+        // boundary; this is defense-in-depth + UX.
+        {
+          element: <RequireAdmin />,
+          children: [
+            { path: 'servers', handle: { crumb: 'Servers' }, element: <Servers /> },
+
+            { path: 'users', handle: { crumb: 'Users' }, element: <Users /> },
+            { path: 'users/new', handle: { crumb: 'New user', parent: usersParent }, element: <NewUser /> },
+            { path: 'users/bulk', handle: { crumb: 'Bulk add', parent: usersParent }, element: <BulkUsers /> },
+            { path: 'users/bulk/result', handle: { crumb: 'Bulk result', parent: usersParent }, element: <BulkResult /> },
+            { path: 'users/:name', handle: { crumb: 'Configure user', parent: usersParent }, element: <UserConfig /> },
+
+            { path: 'groups', handle: { crumb: 'Groups' }, element: <Groups /> },
+            { path: 'groups/new', handle: { crumb: 'New group', parent: groupsParent }, element: <NewGroup /> },
+            { path: 'groups/export', handle: { crumb: 'Export groups', parent: groupsParent }, element: <GroupsExport /> },
+            { path: 'groups/:name', handle: { crumb: 'Configure group', parent: groupsParent }, element: <GroupConfig /> },
+
+            { path: 'lab-container', handle: { crumb: 'Lab Container' }, element: <LabContainer /> },
+            { path: 'events', handle: { crumb: 'Events' }, element: <Events /> },
+            { path: 'notifications', handle: { crumb: 'Notifications' }, element: <Notifications /> },
+            { path: 'settings', handle: { crumb: 'Settings' }, element: <Settings /> },
+            { path: 'settings/reference', handle: { crumb: 'Full reference', parent: { label: 'Settings', to: '/settings' } }, element: <SettingsReference /> },
+            { path: 'tokens', handle: { crumb: 'Tokens' }, element: <Tokens /> },
+          ],
+        },
 
         { path: '*', element: <Navigate to="/home" replace /> },
       ],

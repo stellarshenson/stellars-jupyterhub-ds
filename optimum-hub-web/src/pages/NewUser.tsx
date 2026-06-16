@@ -10,7 +10,7 @@ import { FormFooter } from '../components/FormFooter'
 import { GroupPicker } from '../components/GroupPicker'
 import { mockSuccess } from '../services/actions'
 import { isMock } from '../services/dataMode'
-import { addMember, authorizeUser, createUser, setUserPassword } from '../services/ops'
+import { addMember, setUserAuthorization, createUser, setUserPassword } from '../services/ops'
 import { genPassword } from '../lib/password'
 
 export default function NewUser() {
@@ -31,7 +31,7 @@ export default function NewUser() {
       await createUser(v.username) // creates + auto-authorises with a generated password
       if (pw) await setUserPassword(v.username, pw) // honour the password shown to the admin
       for (const g of groups) await addMember(g, v.username)
-      if (!v.authorize) await authorizeUser(v.username) // toggle authorisation back off
+      if (!v.authorize) await setUserAuthorization(v.username, false) // create auto-authorises; turn it back off
       navigate('/users')
     } catch {
       /* ops already surfaced the error toast */

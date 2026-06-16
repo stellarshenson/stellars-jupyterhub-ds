@@ -51,6 +51,8 @@ from stellars_hub_services.handlers import (
     HealthCheckHandler,                     # GET  /health - unauthenticated monitoring endpoint
     LabReadyHandler,                        # GET  /api/users/{user}/lab-ready - silent lab readiness probe
     ManageVolumesHandler,                   # DELETE /api/users/{user}/manage-volumes - delete user volumes
+    NativeUsersHandler,                     # GET  /api/native-users - list NativeAuth signups + auth state
+    NativeUserAuthorizationHandler,         # POST /api/native-users/{name}/authorization - idempotent set
     NotificationsPageHandler,               # GET  /notifications - admin broadcast UI
     RestartServerHandler,                   # POST /api/users/{user}/restart-server - Docker restart
     SessionInfoHandler,                     # GET  /api/users/{user}/session-info - idle culler status
@@ -747,6 +749,8 @@ c.JupyterHub.extra_handlers = [
     (r'/api/admin/groups/reorder', GroupsReorderHandler),             # POST - update group priorities
     (r'/api/admin/groups/([^/]+)/delete', GroupsDeleteHandler),       # DELETE - delete group
     (r'/api/admin/groups/([^/]+)/config', GroupsConfigHandler),       # GET/PUT - group configuration
+    (r'/api/native-users', NativeUsersHandler),                       # GET - list NativeAuth signups + auth state
+    (r'/api/native-users/([^/]+)/authorization', NativeUserAuthorizationHandler),  # POST - idempotent set
     (r'/notifications', NotificationsPageHandler),                    # GET - admin broadcast UI page
     (r'/settings', SettingsPageHandler),                              # GET - platform settings page
     (r'/activity', ActivityPageHandler),                              # GET - activity monitoring page

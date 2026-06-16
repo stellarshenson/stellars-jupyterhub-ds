@@ -14,11 +14,14 @@ loaded, i.e. once the session cookie is already established.
 """
 
 import json
+import logging
 import mimetypes
 import os
 
 from jupyterhub.handlers import BaseHandler
 from tornado import web
+
+_log = logging.getLogger("optimum_hub_web")
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(_HERE, "static")
@@ -41,24 +44,48 @@ def template_dir():
 
 
 def _entry_assets():
-    """(js, css) for the SPA entry, read once from the vite build manifest."""
+    """(js, css) for the SPA entry, read once from the vite build manifest.
+
+    On any failure (missing/invalid manifest, no entry chunk) the result is NOT
+    cached - a transient read error at first hit must be recoverable without a
+    hub restart - and a warning is logged so a blank portal is diagnosable rather
+    than silent.
+    """
     global _entry_cache
     if _entry_cache is not None:
         return _entry_cache
-    js, css = "", ""
     manifest_path = os.path.join(STATIC_DIR, ".vite", "manifest.json")
     try:
         with open(manifest_path) as f:
             manifest = json.load(f)
-        entry = next((v for v in manifest.values() if v.get("isEntry")), None)
-        if entry:
-            js = entry.get("file", "")
-            css_list = entry.get("css") or []
-            css = css_list[0] if css_list else ""
-    except (OSError, ValueError):
-        pass
-    _entry_cache = (js, css)
+    except (OSError, ValueError) as e:
+        _log.warning(
+            "[OptimumHub] manifest unreadable at %s (%s) - portal shell will be blank until fixed",
+            manifest_path, e,
+        )
+        return ("", "")
+    entry = next((v for v in manifest.values() if isinstance(v, dict) and v.get("isEntry")), None)
+    if not entry or not entry.get("file"):
+        _log.warning(
+            "[OptimumHub] no isEntry chunk in %s - portal shell will be blank", manifest_path,
+        )
+        return ("", "")
+    css_list = entry.get("css") or []
+    _entry_cache = (entry["file"], css_list[0] if css_list else "")
     return _entry_cache
+
+
+class ImmutableStaticFileHandler(web.StaticFileHandler):
+    """StaticFileHandler for the hashed SPA bundle (``/hub/portal/assets``).
+
+    Vite emits content-hashed filenames, so the bytes at a given path never
+    change - mark them immutable with a long max-age. StaticFileHandler gives us
+    async sendfile, ETag/Range and 304s, so the multi-MB bundle is never read
+    blocking on the hub event loop (unlike a plain ``open().read()``).
+    """
+
+    def set_extra_headers(self, path):
+        self.set_header("Cache-Control", "public, max-age=604800, immutable")
 
 
 class PortalHandler(BaseHandler):
