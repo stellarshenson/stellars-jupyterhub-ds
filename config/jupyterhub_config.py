@@ -63,6 +63,13 @@ from stellars_hub_services.handlers import (
     GroupsReorderHandler,                   # POST /api/admin/groups/reorder - update priorities
 )
 
+# Optimum Hub web portal - hub-served React SPA that replaces the stock home/admin UI.
+# Ships its own static bundle + shell template; portal_handlers() returns the
+# catch-all route (auto-prefixed with /hub -> /hub/portal); template_dir() holds
+# the shell + home/admin redirect stubs.
+import optimum_hub_web
+from optimum_hub_web import portal_handlers, PORTAL_URL
+
 c = get_config()  # noqa: F821  - JupyterHub injects get_config() into config file namespace
 
 
@@ -551,7 +558,7 @@ RESERVED_ENV_VAR_NAMES = set(c.DockerSpawner.environment.keys()) | {
 c.DockerSpawner.image = JUPYTERHUB_LAB_IMAGE           # JupyterLab Docker image to spawn
 c.DockerSpawner.use_internal_ip = True                       # use container IP on Docker network (not host)
 c.DockerSpawner.network_name = JUPYTERHUB_NETWORK_NAME       # Docker network connecting hub and user containers
-c.JupyterHub.default_url = JUPYTERHUB_BASE_URL_PREFIX + '/hub/home'  # redirect after login
+c.JupyterHub.default_url = JUPYTERHUB_BASE_URL_PREFIX + PORTAL_URL  # land everyone on the Optimum Hub portal after login
 # c.DockerSpawner.notebook_dir = DOCKER_NOTEBOOK_DIR         # redundant - stellars-jupyterlab-ds image defaults to /home/lab/workspace
 c.DockerSpawner.name_template = "jupyterlab-{username}"  # literal - compose project label (set in pre_spawn_hook) provides the grouping namespace
 c.DockerSpawner.volumes = DOCKER_SPAWNER_VOLUMES             # per-user persistent volumes + shared storage
@@ -684,6 +691,11 @@ c.JupyterHub.hub_ip = "jupyterhub"                           # bind hub to conta
 c.JupyterHub.hub_port = 8080                                 # internal hub port (not exposed externally)
 c.JupyterHub.base_url = JUPYTERHUB_BASE_URL_PREFIX + '/' if JUPYTERHUB_BASE_URL_PREFIX else '/'  # URL prefix for all hub routes
 
+# Leave running user servers up across a hub restart (the hub re-discovers them
+# on boot; schedule_policy_startup already re-imposes policy on survivors). Makes
+# config/portal restarts non-disruptive for active users.
+c.JupyterHub.cleanup_servers = False
+
 # ── Persistence ──
 c.JupyterHub.cookie_secret_file = "/data/jupyterhub_cookie_secret"  # cookie signing key (persisted in jupyterhub_data volume)
 c.JupyterHub.db_url = "sqlite:////data/jupyterhub.sqlite"           # user database (persisted in jupyterhub_data volume)
@@ -691,6 +703,7 @@ c.JupyterHub.db_url = "sqlite:////data/jupyterhub.sqlite"           # user datab
 # ── Authentication ──
 c.JupyterHub.authenticator_class = BootstrapAdminAuthenticator       # bootstrap-window admin-only signup + admin rename sync
 c.JupyterHub.template_paths = [
+    optimum_hub_web.template_dir(),                                  # Optimum Hub portal shell + home/admin redirect stubs (highest priority)
     "/srv/jupyterhub/templates/",                                    # custom Stellars templates (override priority)
     f"{os.path.dirname(nativeauthenticator.__file__)}/templates/",   # NativeAuthenticator signup/authorize templates
     f"{os.path.dirname(jupyterhub.__file__)}/templates",             # JupyterHub default templates (fallback)
@@ -740,6 +753,9 @@ c.JupyterHub.extra_handlers = [
     (r'/groups', GroupsPageHandler),                                  # GET - group management page
     (r'/health', HealthCheckHandler),                                 # GET - unauthenticated monitoring endpoint
 ]
+# Optimum Hub portal: catch-all serving the SPA shell + bundled assets at /hub/portal.
+# Appended last; its route only matches /portal* so it does not shadow the API/page routes above.
+c.JupyterHub.extra_handlers += portal_handlers()
 
 
 # ── Section 5: Services & Startup Callbacks ──────────────────────────────────

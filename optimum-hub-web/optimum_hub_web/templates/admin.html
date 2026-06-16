@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Optimum Hub</title>
+    <!-- The Optimum Hub portal replaces the stock admin page. This stub shadows
+         the stock admin.html so /hub/admin lands on the portal (the SPA renders
+         the admin views from the real `admin` flag). -->
+    <meta http-equiv="refresh" content="0; url={{ base_url }}portal/" />
+    <script>window.location.replace("{{ base_url }}portal/");</script>
+  </head>
+  <body></body>
+</html>

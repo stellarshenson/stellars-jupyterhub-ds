@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Optimum Hub</title>
+    <!-- The Optimum Hub portal replaces the stock home page. This stub shadows
+         the stock home.html (template_paths puts the package dir first) so any
+         link or bookmark to /hub/home lands on the portal. -->
+    <meta http-equiv="refresh" content="0; url={{ base_url }}portal/" />
+    <script>window.location.replace("{{ base_url }}portal/");</script>
+  </head>
+  <body></body>
+</html>
