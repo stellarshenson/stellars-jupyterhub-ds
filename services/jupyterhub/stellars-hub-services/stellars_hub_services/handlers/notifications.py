@@ -136,6 +136,9 @@ class BroadcastNotificationHandler(BaseHandler):
         total = len(active_spawners)
         self.log.info(f"[Broadcast Notification] Complete: {successful}/{total} successful, {failed}/{total} failed")
 
+        from ..event_log import record_event
+        record_event('broadcast', f'Broadcast sent to <b>{successful}</b> active server{"s" if successful != 1 else ""}')
+
         self.set_status(200)
         self.finish({"total": total, "successful": successful, "failed": failed, "details": details})
 

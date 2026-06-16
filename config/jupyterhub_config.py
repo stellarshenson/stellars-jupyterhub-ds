@@ -18,8 +18,10 @@ import nativeauthenticator      # __file__ for template path resolution
 
 # stellars_hub_services core functions - pure logic, no side effects on import
 from stellars_hub_services import (
-    StellarsNativeAuthenticator,            # parent class for the inline BootstrapAdminAuthenticator
+    OptimumHubAuthenticator,                # platform authenticator: NativeAuth logic + antd login/signup presentation
+    OptimumSignUpHandler,                   # antd-rendering signup handler (base for the bootstrap signup handler)
     apply_abuse_protection,                 # abuse protection: maps env -> spawn/active caps + login lockout onto c.*
+    configure_gpu_cache,                    # one-time init: sets the CUDA image the background GPU-utilisation sampler uses
     configure_volume_cache,                 # one-time init: feeds canonical volume-name templates to the activity-monitor sizes cache
     get_services_and_roles,                 # builds JupyterHub services list (activity sampler)
     schedule_idle_culler,                   # in-hub idle culler (honours per-user session extensions)
@@ -57,12 +59,15 @@ from stellars_hub_services.handlers import (
     RestartServerHandler,                   # POST /api/users/{user}/restart-server - Docker restart
     SessionInfoHandler,                     # GET  /api/users/{user}/session-info - idle culler status
     SettingsPageHandler,                    # GET  /settings - platform settings display
+    SettingsDataHandler,                    # GET  /api/settings - platform settings as JSON (read-only)
+    EventsDataHandler,                      # GET  /api/events - recent platform events (audit feed)
     GroupsPageHandler,                      # GET  /groups - group management page
     GroupsDataHandler,                      # GET  /api/admin/groups - list groups with config
     GroupsCreateHandler,                    # POST /api/admin/groups/create - create new group
     GroupsDeleteHandler,                    # DELETE /api/admin/groups/{name}/delete - delete group
     GroupsConfigHandler,                    # GET/PUT /api/admin/groups/{name}/config - group config
     GroupsReorderHandler,                   # POST /api/admin/groups/reorder - update priorities
+    UserProfileHandler,                     # GET/PUT /api/users/{user}/profile - first/last name + email
 )
 
 # Optimum Hub web portal - hub-served React SPA that replaces the stock home/admin UI.
@@ -356,10 +361,7 @@ if _ADMIN_PROVISIONING_REQUESTED:
     _provision_admin_userinfo(JUPYTERHUB_ADMIN, JUPYTERHUB_ADMIN_PASSWORD)
 
 
-from nativeauthenticator.handlers import SignUpHandler as _NativeSignUpHandler
-
-
-class BootstrapAdminSignUpHandler(_NativeSignUpHandler):
+class BootstrapAdminSignUpHandler(OptimumSignUpHandler):
     """Replace NativeAuth's misleading post-signup messages during the bootstrap window.
 
     Two upstream branches need correcting:
@@ -402,13 +404,14 @@ class BootstrapAdminSignUpHandler(_NativeSignUpHandler):
         return alert, message
 
 
-class BootstrapAdminAuthenticator(StellarsNativeAuthenticator):
+class BootstrapAdminAuthenticator(OptimumHubAuthenticator):
     """During the bootstrap window, only the admin username is allowed to self-sign-up
     and that signup is auto-authorised on the spot.
 
     Outside the bootstrap window this class is a transparent passthrough to
-    StellarsNativeAuthenticator. The window state is captured once at startup so the
-    class behaves stably for the lifetime of the hub process.
+    OptimumHubAuthenticator (NativeAuth credential logic + antd login/signup
+    presentation). The window state is captured once at startup so the class
+    behaves stably for the lifetime of the hub process.
 
     For auto-authorisation we override create_user instead of using NativeAuth's
     allow_self_approval_for: that path forces ask_email_on_signup=True, matches the
@@ -493,6 +496,10 @@ GPU_UUID_BY_INDEX = {str(g.get('index')): g.get('uuid', '') for g in gpu_list if
 GPU_ISOLATION_ENFORCED = bool(gpu_list) and not is_wsl2()
 print(f"[GPU debug] enabled={gpu_enabled} detected={nvidia_detected} "
       f"isolation_enforced={GPU_ISOLATION_ENFORCED} gpus={gpu_list}", flush=True)
+# Tell the background GPU-utilisation sampler which CUDA image to spin nvidia-smi
+# in; it samples host load periodically (gated on a non-empty inventory) so the
+# portal's GPU bar shows real per-device utilisation, not just the inventory.
+configure_gpu_cache(JUPYTERHUB_NVIDIA_IMAGE)
 
 # Process branding URIs: file:// copies to JupyterHub static dir, URLs pass through
 # Returns dict with resolved paths/URLs for logo_file, favicon_uri, lab icons
@@ -587,6 +594,11 @@ c.JupyterHub.template_vars = {
     'volume_max_total_size_mb': JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB * 1024,        # threshold in MB for volume size warning
     'memory_max_usage_mb': JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning (0 GB -> 30% of host RAM)
     'favicon_uri': branding['favicon_uri'],                  # external favicon URL (empty = static_url default)
+    # Optimum Hub SPA entry chunk (hashed) so the overridden login/signup
+    # templates can load the same bundle as the portal shell; resolved from the
+    # vite manifest in the installed wheel ('' if unreadable -> stock-ish fallback).
+    'optimum_entry_js': optimum_hub_web.entry_assets()[0],
+    'optimum_entry_css': optimum_hub_web.entry_assets()[1],
 }
 
 # ── Tornado settings ──
@@ -608,6 +620,11 @@ c.JupyterHub.tornado_settings = {
         'reserved_env_var_names': RESERVED_ENV_VAR_NAMES,                              # names groups cannot override
         'reserved_env_var_prefixes': RESERVED_ENV_VAR_PREFIXES,                        # prefixes reserved for JupyterHub/platform
         'shared_volume_name': f"{COMPOSE_PROJECT_NAME}_jupyterhub_shared",             # standard shared volume offered by the groups volume-mounts UI
+        'lab_image': JUPYTERHUB_LAB_IMAGE,                                             # image every lab spawns from (for the Lab Container page)
+        'lab_volumes': [                                                              # standard per-user volumes mounted into every lab
+            {'suffix': v['suffix'], 'mount': DOCKER_SPAWNER_VOLUMES.get(v['name_template'], ''), 'description': v['description']}
+            for v in user_volumes_for_ui
+        ],
     }
 }
 
@@ -737,6 +754,9 @@ c.JupyterHub.extra_handlers = [
     (r'/api/users/([^/]+)/restart-server', RestartServerHandler),    # POST - Docker container restart
     (r'/api/users/([^/]+)/lab-ready', LabReadyHandler),              # GET - silent lab readiness probe (always 200)
     (r'/api/users/([^/]+)/session-info', SessionInfoHandler),        # GET - idle culler status
+    (r'/api/users/([^/]+)/profile', UserProfileHandler),             # GET/PUT - first/last name + email
+    (r'/api/settings', SettingsDataHandler),                          # GET - platform settings (read-only JSON)
+    (r'/api/events', EventsDataHandler),                              # GET - recent platform events (audit feed)
     (r'/api/users/([^/]+)/extend-session', ExtendSessionHandler),    # POST - extend idle timeout
     (r'/api/notifications/active-servers', ActiveServersHandler),     # GET - list running servers
     (r'/api/notifications/broadcast', BroadcastNotificationHandler), # POST - broadcast to all servers

@@ -9,6 +9,7 @@ import type {
   EventRow,
   GroupConfig,
   GroupRow,
+  LabContainerInfo,
   ResourceSnapshot,
   ServerHero,
   ServerRow,
@@ -18,6 +19,7 @@ import type {
   SettingsRefCategory,
   Stats,
   TokenRow,
+  UserProfile,
   UserRow,
   Volume,
 } from './types'
@@ -30,6 +32,7 @@ export interface DataSource {
   getTotalResources(): Promise<ResourceSnapshot>
   getUsers(): Promise<UserRow[]>
   getUser(name: string): Promise<UserRow | undefined>
+  getUserProfile(name: string): Promise<UserProfile>
   getGroups(): Promise<GroupRow[]>
   getGroupConfig(name: string): Promise<GroupConfig | undefined>
   getEvents(): Promise<EventRow[]>
@@ -37,7 +40,7 @@ export interface DataSource {
   getUserVolumes(user: string): Promise<Volume[]>
   getEffectiveGrants(user: string): Promise<EffectiveGrant[]>
   getSessionInfo(user: string): Promise<SessionInfo>
-  getLabVolumes(): Promise<Volume[]>
+  getLabContainer(): Promise<LabContainerInfo>
   getSettings(): Promise<SettingsGroup[]>
   getSettingsReference(): Promise<SettingsRefCategory[]>
   getSentNotifications(): Promise<SentNotification[]>

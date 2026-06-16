@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="{{ base_url }}portal/brand/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create an account - Optimum Hub</title>
+    <script>
+      try {
+        var m = localStorage.getItem('optimum-hub-theme');
+        var d = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+        var dark = m === 'dark' || m === 'optimum-hub-dark' || ((m === 'system' || !m) && d);
+        var el = document.documentElement;
+        el.setAttribute('data-theme', dark ? 'optimum-hub-dark' : 'optimum-hub-light');
+        el.style.colorScheme = dark ? 'dark' : 'light';
+        el.style.background = dark ? '#252b32' : '#f5f7fa';
+      } catch (e) {}
+    </script>
+    <script>
+      // Auth-mode shell: the SPA renders the antd signup screen, which does a
+      // native POST to {{ base_url }}hub/signup (unchanged NativeAuth signup logic).
+      // After a POST NativeAuth re-renders this page with result_message + alert,
+      // which the screen surfaces as a notice.
+      window.jhdata = {
+        base_url: "{{ base_url }}",
+        prefix: "{{ prefix }}",
+        xsrf_token: "{{ xsrf_token }}",
+        authPage: "signup",
+        authMessage: {{ (result_message or '') | tojson }},
+        authAlert: {{ (alert or '') | tojson }},
+        askEmail: {% if ask_email %}true{% else %}false{% endif %}
+      };
+    </script>
+    {% if optimum_entry_css %}<link rel="stylesheet" crossorigin href="{{ base_url }}portal/{{ optimum_entry_css }}" />{% endif %}
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      <form method="post" action="{{ base_url }}hub/signup" style="max-width:320px;margin:64px auto;font-family:sans-serif">
+        <h1>Create an account</h1>
+        {% if result_message %}<p>{{ result_message }}</p>{% endif %}
+        <input type="hidden" name="_xsrf" value="{{ xsrf_token }}" />
+        <p><label>Username<br><input name="username" autocomplete="username" /></label></p>
+        {% if ask_email %}<p><label>Email<br><input type="email" name="email" /></label></p>{% endif %}
+        <p><label>Password<br><input type="password" name="signup_password" autocomplete="new-password" /></label></p>
+        <p><label>Repeat password<br><input type="password" name="signup_password_confirmation" autocomplete="new-password" /></label></p>
+        <button type="submit">Create account</button>
+      </form>
+    </noscript>
+    {% if optimum_entry_js %}<script type="module" crossorigin src="{{ base_url }}portal/{{ optimum_entry_js }}"></script>{% endif %}
+  </body>
+</html>

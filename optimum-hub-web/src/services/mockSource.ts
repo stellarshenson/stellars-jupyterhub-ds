@@ -9,6 +9,8 @@ import type {
   EventRow,
   GroupConfig,
   GroupRow,
+  LabContainerInfo,
+  PolicyConfig,
   PolicyTag,
   ResourceSnapshot,
   ServerHero,
@@ -20,6 +22,7 @@ import type {
   SettingsRefCategory,
   Stats,
   TokenRow,
+  UserProfile,
   UserRow,
   Volume,
 } from './types'
@@ -351,7 +354,14 @@ export const mockSource: DataSource = {
   },
 
   getTotalResources() {
-    return delay<ResourceSnapshot>({ cpu: 41, mem: 63, gpu: 33, gpus: [62, 41, 18, 9] })
+    return delay<ResourceSnapshot>({
+      cpu: 41, mem: 63, gpu: 62, gpus: [62, 41, 18],
+      gpuDevices: [
+        { index: '0', name: 'NVIDIA A100-SXM4-80GB', memoryMb: 81920, utilizationPct: 62, memoryUsedMb: 40000 },
+        { index: '1', name: 'NVIDIA A100-SXM4-80GB', memoryMb: 81920, utilizationPct: 41, memoryUsedMb: 22000 },
+        { index: '2', name: 'NVIDIA RTX 6000 Ada', memoryMb: 49140, utilizationPct: 18, memoryUsedMb: 8000 },
+      ],
+    })
   },
 
   getUsers() {
@@ -363,6 +373,12 @@ export const mockSource: DataSource = {
     return delay(p ? toUserRow(p) : undefined)
   },
 
+  getUserProfile(name: string) {
+    const p = PEOPLE.find((x) => x.name === name)
+    const [firstName = '', lastName = ''] = (p?.fullName ?? '').split(' ')
+    return delay<UserProfile>({ firstName, lastName, email: p ? `${name}@lab.stellars-tech.eu` : '' })
+  },
+
   getGroups() {
     return delay<GroupRow[]>(
       GROUP_SEEDS.map((g) => ({
@@ -370,6 +386,7 @@ export const mockSource: DataSource = {
         priority: g.priority,
         description: g.description,
         members: memberCount(g.name),
+        memberNames: PEOPLE.filter((p) => p.groups.includes(g.name)).map((p) => p.name),
         policies: policyTags(g),
       })),
     )
@@ -387,7 +404,48 @@ export const mockSource: DataSource = {
       summary: has(key) ? val(key) : 'not set',
     }))
     const members = PEOPLE.filter((p) => p.groups.includes(g.name)).map((p) => p.name)
-    return delay({ name: g.name, description: g.description, priority: g.priority, members, sections })
+    // representative flat config so the policy editor reads as configured in the demo
+    const config: PolicyConfig = {
+      env_vars_active: has('env_vars'),
+      env_vars: has('env_vars') ? [{ name: 'HF_HOME', value: '/mnt/shared/hf', description: 'HuggingFace cache' }] : [],
+      gpu_access: has('gpu'),
+      gpu_all: true,
+      gpu_device_ids: [],
+      docker_active: has('docker'),
+      docker_access: has('docker'),
+      docker_limited: false,
+      docker_privileged: false,
+      docker_limited_max_containers: 10,
+      docker_limited_max_volumes: 10,
+      docker_limited_max_networks: 3,
+      docker_limited_max_storage_gb: 50,
+      docker_limited_cpu_cap_cores: 2,
+      docker_limited_mem_cap_gb: 8,
+      docker_limited_allow_dangerous_flags: false,
+      docker_limited_user_compose_project_enabled: true,
+      docker_limited_user_compose_project_allow_override: true,
+      docker_limited_hub_network_access: true,
+      cpu_limit_enabled: has('cpu'),
+      cpu_limit_cores: has('cpu') ? 8 : 0,
+      mem_limit_enabled: has('mem'),
+      mem_limit_gb: has('mem') ? 32 : 0,
+      mem_swap_disabled: false,
+      sudo_active: has('sudo'),
+      sudo_enable: true,
+      downloads_active: has('downloads'),
+      downloads_allow: true,
+      api_keys_pool: {
+        enabled: has('api_keys'),
+        mode: has('api_keys') ? 'pair' : '',
+        env_var_id: 'OPENAI_ORG_ID',
+        env_var_secret: 'OPENAI_API_KEY',
+        env_var_key: '',
+        credentials: has('api_keys') ? [{ slot: 'mock-1', id: 'org-3xK', secret: 'sk-live-9f2a', description: 'seat 1' }] : [],
+      },
+      volume_mounts_active: has('volume_mounts'),
+      volume_mounts: has('volume_mounts') ? [{ volume: 'jupyterhub_shared', mountpoint: '/mnt/shared' }] : [],
+    }
+    return delay({ name: g.name, description: g.description, priority: g.priority, members, sections, config })
   },
 
   getEvents() {
@@ -448,11 +506,15 @@ export const mockSource: DataSource = {
     return delay<SessionInfo>({ timeLeftMin: p?.server?.timeLeftMin ?? 0, maxMin: IDLE_CULLER.maxExtensionH * 60 })
   },
 
-  getLabVolumes() {
-    return delay<Volume[]>([
-      { suffix: 'shared', name: 'jupyterhub_shared', mount: '/mnt/shared', description: 'Shared across all users (CIFS-backed)', standard: false },
-      { suffix: 'datasets', name: 'jupyterhub_datasets', mount: '/mnt/datasets', description: 'Read-only reference datasets', standard: false },
-    ])
+  getLabContainer() {
+    return delay<LabContainerInfo>({
+      image: PLATFORM.labImage,
+      volumes: [
+        { name: 'home', mount: '/home', description: 'User home directory files, configurations' },
+        { name: 'workspace', mount: '/home/lab/workspace', description: 'Project files, notebooks, code' },
+        { name: 'cache', mount: '/home/lab/.cache', description: 'Temporary files, pip cache, conda cache' },
+      ],
+    })
   },
 
   getSettings() {

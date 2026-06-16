@@ -1,11 +1,13 @@
 """Handlers for group management page and API."""
 
+import html
 import json
 import os
 
 from jupyterhub.handlers import BaseHandler
 from tornado import web
 
+from ..event_log import record_event
 from ..groups_config import GroupsConfigManager, validate_group_name
 from ..policy import (
     PolicyCoerceError,
@@ -89,6 +91,16 @@ class GroupsDataHandler(BaseHandler):
 
         result.sort(key=lambda g: g['priority'], reverse=True)
 
+        # Normalise priorities to a contiguous rank (top row = highest) so the
+        # stored value always matches the displayed row position - no gaps after
+        # a delete, no 0-ties after a create. Sort is stable, so existing relative
+        # order is preserved; persist only when something actually drifted.
+        desired = {g['name']: len(result) - i for i, g in enumerate(result)}
+        if any(g['priority'] != desired[g['name']] for g in result):
+            manager.reorder([{'name': n, 'priority': p} for n, p in desired.items()])
+            for g in result:
+                g['priority'] = desired[g['name']]
+
         # Standard shared volume: the UI offers a one-click "/mnt/shared" mount
         # only when the volume actually exists on the host. Docker errors fail
         # safe (exists=False -> quick-add hidden; manual rows still work).
@@ -134,6 +146,7 @@ class GroupsCreateHandler(BaseHandler):
         manager = GroupsConfigManager.get_instance()
         manager.save_config(name, description=description, priority=0)
 
+        record_event('group', f'Group <b>{html.escape(name)}</b> created')
         self.log.info(f"[Groups] Admin {current_user.name} created group '{name}'")
         self.finish({'success': True, 'name': name})
 
@@ -159,6 +172,7 @@ class GroupsDeleteHandler(BaseHandler):
         manager = GroupsConfigManager.get_instance()
         manager.delete_config(group_name)
 
+        record_event('group', f'Group <b>{html.escape(group_name)}</b> deleted')
         self.log.info(f"[Groups] Admin {current_user.name} deleted group '{group_name}'")
         self.finish({'success': True})
 
@@ -222,6 +236,7 @@ class GroupsConfigHandler(BaseHandler):
 
         manager.save_config(group_name, description=description, config_dict=merged)
 
+        record_event('policy', f'Policy updated on group <b>{html.escape(group_name)}</b>')
         self.log.info(f"[Groups] Admin {current_user.name} updated config for '{group_name}'")
         updated = manager.get_config(group_name)
         self.finish(updated)

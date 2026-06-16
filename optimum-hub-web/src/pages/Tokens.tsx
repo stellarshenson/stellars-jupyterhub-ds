@@ -1,5 +1,5 @@
-/* Tokens - personal API tokens and authorised OAuth applications. Read-only;
- * request / revoke are mocked. */
+/* Tokens - personal API tokens and authorised OAuth applications. Request and
+ * revoke hit the real hub tokens API. */
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
 import { Button, Modal, Typography } from 'antd'

@@ -17,7 +17,7 @@ import { IconAction } from '../components/IconAction'
 import { Icon } from '../components/Icon'
 import { useRole } from '../app/RoleContext'
 import { useEffectiveGrants, useEvents, useServerHero, useServers, useStats, useTotalResources, useUser } from '../hooks/queries'
-import { restartServer, stopServer } from '../services/ops'
+import { restartServer, startServer, stopServer } from '../services/ops'
 import type { ServerRow, ServerStatus } from '../services/types'
 
 const STATUS_ORDER: Record<ServerStatus, number> = { active: 1, idle: 2, spawning: 3, offline: 4, error: 5 }
@@ -61,8 +61,14 @@ function ActiveServersPreview() {
       align: 'right',
       render: (_, r) => (
         <div className="oh-row" style={{ justifyContent: 'flex-end' }}>
-          <IconAction icon="restart" title="Restart" onClick={() => restartServer(r.user)} />
-          <IconAction icon="stop" title="Stop" danger filled onClick={() => stopServer(r.user)} />
+          {r.status === 'offline' || r.status === 'error' ? (
+            <IconAction icon="play" title="Start" onClick={() => startServer(r.user)} />
+          ) : (
+            <>
+              <IconAction icon="restart" title="Restart" onClick={() => restartServer(r.user)} />
+              <IconAction icon="stop" title="Stop" danger filled onClick={() => stopServer(r.user)} />
+            </>
+          )}
         </div>
       ),
     },
@@ -205,7 +211,7 @@ function AdminHome() {
               rows={[
                 { label: 'CPU', value: total.cpu },
                 { label: 'Memory', value: total.mem },
-                { label: 'GPU', value: total.gpu, gpus: total.gpus },
+                { label: 'GPU', value: total.gpu, gpus: total.gpus, gpuDevices: total.gpuDevices },
               ]}
             />
           )}
@@ -239,9 +245,6 @@ function UserHome() {
         <Card>
           <h3 style={{ margin: '0 0 12px' }}>Your groups</h3>
           <CappedTags items={(me?.groups ?? []).map((g) => ({ key: g, label: g }))} cap={8} />
-          <div className="oh-note" style={{ marginTop: 16 }}>
-            <span><b>Note:</b> membership is read-only - an admin manages your groups, which grant your policy.</span>
-          </div>
         </Card>
         <Card>
           <h3 style={{ margin: '0 0 12px' }}>What your groups grant</h3>

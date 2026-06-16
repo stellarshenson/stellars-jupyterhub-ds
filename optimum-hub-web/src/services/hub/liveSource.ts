@@ -20,9 +20,15 @@ import { mockSource } from '../mockSource'
 import { IDLE_CULLER, THRESHOLDS } from '../config'
 import { hubGet, getCurrentUser } from './client'
 import type {
+  EventRow,
+  EventType,
+  GpuDevice,
   GroupConfig,
   GroupRow,
+  LabContainerInfo,
   ResourceSnapshot,
+  SettingsGroup,
+  UserProfile,
   ServerHero,
   ServerRow,
   ServerStatus,
@@ -68,6 +74,9 @@ interface RawActivity {
   container_max_extra_space_mb?: number
   volume_max_total_size_mb?: number
   memory_max_usage_mb?: number
+  gpus?: Array<{ index: string; name: string; memory_mb?: number; utilization?: number; memory_used_mb?: number }> // host GPU inventory + live load
+  lab_image?: string // spawn image (Lab Container page)
+  lab_volumes?: Array<{ suffix: string; mount: string; description?: string }> // standard per-user volumes
 }
 interface RawPolicySummary {
   key: string
@@ -85,6 +94,11 @@ interface RawGroup {
 }
 interface RawGroupsResp {
   groups: RawGroup[]
+}
+
+// event type -> icon key (the hub records type; the portal picks the icon)
+const EVENT_ICON: Record<string, string> = {
+  server: 'play', user: 'user', group: 'group', policy: 'shield', broadcast: 'megaphone', cull: 'stop',
 }
 
 // registry order + display labels (mirrors stellars_hub_services POLICY_TYPES)
@@ -262,6 +276,7 @@ export const liveSource: DataSource = {
         priority: g.priority ?? i + 1,
         description: g.description,
         members: g.member_count ?? g.members?.length ?? 0,
+        memberNames: g.members ?? [],
         policies: (g.policy_summary ?? []).map((s) => ({ key: s.key, label: s.badge || POLICY_LABELS[s.key] || s.key, detail: s.detail })),
       }))
     } catch {
@@ -279,7 +294,9 @@ export const liveSource: DataSource = {
         const s = summ.get(key)
         return { key, label: POLICY_LABELS[key], enabled: !!s, summary: s ? s.badge : 'not set' }
       })
-      return { name: g.name, description: g.description ?? '', priority: g.priority ?? 0, members: g.members ?? [], sections }
+      // the real flat policy config drives the editor (read); save PUTs it back
+      const config = (g.config ?? {}) as GroupConfig['config']
+      return { name: g.name, description: g.description ?? '', priority: g.priority ?? 0, members: g.members ?? [], sections, config }
     } catch {
       return mockSource.getGroupConfig(name)
     }
@@ -303,15 +320,38 @@ export const liveSource: DataSource = {
   async getTotalResources(): Promise<ResourceSnapshot> {
     try {
       const activity = await fetchActivity()
+      // Host GPU inventory is independent of active servers - surface the real
+      // device count/names even when nothing is running. The background sampler
+      // adds per-device `utilization` (real load %) when available, which drives
+      // the striped per-GPU meter; absent it falls back to inventory chips.
+      const gpuDevices: GpuDevice[] | undefined = activity.gpus
+        ? activity.gpus.map((g) => ({
+            index: String(g.index),
+            name: g.name,
+            memoryMb: g.memory_mb ?? 0,
+            utilizationPct: g.utilization,
+            memoryUsedMb: g.memory_used_mb,
+          }))
+        : undefined
+      // Per-GPU utilisation array (ordered by inventory) for the striped meter,
+      // only when at least one device reports a sample.
+      const gpus: number[] | undefined =
+        gpuDevices && gpuDevices.some((d) => d.utilizationPct !== undefined)
+          ? gpuDevices.map((d) => d.utilizationPct ?? 0)
+          : undefined
+      // Aggregate GPU load = busiest device (host-level headline number).
+      const gpuAgg = gpus && gpus.length ? Math.max(...gpus) : 0
       const active = activity.users.filter((u) => u.server_active)
-      if (!active.length) return { cpu: 0, mem: 0, gpu: 0 }
+      if (!active.length) return { cpu: 0, mem: 0, gpu: gpuAgg, gpus, gpuDevices }
       const totalMb = active[0].memory_total_mb || 0
       const memUsed = active.reduce((s, u) => s + (u.memory_mb ?? 0), 0)
       const cpuSum = active.reduce((s, u) => s + (u.cpu_percent ?? 0), 0)
       return {
         cpu: clampPct(cpuSum), // sum of container cpu% across servers, clamped (approximate host load)
         mem: totalMb > 0 ? clampPct((memUsed / totalMb) * 100) : 0,
-        gpu: 0, // host GPU utilisation not collected
+        gpu: gpuAgg, // busiest GPU's real load
+        gpus,
+        gpuDevices,
         memTip: `${round1(memUsed / 1024)} GB across ${active.length} server(s)`,
       }
     } catch {
@@ -413,11 +453,70 @@ export const liveSource: DataSource = {
     }
   },
 
+  // first/last name + email from the hub profile store (admin or self)
+  async getUserProfile(name: string): Promise<UserProfile> {
+    try {
+      const r = await hubGet<{ first_name?: string; last_name?: string; email?: string }>(`/users/${encodeURIComponent(name)}/profile`)
+      return { firstName: r.first_name ?? '', lastName: r.last_name ?? '', email: r.email ?? '' }
+    } catch {
+      return { firstName: '', lastName: '', email: '' }
+    }
+  },
+
+  // real spawn image + standard per-user volumes from the /activity snapshot
+  async getLabContainer(): Promise<LabContainerInfo> {
+    try {
+      const a = await fetchActivity()
+      return {
+        image: a.lab_image ?? '',
+        volumes: (a.lab_volumes ?? []).map((v) => ({ name: v.suffix, mount: v.mount, description: v.description })),
+      }
+    } catch {
+      return mockSource.getLabContainer()
+    }
+  },
+
+  // real platform settings (read-only): the live env values, grouped by category.
+  // The env-var name is the tooltip; description is the row label.
+  async getSettings(): Promise<SettingsGroup[]> {
+    try {
+      const r = await hubGet<{ settings: Array<{ category: string; name: string; value: string; description: string }> }>('/settings')
+      const groups: SettingsGroup[] = []
+      const byCat = new Map<string, SettingsGroup>()
+      for (const s of r.settings) {
+        let g = byCat.get(s.category)
+        if (!g) {
+          g = { title: s.category, rows: [] }
+          byCat.set(s.category, g)
+          groups.push(g)
+        }
+        g.rows.push({ key: s.description || s.name, value: s.value || '-', state: 'neutral', tip: s.name })
+      }
+      return groups
+    } catch {
+      return mockSource.getSettings()
+    }
+  },
+
+  // real platform event log (user/group/policy/broadcast lifecycle); icon derived
+  // from the event type. text is pre-escaped HTML from the hub
+  async getEvents(): Promise<EventRow[]> {
+    try {
+      const r = await hubGet<{ events: Array<{ id: string; ts: string; type: string; text: string }> }>('/events')
+      return r.events.map((e) => ({
+        id: e.id,
+        type: (EVENT_ICON[e.type] ? e.type : 'server') as EventType,
+        icon: EVENT_ICON[e.type] ?? 'activity',
+        text: e.text,
+        whenISO: e.ts,
+      }))
+    } catch {
+      return mockSource.getEvents()
+    }
+  },
+
   // backend-less or derived views: no read API yet -> mock keeps the UI whole
-  getEvents: mockSource.getEvents,
   getEffectiveGrants: mockSource.getEffectiveGrants,
-  getLabVolumes: mockSource.getLabVolumes,
-  getSettings: mockSource.getSettings,
   getSettingsReference: mockSource.getSettingsReference,
-  getSentNotifications: mockSource.getSentNotifications,
+  getSentNotifications: async () => [], // no backend sent-history store yet - empty in live
 }

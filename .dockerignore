@@ -2,7 +2,7 @@ tests/
 docker-compose.yaml
 
 # optimum-hub-web build artifacts: keep node_modules + builds out of the context
-# (the webbuilder stage runs `npm ci` and `vite build` inside the image)
+# (the builder stage runs `npm ci` and `vite build` inside the image)
 optimum-hub-web/node_modules/
 optimum-hub-web/dist/
 optimum-hub-web/dist-wheel/

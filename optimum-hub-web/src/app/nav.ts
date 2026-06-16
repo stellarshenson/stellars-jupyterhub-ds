@@ -84,20 +84,18 @@ export function navLeaves(role: Role): NavLeaf[] {
 
 export type CmdAction =
   | { group: string; icon: IconKey; label: string; kind: 'nav'; to: string; hint?: string }
-  | { group: string; icon: IconKey; label: string; kind: 'action'; toast: string; hint?: string }
+  | { group: string; icon: IconKey; label: string; kind: 'action'; action: 'open-server' | 'restart-server'; hint?: string }
 
 export const ACTIONS_ADMIN: CmdAction[] = [
   { group: 'Create', icon: 'user', label: 'Add user', hint: 'U', kind: 'nav', to: '/users/new' },
   { group: 'Create', icon: 'group', label: 'Create group', hint: 'G', kind: 'nav', to: '/groups/new' },
-  { group: 'Actions', icon: 'stop', label: 'Stop server: jupyterlab-alice', kind: 'action', toast: 'Stopping jupyterlab-alice' },
   { group: 'Navigate', icon: 'activity', label: 'Events log', kind: 'nav', to: '/events' },
   { group: 'Navigate', icon: 'megaphone', label: 'Broadcast notification', kind: 'nav', to: '/notifications' },
 ]
 
 export const ACTIONS_USER: CmdAction[] = [
-  { group: 'My server', icon: 'play', label: 'Open my server', kind: 'action', toast: 'Opening your lab' },
-  { group: 'My server', icon: 'restart', label: 'Restart my server', kind: 'action', toast: 'Restarting your lab' },
-  { group: 'My server', icon: 'disk', label: 'Manage volumes', kind: 'action', toast: 'Manage-volumes (stop server first)' },
+  { group: 'My server', icon: 'play', label: 'Open my server', kind: 'action', action: 'open-server' },
+  { group: 'My server', icon: 'restart', label: 'Restart my server', kind: 'action', action: 'restart-server' },
 ]
 
 export function actionsFor(role: Role): CmdAction[] {

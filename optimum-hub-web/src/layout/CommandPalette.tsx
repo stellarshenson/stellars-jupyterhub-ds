@@ -8,7 +8,8 @@ import { Icon } from '../components/Icon'
 import type { IconKey } from '../components/Icon'
 import { useRole } from '../app/RoleContext'
 import { actionsFor, navLeaves } from '../app/nav'
-import { mockAction } from '../services/actions'
+import { restartServer } from '../services/ops'
+import { userServerUrl } from '../services/hub/client'
 
 interface Row {
   group: string
@@ -22,7 +23,7 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const [sel, setSel] = useState(0)
-  const { role } = useRole()
+  const { role, username } = useRole()
   const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -49,10 +50,15 @@ export function CommandPalette() {
       icon: a.icon,
       label: a.label,
       hint: a.hint,
-      run: a.kind === 'nav' ? () => navigate(a.to) : () => mockAction(a.toast),
+      run:
+        a.kind === 'nav'
+          ? () => navigate(a.to)
+          : a.action === 'open-server'
+            ? () => window.location.assign(userServerUrl(username))
+            : () => restartServer(username),
     }))
     return [...nav, ...acts]
-  }, [role, navigate])
+  }, [role, navigate, username])
 
   const filtered = useMemo(
     () => rows.filter((r) => r.label.toLowerCase().includes(q.toLowerCase())),
@@ -107,7 +113,7 @@ export function CommandPalette() {
       width={620}
       style={{ top: 96 }}
       styles={{ body: { padding: 0 } }}
-      destroyOnClose
+      destroyOnHidden
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--color-border-subtle)' }}>
         <Icon name="search" size={18} style={{ color: 'var(--color-text-subtle)' }} />

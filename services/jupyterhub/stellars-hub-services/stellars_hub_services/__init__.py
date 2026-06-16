@@ -18,7 +18,7 @@ from .api_keys_pool import (
     pick_free_slot,
     pool_label_key,
 )
-from .auth import StellarsNativeAuthenticator
+from .auth import OptimumHubAuthenticator, OptimumSignUpHandler, StellarsNativeAuthenticator
 from .branding import setup_branding
 from .docker_proxy import register_user, unregister_user
 from .events import register_events
@@ -38,6 +38,7 @@ from .idle_culler import (
     schedule_idle_culler,
     should_cull,
 )
+from .gpu_cache import configure_gpu_cache
 from .services import get_services_and_roles
 from .volume_cache import configure_volume_cache
 from .volumes import (
@@ -53,6 +54,8 @@ __all__ = [
     "parse_int",
     "ratelimit_disabled",
     "StellarsNativeAuthenticator",
+    "OptimumHubAuthenticator",
+    "OptimumSignUpHandler",
     "env_for_slot",
     "mask_last4",
     "merge_pool_on_save",
@@ -65,6 +68,7 @@ __all__ = [
     "calc_extended_remaining",
     "calc_remaining",
     "remaining_seconds_for",
+    "configure_gpu_cache",
     "configure_volume_cache",
     "register_user",
     "unregister_user",
