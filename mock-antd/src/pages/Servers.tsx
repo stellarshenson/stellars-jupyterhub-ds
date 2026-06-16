@@ -158,7 +158,7 @@ export default function Servers() {
         search={false}
         options={false}
         rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
-        pagination={{ pageSize: 8, showSizeChanger: false, showTotal: (t) => `${t} servers in scope` }}
+        pagination={{ defaultPageSize: 25, pageSizeOptions: [25, 50, 100], showSizeChanger: true, showTotal: (t) => `${t} servers in scope` }}
         headerTitle={
           <ScopeFilterPills
             value={scope}

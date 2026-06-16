@@ -45,7 +45,7 @@ function leafLabel(label: string, badge?: number) {
   )
 }
 
-export function SiderMenu() {
+export function SiderMenu({ collapsed = false }: { collapsed?: boolean }) {
   const { role } = useRole()
   const navigate = useNavigate()
   const { pathname } = useLocation()
@@ -67,7 +67,7 @@ export function SiderMenu() {
 
   const items: Items = []
   navFor(role).forEach((g) => {
-    if (g.group) items.push({ type: 'group', label: g.group, children: g.items.map(toItem) })
+    if (g.group && !collapsed) items.push({ type: 'group', label: g.group, children: g.items.map(toItem) })
     else g.items.forEach((n) => items.push(toItem(n)))
   })
 
@@ -81,6 +81,7 @@ export function SiderMenu() {
   return (
     <Menu
       mode="inline"
+      inlineCollapsed={collapsed}
       items={items}
       selectedKeys={selectedKeys}
       defaultOpenKeys={advancedActive ? ['advanced'] : []}

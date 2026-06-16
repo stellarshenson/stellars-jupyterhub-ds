@@ -121,8 +121,8 @@ const CAST: Person[] = [
 
 // pending signups (top section on Users)
 const PENDING: Person[] = [
-  { name: 'lena', authorized: false, pending: true, fullName: 'Lena Brandt', activity: 0, createdDaysAgo: 0, groups: [] },
-  { name: 'hugo', authorized: false, pending: true, activity: 0, createdDaysAgo: 0, groups: [] },
+  { name: 'lena', authorized: false, pending: true, fullName: 'Lena Brandt', activity: 0, createdDaysAgo: 0, groups: ['research', 'data-science'] },
+  { name: 'hugo', authorized: false, pending: true, activity: 0, createdDaysAgo: 0, groups: ['students'] },
 ]
 
 const ACT_CYCLE = [0, 12, 35, 58, 78, 96]
@@ -463,8 +463,8 @@ export const mockSource: DataSource = {
       ] },
       { title: 'Authentication', rows: [
         { key: 'Admin user', value: PLATFORM.admin, state: 'neutral' },
-        { key: 'Signup', value: 'disabled', state: 'neutral' },
-        { key: 'Bootstrap window', value: 'closed', state: 'neutral' },
+        { key: 'Signup', value: 'disabled', control: 'switch', tip: 'Default from JUPYTERHUB_SIGNUP_ENABLED - toggle to override' },
+        { key: 'Allow all users', value: 'enabled', state: 'ok', tip: 'All registered users may sign in; new accounts still need authorisation' },
       ] },
       { title: 'Idle Culler', rows: [
         { key: 'Timeout', value: `${IDLE_CULLER.timeoutH}h` },

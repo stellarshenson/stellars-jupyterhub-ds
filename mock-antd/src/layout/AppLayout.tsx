@@ -98,6 +98,25 @@ function SiderFoot() {
   )
 }
 
+/* Thin rectangular grab handle straddling the sider's right edge at mid-height.
+ * Fixed-positioned so it tracks the sider width; no icon. */
+function SiderHandle({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  return (
+    <Tooltip title={collapsed ? 'Expand' : 'Collapse'} placement="right">
+      <button
+        className="oh-sider-handle"
+        onClick={onToggle}
+        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        style={{
+          position: 'fixed', left: collapsed ? 64 : 248, top: '50%', transform: 'translate(-50%, -50%)',
+          width: 6, height: 44, padding: 0, border: 0, borderRadius: 3,
+          cursor: 'pointer', zIndex: 101, transition: 'left .2s, background-color .12s',
+        }}
+      />
+    </Tooltip>
+  )
+}
+
 const STACK_CHIPS = [
   { k: 'JupyterHub', v: '3', c: '#d97f3f' },
   { k: 'JupyterLab', v: '4', c: '#d97f3f' },
@@ -132,6 +151,8 @@ export function AppLayout() {
   const p = PALETTES[resolved]
   const isHome = pathname === '/home' || pathname === '/'
   const logoSrc = `${import.meta.env.BASE_URL}brand/jh-logo.svg`
+  const markSrc = `${import.meta.env.BASE_URL}brand/jl-logo.svg`
+  const [collapsed, setCollapsed] = useState(false)
 
   return (
     <ProLayout
@@ -139,15 +160,17 @@ export function AppLayout() {
       layout="side"
       fixSiderbar
       fixedHeader
-      collapsed={false}
-      onCollapse={() => {}}
+      collapsed={collapsed}
+      onCollapse={setCollapsed}
       siderWidth={248}
       location={{ pathname }}
       route={{ path: '/', routes: [] }}
-      menuContentRender={() => <SiderMenu />}
-      menuHeaderRender={() => (
-        <Link to="/home" style={{ display: 'flex', alignItems: 'center', height: '100%', flex: 1, minWidth: 0 }} title="Optimum Hub">
-          <img className="oh-brand-logo" src={logoSrc} alt="Stellars Tech AI Lab" />
+      menuContentRender={(props) => <SiderMenu collapsed={!!props?.collapsed} />}
+      menuHeaderRender={(_logo, _title, props) => (
+        <Link to="/home" style={{ display: 'flex', alignItems: 'center', justifyContent: props?.collapsed ? 'center' : 'flex-start', height: '100%', flex: 1, minWidth: 0 }} title="Optimum Hub">
+          {props?.collapsed
+            ? <img src={markSrc} alt="Optimum Hub" style={{ width: 30, height: 30, objectFit: 'contain' }} />
+            : <img className="oh-brand-logo" src={logoSrc} alt="Stellars Tech AI Lab" />}
         </Link>
       )}
       menuFooterRender={(props) => (props?.collapsed ? null : <SiderFoot />)}
@@ -163,6 +186,7 @@ export function AppLayout() {
     >
       <MessageBinder />
       <CommandPalette />
+      <SiderHandle collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
       <div style={{ maxWidth: 1320, margin: '0 auto', width: '100%' }}>
         <div className="oh-topbar">
           <Breadcrumbs />

@@ -31,27 +31,37 @@ function PendingSection({ users }: { users: UserRow[] }) {
   if (users.length === 0) return null
   return (
     <Card style={{ marginBottom: 16, borderColor: 'var(--color-warning)' }} styles={{ body: { padding: 0 } }}>
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-warning-soft)', fontWeight: 600 }}>
+      <div style={{ padding: '12px 24px', borderBottom: '1px solid var(--color-warning-soft)', fontWeight: 600 }}>
         Pending authorisation <span className="oh-muted">· {users.length}</span>
       </div>
-      {users.map((u, i) => (
-        <div
-          key={u.name}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px',
-            borderBottom: '1px solid var(--color-border-subtle)',
-            background: i % 2 ? 'color-mix(in srgb, var(--color-text) 3%, transparent)' : 'transparent',
-          }}
-        >
-          <div className="oh-user-cell" style={{ minWidth: 0 }}>
-            <span>{u.name}</span>
-            {u.fullName && <span className="oh-name-hint">{u.fullName}</span>}
-          </div>
-          <div style={{ marginLeft: 'auto', color: 'var(--color-text-subtle)', fontSize: 12 }}>signed up {timeAgoShort(u.createdISO)}</div>
-          <Button type="primary" size="small" onClick={() => mockAction(`Authorized ${u.name}`)}>Authorize</Button>
-          <Button danger size="small" onClick={() => mockAction(`Discarded ${u.name}`)}>Discard</Button>
-        </div>
-      ))}
+      <table className="oh-pending-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Groups</th>
+            <th>Signed up</th>
+            <th aria-label="Actions" />
+          </tr>
+        </thead>
+        <tbody>
+          {users.map((u) => (
+            <tr key={u.name}>
+              <td>
+                <div className="oh-user-cell">
+                  <Link to={`/users/${u.name}`} style={{ color: 'var(--color-accent)' }}>{u.name}</Link>
+                  {u.fullName && <span className="oh-name-hint">{u.fullName}</span>}
+                </div>
+              </td>
+              <td><CappedTags items={u.groups.map((g) => ({ key: g, label: g }))} cap={4} /></td>
+              <td className="oh-pending-when">{timeAgoShort(u.createdISO)}</td>
+              <td className="oh-pending-act">
+                <Button type="primary" size="small" onClick={() => mockAction(`Authorized ${u.name}`)}>Authorize</Button>
+                <Button danger size="small" onClick={() => mockAction(`Discarded ${u.name}`)}>Discard</Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </Card>
   )
 }
