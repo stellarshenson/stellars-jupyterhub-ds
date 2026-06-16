@@ -149,15 +149,19 @@ body { margin: 0; font-family: var(--font-sans); }
 .oh-cmdk-item.sel .anticon { color: var(--color-accent); }
 .oh-cmdk-group { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--color-text-subtle); padding: var(--space-3) var(--space-3) var(--space-2); }
 
-/* identity + brand in the sider - tight logo well so the mark can run larger */
-.ant-pro-sider-logo { padding-block: 9px !important; padding-inline: 14px !important; }
-.oh-brand-logo { height: 38px; width: auto; max-width: 100%; display: block; }
+/* identity + brand in the sider - the well is pinned to 64px (the header height)
+ * with the logo vertically centred, so the logo divider lines up exactly with the
+ * content header divider (.oh-topbar), both at y=64. */
+.ant-pro-sider-logo { height: 64px !important; padding: 0 8px !important; display: flex; align-items: center; }
+.oh-brand-logo { display: block; width: 100% !important; height: auto !important; max-height: none !important; aspect-ratio: 463 / 87; }
 .oh-sider-foot { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-top: 1px solid var(--color-border-subtle); }
 .oh-sider-foot .who { font-size: var(--text-sm); line-height: 1.2; min-width: 0; }
 .oh-sider-foot .who small { display: block; color: var(--color-text-subtle); font-size: 11px; }
 
-/* topbar - the breadcrumb row above the page content (ProLayout header is off) */
-.oh-topbar { display: flex; align-items: center; min-height: 32px; padding-bottom: 14px; margin-bottom: 18px; border-bottom: 1px solid var(--color-border-subtle); font-size: var(--text-sm); }
+/* topbar - the breadcrumb header bar above the page content (ProLayout header is
+ * off). Fixed 64px tall and flush to the top so its bottom border aligns with the
+ * sider logo divider (both at y=64). */
+.oh-topbar { display: flex; align-items: center; height: 64px; margin-bottom: 24px; border-bottom: 1px solid var(--color-border-subtle); font-size: var(--text-sm); }
 .oh-topbar .ant-breadcrumb { font-size: var(--text-sm); }
 
 /* theme changer - segmented light / dark / system, sits in the sider foot */
