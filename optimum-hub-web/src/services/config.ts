@@ -19,7 +19,7 @@ export const IDLE_CULLER = {
 // (liveSource.getHubInfo) and the real settings from the settings handler.
 export const PLATFORM = {
   version: '1.0.0',
-  jupyterhubVersion: '5.4.6',
+  jupyterhubVersion: '5.5.0',
   admin: 'admin',
   baseUrl: '/jupyterhub',
   timezone: 'Europe/Warsaw',

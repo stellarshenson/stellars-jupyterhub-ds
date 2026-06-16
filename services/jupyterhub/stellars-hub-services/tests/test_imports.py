@@ -106,8 +106,8 @@ def test_gpu_cache():
         configure_gpu_cache,
         get_gpu_utilization_with_refresh,
     )
-    configure_gpu_cache('nvidia/cuda:13.0.2-base-ubuntu24.04')
-    # No GPU/docker in the test env -> sample fails gracefully, cache stays {}.
+    configure_gpu_cache('http://gpuinfo-nvidia:8000')
+    # No sidecar reachable in the test env -> sample fails gracefully, cache stays {}.
     data = get_gpu_utilization_with_refresh()
     assert isinstance(data, dict)
     assert GpuUtilizationRefresher.get_instance() is not None

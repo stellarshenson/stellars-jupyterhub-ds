@@ -2,16 +2,21 @@
  * a progress bar tied to the real hub state, and expose a `busy` map so the server
  * widgets disable conflicting controls while a transition is in flight.
  *
- * - start: streams the hub's spawn-progress (SSE; `_xsrf` goes in the query string
- *   because EventSource cannot set headers), falling back to a status poll if the
- *   stream ends without a ready event.
- * - restart / stop: no spawn stream exists (container.restart / server delete), so
- *   they poll the server status until it settles. */
+ * On completion the popup resolves itself (no manual click):
+ *   - start your OWN server -> immediately move into the new lab
+ *   - start someone else's server (admin) -> return to the parent screen
+ *   - restart / stop -> return to the parent screen once it settles
+ * Failures keep the popup open with an error + Close.
+ *
+ * start streams the hub's spawn-progress (SSE; `_xsrf` in the query string because
+ * EventSource cannot set headers), falling back to a status poll if the stream
+ * ends without a ready event. restart / stop poll the status until it settles. */
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react'
 import { Button, Modal, Progress } from 'antd'
 import { getDataSource } from '../services/datasource'
 import { isMock } from '../services/dataMode'
 import { invalidate } from '../services/actions'
+import { useRole } from './RoleContext'
 import { restartServer, startServer, stopServer } from '../services/ops'
 import { hubUrl, userServerUrl, xsrfToken } from '../services/hub/client'
 
@@ -47,6 +52,7 @@ interface ModalState {
 }
 
 export function ServerLifecycleProvider({ children }: { children: ReactNode }) {
+  const { username } = useRole()
   const [busy, setBusy] = useState<Record<string, Mode>>({})
   const [st, setSt] = useState<ModalState>({ open: false, user: '', mode: 'start', percent: 0, message: '', phase: 'busy', indeterminate: false })
   const esRef = useRef<EventSource | null>(null)
@@ -59,6 +65,29 @@ export function ServerLifecycleProvider({ children }: { children: ReactNode }) {
     esRef.current = null
     setSt((s) => ({ ...s, open: false }))
   }, [])
+
+  // Resolve a finished transition. Success: start-your-own moves into the new lab;
+  // everything else returns to the parent screen (auto-close). Failure: keep the
+  // popup open with the error so it can be read + dismissed.
+  const settle = useCallback(
+    (user: string, mode: Mode, ok: boolean, doneMsg: string, errMsg: string) => {
+      clearBusy(user)
+      refresh(user)
+      if (!ok) {
+        setSt((s) => ({ ...s, indeterminate: false, phase: 'error', message: errMsg }))
+        return
+      }
+      setSt((s) => ({ ...s, indeterminate: false, percent: 100, phase: 'done', message: doneMsg }))
+      if (mode === 'start' && user === username && !isMock()) {
+        // immediately move to the freshly started server
+        window.setTimeout(() => window.location.assign(userServerUrl(user)), 400)
+      } else {
+        // return to the parent screen
+        window.setTimeout(() => close(), 800)
+      }
+    },
+    [username, clearBusy, refresh, close],
+  )
 
   // Poll server status until `pred` holds or ~90s elapse. Returns whether it held.
   const pollUntil = useCallback(async (user: string, pred: (status: string) => boolean) => {
@@ -84,7 +113,7 @@ export function ServerLifecycleProvider({ children }: { children: ReactNode }) {
       const t = window.setInterval(() => {
         p = Math.min(100, p + 19)
         setSt((s) => (s.open && s.mode === 'start' ? { ...s, percent: p, message: p < 100 ? 'Spawning…' : 'Ready' } : s))
-        if (p >= 100) { window.clearInterval(t); setSt((s) => ({ ...s, phase: 'done' })); clearBusy(user); refresh(user) }
+        if (p >= 100) { window.clearInterval(t); settle(user, 'start', true, 'Ready', '') }
       }, 320)
       return
     }
@@ -94,25 +123,22 @@ export function ServerLifecycleProvider({ children }: { children: ReactNode }) {
     const url = hubUrl(`/api/users/${encodeURIComponent(user)}/server/progress${token ? `?_xsrf=${encodeURIComponent(token)}` : ''}`)
     const es = new EventSource(url, { withCredentials: true })
     esRef.current = es
-    let settled = false
+    let resolved = false
     es.onmessage = (ev) => {
       try {
         const d = JSON.parse(ev.data) as { progress?: number; message?: string; ready?: boolean; failed?: boolean }
         setSt((s) => ({ ...s, percent: typeof d.progress === 'number' ? d.progress : s.percent, message: d.message ?? s.message }))
-        if (d.ready) { settled = true; es.close(); setSt((s) => ({ ...s, percent: 100, phase: 'done', message: 'Ready' })); clearBusy(user); refresh(user) }
-        else if (d.failed) { settled = true; es.close(); setSt((s) => ({ ...s, phase: 'error', message: d.message ?? 'Spawn failed' })); clearBusy(user); refresh(user) }
+        if (d.ready) { resolved = true; es.close(); settle(user, 'start', true, 'Ready', '') }
+        else if (d.failed) { resolved = true; es.close(); settle(user, 'start', false, '', d.message ?? 'Spawn failed') }
       } catch { /* ignore a malformed frame */ }
     }
     es.onerror = () => {
       es.close()
-      if (settled) return
+      if (resolved) return
       // stream closed without a ready event - confirm via a status poll
-      pollUntil(user, isRunning).then((ok) => {
-        setSt((s) => ({ ...s, percent: ok ? 100 : s.percent, phase: ok ? 'done' : 'error', message: ok ? 'Ready' : 'Could not confirm spawn' }))
-        clearBusy(user); refresh(user)
-      })
+      pollUntil(user, isRunning).then((ok) => settle(user, 'start', ok, 'Ready', 'Could not confirm spawn'))
     }
-  }, [clearBusy, refresh, pollUntil])
+  }, [settle, pollUntil])
 
   const restart = useCallback(async (user: string) => {
     setBusy((b) => ({ ...b, [user]: 'restart' }))
@@ -120,12 +146,11 @@ export function ServerLifecycleProvider({ children }: { children: ReactNode }) {
     try {
       await restartServer(user)
     } catch {
-      setSt((s) => ({ ...s, indeterminate: false, phase: 'error', message: 'Restart failed' })); clearBusy(user); return
+      settle(user, 'restart', false, '', 'Restart failed'); return
     }
     const ok = await pollUntil(user, isRunning)
-    setSt((s) => ({ ...s, indeterminate: false, percent: 100, phase: ok ? 'done' : 'error', message: ok ? 'Running' : 'Restart did not complete' }))
-    clearBusy(user); refresh(user)
-  }, [clearBusy, refresh, pollUntil])
+    settle(user, 'restart', ok, 'Running', 'Restart did not complete')
+  }, [settle, pollUntil])
 
   const stop = useCallback(async (user: string) => {
     setBusy((b) => ({ ...b, [user]: 'stop' }))
@@ -133,17 +158,15 @@ export function ServerLifecycleProvider({ children }: { children: ReactNode }) {
     try {
       await stopServer(user)
     } catch {
-      setSt((s) => ({ ...s, indeterminate: false, phase: 'error', message: 'Stop failed' })); clearBusy(user); return
+      settle(user, 'stop', false, '', 'Stop failed'); return
     }
     const ok = await pollUntil(user, (s) => s === 'offline')
-    setSt((s) => ({ ...s, indeterminate: false, percent: 100, phase: ok ? 'done' : 'error', message: ok ? 'Stopped' : 'Stop did not complete' }))
-    clearBusy(user); refresh(user)
-  }, [clearBusy, refresh, pollUntil])
+    settle(user, 'stop', ok, 'Stopped', 'Stop did not complete')
+  }, [settle, pollUntil])
 
   const busyOf = useCallback((user: string) => busy[user] ?? null, [busy])
 
   const stroke = st.phase === 'error' ? 'var(--color-danger)' : st.phase === 'done' ? 'var(--color-success)' : 'var(--color-accent)'
-  const showLab = st.phase === 'done' && st.mode !== 'stop'
 
   return (
     <Ctx.Provider value={{ start, restart, stop, busyOf }}>
@@ -152,19 +175,10 @@ export function ServerLifecycleProvider({ children }: { children: ReactNode }) {
         open={st.open}
         title={TITLE[st.mode]}
         onCancel={close}
-        maskClosable={st.phase !== 'busy'}
-        closable={st.phase !== 'busy'}
-        keyboard={st.phase !== 'busy'}
-        footer={
-          st.phase === 'busy'
-            ? null
-            : showLab
-              ? [
-                  <Button key="close" onClick={close}>Close</Button>,
-                  <Button key="lab" type="primary" onClick={() => { close(); window.location.assign(userServerUrl(st.user)) }}>Open lab</Button>,
-                ]
-              : [<Button key="close" type="primary" onClick={close}>Close</Button>]
-        }
+        maskClosable={st.phase === 'error'}
+        closable={st.phase === 'error'}
+        keyboard={st.phase === 'error'}
+        footer={st.phase === 'busy' ? null : [<Button key="close" type="primary" onClick={close}>Close</Button>]}
       >
         <p style={{ marginBottom: 12 }}>{st.message}</p>
         <Progress

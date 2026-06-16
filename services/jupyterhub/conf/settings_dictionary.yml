@@ -81,8 +81,16 @@ GPU:
     default: "2"
 
   - name: JUPYTERHUB_NVIDIA_IMAGE
-    description: CUDA image for GPU detection
+    description: CUDA image the gpuinfo-nvidia sidecar is built from
     default: nvidia/cuda:13.0.2-base-ubuntu24.04
+
+  - name: JUPYTERHUB_GPUINFO_URL
+    description: GPU-info sidecar base URL (detection + utilisation + processes)
+    default: http://gpuinfo-nvidia:8000
+
+  - name: JUPYTERHUB_GPUINFO_NETWORK_NAME
+    description: Dedicated hub to GPU-info sidecar network
+    default: jupyterhub-gpuinfo-network
 
 Services:
   - name: JUPYTERHUB_LAB_SERVICE_MLFLOW

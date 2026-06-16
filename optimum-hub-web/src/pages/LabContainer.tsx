@@ -2,7 +2,7 @@
  * and the standard per-user volumes mounted into every lab. The image and the
  * volume layout are deployment config (not runtime-editable here); shared and
  * extra volumes are granted per group on the Groups page. */
-import { Card, Table } from 'antd'
+import { Card, Table, Tooltip } from 'antd'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { Notice } from '../components/Notice'
@@ -18,8 +18,9 @@ export default function LabContainer() {
       <PageHeader title="Lab Container" sub="The image every lab spawns from, and the volumes mounted into every lab" />
       <Card style={{ marginBottom: 16, maxWidth: 760 }}>
         <div style={{ marginBottom: 8, color: 'var(--color-text-muted)', fontSize: 13 }}>Lab image</div>
-        <div className="oh-mono" style={{ fontSize: 14 }}>{data?.image ?? '-'}</div>
-        <div className="oh-pol-hint" style={{ marginTop: 8 }}>Set by deployment configuration (JUPYTERHUB_LAB_IMAGE); updated images roll out on the next spawn.</div>
+        <Tooltip title="Deployment-set; new images apply on the next spawn">
+          <span className="oh-mono" style={{ fontSize: 14, cursor: 'help' }}>{data?.image ?? '-'}</span>
+        </Tooltip>
       </Card>
 
       <Card styles={{ body: { padding: 0 } }} style={{ marginBottom: 16 }}>

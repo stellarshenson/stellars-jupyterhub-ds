@@ -99,7 +99,9 @@ services:
       - JUPYTERHUB_LAB_IMAGE=stellars/stellars-jupyterlab-ds:latest # user container image
       # GPU passthrough to labs
       - JUPYTERHUB_GPU_ENABLED=2 # 0=disabled, 1=enabled, 2=auto-detect
-      - JUPYTERHUB_NVIDIA_IMAGE=nvidia/cuda:13.0.2-base-ubuntu24.04 # GPU detection image
+      - JUPYTERHUB_NVIDIA_IMAGE=nvidia/cuda:13.0.2-base-ubuntu24.04 # CUDA image the gpuinfo-nvidia sidecar is built from
+      - JUPYTERHUB_GPUINFO_URL=http://gpuinfo-nvidia:8000 # GPU-info sidecar (detection + utilisation + processes)
+      - JUPYTERHUB_GPUINFO_NETWORK_NAME=${JUPYTERHUB_GPUINFO_NETWORK_NAME:-jupyterhub-gpuinfo-network} # dedicated hub<->sidecar network
       # Services started inside the lab
       - JUPYTERHUB_LAB_SERVICE_MLFLOW=1 # MLflow experiment tracking
       - JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR=1 # system resources monitor
@@ -153,6 +155,7 @@ services:
       - "traefik.http.routers.jupyterhub-rtr.middlewares=jupyterhub-ratelimit"
     networks:
       - jupyterhub_network
+      - jupyterhub_gpuinfo # reach the GPU-info sidecar over the dedicated peer network
     ports:
       - "8000:8000"
     healthcheck:
@@ -161,6 +164,37 @@ services:
       timeout: 5s
       retries: 10
       start_period: 5s
+    restart: unless-stopped
+
+  ## GPU-info sidecar (NVIDIA). Long-running peer the hub queries for GPU
+  ## detection, utilisation and per-GPU processes - replaces spinning an
+  ## ephemeral nvidia container per probe. Vendor-neutral HTTP API; future
+  ## amd/intel/applesilicon sidecars implement the same contract. Reachable
+  ## only over jupyterhub_gpuinfo (no host port, peer-to-peer with the hub).
+  ## Needs the nvidia container runtime; on a GPU-less host remove this service
+  ## (the hub degrades to GPU-off when the sidecar is unreachable).
+  gpuinfo-nvidia:
+    build:
+      context: .
+      dockerfile: services/jupyterhub/gpuinfo-nvidia/Dockerfile
+      args:
+        - NVIDIA_IMAGE=${JUPYTERHUB_NVIDIA_IMAGE:-nvidia/cuda:13.0.2-base-ubuntu24.04}
+    image: stellars/stellars-gpuinfo-nvidia:latest
+    pull_policy: build
+    container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-gpuinfo-nvidia
+    runtime: nvidia # expose the host GPUs / nvidia-smi
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=utility
+      - GPUINFO_PORT=8000
+    networks:
+      - jupyterhub_gpuinfo
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health',timeout=3).status==200 else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
   ## watchtower for automatic docker image refresh
@@ -196,4 +230,6 @@ volumes:
 networks:
   jupyterhub_network:
     name: ${COMPOSE_PROJECT_NAME:-jupyterhub}_network  # actual Docker network name namespaced by compose project
+  jupyterhub_gpuinfo:
+    name: ${JUPYTERHUB_GPUINFO_NETWORK_NAME:-jupyterhub-gpuinfo-network}  # dedicated hub<->GPU-info sidecar network
 

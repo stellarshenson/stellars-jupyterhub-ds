@@ -157,7 +157,9 @@ if not COMPOSE_PROJECT_NAME:
         "volume than the one compose creates. Set COMPOSE_PROJECT_NAME (compose "
         "does this automatically when invoked normally; passthrough is in compose.yml)."
     )
-JUPYTERHUB_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_NVIDIA_IMAGE", "nvidia/cuda:13.0.2-base-ubuntu24.04")  # CUDA image for GPU auto-detection
+JUPYTERHUB_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_NVIDIA_IMAGE", "nvidia/cuda:13.0.2-base-ubuntu24.04")  # CUDA image the gpuinfo-nvidia sidecar is built from
+JUPYTERHUB_GPUINFO_URL = os.environ.get("JUPYTERHUB_GPUINFO_URL", "http://gpuinfo-nvidia:8000")  # GPU-info sidecar base URL (detection + utilisation)
+JUPYTERHUB_GPUINFO_NETWORK_NAME = os.environ.get("JUPYTERHUB_GPUINFO_NETWORK_NAME", "jupyterhub-gpuinfo-network")  # dedicated hub<->sidecar network (compose-level)
 JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")                                          # admin username (auto-authorized on first signup)
 
 # Branding URIs - file:// copies to static dir, http(s):// passed to templates, empty = stock assets
@@ -484,11 +486,12 @@ async def _admin_post_auth_hook(authenticator, handler, authentication):
         authentication['admin'] = True
     return authentication
 
-# Detect GPU availability: modes 1 (forced) and 2 (autodetect) run nvidia-smi in
-# an ephemeral CUDA container to enumerate the host GPUs (the hub itself has no GPU
+# Detect GPU availability: modes 1 (forced) and 2 (autodetect) query the
+# gpuinfo-nvidia sidecar for the host inventory (the hub itself has no GPU
 # access); mode 2 also derives on/off from whether any were found.
 # Returns (gpu_enabled: 0|1, nvidia_detected: 0|1, gpu_list: list of GPU dicts)
-gpu_enabled, nvidia_detected, gpu_list = resolve_gpu_mode(JUPYTERHUB_GPU_ENABLED, JUPYTERHUB_NVIDIA_IMAGE)
+configure_gpu_cache(JUPYTERHUB_GPUINFO_URL)
+gpu_enabled, nvidia_detected, gpu_list = resolve_gpu_mode(JUPYTERHUB_GPU_ENABLED)
 # index -> UUID map for CUDA_VISIBLE_DEVICES (UUIDs are stable across in-container
 # GPU re-indexing, unlike host indices). isolation is only real on native Linux;
 # on WSL2 (/dev/dxg) per-GPU selection is advisory, not enforced.
@@ -496,10 +499,9 @@ GPU_UUID_BY_INDEX = {str(g.get('index')): g.get('uuid', '') for g in gpu_list if
 GPU_ISOLATION_ENFORCED = bool(gpu_list) and not is_wsl2()
 print(f"[GPU debug] enabled={gpu_enabled} detected={nvidia_detected} "
       f"isolation_enforced={GPU_ISOLATION_ENFORCED} gpus={gpu_list}", flush=True)
-# Tell the background GPU-utilisation sampler which CUDA image to spin nvidia-smi
-# in; it samples host load periodically (gated on a non-empty inventory) so the
-# portal's GPU bar shows real per-device utilisation, not just the inventory.
-configure_gpu_cache(JUPYTERHUB_NVIDIA_IMAGE)
+# The background GPU-utilisation sampler queries the same sidecar periodically
+# (gated on a non-empty inventory) so the portal's GPU bar shows real per-device
+# utilisation, used memory and the processes holding each device.
 
 # Process branding URIs: file:// copies to JupyterHub static dir, URLs pass through
 # Returns dict with resolved paths/URLs for logo_file, favicon_uri, lab icons
@@ -691,6 +693,13 @@ async def _post_stop_cleanup(spawner):
         PoolManager.get_instance().release_tentative(spawner.user.name)
     except Exception as e:
         spawner.log.warning("[ApiKeys] tentative release failed: %s", e)
+    # Record a server-stop event for the portal events feed (best-effort).
+    try:
+        import html as _html
+        from stellars_hub_services.event_log import record_event
+        record_event('server', f'<b>{_html.escape(str(spawner.user.name))}</b> server stopped')
+    except Exception:
+        pass
 
 
 c.DockerSpawner.post_stop_hook = _post_stop_cleanup

@@ -66,7 +66,7 @@ function ActiveServersPreview() {
           ) : (
             <>
               <IconAction icon="restart" title="Restart" onClick={() => restartServer(r.user)} />
-              <IconAction icon="stop" title="Stop" danger filled onClick={() => stopServer(r.user)} />
+              <IconAction icon="stop" title="Stop" tone="danger" filled onClick={() => stopServer(r.user)} />
             </>
           )}
         </div>
