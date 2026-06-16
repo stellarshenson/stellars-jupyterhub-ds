@@ -108,20 +108,20 @@ function VersionFooter() {
   const { data: hub } = useHubInfo()
   const tag = { background: 'var(--color-surface-active)', color: 'var(--color-text-muted)', borderRadius: 4, marginInline: 4 }
   return (
-    <div style={{ textAlign: 'center', padding: '14px 0', color: 'var(--color-text-subtle)', fontSize: 12 }}>
-      <div>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 12, padding: '14px 0', color: 'var(--color-text-subtle)', fontSize: 12 }}>
+      <span>
         Optimum Hub<Tag bordered={false} style={tag}>v{PLATFORM.version}</Tag>
         <span style={{ margin: '0 6px' }}>·</span>
         JupyterHub<Tag bordered={false} style={tag}>v{hub?.version ?? '…'}</Tag>
-      </div>
-      <div className="oh-techchips">
+      </span>
+      <span className="oh-techchips" style={{ marginTop: 0 }}>
         {STACK_CHIPS.map((c) => (
           <span className="oh-chip" key={c.k}>
             <span className="k">{c.k}</span>
             <span className="v" style={{ background: c.c }}>{c.v}</span>
           </span>
         ))}
-      </div>
+      </span>
     </div>
   )
 }

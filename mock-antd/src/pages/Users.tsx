@@ -30,8 +30,8 @@ function inScope(u: UserRow, scope: string): boolean {
 function PendingSection({ users }: { users: UserRow[] }) {
   if (users.length === 0) return null
   return (
-    <Card style={{ marginBottom: 16 }} styles={{ body: { padding: 0 } }}>
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-subtle)', fontWeight: 600 }}>
+    <Card style={{ marginBottom: 16, borderColor: 'var(--color-warning)' }} styles={{ body: { padding: 0 } }}>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-warning-soft)', fontWeight: 600 }}>
         Pending authorisation <span className="oh-muted">· {users.length}</span>
       </div>
       {users.map((u, i) => (
