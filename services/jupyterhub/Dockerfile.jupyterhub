@@ -170,6 +170,10 @@ RUN <<-EOF
     cp /tmp/custom.css /srv/venv/share/jupyterhub/static/css/custom.css
     cp /tmp/session-timer.js /srv/venv/share/jupyterhub/static/js/session-timer.js
     cp /tmp/mobile.js /srv/venv/share/jupyterhub/static/js/mobile.js
+    # remove the original JupyterHub admin React app - the Optimum Hub SPA fully
+    # replaces it (/hub/admin, /hub/home, /hub/token all redirect to /hub/portal)
+    rm -f /srv/venv/share/jupyterhub/static/js/admin-react.js \
+          /srv/venv/share/jupyterhub/static/js/admin-react.js.map
 EOF
 
 ## default environment variables
