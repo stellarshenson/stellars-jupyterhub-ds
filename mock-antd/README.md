@@ -49,7 +49,7 @@ Role-aware via `RoleContext` (admin default). One build serves both; the dashed 
 
 - **Admin** - the fleet Home dashboard, a personal Profile, and a single Administration section (Servers, Users, Groups, Lab Container, Events, Notifications, Advanced -> Settings, Tokens). The admin runs a lab too, so Home also carries the personal server hero
 - **User** - Home (one launchpad: their server open / restart / stop + idle-TTL gadget, their groups read-only, their resources) and a personal Profile. No Administration, no fleet pages
-- **Profile** (both roles) - self-service: edit own name, email and password only; username read-only, admin-only controls (authorisation, admin flag, require-change) absent; no Groups or Volumes tabs
+- **Profile** (both roles) - self-service: edit own name, email and password (type or generate) only; username read-only, admin-only controls (authorisation, admin flag, require-change) absent; no Groups or Volumes tabs
 
 ## Shell
 
@@ -91,7 +91,7 @@ One language across every screen, so the portal reads as one system. Verified li
                  quota-breach colour cells, 25/50/100 pager
 /users           Users - pending-authorisation panel (orange-bordered table) on top, then the
                  scaled list with state scope pills, inline authorise toggle, capped group chips
-/users/new       New user (single) - one password field + GroupPicker
+/users/new       New user (single) - one password field (type or generate) + GroupPicker
 /users/bulk      Bulk add users (input) -> /users/bulk/result (credentials + download)
 /users/:name     Configure user - tabbed (Profile / Groups / Volumes), built-in admin locked
 /groups          Groups - priority-ordered DragSortTable, policy tags, JSON import / export

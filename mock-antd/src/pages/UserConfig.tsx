@@ -2,7 +2,7 @@
  * Volumes) with one action footer. The username link on the Users list opens
  * this. All writes mocked. */
 import { useEffect, useState } from 'react'
-import { Button, Card, Form, Input, Switch, Table, Tabs, Tooltip } from 'antd'
+import { Button, Card, Form, Input, Space, Switch, Table, Tabs, Tooltip } from 'antd'
 import { useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { FormFooter } from '../components/FormFooter'
@@ -12,6 +12,7 @@ import { Notice } from '../components/Notice'
 import { useEffectiveGrants, useUser, useUserVolumes } from '../hooks/queries'
 import { mockAction, mockSuccess } from '../services/actions'
 import { PLATFORM } from '../services/config'
+import { genPassword } from '../lib/password'
 import type { Volume } from '../services/types'
 
 export default function UserConfig() {
@@ -22,6 +23,7 @@ export default function UserConfig() {
   const { data: grants = [] } = useEffectiveGrants(name)
   const [groups, setGroups] = useState<string[]>([])
   const [tab, setTab] = useState('profile')
+  const [pw, setPw] = useState('')
 
   // the platform-configured admin (JUPYTERHUB_ADMIN): always admin + authorised,
   // never removable - those controls are owned by system config, not this screen
@@ -48,8 +50,11 @@ export default function UserConfig() {
       <Form.Item label="First name" name="first"><Input /></Form.Item>
       <Form.Item label="Last name" name="last"><Input /></Form.Item>
       <Form.Item label="Email" name="email"><Input /></Form.Item>
-      <Form.Item label="Change password" extra="Admin override - no current password needed">
-        <Input.Password placeholder="Leave blank to keep" />
+      <Form.Item label="Change password" extra="Leave blank to keep, or generate one">
+        <Space.Compact style={{ width: '100%' }}>
+          <Input className="oh-mono" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Leave blank to keep" />
+          <Button onClick={() => setPw(genPassword())}>Generate</Button>
+        </Space.Compact>
       </Form.Item>
       <Form.Item label="Require password change at next login">
         <Tooltip title="Cleared automatically once the user signs in and sets a new password">
