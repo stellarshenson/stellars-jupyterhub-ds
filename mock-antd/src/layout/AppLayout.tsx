@@ -146,7 +146,7 @@ export function AppLayout() {
       route={{ path: '/', routes: [] }}
       menuContentRender={() => <SiderMenu />}
       menuHeaderRender={() => (
-        <Link to="/home" style={{ display: 'flex', alignItems: 'center', height: '100%' }} title="Optimum Hub">
+        <Link to="/home" style={{ display: 'flex', alignItems: 'center', height: '100%', flex: 1, minWidth: 0 }} title="Optimum Hub">
           <img className="oh-brand-logo" src={logoSrc} alt="Stellars Tech AI Lab" />
         </Link>
       )}
@@ -156,10 +156,10 @@ export function AppLayout() {
       footerRender={() => <VersionFooter />}
       token={{
         bgLayout: p.bg,
-        header: { colorBgHeader: p.bg, heightLayoutHeader: 56 },
+        header: { colorBgHeader: p.bg, heightLayoutHeader: 64 },
         sider: { colorMenuBackground: p.bg, colorTextMenu: p.textMuted, colorTextMenuSelected: p.text, colorBgMenuItemSelected: p.accentSoft },
       }}
-      contentStyle={{ padding: '24px 24px 8px', background: p.bg }}
+      contentStyle={{ padding: '0 24px 8px', background: p.bg }}
     >
       <MessageBinder />
       <CommandPalette />
