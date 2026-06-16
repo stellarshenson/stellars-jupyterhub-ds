@@ -50,6 +50,7 @@ function ActiveServersPreview() {
     { title: 'Status', render: (_, r) => <StatusPill status={r.status} label={r.statusLabel} /> },
     { title: 'Activity', render: (_, r) => <ActivityMeter value={r.activity} /> },
     { title: 'CPU', align: 'right', render: (_, r) => (r.cpu == null ? <span className="oh-muted">-</span> : <span className="oh-num">{r.cpu}%</span>) },
+    { title: 'Mem', align: 'right', render: (_, r) => (r.mem == null ? <span className="oh-muted">-</span> : <span className={r.memOver ? 'oh-cell-warn' : 'oh-num'} title={r.memTip}>{r.mem}%</span>) },
     {
       title: 'Time left',
       align: 'right',
