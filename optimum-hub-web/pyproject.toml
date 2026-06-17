@@ -9,7 +9,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "optimum-hub-web"
-version = "0.1.0"
+version = "3.12.2"
 description = "Optimum Hub - JupyterHub-served React portal (UI bundle + hub integration)"
 requires-python = ">=3.10"
 # Runtime integration rides on the hub's own deps (jupyterhub.handlers.BaseHandler,

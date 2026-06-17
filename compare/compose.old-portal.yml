@@ -1,0 +1,28 @@
+# Old (stock) JupyterHub portal design - hidden comparison container.
+#
+# Runs the stock JupyterHub UI (the design the Optimum Hub portal replaced) so it
+# can be compared side-by-side for functional parity. Hidden: bound to localhost
+# only (no internet exposure, no Traefik router) and joined to the live docker
+# network so it sits "inside" the same network as the real stack.
+#
+#   docker compose -f compare/compose.old-portal.yml up -d     # raise it
+#   open http://127.0.0.1:9444/  (log in as admin, any password)
+#   docker compose -f compare/compose.old-portal.yml down      # tear it down
+
+services:
+  old-portal-compare:
+    image: jupyterhub/jupyterhub:latest        # stock 5.4.x UI - the pre-portal design
+    container_name: old-portal-compare
+    command: ["jupyterhub", "-f", "/srv/jupyterhub/jupyterhub_config.py"]
+    volumes:
+      - ./jupyterhub_config_stock.py:/srv/jupyterhub/jupyterhub_config.py:ro
+    ports:
+      - "127.0.0.1:9444:8000"                  # localhost only - hidden from the internet
+    networks:
+      - live
+    restart: "no"
+
+networks:
+  live:
+    name: stellars-tech-ai-lab_network          # join the live stack's network
+    external: true

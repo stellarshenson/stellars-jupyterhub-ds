@@ -53,6 +53,7 @@ export default function BulkResult() {
           rowKey="username"
           style={{ marginTop: 12 }}
           pagination={false}
+          rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
           dataSource={rows}
           columns={[
             { title: 'Username', dataIndex: 'username' },

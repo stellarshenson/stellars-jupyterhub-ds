@@ -18,6 +18,7 @@ import re
 from datetime import datetime, timezone
 
 from .docker_utils import get_executor
+from .persisted_cache import load_cached, save_cached
 
 log = logging.getLogger('jupyterhub.custom_handlers')
 
@@ -33,10 +34,15 @@ _template_regexes = []
 
 def _get_logger():
     from traitlets.config import Application
+    # Use the hub's Application logger only if one already exists; never create
+    # the singleton here (Application.instance() would), which would pollute
+    # global state for any later code/test that constructs its own Application.
     try:
-        return Application.instance().log
+        if Application.initialized():
+            return Application.instance().log
     except Exception:
-        return logging.getLogger('jupyterhub')
+        pass
+    return logging.getLogger('jupyterhub')
 
 
 def _get_volumes_update_interval():
@@ -45,6 +51,24 @@ def _get_volumes_update_interval():
 
 def _get_docker_timeout():
     return int(os.environ.get('JUPYTERHUB_DOCKER_TIMEOUT', 360))
+
+
+def _load_persisted_volume_sizes():
+    """Seed the in-memory cache from the persisted last-known snapshot.
+
+    Uses the shared persisted_cache helper (TTL-gated, best-effort) so right
+    after a restart the portal shows the last-known sizes instead of empty until
+    the first background refresh replaces them.
+    """
+    global _volume_sizes_cache
+    if _volume_sizes_cache['data'] and _volume_sizes_cache['timestamp']:
+        return  # already have live data this process; do not regress to disk
+    seeded = load_cached('volume_sizes')
+    if seeded is None:
+        return
+    data, ts = seeded
+    _volume_sizes_cache['data'] = data or {}
+    _volume_sizes_cache['timestamp'] = ts
 
 
 def configure_volume_cache(templates):
@@ -72,6 +96,7 @@ def configure_volume_cache(templates):
         f"[Volume Sizes] Configured {len(_volume_name_templates)} name template(s): "
         f"{list(_volume_name_templates.keys())}"
     )
+    _load_persisted_volume_sizes()
 
 
 def _fetch_volume_sizes():
@@ -137,6 +162,7 @@ def _refresh_volume_sizes_sync():
         if data:
             _volume_sizes_cache['data'] = data
             _volume_sizes_cache['timestamp'] = datetime.now(timezone.utc)
+            save_cached('volume_sizes', data)  # survive restarts: replace last-known on disk
             logger.info(f"[Volume Sizes] Cache updated: {len(data)} users")
         else:
             logger.warning("[Volume Sizes] Refresh returned empty - keeping previous cache")

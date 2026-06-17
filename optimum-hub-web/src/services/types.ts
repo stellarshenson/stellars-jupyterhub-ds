@@ -11,6 +11,7 @@ export interface ServerRow {
   admin: boolean
   status: ServerStatus
   statusLabel: string // "Active 1m", "Idle 38m", "Offline 2d", "Spawning"
+  lastActivityISO?: string | null // last activity timestamp, for the time-ago column
   activity: number | null // 0-100 engagement, null when not running
   cpu: number | null // % of host
   mem: number | null // % of host RAM
@@ -185,7 +186,8 @@ export interface ResourceSnapshot {
 
 export interface SessionInfo {
   timeLeftMin: number
-  maxMin: number // headroom ceiling (max extension)
+  baseMin: number // base timeout - the bar's 100% reference (fresh session reads ~full)
+  maxAddHours: number // hours still addable (gap to the ceiling) - for the extend control
 }
 
 export interface ServerHero {

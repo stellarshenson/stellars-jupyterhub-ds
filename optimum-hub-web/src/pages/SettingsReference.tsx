@@ -34,7 +34,7 @@ export default function SettingsReference() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {filtered.map((cat) => (
           <Card key={cat.category} title={cat.category} styles={{ body: { padding: 0 } }}>
-            <Table<SettingsRefRow> rowKey="name" pagination={false} dataSource={cat.rows} columns={columns} />
+            <Table<SettingsRefRow> rowKey="name" pagination={false} rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')} dataSource={cat.rows} columns={columns} />
           </Card>
         ))}
       </div>

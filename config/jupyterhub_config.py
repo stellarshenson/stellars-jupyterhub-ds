@@ -23,6 +23,7 @@ from stellars_hub_services import (
     apply_abuse_protection,                 # abuse protection: maps env -> spawn/active caps + login lockout onto c.*
     configure_gpu_cache,                    # one-time init: sets the CUDA image the background GPU-utilisation sampler uses
     configure_volume_cache,                 # one-time init: feeds canonical volume-name templates to the activity-monitor sizes cache
+    ensure_gpuinfo_sidecar,                 # hub self-starts the gpuinfo-nvidia sidecar (so detection never waits on compose)
     get_services_and_roles,                 # builds JupyterHub services list (activity sampler)
     schedule_idle_culler,                   # in-hub idle culler (honours per-user session extensions)
     register_user,                          # central docker-proxy: register a limited user (admin HTTP API client)
@@ -157,9 +158,9 @@ if not COMPOSE_PROJECT_NAME:
         "volume than the one compose creates. Set COMPOSE_PROJECT_NAME (compose "
         "does this automatically when invoked normally; passthrough is in compose.yml)."
     )
-JUPYTERHUB_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_NVIDIA_IMAGE", "nvidia/cuda:13.0.2-base-ubuntu24.04")  # CUDA image the gpuinfo-nvidia sidecar is built from
-JUPYTERHUB_GPUINFO_URL = os.environ.get("JUPYTERHUB_GPUINFO_URL", "http://gpuinfo-nvidia:8000")  # GPU-info sidecar base URL (detection + utilisation)
+JUPYTERHUB_GPUINFO_URL = os.environ.get("JUPYTERHUB_GPUINFO_URL", "http://gpuinfo-nvidia:8000")  # GPU-info sidecar base URL (detection + utilisation); image/base-image are compose-level build knobs
 JUPYTERHUB_GPUINFO_NETWORK_NAME = os.environ.get("JUPYTERHUB_GPUINFO_NETWORK_NAME", "jupyterhub-gpuinfo-network")  # dedicated hub<->sidecar network (compose-level)
+JUPYTERHUB_GPUINFO_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_IMAGE", "stellars/stellars-gpuinfo-nvidia:latest")  # sidecar image the hub self-starts
 JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")                                          # admin username (auto-authorized on first signup)
 
 # Branding URIs - file:// copies to static dir, http(s):// passed to templates, empty = stock assets
@@ -491,7 +492,16 @@ async def _admin_post_auth_hook(authenticator, handler, authentication):
 # access); mode 2 also derives on/off from whether any were found.
 # Returns (gpu_enabled: 0|1, nvidia_detected: 0|1, gpu_list: list of GPU dicts)
 configure_gpu_cache(JUPYTERHUB_GPUINFO_URL)
-gpu_enabled, nvidia_detected, gpu_list = resolve_gpu_mode(JUPYTERHUB_GPU_ENABLED)
+# Self-start the gpuinfo sidecar (best-effort) so detection talks to a reachable
+# peer on the local docker host instead of waiting on compose to have brought it
+# up - the old 20x1s probe stalled boot ~20s whenever the sidecar was absent.
+_gpuinfo_sidecar_up = (
+    ensure_gpuinfo_sidecar(JUPYTERHUB_GPUINFO_NVIDIA_IMAGE, JUPYTERHUB_GPUINFO_NETWORK_NAME, JUPYTERHUB_GPUINFO_URL)
+    if JUPYTERHUB_GPU_ENABLED in (1, 2) else False
+)
+# probe only when the sidecar is actually up; otherwise skip straight to
+# last-known/off so a missing sidecar never stalls boot on DNS/connect
+gpu_enabled, nvidia_detected, gpu_list = resolve_gpu_mode(JUPYTERHUB_GPU_ENABLED, probe_sidecar=_gpuinfo_sidecar_up)
 # index -> UUID map for CUDA_VISIBLE_DEVICES (UUIDs are stable across in-container
 # GPU re-indexing, unlike host indices). isolation is only real on native Linux;
 # on WSL2 (/dev/dxg) per-GPU selection is advisory, not enforced.
@@ -601,6 +611,13 @@ c.JupyterHub.template_vars = {
     # vite manifest in the installed wheel ('' if unreadable -> stock-ish fallback).
     'optimum_entry_js': optimum_hub_web.entry_assets()[0],
     'optimum_entry_css': optimum_hub_web.entry_assets()[1],
+    # Authoritative "this platform has GPU" flag for the portal shell -> window.jhdata.
+    # The SPA gates every GPU widget on this instead of inferring from a (lazy) device list.
+    'gpu_enabled': bool(gpu_enabled),
+    # The platform admin username (JUPYTERHUB_ADMIN). The SPA needs this to recognise
+    # the built-in admin and the hook-promoted admin (whose persistent User.admin row
+    # is False), instead of guessing from a mock fixture.
+    'admin_user': JUPYTERHUB_ADMIN or '',
 }
 
 # ── Tornado settings ──

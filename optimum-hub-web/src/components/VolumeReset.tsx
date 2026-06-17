@@ -13,14 +13,20 @@ export function VolumeReset({ name }: { name: string }) {
   const { data: volumes = [] } = useUserVolumes(name)
   const { data: servers = [] } = useServers()
   const [selected, setSelected] = useState<string[]>([])
+  const [busy, setBusy] = useState(false)
 
   const row = servers.find((s) => s.user === name)
   const running = !!row && (row.status === 'active' || row.status === 'idle' || row.status === 'spawning')
 
   const doReset = async () => {
-    if (running || !selected.length) return
-    await resetVolumes(name, selected)
-    setSelected([])
+    if (running || !selected.length || busy) return
+    setBusy(true)
+    try {
+      await resetVolumes(name, selected)
+      setSelected([])
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -38,11 +44,11 @@ export function VolumeReset({ name }: { name: string }) {
           { title: 'Volume', dataIndex: 'name', render: (v) => <span className="oh-mono">{v}</span> },
           { title: 'Mount', dataIndex: 'mount', render: (v) => <span className="oh-mono">{v}</span> },
           { title: 'Description', dataIndex: 'description', render: (v) => <span className="oh-muted">{v}</span> },
-          { title: 'Size', dataIndex: 'sizeGB', align: 'right', render: (v) => <span className="oh-num">{v} GB</span> },
+          { title: 'Size', dataIndex: 'sizeGB', align: 'right', render: (v) => (v == null ? <span className="oh-muted">-</span> : <span className="oh-num">{v} GB</span>) },
         ]}
       />
       <div style={{ marginTop: 12 }}>
-        <Button danger disabled={running || !selected.length} onClick={doReset}>Reset selected</Button>
+        <Button danger loading={busy} disabled={running || !selected.length} onClick={doReset}>{busy ? 'Resetting…' : 'Reset selected'}</Button>
       </div>
     </div>
   )

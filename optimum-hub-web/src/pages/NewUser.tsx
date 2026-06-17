@@ -42,7 +42,7 @@ export default function NewUser() {
     <>
       <PageHeader title="New user" sub="Create an account and optionally authorise it now" />
       <Card style={{ maxWidth: 760 }}>
-        <Form form={form} layout="vertical" initialValues={{ authorize: true, require: false }}>
+        <Form form={form} layout="vertical" initialValues={{ authorize: true }}>
           <Form.Item label="Username" name="username" rules={[{ required: true, message: 'Username is required' }]}>
             <Input placeholder="e.g. jdoe" />
           </Form.Item>
@@ -56,9 +56,6 @@ export default function NewUser() {
             <GroupPicker value={groups} onChange={setGroups} label="" />
           </Form.Item>
           <Form.Item label="Authorise now" name="authorize" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-          <Form.Item label="Require password change at first login" name="require" valuePropName="checked">
             <Switch />
           </Form.Item>
         </Form>

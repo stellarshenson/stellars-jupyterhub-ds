@@ -3,9 +3,9 @@
 # runtime on the NVIDIA CUDA base so nvidia-smi is available via the nvidia
 # container runtime. Build context is the repo root (see compose.yml).
 #
-# The CUDA base is parameterised so this sidecar tracks the same image the
-# platform uses for GPU work (JUPYTERHUB_NVIDIA_IMAGE).
-ARG NVIDIA_IMAGE=nvidia/cuda:13.0.2-base-ubuntu24.04
+# The CUDA base is parameterised so this sidecar tracks the platform's GPU base
+# image (JUPYTERHUB_GPUINFO_NVIDIA_BASE_IMAGE).
+ARG NVIDIA_BASE_IMAGE=nvidia/cuda:13.0.2-base-ubuntu24.04
 
 ##############################################################################
 # STAGE 1 - build + test the wheel (tests gate the image build)
@@ -21,7 +21,7 @@ RUN pip install --no-cache-dir /dist/gpuinfo_nvidia-*.whl pytest httpx \
 ##############################################################################
 # STAGE 2 - runtime on the CUDA base (nvidia-smi via nvidia runtime)
 ##############################################################################
-FROM ${NVIDIA_IMAGE} AS target
+FROM ${NVIDIA_BASE_IMAGE} AS target
 
 LABEL maintainer="Konrad Jelen <konrad.jelen@delaval.com>"
 LABEL org.opencontainers.image.title="gpuinfo-nvidia"

@@ -21,10 +21,15 @@ _size_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="docker-si
 
 def _get_logger():
     from traitlets.config import Application
+    # Use the hub's Application logger only if one already exists; never create
+    # the singleton here (Application.instance() would), which would pollute
+    # global state for any later code/test that constructs its own Application.
     try:
-        return Application.instance().log
+        if Application.initialized():
+            return Application.instance().log
     except Exception:
-        return logging.getLogger('jupyterhub')
+        pass
+    return logging.getLogger('jupyterhub')
 
 
 def _get_docker_timeout():

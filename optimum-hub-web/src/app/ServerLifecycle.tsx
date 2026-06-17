@@ -178,7 +178,7 @@ export function ServerLifecycleProvider({ children }: { children: ReactNode }) {
         maskClosable={st.phase === 'error'}
         closable={st.phase === 'error'}
         keyboard={st.phase === 'error'}
-        footer={st.phase === 'busy' ? null : [<Button key="close" type="primary" onClick={close}>Close</Button>]}
+        footer={st.phase === 'error' ? [<Button key="close" type="primary" onClick={close}>Close</Button>] : null}
       >
         <p style={{ marginBottom: 12 }}>{st.message}</p>
         <Progress

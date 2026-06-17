@@ -80,9 +80,9 @@ GPU:
     description: GPU support (0=disabled, 1=enabled, 2=auto-detect)
     default: "2"
 
-  - name: JUPYTERHUB_NVIDIA_IMAGE
-    description: CUDA image the gpuinfo-nvidia sidecar is built from
-    default: nvidia/cuda:13.0.2-base-ubuntu24.04
+  - name: JUPYTERHUB_GPUINFO_NVIDIA_IMAGE
+    description: GPU-info sidecar image (pulled from stellars/ DockerHub, built from base when absent)
+    default: stellars/stellars-gpuinfo-nvidia:latest
 
   - name: JUPYTERHUB_GPUINFO_URL
     description: GPU-info sidecar base URL (detection + utilisation + processes)
@@ -195,6 +195,10 @@ Activity Monitor:
   - name: JUPYTERHUB_ACTIVITYMON_CONTAINER_SIZE_INTERVAL
     description: Container size refresh interval in seconds (background)
     default: "300"
+
+  - name: JUPYTERHUB_CACHED_DATA_TTL_MINUTES
+    description: Max age in minutes of the persisted last-known cache seed (volume sizes, GPU inventory) used on boot before the first refresh
+    default: "1440"
 
 User Environment:
   - name: JUPYTERLAB_AUX_SCRIPTS_PATH

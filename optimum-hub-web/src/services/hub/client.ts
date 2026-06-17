@@ -59,6 +59,8 @@ interface JhData {
   prefix?: string
   user?: string
   admin_access?: boolean
+  gpu_enabled?: boolean // authoritative: does this platform have GPU (sidecar found one)
+  admin_user?: string // the platform admin username (JUPYTERHUB_ADMIN)
   xsrf_token?: string
   // Set only on the overridden login/signup pages: the SPA renders the matching
   // antd auth screen instead of the app, and these carry the NativeAuth context.
