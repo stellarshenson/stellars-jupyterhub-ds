@@ -89,12 +89,12 @@ body { margin: 0; font-family: var(--font-sans); }
 /* ---- activity meter (5-segment engagement) ---- */
 .oh-meter { display: inline-flex; gap: 2px; vertical-align: middle; }
 .oh-meter i { display: block; width: 4px; height: 12px; border-radius: 1px; background: var(--color-border-strong); }
-/* per-segment gradient: bars climb pale-red -> orange -> green as activity fills
- * them (position-fixed, not a single tone for the whole meter). Pale red keeps
- * the low block as soft as the thin danger / stop-button glyph. */
-.oh-meter i.on { background: var(--color-success); } /* segments 4-5: green */
-.oh-meter i.on:nth-child(1) { background: var(--oh-red-dim); } /* segment 1: pale red */
-.oh-meter i.on:nth-child(2), .oh-meter i.on:nth-child(3) { background: var(--color-warning); } /* segments 2-3: orange */
+/* one tone for the whole meter, chosen by the NUMBER of lit bars: 1 bar pale
+ * red, 2-3 orange, 4-5 green. Pale red keeps the low meter as soft as the thin
+ * danger / stop-button glyph. */
+.oh-meter i.on { background: var(--color-success); } /* 4-5 bars: green */
+.oh-meter.idle i.on { background: var(--color-warning); } /* 2-3 bars: orange */
+.oh-meter.low i.on { background: var(--oh-red-dim); } /* 1 bar: pale red */
 .oh-meter.fill { display: flex; flex: 1; }
 .oh-meter.fill i { flex: 1; width: auto; height: 8px; }
 
