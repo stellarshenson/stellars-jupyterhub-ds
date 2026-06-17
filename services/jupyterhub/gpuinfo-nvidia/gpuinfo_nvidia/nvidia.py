@@ -9,7 +9,7 @@ import subprocess
 
 VENDOR = "nvidia"
 
-_GPU_QUERY = "index,name,uuid,utilization.gpu,memory.used,memory.total"
+_GPU_QUERY = "index,name,uuid,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw"
 _PROC_QUERY = "gpu_uuid,pid,process_name,used_gpu_memory"
 
 
@@ -28,6 +28,14 @@ def _to_int(value):
     """Parse an nvidia-smi numeric cell ('1493' or '1493 MiB') to int, or None."""
     try:
         return int(str(value).strip().split()[0])
+    except (ValueError, IndexError, AttributeError):
+        return None
+
+
+def _to_float(value):
+    """Parse an nvidia-smi numeric cell ('125.34' or '125.34 W') to float, or None."""
+    try:
+        return float(str(value).strip().split()[0])
     except (ValueError, IndexError, AttributeError):
         return None
 
@@ -82,7 +90,7 @@ def sample():
     gpus = []
     for line in out.strip().splitlines():
         parts = [p.strip() for p in line.split(",")]
-        if len(parts) < 6:
+        if len(parts) < 8:
             continue
         uuid = parts[2] or None
         gpus.append(
@@ -93,6 +101,8 @@ def sample():
                 "utilization": _to_int(parts[3]),
                 "memory_used_mb": _to_int(parts[4]),
                 "memory_total_mb": _to_int(parts[5]),
+                "temperature_c": _to_int(parts[6]),
+                "power_w": _to_float(parts[7]),
                 "processes": procs.get(parts[2], []),
             }
         )

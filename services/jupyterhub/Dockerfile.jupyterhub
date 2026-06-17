@@ -180,7 +180,7 @@ EOF
 ## copy resources (shell scripts, startup scripts, templates, config, settings)
 COPY --chmod=755  services/jupyterhub/conf/bin/*.sh /
 COPY --chmod=755  services/jupyterhub/conf/bin/start-platform.d /start-platform.d
-COPY --chmod=600  services/jupyterhub/templates/certs /mnt/certs
+COPY --chmod=600  services/jupyterhub/templates/certs /certs
 # Volume-purpose README for jupyterhub_docker; Docker volume-init copies it in on first create.
 COPY --chmod=644  services/jupyterhub/templates/proxy-sockets/README.md /var/run/jupyterhub-docker-proxy-sockets/README.md
 COPY --chmod=644  services/jupyterhub/html_templates_enhanced/*.html /srv/jupyterhub/templates/
@@ -271,6 +271,13 @@ ENV JUPYTERHUB_DOCKER_TIMEOUT=360
 ENV JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB=10
 ENV JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB=50
 ENV JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION=0.25
+# Compose project the hub belongs to (volume namespace + hub container labels).
+# Empty here; compose.yml maps it from compose's own COMPOSE_PROJECT_NAME. The
+# config requires it non-empty at runtime (falls back to COMPOSE_PROJECT_NAME).
+ENV JUPYTERHUB_COMPOSE_PROJECT_NAME=
+# Compose project label stamped on spawned lab containers; empty = same project
+# as the hub. Set to group user containers under a different compose project.
+ENV JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME=
 # In-process docker-proxy (limited-docker users). Socket path baked into the
 # image so it stays out of compose.yml. The volume name is computed in
 # jupyterhub_config.py from COMPOSE_PROJECT_NAME (matches the convention used
@@ -290,7 +297,8 @@ ENV JUPYTERLAB_AUX_SCRIPTS_PATH=
 ENV JUPYTERLAB_AUX_MENU_PATH=
 ENV JUPYTERHUB_TIMEZONE=
 ENV JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE=
-ENV CERTIFICATE_USER_CERTS_DIR=/mnt/user_certs
+ENV CERTIFICATE_USER_CERTS_DIR=/user-certs
+ENV CERTIFICATE_TARGET_DIR=/certs
 ENV JUPYTERHUB_USER_CONFIG_DIR=/mnt/user_config
 ENV JUPYTERHUB_USER_CONFIG_FILE=jupyterhub_config.py
 ENV PYTHONPATH=/srv/config

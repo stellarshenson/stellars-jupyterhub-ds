@@ -3,6 +3,6 @@ tls:
   stores:
     default:
       defaultCertificate:
-        certFile: /mnt/certs/server.crt
-        keyFile:  /mnt/certs/server.key
+        certFile: /certs/server.crt
+        keyFile:  /certs/server.key
 

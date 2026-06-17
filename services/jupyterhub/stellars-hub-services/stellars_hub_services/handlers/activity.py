@@ -13,7 +13,7 @@ from ..activity.helpers import (
     record_samples_for_all_users,
     reset_all_activity_data,
 )
-from ..docker_utils import encode_username_for_docker, get_container_stats_async
+from ..docker_utils import encode_username_for_docker, get_container_stats_async, newer_lab_image_available
 from ..container_size_cache import get_container_sizes_with_refresh, ContainerSizeRefresher
 from ..gpu_cache import GpuUtilizationRefresher, get_gpu_utilization_with_refresh
 from ..idle_culler import calc_ceiling, remaining_seconds_for
@@ -111,6 +111,8 @@ class ActivityDataHandler(BaseHandler):
                 "memory_percent": None,
                 "memory_total_mb": None,
                 "time_remaining_seconds": None,
+                "server_started": None,
+                "lab_image_upgrade_available": False,
                 "activity_score": None,
                 "sample_count": 0,
                 "last_activity": None,
@@ -128,6 +130,12 @@ class ActivityDataHandler(BaseHandler):
             now = datetime.now(timezone.utc)
 
             if spawner and spawner.orm_spawner:
+                # server uptime = when the spawner (container) started
+                started = getattr(spawner.orm_spawner, 'started', None)
+                if server_active and started:
+                    started_utc = started.replace(tzinfo=timezone.utc) if started.tzinfo is None else started
+                    user_data["server_started"] = started_utc.isoformat()
+
                 last_activity = spawner.orm_spawner.last_activity
                 if last_activity:
                     last_activity_utc = last_activity.replace(tzinfo=timezone.utc) if last_activity.tzinfo is None else last_activity
@@ -150,6 +158,9 @@ class ActivityDataHandler(BaseHandler):
 
         # Fetch Docker stats in parallel
         if active_users:
+            # local image the lab tag resolves to now (cached); compared per
+            # container to flag when a newer lab image is available locally
+            local_image_id = lab_image_id(stellars_config.get('lab_image', ''))
             stats_tasks = [get_container_stats_async(u.name) for u, s, d in active_users]
             stats_results = await asyncio.gather(*stats_tasks, return_exceptions=True)
 
@@ -159,6 +170,7 @@ class ActivityDataHandler(BaseHandler):
                     user_data["memory_mb"] = stats["memory_mb"]
                     user_data["memory_percent"] = stats["memory_percent"]
                     user_data["memory_total_mb"] = stats.get("memory_total_mb")
+                    user_data["lab_image_upgrade_available"] = newer_lab_image_available(lab_image, stats.get("image_id"))
 
         users_data.sort(key=lambda u: (not u["server_active"], -(u["activity_score"] or 0)))
 
@@ -180,12 +192,15 @@ class ActivityDataHandler(BaseHandler):
             entry = {
                 "index": idx,
                 "name": g.get("name"),
+                "uuid": g.get("uuid"),
                 "memory_mb": g.get("memory_mb", 0),
             }
             sample = gpu_util.get(str(idx)) if idx is not None else None
             if sample:
                 entry["utilization"] = sample.get("utilization")
                 entry["memory_used_mb"] = sample.get("memory_used_mb")
+                entry["temperature_c"] = sample.get("temperature_c")
+                entry["power_w"] = sample.get("power_w")
                 entry["processes"] = sample.get("processes", [])
             gpus.append(entry)
 

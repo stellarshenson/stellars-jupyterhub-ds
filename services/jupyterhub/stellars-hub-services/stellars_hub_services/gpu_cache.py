@@ -61,6 +61,10 @@ def _fetch_gpu_utilization():
         data[str(idx)] = {
             'utilization': int(g.get('utilization') or 0),
             'memory_used_mb': int(g.get('memory_used_mb') or 0),
+            # temperature/power are Optional from the sidecar - keep None (not 0)
+            # when absent so the UI omits the line rather than showing a fake 0
+            'temperature_c': g.get('temperature_c'),
+            'power_w': g.get('power_w'),
             'processes': g.get('processes', []) or [],
         }
     return data

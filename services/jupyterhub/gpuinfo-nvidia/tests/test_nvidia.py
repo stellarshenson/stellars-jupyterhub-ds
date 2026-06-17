@@ -5,8 +5,8 @@ from unittest.mock import patch
 from gpuinfo_nvidia import nvidia
 
 GPU_CSV = (
-    "0, NVIDIA GeForce RTX 5090, GPU-aaaa, 3, 1493, 32607\n"
-    "1, NVIDIA RTX 5000 Ada, GPU-bbbb, 0, 100, 32760\n"
+    "0, NVIDIA GeForce RTX 5090, GPU-aaaa, 3, 1493, 32607, 45, 220.50\n"
+    "1, NVIDIA RTX 5000 Ada, GPU-bbbb, 0, 100, 32760, 38, 75.00\n"
 )
 PROC_CSV = (
     "GPU-aaaa, 12345, python, 1200\n"
@@ -37,6 +37,8 @@ class TestSample:
             "utilization": 3,
             "memory_used_mb": 1493,
             "memory_total_mb": 32607,
+            "temperature_c": 45,
+            "power_w": 220.5,
             "processes": [
                 {"pid": 12345, "name": "python", "used_memory_mb": 1200},
                 {"pid": 23456, "name": "jupyter-lab", "used_memory_mb": 200},
@@ -63,14 +65,14 @@ class TestSample:
 
     def test_process_name_with_comma_preserved(self):
         proc = "GPU-aaaa, 999, /usr/bin/python,--flag, 50\n"
-        gpu = "0, NV, GPU-aaaa, 0, 0, 100\n"
+        gpu = "0, NV, GPU-aaaa, 0, 0, 100, 40, 50.0\n"
         with patch.object(nvidia, "_run", side_effect=_fake_run(csv_gpu=gpu, csv_proc=proc)):
             _, gpus = nvidia.sample()
         assert gpus[0]["processes"][0]["name"] == "/usr/bin/python,--flag"
         assert gpus[0]["processes"][0]["used_memory_mb"] == 50
 
     def test_malformed_gpu_line_skipped(self):
-        gpu = "garbage\n0, NV L4, GPU-cccc, 7, 10, 24576\n"
+        gpu = "garbage\n0, NV L4, GPU-cccc, 7, 10, 24576, 55, 41.0\n"
         with patch.object(nvidia, "_run", side_effect=_fake_run(csv_gpu=gpu, csv_proc="")):
             _, gpus = nvidia.sample()
         assert len(gpus) == 1

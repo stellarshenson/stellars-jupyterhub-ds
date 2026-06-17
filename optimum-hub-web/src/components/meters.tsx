@@ -3,7 +3,7 @@
  * never inline (per the design language). */
 import { useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { Button, Popover, Progress, Slider } from 'antd'
+import { Button, Popover, Progress, Slider, Tooltip } from 'antd'
 import { Icon } from './Icon'
 import { fmtMinutes } from '../lib/format'
 import { THRESHOLDS } from '../services/config'
@@ -69,19 +69,20 @@ export function GpuMeter({ gpus, devices }: { gpus: number[]; devices?: GpuDevic
     <span className="oh-gpurows">
       {gpus.map((g, i) => {
         const d = devices?.[i]
-        const tip = d ? `GPU ${d.index} ${shortGpuName(d.name)} - ${g}%` : `GPU ${i} - ${g}%`
         return (
-          <span className="oh-gpurow" key={i} title={tip}>
-            <small>{d?.index ?? i}</small>
-            <span className="track">
-              <i
-                style={{
-                  width: `${Math.max(3, g)}%`,
-                  backgroundImage: `repeating-linear-gradient(45deg, ${GPU_STRIPES[i % GPU_STRIPES.length]} 0 3px, transparent 3px 7px)`,
-                }}
-              />
+          <Tooltip key={i} title={gpuTip(d, g, i)}>
+            <span className="oh-gpurow">
+              <small>{d ? shortGpuName(d.name) : `GPU ${i}`}</small>
+              <span className="track">
+                <i
+                  style={{
+                    width: `${Math.max(3, g)}%`,
+                    backgroundImage: `repeating-linear-gradient(45deg, ${GPU_STRIPES[i % GPU_STRIPES.length]} 0 3px, transparent 3px 7px)`,
+                  }}
+                />
+              </span>
             </span>
-          </span>
+          </Tooltip>
         )
       })}
     </span>
@@ -91,25 +92,50 @@ export function GpuMeter({ gpus, devices }: { gpus: number[]; devices?: GpuDevic
 // real GPU inventory: one accent chip per physical device (index + short name).
 // Used when host GPU utilisation is not sampled - shows the true device count
 // without claiming a load. Memory total goes in the row value.
+// mini GPU name: drop vendor/brand boilerplate, keep the distinguishing model
+// ("NVIDIA GeForce RTX 5090" -> "5090", "NVIDIA RTX 5000 Ada Generation" ->
+// "5000 Ada"). Falls back to the raw name if stripping leaves nothing.
 function shortGpuName(name: string): string {
-  return name.replace(/^NVIDIA\s+/i, '')
+  const s = name
+    .replace(/\b(NVIDIA|GeForce|RTX|GTX|Tesla|Quadro|Generation|Laptop GPU)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return s || name
+}
+
+// multiline GPU tooltip: full name, UUID, memory, live utilisation, temperature,
+// power. Only lines with data show; falls back to a bare index + load when no
+// device metadata is available.
+function gpuTip(d: GpuDevice | undefined, utilPct?: number, idx?: number): ReactNode {
+  if (!d) return `GPU ${idx ?? '?'}${utilPct != null ? ` - ${utilPct}%` : ''}`
+  const gb = (mb?: number) => (mb ? (mb / 1024).toFixed(mb >= 10240 ? 0 : 1) : null)
+  const total = gb(d.memoryMb)
+  const used = gb(d.memoryUsedMb)
+  const util = utilPct ?? d.utilizationPct
+  const lines: string[] = [d.name]
+  if (d.uuid) lines.push(`UUID ${d.uuid}`)
+  if (total) lines.push(`Memory ${used ? `${used} / ` : ''}${total} GB`)
+  if (util != null) lines.push(`Utilisation ${util}%`)
+  if (d.temperatureC != null) lines.push(`Temp ${d.temperatureC}°C`)
+  if (d.powerW != null) lines.push(`Power ${Math.round(d.powerW)} W`)
+  return <div style={{ lineHeight: 1.7 }}>{lines.map((l, i) => <div key={i}>{l}</div>)}</div>
 }
 
 export function GpuInventory({ devices }: { devices: GpuDevice[] }) {
   return (
     <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
       {devices.map((d) => (
-        <span
-          key={d.index}
-          title={`GPU ${d.index} - ${d.name}${d.memoryMb ? ` · ${Math.round(d.memoryMb / 1024)} GB` : ''}`}
-          style={{
-            display: 'inline-flex', alignItems: 'baseline', gap: 5, padding: '1px 8px', borderRadius: 6,
-            fontSize: 12, lineHeight: 1.5, background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
-          }}
-        >
-          <small style={{ opacity: 0.65 }}>{d.index}</small>
-          {shortGpuName(d.name)}
-        </span>
+        <Tooltip key={d.index} title={gpuTip(d)}>
+          <span
+            style={{
+              display: 'inline-flex', alignItems: 'baseline', gap: 5, padding: '1px 8px', borderRadius: 6,
+              fontSize: 12, lineHeight: 1.5, background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+            }}
+          >
+            <small style={{ opacity: 0.65 }}>{d.index}</small>
+            {shortGpuName(d.name)}
+          </span>
+        </Tooltip>
       ))}
     </span>
   )
@@ -164,7 +190,7 @@ export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
 // used-up remainder shows as the gray trail. The whole gadget spans the row
 // (bar + time + Extend). Extend opens an hours slider whose last tick is "max",
 // which tops the session up to the configured ceiling (old-JupyterHub style).
-export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, onExtend }: { timeLeftMin: number; baseMin: number; maxAddHours?: number; onExtend?: (hours: number) => void }) {
+export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, onExtend }: { timeLeftMin: number; baseMin: number; maxAddHours?: number; uptimeLabel?: string; onExtend?: (hours: number) => void }) {
   // Measure remaining against the BASE timeout, not the extension ceiling, so a
   // fresh session reads ~100% and drains; an extended session caps at 100%.
   const pct = baseMin ? Math.min(100, Math.round((timeLeftMin / baseMin) * 100)) : 0
@@ -190,6 +216,11 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, onExtend }: {
         <Icon name="clock" size={14} />
         <b>{fmtMinutes(timeLeftMin)}</b>
       </span>
+      {uptimeLabel && (
+        <span className="oh-muted" title="Server uptime" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+          up {uptimeLabel}
+        </span>
+      )}
       <Popover
         open={open}
         onOpenChange={setOpen}

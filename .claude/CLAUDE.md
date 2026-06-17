@@ -135,7 +135,7 @@ services:
 
 ### TLS Certificates
 
-Certificates are auto-generated at startup by `/mkcert.sh` script and stored in `jupyterhub_certs` volume. Traefik reads certificates from `/mnt/certs/certs.yml` configuration file.
+Certificates are auto-generated at startup by `/mkcert.sh` script and stored in `jupyterhub_certs` volume. Traefik reads certificates from `/certs/certs.yml` configuration file.
 
 ## Docker Image Build Process
 

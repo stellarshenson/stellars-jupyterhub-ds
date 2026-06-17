@@ -31,7 +31,12 @@ function MyServerCard() {
     <Card>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <h2 style={{ fontSize: 16, margin: 0 }}>Server status</h2>
-        <StatusPill status={hero.status} label={hero.statusLabel} />
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {running && hero.upgradeAvailable && (
+            <Tag color="gold" style={{ margin: 0 }} title="A newer lab image is available locally - restart to upgrade">Upgrade available</Tag>
+          )}
+          <StatusPill status={hero.status} label={hero.statusLabel} />
+        </span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 20 }}>
         {running ? (
@@ -49,7 +54,7 @@ function MyServerCard() {
       </div>
       {running && (
         <div style={{ marginTop: 16 }}>
-          <TtlGadget timeLeftMin={hero.ttl.timeLeftMin} baseMin={hero.ttl.baseMin} maxAddHours={hero.ttl.maxAddHours} onExtend={(h) => extendSession(hero.user, h)} />
+          <TtlGadget timeLeftMin={hero.ttl.timeLeftMin} baseMin={hero.ttl.baseMin} maxAddHours={hero.ttl.maxAddHours} uptimeLabel={hero.startedISO ? timeAgoShort(hero.startedISO) : undefined} onExtend={(h) => extendSession(hero.user, h)} />
         </div>
       )}
     </Card>

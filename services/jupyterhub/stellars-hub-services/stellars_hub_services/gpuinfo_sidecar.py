@@ -42,16 +42,29 @@ def _connect_hub(client, network):
         pass  # already connected (409) or transient - non-fatal
 
 
-def ensure_gpuinfo_sidecar(image, network_name, url):
+def ensure_gpuinfo_sidecar(image, network_name, url, compose_project=''):
     """Ensure the GPU-info sidecar container is running. Never raises.
 
     Returns True if the sidecar ends up running (reused, started, or created),
     False if docker is unavailable or anything failed - the caller uses that to
     decide whether to even probe (and to fall back to last-known GPU state).
+
+    The container + network are stamped with the same compose-project labels the
+    spawned user containers get (see hooks.py), so the hub-started sidecar belongs
+    to the compose project (shows in `docker compose ps`) rather than running as a
+    standalone container.
     """
     import docker
 
     name = container_name_from_url(url)
+    project_labels = {'com.docker.compose.project': compose_project} if compose_project else {}
+    container_labels = dict(project_labels)
+    if compose_project:
+        container_labels.update({
+            'com.docker.compose.service': name,
+            'com.docker.compose.container-number': '1',
+            'com.docker.compose.oneoff': 'False',
+        })
     try:
         client = docker.DockerClient('unix://var/run/docker.sock')
     except Exception as e:
@@ -64,7 +77,7 @@ def ensure_gpuinfo_sidecar(image, network_name, url):
         try:
             network = client.networks.get(network_name)
         except docker.errors.NotFound:
-            network = client.networks.create(network_name, driver='bridge')
+            network = client.networks.create(network_name, driver='bridge', labels=(project_labels or None))
             log.info(f"[GPUInfo] created network {network_name}")
         _connect_hub(client, network)
 
@@ -88,6 +101,7 @@ def ensure_gpuinfo_sidecar(image, network_name, url):
             runtime='nvidia',
             environment=dict(_SIDECAR_ENV),
             network=network_name,
+            labels=container_labels,
         )
         log.info(f"[GPUInfo] created sidecar '{name}' from {image} on {network_name}")
         running = True
