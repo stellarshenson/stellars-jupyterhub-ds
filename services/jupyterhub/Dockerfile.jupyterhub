@@ -7,13 +7,13 @@
 # STAGE 1 - Builder: compile the SPA bundle, then build + test the platform/portal wheels
 ##############################################################################################
 
-# One builder for both toolchains. Base is Python 3.12 on Debian bookworm with
+# One builder for both toolchains. Base is Python 3.13 on Debian bookworm with
 # Node.js 20 added from the official NodeSource apt repo. Bookworm is pinned
 # deliberately: NodeSource packages target a specific Debian release, and
 # apt-installing Node built for the base avoids the glibc fragility of copying
 # node binaries across images. This whole stage is discarded - only the /dist
 # wheels are carried into the runtime image.
-FROM python:3.12-slim-bookworm AS builder
+FROM python:3.13-slim-bookworm AS builder
 
 # Install Node.js 20 from NodeSource (the official Node.js apt distribution).
 RUN <<-EOF

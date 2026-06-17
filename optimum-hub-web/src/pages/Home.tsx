@@ -212,8 +212,8 @@ function AdminHome() {
           {total && (
             <ResourceBars
               rows={[
-                { label: 'CPU', value: total.cpu },
-                { label: 'Memory', value: total.mem },
+                { label: 'CPU', value: total.cpu, tip: total.cpuTip },
+                { label: 'Memory', value: total.mem, tip: total.memTip },
                 { label: 'GPU', value: total.gpu, gpus: total.gpus, gpuDevices: total.gpuDevices },
               ]}
             />

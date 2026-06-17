@@ -94,7 +94,7 @@ export default function Users() {
       sorter: (a, b) => a.name.localeCompare(b.name),
       render: (_, u) => (
         <div className="oh-user-cell">
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Link to={`/users/${u.name}`} style={{ color: 'var(--color-accent)' }}>
               {u.name}
             </Link>

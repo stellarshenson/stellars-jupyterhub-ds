@@ -192,7 +192,7 @@ export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
 // used-up remainder shows as the gray trail. The whole gadget spans the row
 // (bar + time + Extend). Extend opens an hours slider whose last tick is "max",
 // which tops the session up to the configured ceiling (old-JupyterHub style).
-export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, onExtend }: { timeLeftMin: number; baseMin: number; maxAddHours?: number; uptimeLabel?: string; onExtend?: (hours: number) => void }) {
+export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, onExtend }: { timeLeftMin: number; baseMin: number; maxAddHours?: number; uptimeLabel?: string; onExtend?: (hours: number) => void | Promise<unknown> }) {
   // Measure remaining against the BASE timeout, not the extension ceiling, so a
   // fresh session reads ~100% and drains; an extended session caps at 100%.
   const pct = baseMin ? Math.min(100, Math.round((timeLeftMin / baseMin) * 100)) : 0
@@ -219,7 +219,9 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
   const apply = () => {
     setOpen(false)
     setBoost(true)
-    onExtend?.(Math.max(1, Math.min(maxH, hours)))
+    // optimistic fill; if the extend request rejects, drop the boost immediately
+    // rather than show a false 100% for the whole animation window
+    Promise.resolve(onExtend?.(Math.max(1, Math.min(maxH, hours)))).catch(() => setBoost(false))
   }
   // slider marks: first hour and the last tick labelled "max" (tops to ceiling)
   const marks: Record<number, ReactNode> = { 1: '1h', [maxH]: 'max' }

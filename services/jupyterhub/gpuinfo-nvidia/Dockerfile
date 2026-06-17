@@ -10,7 +10,7 @@ ARG NVIDIA_BASE_IMAGE=nvidia/cuda:13.0.2-base-ubuntu24.04
 ##############################################################################
 # STAGE 1 - build + test the wheel (tests gate the image build)
 ##############################################################################
-FROM python:3.12-slim-bookworm AS builder
+FROM python:3.13-slim-bookworm AS builder
 
 RUN pip install --no-cache-dir build
 COPY services/jupyterhub/gpuinfo-nvidia /src/gpuinfo-nvidia

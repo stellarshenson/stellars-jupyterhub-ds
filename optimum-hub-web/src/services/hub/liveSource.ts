@@ -129,6 +129,12 @@ const MOUNT_BY_SUFFIX: Record<string, string> = {
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
 const clampPct = (n: number) => Math.max(0, Math.min(100, Math.round(n)))
 const round1 = (n: number) => Math.round(n * 10) / 10
+// CPU bar as a fraction of the assigned cores (parallel to the memory bar's
+// usage/limit). docker's cpu_percent is cores-used x 100, so a multi-core
+// container exceeds 100%; dividing by the assigned cores keeps the bar 0-100 and
+// makes a quota-limited user's bar measure against their ceiling, not the host.
+const cpuBarPct = (cpuPercent: number | null | undefined, cores: number | null | undefined): number | null =>
+  cpuPercent == null ? null : clampPct(cores && cores > 0 ? cpuPercent / cores : cpuPercent)
 
 function fmtMinutes(min: number): string {
   if (min >= 60) {
@@ -249,7 +255,7 @@ export const liveSource: DataSource = {
         statusLabel: `${cap(status)}${a?.last_activity ? ` ${timeAgoShort(a.last_activity)}` : ''}`,
         lastActivityISO: a?.last_activity ?? null,
         activity: running ? clampPct(a?.activity_score ?? 0) : null,
-        cpu: running && a?.cpu_percent != null ? Math.round(a.cpu_percent) : null,
+        cpu: running ? cpuBarPct(a?.cpu_percent, cores) : null,
         cpuTip,
         mem: running && memPct != null ? Math.round(memPct) : null,
         memTip,
@@ -366,7 +372,7 @@ export const liveSource: DataSource = {
     const status: ServerStatus = a?.server_active ? (a.recently_active ? 'active' : 'idle') : 'offline'
     const resources: ResourceSnapshot = a?.server_active
       ? {
-          cpu: Math.round(a.cpu_percent ?? 0),
+          cpu: cpuBarPct(a.cpu_percent, a.cpu_cores) ?? 0,
           cpuTip: a.cpu_cores != null
             ? `${a.cpu_cores} core${a.cpu_cores === 1 ? '' : 's'} ${a.cpu_cores_limited ? 'assigned' : 'host (no limit)'}`
             : undefined,
@@ -409,14 +415,20 @@ export const liveSource: DataSource = {
       if (!active.length) return { cpu: 0, mem: 0, gpu: gpuAgg, gpus, gpuDevices }
       const totalMb = active[0].memory_total_mb || 0
       const memUsed = active.reduce((s, u) => s + (u.memory_mb ?? 0), 0)
-      const cpuSum = active.reduce((s, u) => s + (u.cpu_percent ?? 0), 0)
+      const cpuSum = active.reduce((s, u) => s + (u.cpu_percent ?? 0), 0) // cores-used x 100, summed
+      const coresUsed = cpuSum / 100
+      // host cores: the largest assigned-core count among active servers (an
+      // unlimited server's assignment IS the host core count) - the bar denominator
+      // so the total reads as a fraction of the host, not an always-maxed sum.
+      const hostCores = Math.max(1, ...active.map((u) => u.cpu_cores ?? 0))
       return {
-        cpu: clampPct(cpuSum), // sum of container cpu% across servers, clamped (approximate host load)
+        cpu: clampPct((coresUsed / hostCores) * 100),
+        cpuTip: `~${round1(coresUsed)} of ${hostCores} core${hostCores === 1 ? '' : 's'} in use across ${active.length} server${active.length === 1 ? '' : 's'}`,
         mem: totalMb > 0 ? clampPct((memUsed / totalMb) * 100) : 0,
         gpu: gpuAgg, // busiest GPU's real load
         gpus,
         gpuDevices,
-        memTip: `${round1(memUsed / 1024)} GB across ${active.length} server(s)`,
+        memTip: `${round1(memUsed / 1024)} GB across ${active.length} server${active.length === 1 ? '' : 's'}`,
       }
     } catch {
       // never fabricate platform facts: on a live error return empty resources

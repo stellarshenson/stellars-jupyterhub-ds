@@ -99,7 +99,10 @@ export const saveUserProfile = (name: string, profile: UserProfile) =>
     first_name: profile.firstName,
     last_name: profile.lastName,
     email: profile.email,
-  }), [['user-profile', name], ['user', name]])
+    // ['users'] carries the table's fullName (from /user-profiles) - without it a
+    // saved name change never refreshes the list (and the persisted cache keeps it
+    // stale across reloads); ['user-profile', name] refetches the edit form itself.
+  }), [['user-profile', name], ['user', name], ['users']])
 
 /** Admin sets another user's password (NativeAuth admin change-password). */
 export const setUserPassword = (name: string, password: string) =>

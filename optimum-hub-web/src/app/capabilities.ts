@@ -7,7 +7,9 @@
  * Every GPU widget gates on this instead of inferring from a lazy device list. */
 export function gpuSupported(): boolean {
   const d = typeof window !== 'undefined' ? window.jhdata : undefined
-  return d?.gpu_enabled ?? true
+  // Live shell (jhdata present) is authoritative - hide GPU widgets unless the
+  // hub flagged a GPU. Only mock/dev (no jhdata) defaults to supported for demos.
+  return d ? !!d.gpu_enabled : true
 }
 
 /** The platform admin username (JUPYTERHUB_ADMIN), or '' under mock/dev. */
