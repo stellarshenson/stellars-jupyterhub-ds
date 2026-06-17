@@ -112,6 +112,7 @@ class ActivityDataHandler(BaseHandler):
                 "memory_total_mb": None,
                 "memory_limited": False,
                 "time_remaining_seconds": None,
+                "timeout_seconds": None,  # base idle-culler TTL (the "standard limit"); configurable, exposed so the UI never hardcodes it
                 "server_started": None,
                 "lab_image_upgrade_available": False,
                 "activity_score": None,
@@ -152,6 +153,7 @@ class ActivityDataHandler(BaseHandler):
                         user_data["time_remaining_seconds"] = remaining_seconds_for(
                             spawner.orm_spawner, timeout_seconds, ceiling, now
                         )
+                        user_data["timeout_seconds"] = timeout_seconds
 
             if server_active:
                 active_users.append((user, spawner, user_data))

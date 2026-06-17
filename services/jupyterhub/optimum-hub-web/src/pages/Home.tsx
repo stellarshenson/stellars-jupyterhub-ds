@@ -3,7 +3,7 @@
  * actions, recent events). A plain user sees the launchpad (their server hero,
  * their groups, effective access). */
 import { useEffect } from 'react'
-import { Card } from 'antd'
+import { Card, Tag } from 'antd'
 import { Link, useNavigate } from 'react-router-dom'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
@@ -26,6 +26,7 @@ import { restartServer, stopServer } from '../services/ops'
 import type { ServerRow, ServerStatus } from '../services/types'
 
 const STATUS_ORDER: Record<ServerStatus, number> = { active: 1, idle: 2, spawning: 3, offline: 4, error: 5 }
+const accentTag = { background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4, marginInlineStart: 6 }
 
 function PendingCallout({ count }: { count: number }) {
   if (count === 0) return null
@@ -54,7 +55,21 @@ function ActiveServersPreview() {
   // minimal info on the home preview - the detailed CPU/mem/vol/sys breakdowns
   // live in the Servers screen drawer now
   const columns: ProColumns<ServerRow>[] = [
-    { title: 'User', dataIndex: 'user', render: (_, r) => <span>{r.user}</span> },
+    {
+      title: 'User',
+      dataIndex: 'user',
+      // username links to the user config + first/last name beneath, matching the
+      // Servers list and Users screen
+      render: (_, r) => (
+        <div className="oh-user-cell">
+          <span>
+            <Link to={`/users/${r.user}`} style={{ color: 'var(--color-accent)' }} title={`Configure ${r.user}`}>{r.user}</Link>
+            {r.admin && <Tag bordered={false} style={accentTag}>admin</Tag>}
+          </span>
+          {r.name && <span className="oh-name-hint">{r.name}</span>}
+        </div>
+      ),
+    },
     { title: 'Status', render: (_, r) => <StatusPill status={r.status} label={r.statusLabel} /> },
     { title: 'Activity', render: (_, r) => <ActivityMeter value={r.activity} hours={r.activityHours} pct={r.activityPct} /> },
     {

@@ -29,6 +29,7 @@ export interface ServerRow {
   systemTip?: string
   systemOver?: boolean
   timeLeftMin: number | null // minutes until the idle culler stops it
+  baseTimeoutMin?: number | null // configurable base idle-culler TTL (the "standard limit")
   timeLeftLabel?: string
   timeLeftWarn?: boolean // below the warning threshold
 }
