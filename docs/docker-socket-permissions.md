@@ -18,7 +18,7 @@ Valid combinations:
 | 1 | 0 | 1 | Docker + Docker root |
 | 0 | 1 | 1 | Docker limited + Docker root |
 
-Rules enforced server-side (`stellars_hub_services.groups_config.validate_docker_selection`) and client-side in the Groups UI:
+Rules enforced server-side (`optimum_hub_services.groups_config.validate_docker_selection`) and client-side in the Groups UI:
 
 - Normal XOR limited within one group
 - Docker (root) free to combine on its own or with either access mode
@@ -26,6 +26,6 @@ Rules enforced server-side (`stellars_hub_services.groups_config.validate_docker
 
 The groups table shows a single `Docker` features chip whenever any of the three fields is on - it indicates "this group has Docker config" without revealing the flavour.
 
-**Implementation**: `services/jupyterhub/stellars_hub_services/stellars_hub_services/hooks.py::pre_spawn_hook` reads the resolved config and applies the volume mount / sidecar / `privileged=True` accordingly. Changes require a server restart (stop/start cycle).
+**Implementation**: `services/jupyterhub/optimum_hub_services/optimum_hub_services/hooks.py::pre_spawn_hook` reads the resolved config and applies the volume mount / sidecar / `privileged=True` accordingly. Changes require a server restart (stop/start cycle).
 
 **Security**: All three fields grant significant privileges. Only grant to trusted users.

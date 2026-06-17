@@ -2,7 +2,7 @@
 
 `make increment_version` bumps the patch version of the root project and every in-repo package baked into the hub image in lockstep, by setting the new version absolutely (not matching the old string) so a drifted subpackage is pulled back into sync rather than skipped.
 
-- [x] **Root + three subpackages** - sets the version on `pyproject.toml`, `optimum-hub-web/pyproject.toml`, `stellars-hub-services/pyproject.toml`, `stellars-docker-proxy/pyproject.toml`, and `optimum-hub-web/package.json`
+- [x] **Root + three subpackages** - sets the version on `pyproject.toml`, `optimum-hub-web/pyproject.toml`, `optimum-hub-services/pyproject.toml`, `stellars-docker-proxy/pyproject.toml`, and `optimum-hub-web/package.json`
   - log: 2026-06-17 `VERSIONED_PYPROJECTS` loop + package.json sed; `Makefile`
 - [x] **Image packages only** - the three subpackages are exactly the wheels the hub image installs (Dockerfile lines 174-176); `optimum hub`, `jupyter hub services`, and `the other one` = docker-proxy
   - log: 2026-06-17 confirmed against `Dockerfile.jupyterhub`

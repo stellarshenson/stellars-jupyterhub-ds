@@ -69,3 +69,18 @@ The CPU/Memory/GPU progress bars on the Server status card, the Servers table, a
   - log: 2026-06-17 backend confirmed live (`cpu_cores=32` after fix pending rebuild); on-screen confirm pends operator rebuild
 - [x] **Edge: GPU absent** - `gpuSupported()` false (live `window.jhdata.gpu_enabled` false) -> GPU rows hidden entirely, not a "-" row
   - log: 2026-06-17 default tightened to false in live mode (was `?? true`)
+
+## Tooltip percentages (added 2026-06-17)
+
+The bars are 0-100% but the tooltips must also quote the live usage %, not only the assigned ceiling, on BOTH the server-resources widget and the servers-list per-user cells (identical tooltip text on both surfaces).
+
+- [ ] **CPU tooltip shows % used** - in addition to "N cores assigned" / "N cores host (no limit)", the CPU tooltip quotes the live usage % (the bar value)
+  - log: 2026-06-17 criterion added (#245)
+- [ ] **Servers-list CPU cell = same tooltip as the widget** - the per-user CPU cell on the Servers list uses the exact same tooltip text as the server-resources CPU bar
+  - log: 2026-06-17 criterion added (#245, #10); currently the list cell tip differs
+- [ ] **Memory tooltip shows % of assigned + % of total** - alongside the assigned info ("X GB used of Y GB assigned/host"), the memory tooltip states the % of the assigned that is used AND the % of the host total it is
+  - log: 2026-06-17 criterion added (#246)
+- [ ] **Edge: unlimited memory** - when not limited (host fallback), "% of assigned" and "% of total" coincide; show one clearly rather than a redundant duplicate
+  - log: 2026-06-17 criterion added (#246)
+- [ ] **Reflected in the design language** - the "tooltip carries the live % + the assigned reference" rule appears on /design-language as a visual cue
+  - log: 2026-06-17 criterion added (#252)

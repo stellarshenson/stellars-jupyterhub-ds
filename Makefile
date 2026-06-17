@@ -42,10 +42,10 @@ GPUINFO_DOCKERFILE := services/jupyterhub/gpuinfo-nvidia/Dockerfile
 # increment_version sets them all to the bumped root version in lockstep so the
 # wheels + npm package never drift from the release tag. The gpuinfo-nvidia
 # sidecar is a SEPARATE image with its own version and is intentionally excluded.
-OPTIMUM_PYPROJECT       := optimum-hub-web/pyproject.toml
-OPTIMUM_PACKAGE_JSON    := optimum-hub-web/package.json
-OPTIMUM_PACKAGE_LOCK    := optimum-hub-web/package-lock.json
-HUB_SERVICES_PYPROJECT  := services/jupyterhub/stellars-hub-services/pyproject.toml
+OPTIMUM_PYPROJECT       := services/jupyterhub/optimum-hub-web/pyproject.toml
+OPTIMUM_PACKAGE_JSON    := services/jupyterhub/optimum-hub-web/package.json
+OPTIMUM_PACKAGE_LOCK    := services/jupyterhub/optimum-hub-web/package-lock.json
+HUB_SERVICES_PYPROJECT  := services/jupyterhub/optimum-hub-services/pyproject.toml
 DOCKER_PROXY_PYPROJECT  := services/jupyterhub/stellars-docker-proxy/pyproject.toml
 # [project] version lines set in lockstep (root + the three packages in the image)
 VERSIONED_PYPROJECTS    := pyproject.toml $(OPTIMUM_PYPROJECT) $(HUB_SERVICES_PYPROJECT) $(DOCKER_PROXY_PYPROJECT)
@@ -239,9 +239,9 @@ FUNCTEST_COMPOSE := tests/functional/compose.functional.yml
 FUNCTEST_ENV_COMPOSE := tests/functional/compose.functional-env.yml
 FUNCTEST_IMAGES  := quay.io/jupyterhub/singleuser:latest mcr.microsoft.com/playwright/python:v1.49.0-noble
 
-## run the python unit test suites locally (stellars-hub-services + stellars-docker-proxy)
+## run the python unit test suites locally (optimum-hub-services + stellars-docker-proxy)
 test:
-	@cd services/jupyterhub/stellars-hub-services && python3 -m pytest tests/ -q
+	@cd services/jupyterhub/optimum-hub-services && python3 -m pytest tests/ -q
 	@cd services/jupyterhub/stellars-docker-proxy && python3 -m pytest tests/ -q
 
 ## run the functional UI/scenario harness in an isolated throwaway deployment, then clean containers/network/volumes (LOCAL ONLY; pulled images kept to avoid re-pull - REMOVE_IMAGES=1 to also remove them)

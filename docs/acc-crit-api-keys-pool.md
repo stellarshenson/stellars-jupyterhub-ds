@@ -2,7 +2,7 @@
 
 ## Overview
 
-A new group configuration type that distributes a finite pool of API credentials to user containers so that no two running containers ever hold the same credential. It joins the existing group config family (env variables, GPU, Docker, compute, memory) and is resolved, applied, and logged through the same machinery in `stellars_hub_services`.
+A new group configuration type that distributes a finite pool of API credentials to user containers so that no two running containers ever hold the same credential. It joins the existing group config family (env variables, GPU, Docker, compute, memory) and is resolved, applied, and logged through the same machinery in `optimum_hub_services`.
 
 The pool is exclusive by design: each running container is assigned at most one credential per pool, the credential returns to the pool when the container stops, and the in-use set is rebuilt by inspecting the actual running containers rather than trusting lifecycle events alone.
 
