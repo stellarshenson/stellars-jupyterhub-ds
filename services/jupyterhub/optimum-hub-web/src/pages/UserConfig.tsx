@@ -10,6 +10,7 @@ import { GroupPicker } from '../components/GroupPicker'
 import { Icon } from '../components/Icon'
 import { Notice } from '../components/Notice'
 import { VolumeReset } from '../components/VolumeReset'
+import { useRole } from '../app/RoleContext'
 import { useEffectiveGrants, useUser, useUserProfile } from '../hooks/queries'
 import { mockSuccess } from '../services/actions'
 import { isMock } from '../services/dataMode'
@@ -19,7 +20,11 @@ import { adminUser, isAdminUser } from '../app/capabilities'
 import { genPassword } from '../lib/password'
 
 export default function UserConfig() {
-  const { name = '' } = useParams()
+  // /users/:name carries the target; /profile has no param -> fall back to the
+  // logged-in user so Profile reuses this exact screen, scoped to self
+  const { name: paramName } = useParams()
+  const { username } = useRole()
+  const name = paramName || username
   const navigate = useNavigate()
   const { data: user } = useUser(name)
   const { data: userProfile } = useUserProfile(name)
@@ -111,8 +116,10 @@ export default function UserConfig() {
       {!isBuiltinAdmin && (liveAdmin
         ? <div style={{ marginBottom: 16 }}><Notice type="info">Administrators are authorised automatically.</Notice></div>
         : <Form.Item label="Authorised" name="authorized" valuePropName="checked"><Switch /></Form.Item>)}
-      {!isBuiltinAdmin && (
-        <Form.Item label="Force password change on next login" name="forcePw" valuePropName="checked" extra="The user cannot start their server until they set a new password">
+      {/* admins can always spawn -> the force-password gate is meaningless for
+          them; the control hides the moment admin is toggled on (like Authorised) */}
+      {!isBuiltinAdmin && !liveAdmin && (
+        <Form.Item label="Force password change on next login" name="forcePw" valuePropName="checked" tooltip="The user cannot start their server until they set a new password">
           <Switch />
         </Form.Item>
       )}

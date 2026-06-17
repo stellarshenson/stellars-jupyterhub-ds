@@ -31,7 +31,7 @@ function MyServerCard() {
   return (
     <Card>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <h2 style={{ fontSize: 16, margin: 0 }}>Server</h2>
+        <h2 style={{ fontSize: 16, margin: 0 }}>Server Control</h2>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {running && hero.upgradeAvailable && (
             <NotificationPill type="info" label="Upgrade available" title="A newer lab image is available locally - stop your server and start a new one to upgrade" />

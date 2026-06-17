@@ -41,7 +41,7 @@ export const NAV_ADMIN: NavGroup[] = [
       { id: 'servers', label: 'Servers', icon: 'server', path: '/servers' },
       { id: 'users', label: 'Users', icon: 'users', path: '/users', badge: '2' },
       { id: 'groups', label: 'Groups', icon: 'group', path: '/groups' },
-      { id: 'lab-container', label: 'Lab Container', icon: 'box', path: '/lab-container' },
+      { id: 'lab-container', label: 'Lab Setup', icon: 'box', path: '/lab-container' },
       { id: 'events', label: 'Events', icon: 'activity', path: '/events' },
       { id: 'notifications', label: 'Notifications', icon: 'megaphone', path: '/notifications' },
       {

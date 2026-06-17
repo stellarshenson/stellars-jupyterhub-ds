@@ -5,7 +5,6 @@ import { portalBasename } from './services/hub/client'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Home from './pages/Home'
-import Profile from './pages/Profile'
 import Starting from './pages/Starting'
 import Servers from './pages/Servers'
 import Users from './pages/Users'
@@ -47,7 +46,9 @@ export const router = createBrowserRouter(
         // built-in page, so at the hub root (no /portal segment) the SPA must
         // not reuse that path. Nav label stays "Home".
         { path: 'dashboard', handle: { crumb: 'Home' }, element: <Home /> },
-        { path: 'profile', handle: { crumb: 'Profile' }, element: <Profile /> },
+        // Profile = the Configure-user screen scoped to the current user (no
+        // :name param -> UserConfig falls back to the logged-in username)
+        { path: 'profile', handle: { crumb: 'Profile' }, element: <UserConfig /> },
         // Spawn progress + live log tail. Not admin-gated: a plain user starts
         // their OWN server here; the backend endpoints enforce admin-or-self.
         { path: 'servers/:name/starting', handle: { crumb: 'Starting server' }, element: <Starting /> },
@@ -74,7 +75,7 @@ export const router = createBrowserRouter(
             { path: 'groups/export', handle: { crumb: 'Export groups', parent: groupsParent }, element: <GroupsExport /> },
             { path: 'groups/:name', handle: { crumb: 'Configure group', parent: groupsParent }, element: <GroupConfig /> },
 
-            { path: 'lab-container', handle: { crumb: 'Lab Container' }, element: <LabContainer /> },
+            { path: 'lab-container', handle: { crumb: 'Lab Setup' }, element: <LabContainer /> },
             { path: 'events', handle: { crumb: 'Events' }, element: <Events /> },
             { path: 'notifications', handle: { crumb: 'Notifications' }, element: <Notifications /> },
             { path: 'settings', handle: { crumb: 'Settings' }, element: <Settings /> },

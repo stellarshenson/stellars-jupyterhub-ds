@@ -1,6 +1,6 @@
 # Acceptance Criteria - resource bars (limits + tooltips)
 
-The CPU/Memory/GPU progress bars on the "Server status" panel (the server card's right half), the Servers table, and the Home "Host status" widget (renamed from "Total resources usage"; the server card's status+controls half is titled "Server"). Each bar must read 0-100% against the right reference (a quota-limited user's bar measures against THEIR ceiling, not the host) and every bar must carry a hover tooltip with the precise breakdown. Backend `docker_utils.get_container_stats`; frontend `liveSource` (`getServerHero`/`getServers`/`getTotalResources`) + `components/meters.tsx` (`ResourceBars`).
+The CPU/Memory/GPU progress bars on the "Server Status" panel (the server card's right half), the Servers table, and the Home "Host Status" widget (renamed from "Total resources usage"; the server card's status+controls half is titled "Server Control"). Each bar must read 0-100% against the right reference (a quota-limited user's bar measures against THEIR ceiling, not the host) and every bar must carry a hover tooltip with the precise breakdown. Backend `docker_utils.get_container_stats`; frontend `liveSource` (`getServerHero`/`getServers`/`getTotalResources`) + `components/meters.tsx` (`ResourceBars`).
 
 ## CPU bar reference
 
