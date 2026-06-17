@@ -48,7 +48,7 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
             </>
           ) : (
             <>
-              <Button type="primary" icon={<Icon name="play" size={15} filled />} disabled={!!busy} onClick={() => lifecycle.start(hero.user)}>
+              <Button type="primary" icon={<Icon name="play" size={15} filled />} disabled={!!busy} onClick={() => navigate(`/servers/${hero.user}/starting`)}>
                 Start server
               </Button>
               {role === 'admin' && (
@@ -69,7 +69,7 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
         <h3 style={{ fontSize: 14, margin: '0 0 12px' }}>{resourcesTitle}</h3>
         <ResourceBars
           rows={[
-            { label: 'CPU', value: hero.resources.cpu },
+            { label: 'CPU', value: hero.resources.cpu, tip: hero.resources.cpuTip },
             { label: 'Memory', value: hero.resources.mem, tip: hero.resources.memTip },
             // per-server GPU usage is not tracked - show the row only when there is
             // GPU data to show (utilisation or inventory), never a fabricated 0%

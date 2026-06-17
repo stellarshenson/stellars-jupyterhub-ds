@@ -14,6 +14,7 @@ export interface ServerRow {
   lastActivityISO?: string | null // last activity timestamp, for the time-ago column
   activity: number | null // 0-100 engagement, null when not running
   cpu: number | null // % of host
+  cpuTip?: string // "4 cores assigned" / "8 host cores (no limit)"
   mem: number | null // % of host RAM
   memTip?: string // "19.2 GB - 30% of host RAM, over the 25% per-user limit"
   memOver?: boolean
@@ -180,6 +181,7 @@ export interface GpuDevice {
 
 export interface ResourceSnapshot {
   cpu: number // % host
+  cpuTip?: string // "4 cores assigned" / "8 host cores (no limit)"
   mem: number // % host
   gpu: number // % host (aggregate)
   gpus?: number[] // per-GPU utilisation % - segmented GPU meter (only when utilisation is sampled)

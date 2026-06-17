@@ -14,7 +14,7 @@ export function Breadcrumbs() {
   const withCrumb = [...matches].reverse().find((m) => (m.handle as CrumbHandle | undefined)?.crumb)
   const handle = withCrumb?.handle as CrumbHandle | undefined
 
-  const items: Array<{ title: React.ReactNode }> = [{ title: <Link to="/home">Optimum Hub</Link> }]
+  const items: Array<{ title: React.ReactNode }> = [{ title: <Link to="/dashboard">Optimum Hub</Link> }]
   if (handle?.parent) items.push({ title: <Link to={handle.parent.to}>{handle.parent.label}</Link> })
   items.push({ title: <b>{handle?.crumb ?? ''}</b> })
 

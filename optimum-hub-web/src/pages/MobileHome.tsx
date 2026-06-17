@@ -47,7 +47,7 @@ function MyServerCard() {
           </>
         ) : (
           <>
-            <Button type="primary" block size="large" icon={<Icon name="play" size={15} filled />} disabled={busy} onClick={() => lifecycle.start(hero.user)}>Start server</Button>
+            <Button type="primary" block size="large" icon={<Icon name="play" size={15} filled />} disabled={busy} onClick={() => navigate(`/servers/${hero.user}/starting`)}>Start server</Button>
             {role === 'admin' && <Button block size="large" icon={<Icon name="disk" size={15} />} disabled={busy} onClick={() => navigate(`/servers/${hero.user}/volumes`)}>Manage volumes</Button>}
           </>
         )}

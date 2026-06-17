@@ -13,12 +13,16 @@ Running checklist for the rapid UI feedback pass: TTL animation, GPU labels + ri
 
 - [x] **Mini name as bar label** - per-GPU bar labels show the stripped name ("5090") not the index
   - log: 2026-06-17 implemented (shortGpuName + GpuMeter)
-- [ ] **Full name fits before the bar (single line)** - the device-name label column is wide enough for the full short name ("A500 Embedded GPU"), single line, never wrapped/truncated, bar flexes after it
+- [x] **Full name fits before the bar (single line)** - the device-name label column is wide enough for the full short name ("A500 Embedded GPU"), single line, never wrapped/truncated, bar flexes after it
   - log: 2026-06-17 pending - needs `.oh-gpurow` layout: name `white-space:nowrap` + natural width, bar `flex:1`
-- [ ] **Rich multiline GPU tooltip** - hover shows full info, one field per line, like the old design: full name, UUID, memory total, current utilisation, memory used, temperature, wattage
+  - log: 2026-06-17 fixed - `.oh-gpurow > small` was 8px (index-sized) so names wrapped/collided; now `width:112px` left-aligned, `nowrap` + ellipsis guard, `flex:1` bar after it (global.css:80)
+- [x] **Rich multiline GPU tooltip** - hover shows full info, one field per line, like the old design: full name, UUID, memory total, current utilisation, memory used, temperature, wattage
   - log: 2026-06-17 pending; PARTIAL data only - name/uuid/mem-total/utilisation/mem-used are available (uuid in inventory, dropped by gpu_cache so must be threaded); **temperature + wattage are NOT queried by the sidecar** (`_GPU_QUERY`), so they need: sidecar `_GPU_QUERY += temperature.gpu,power.draw` + schema + image rebuild, then gpu_cache + activity entry + GpuDevice type + tooltip
-  - [ ] **Sub: extend sidecar** - add `temperature.gpu`, `power.draw` to `_GPU_QUERY` + schema (`gpuinfo-nvidia`, separate image)
-  - [ ] **Sub: thread fields** - keep uuid/temp/power through `gpu_cache` -> activity gpu entry -> `GpuDevice` -> tooltip
+  - log: 2026-06-17 complete - `gpuTip` renders name/UUID/memory used+total/utilisation/temp/power, one field per line (meters.tsx)
+  - [x] **Sub: extend sidecar** - add `temperature.gpu`, `power.draw` to `_GPU_QUERY` + schema (`gpuinfo-nvidia`, separate image)
+  - [x] **Sub: thread fields** - keep uuid/temp/power through `gpu_cache` -> activity gpu entry -> `GpuDevice` -> tooltip
+- [x] **Standard tooltip, not a boxy popup** - the GPU tooltip is a compact dark antd `Tooltip` (lineHeight 1.45, `nowrap` lines, `maxWidth:none`), matching the other portal tooltips, not the loose tall box it had become
+  - log: 2026-06-17 fixed - tightened `gpuTip` line-height + `whiteSpace:nowrap`, dropped the wide loose div; both GpuMeter + GpuInventory tooltips share the styling
 
 ## List + resource tooltips
 
@@ -40,8 +44,9 @@ Running checklist for the rapid UI feedback pass: TTL animation, GPU labels + ri
 
 - [x] **Footer label** - bottom stack chip reads "Ant Design" not "Ant Design Pro"
   - log: 2026-06-17 done (AppLayout VersionFooter)
-- [ ] **First/last name in users list** - the users list shows the profile first/last name as a sub-name under the username
+- [x] **First/last name in users list** - the users list shows the profile first/last name as a sub-name under the username
   - log: 2026-06-17 pending (#186) - `getUsers` does not surface profile first/last; also depends on the profile save actually persisting (#183 "Failed to fetch"); user reports the saved name does not appear -> both needed
+  - log: 2026-06-17 done - new bulk `GET /api/user-profiles` (admin) via `UserProfilesListHandler` + `UserProfileManager.get_all_profiles()`; `liveSource.getUsers` fetches it and sets `UserRow.fullName = "First Last"`; `Users.tsx` already renders `oh-name-hint`; mock already had names so parity holds. #183: save path (handler/route/XSRF) verified correct - the "Failed to fetch" was a stale bundle, not a code bug; the real symptom was this missing display link
 
 ## Verification
 

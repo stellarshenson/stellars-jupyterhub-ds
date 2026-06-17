@@ -77,3 +77,51 @@ class RestartServerHandler(BaseHandler):
             return self.send_error(500, f"Failed to restart container: {str(e)}")
         finally:
             docker_client.close()
+
+
+class ServerLogsHandler(BaseHandler):
+    """Tail a spawned container's logs (admin-or-self).
+
+    GET /hub/api/users/{username}/server/logs?tail=15 -> {"lines": [...]}
+
+    Backs the Start-server page's live log feed (the spawn-progress SSE carries
+    status text, not container stdout/stderr). Bounded tail only - never the full
+    log. 403 for a non-owner non-admin; 404 while the container does not exist yet
+    (the page shows a "waiting for container" placeholder until it appears).
+    """
+
+    _DEFAULT_TAIL = 15
+    _MAX_TAIL = 200
+
+    @web.authenticated
+    async def get(self, username):
+        current_user = self.current_user
+        if current_user is None or not (current_user.admin or current_user.name == username):
+            raise web.HTTPError(403, "Permission denied")
+
+        try:
+            tail = int(self.get_argument('tail', str(self._DEFAULT_TAIL)))
+        except (TypeError, ValueError):
+            tail = self._DEFAULT_TAIL
+        tail = max(1, min(self._MAX_TAIL, tail))
+
+        container_name = f'jupyterlab-{encode_username_for_docker(username)}'
+        try:
+            docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        except Exception as e:
+            self.log.error(f"[Server Logs] Failed to connect to Docker: {e}")
+            raise web.HTTPError(500, "Failed to connect to Docker daemon")
+
+        try:
+            container = docker_client.containers.get(container_name)
+            raw = container.logs(tail=tail, stdout=True, stderr=True, timestamps=False)
+            text = raw.decode('utf-8', errors='replace') if isinstance(raw, (bytes, bytearray)) else str(raw)
+            lines = text.splitlines()[-tail:]
+            self.finish({"lines": lines})
+        except docker.errors.NotFound:
+            raise web.HTTPError(404, "Container not found")
+        except docker.errors.APIError as e:
+            self.log.error(f"[Server Logs] Failed to read logs for {container_name}: {e}")
+            raise web.HTTPError(500, "Failed to read container logs")
+        finally:
+            docker_client.close()

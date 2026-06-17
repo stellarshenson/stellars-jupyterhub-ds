@@ -230,6 +230,7 @@ function toServerRow(p: Person): ServerRow {
     lastActivityISO: spawning ? null : iso(0, parseInt(s.since, 10) || 0),
     activity: spawning ? null : p.activity,
     cpu: spawning ? null : s.cpu,
+    cpuTip: spawning ? undefined : '8 host cores (no limit)',
     mem: spawning ? null : s.memPct,
     memTip: spawning ? undefined : `${s.memGB} GB · ${s.memPct}% of host RAM${memOver ? `, over the ${THRESHOLDS.memPerUserPct}% per-user limit` : ''}`,
     memOver,

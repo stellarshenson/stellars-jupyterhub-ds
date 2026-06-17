@@ -107,6 +107,8 @@ class ActivityDataHandler(BaseHandler):
                 "server_active": server_active,
                 "recently_active": False,
                 "cpu_percent": None,
+                "cpu_cores": None,
+                "cpu_cores_limited": False,
                 "memory_mb": None,
                 "memory_percent": None,
                 "memory_total_mb": None,
@@ -158,19 +160,20 @@ class ActivityDataHandler(BaseHandler):
 
         # Fetch Docker stats in parallel
         if active_users:
-            # local image the lab tag resolves to now (cached); compared per
-            # container to flag when a newer lab image is available locally
-            local_image_id = lab_image_id(stellars_config.get('lab_image', ''))
+            # configured lab image the upgrade check compares each container against
+            _lab_image = stellars_config.get('lab_image', '')
             stats_tasks = [get_container_stats_async(u.name) for u, s, d in active_users]
             stats_results = await asyncio.gather(*stats_tasks, return_exceptions=True)
 
             for (user, spawner, user_data), stats in zip(active_users, stats_results):
                 if stats and not isinstance(stats, Exception):
                     user_data["cpu_percent"] = stats["cpu_percent"]
+                    user_data["cpu_cores"] = stats.get("cpu_cores")
+                    user_data["cpu_cores_limited"] = stats.get("cpu_cores_limited", False)
                     user_data["memory_mb"] = stats["memory_mb"]
                     user_data["memory_percent"] = stats["memory_percent"]
                     user_data["memory_total_mb"] = stats.get("memory_total_mb")
-                    user_data["lab_image_upgrade_available"] = newer_lab_image_available(lab_image, stats.get("image_id"))
+                    user_data["lab_image_upgrade_available"] = newer_lab_image_available(_lab_image, stats.get("image_id"))
 
         users_data.sort(key=lambda u: (not u["server_active"], -(u["activity_score"] or 0)))
 

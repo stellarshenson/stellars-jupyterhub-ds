@@ -39,7 +39,7 @@ const API_BASE = `${HUB_ROOT}/api`
  * under any base_url. Mock/dev (no shell) uses the build-time base. */
 export function portalBasename(): string {
   const root = pageHubRoot()
-  if (root) return `${root}/portal`
+  if (root) return root // SPA mounts at the hub root (no /portal segment)
   return import.meta.env.BASE_URL.replace(/\/$/, '') || '/'
 }
 
@@ -48,7 +48,7 @@ export function portalBasename(): string {
  * the build-time base. */
 export function portalAssetBase(): string {
   const root = pageHubRoot()
-  if (root) return `${root}/portal/`
+  if (root) return `${root}/` // brand/favicon served at the hub root (no /portal)
   return import.meta.env.BASE_URL // already ends with '/'
 }
 

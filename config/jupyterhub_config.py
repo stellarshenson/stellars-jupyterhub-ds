@@ -44,7 +44,6 @@ from stellars_hub_services.api_keys_pool import PoolManager  # singleton arbiter
 # Tornado request handlers - registered via c.JupyterHub.extra_handlers
 from stellars_hub_services.handlers import (
     ActivityDataHandler,                    # GET  /api/activity - user activity data with Docker stats
-    ActivityPageHandler,                    # GET  /activity - admin activity monitoring dashboard
     ActivityResetHandler,                   # POST /api/activity/reset - clear all activity samples
     ActivitySampleHandler,                  # POST /api/activity/sample - trigger manual activity sampling
     ActiveServersHandler,                   # GET  /api/notifications/active-servers - list running servers
@@ -56,25 +55,24 @@ from stellars_hub_services.handlers import (
     ManageVolumesHandler,                   # DELETE /api/users/{user}/manage-volumes - delete user volumes
     NativeUsersHandler,                     # GET  /api/native-users - list NativeAuth signups + auth state
     NativeUserAuthorizationHandler,         # POST /api/native-users/{name}/authorization - idempotent set
-    NotificationsPageHandler,               # GET  /notifications - admin broadcast UI
     RestartServerHandler,                   # POST /api/users/{user}/restart-server - Docker restart
+    ServerLogsHandler,                      # GET  /api/users/{user}/server/logs - bounded container-log tail (Start page)
     SessionInfoHandler,                     # GET  /api/users/{user}/session-info - idle culler status
-    SettingsPageHandler,                    # GET  /settings - platform settings display
     SettingsDataHandler,                    # GET  /api/settings - platform settings as JSON (read-only)
     EventsDataHandler,                      # GET  /api/events - recent platform events (audit feed)
-    GroupsPageHandler,                      # GET  /groups - group management page
     GroupsDataHandler,                      # GET  /api/admin/groups - list groups with config
     GroupsCreateHandler,                    # POST /api/admin/groups/create - create new group
     GroupsDeleteHandler,                    # DELETE /api/admin/groups/{name}/delete - delete group
     GroupsConfigHandler,                    # GET/PUT /api/admin/groups/{name}/config - group config
     GroupsReorderHandler,                   # POST /api/admin/groups/reorder - update priorities
     UserProfileHandler,                     # GET/PUT /api/users/{user}/profile - first/last name + email
+    UserProfilesListHandler,                # GET  /api/user-profiles - all profiles (Users-list sub-names)
 )
 
 # Optimum Hub web portal - hub-served React SPA that replaces the stock home/admin UI.
 # Ships its own static bundle + shell template; portal_handlers() returns the
-# catch-all route (auto-prefixed with /hub -> /hub/portal); template_dir() holds
-# the shell + home/admin redirect stubs.
+# catch-all route (auto-prefixed with /hub -> the SPA serves at the hub root,
+# no /portal segment); template_dir() holds the shell + home/admin redirect stubs.
 import optimum_hub_web
 from optimum_hub_web import portal_handlers, PORTAL_URL
 
@@ -797,9 +795,11 @@ apply_abuse_protection(c)
 c.JupyterHub.extra_handlers = [
     (r'/api/users/([^/]+)/manage-volumes', ManageVolumesHandler),    # DELETE - reset user volumes
     (r'/api/users/([^/]+)/restart-server', RestartServerHandler),    # POST - Docker container restart
+    (r'/api/users/([^/]+)/server/logs', ServerLogsHandler),          # GET - bounded container-log tail (Start page)
     (r'/api/users/([^/]+)/lab-ready', LabReadyHandler),              # GET - silent lab readiness probe (always 200)
     (r'/api/users/([^/]+)/session-info', SessionInfoHandler),        # GET - idle culler status
     (r'/api/users/([^/]+)/profile', UserProfileHandler),             # GET/PUT - first/last name + email
+    (r'/api/user-profiles', UserProfilesListHandler),                # GET - all profiles (Users-list sub-names)
     (r'/api/settings', SettingsDataHandler),                          # GET - platform settings (read-only JSON)
     (r'/api/events', EventsDataHandler),                              # GET - recent platform events (audit feed)
     (r'/api/users/([^/]+)/extend-session', ExtendSessionHandler),    # POST - extend idle timeout
@@ -816,13 +816,14 @@ c.JupyterHub.extra_handlers = [
     (r'/api/admin/groups/([^/]+)/config', GroupsConfigHandler),       # GET/PUT - group configuration
     (r'/api/native-users', NativeUsersHandler),                       # GET - list NativeAuth signups + auth state
     (r'/api/native-users/([^/]+)/authorization', NativeUserAuthorizationHandler),  # POST - idempotent set
-    (r'/notifications', NotificationsPageHandler),                    # GET - admin broadcast UI page
-    (r'/settings', SettingsPageHandler),                              # GET - platform settings page
-    (r'/activity', ActivityPageHandler),                              # GET - activity monitoring page
-    (r'/groups', GroupsPageHandler),                                  # GET - group management page
+    # Legacy server-rendered page handlers (/notifications, /settings, /activity,
+    # /groups) were removed - the React portal owns these features as client
+    # routes. Their /api/* data handlers above stay. Unregistering them frees the
+    # bare paths so the hub-root portal (no /portal segment) can serve those SPA
+    # routes without the old pages shadowing them. See docs/acc-crit-drop-portal-path.md.
     (r'/health', HealthCheckHandler),                                 # GET - unauthenticated monitoring endpoint
 ]
-# Optimum Hub portal: catch-all serving the SPA shell + bundled assets at /hub/portal.
+# Optimum Hub portal: catch-all serving the SPA shell + bundled assets at the hub root.
 # Appended last; its route only matches /portal* so it does not shadow the API/page routes above.
 c.JupyterHub.extra_handlers += portal_handlers()
 
