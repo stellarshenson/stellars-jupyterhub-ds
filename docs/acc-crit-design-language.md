@@ -46,3 +46,20 @@ The portal's visual conventions, applied consistently across every screen. `[x]`
   - log: 2026-06-17 verified by headless render (no panel/handle/hamburger; full action set)
 - [x] **Mobile Servers view** - the Servers screen on mobile is a card list mirroring the old JupyterHub admin info (user + admin, status, last activity, actions)
   - log: 2026-06-17 implemented (MobileServerList); runtime render pending the next deploy
+
+## Visual cues to digest from the 2026-06-17 servers/resource batch (#252)
+
+These conventions must be shown on `/design-language` as VISUAL CUES (live example elements), not "this -> that" before/after pairs.
+
+- [ ] **Resource tooltip carries the live % + the assigned reference** - every CPU/memory bar tooltip quotes the usage % alongside the assigned ceiling (cores / GB assigned vs host)
+  - log: 2026-06-17 criterion added (#245/#246/#252); cross-ref [acc-crit-resource-bars]
+- [ ] **Activity % may exceed 100%** - the activity tooltip shows the real uncapped % (>100% = works more than the daily target), multiline
+  - log: 2026-06-17 criterion added (#247/#252); cross-ref [acc-crit-activity-scoring]
+- [ ] **List vs widget: status/last-activity separate in lists** - in lists, Status and Last activity are separate columns (the widget may club them); column order Status, Last activity, Activity; meters centered in their column
+  - log: 2026-06-17 criterion added (#248/#252); cross-ref [acc-crit-servers-list-layout]
+- [ ] **Names are links + carry first/last** - a user name in any list links to the user and shows the first/last name (no artificial click-friction)
+  - log: 2026-06-17 criterion added (#249/#252)
+- [ ] **Admin lifecycle = inline spinner, not navigation** - starting/restarting another user's server spins the control in place; it does not route to a progress screen
+  - log: 2026-06-17 criterion added (#243/#252); cross-ref [acc-crit-server-lifecycle-ux]
+- [ ] **Columns sized to content** - status / last-activity columns are just wide enough, not stretched
+  - log: 2026-06-17 criterion added (#250/#252)

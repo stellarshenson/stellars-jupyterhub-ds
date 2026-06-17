@@ -2,7 +2,7 @@
 
 Complete functional inventory of every hub-side screen, action, capability, modal, message, navigation path and dynamic behaviour. Purpose: a single source of truth for a future complete portal rebuild. Scope is the hub portal only (no JupyterLab UI). Fidelity is functional - routes, actions, endpoints, states, conditionals - not CSS, DOM structure or class names.
 
-Source of truth: `services/jupyterhub/html_templates_enhanced/*.html`, `services/jupyterhub/stellars-hub-services/stellars_hub_services/handlers/*.py`, `services/jupyterhub/conf/bin/custom_handlers.py`, `config/jupyterhub_config.py`.
+Source of truth: `services/jupyterhub/html_templates_enhanced/*.html`, `services/jupyterhub/optimum-hub-services/optimum_hub_services/handlers/*.py`, `services/jupyterhub/conf/bin/custom_handlers.py`, `config/jupyterhub_config.py`.
 
 ## Global layer
 

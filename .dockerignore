@@ -3,9 +3,9 @@ docker-compose.yaml
 
 # optimum-hub-web build artifacts: keep node_modules + builds out of the context
 # (the builder stage runs `npm ci` and `vite build` inside the image)
-optimum-hub-web/node_modules/
-optimum-hub-web/dist/
-optimum-hub-web/dist-wheel/
-optimum-hub-web/optimum_hub_web/static/
-optimum-hub-web/test-results/
-optimum-hub-web/playwright-report/
+services/jupyterhub/optimum-hub-web/node_modules/
+services/jupyterhub/optimum-hub-web/dist/
+services/jupyterhub/optimum-hub-web/dist-wheel/
+services/jupyterhub/optimum-hub-web/optimum_hub_web/static/
+services/jupyterhub/optimum-hub-web/test-results/
+services/jupyterhub/optimum-hub-web/playwright-report/

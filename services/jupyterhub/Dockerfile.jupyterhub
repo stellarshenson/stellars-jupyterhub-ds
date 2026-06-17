@@ -34,11 +34,11 @@ RUN uv venv /build-venv
 ENV VIRTUAL_ENV=/build-venv
 ENV PATH="/build-venv/bin:$PATH"
 
-# ---- platform wheels (stellars_hub_services + stellars-docker-proxy) -------
-# Build and test stellars_hub_services; its tests gate the image build.
-COPY services/jupyterhub/stellars-hub-services /src/stellars-hub-services
-RUN uv pip install pip build && python -m build /src/stellars-hub-services --outdir /dist
-RUN uv pip install /dist/stellars_hub_services-*.whl pytest && pytest /src/stellars-hub-services/tests/ -v
+# ---- platform wheels (optimum_hub_services + stellars-docker-proxy) -------
+# Build and test optimum_hub_services; its tests gate the image build.
+COPY services/jupyterhub/optimum-hub-services /src/optimum-hub-services
+RUN uv pip install pip build && python -m build /src/optimum-hub-services --outdir /dist
+RUN uv pip install /dist/optimum_hub_services-*.whl pytest && pytest /src/optimum-hub-services/tests/ -v
 
 # Build and test stellars-docker-proxy (per-user ownership-filtering Docker socket
 # proxy for limited-docker groups). Its tests gate the image build too.
@@ -53,7 +53,7 @@ RUN uv pip install /dist/stellars_docker_proxy-*.whl pytest pytest-asyncio \
 # builds are excluded via .dockerignore, so npm ci installs the pinned deps fresh
 # and vite emits a clean bundle. Placed after the wheel builds so a frontend-only
 # change does not bust their cached layers.
-COPY optimum-hub-web/ /web/
+COPY services/jupyterhub/optimum-hub-web/ /web/
 RUN <<-EOF
     echo "building Optimum Hub SPA bundle (npm ci + vite build:hub)"
     set -e
@@ -65,8 +65,8 @@ EOF
 # ---- portal wheel ----------------------------------------------------------
 # Build the Optimum Hub portal wheel: the Python integration package plus the SPA
 # bundle built above, packaged together (UI shipped inside the wheel).
-COPY optimum-hub-web/pyproject.toml optimum-hub-web/README.md /src/optimum-hub-web/
-COPY optimum-hub-web/optimum_hub_web /src/optimum-hub-web/optimum_hub_web
+COPY services/jupyterhub/optimum-hub-web/pyproject.toml services/jupyterhub/optimum-hub-web/README.md /src/optimum-hub-web/
+COPY services/jupyterhub/optimum-hub-web/optimum_hub_web /src/optimum-hub-web/optimum_hub_web
 RUN <<-EOF
     echo "building Optimum Hub portal wheel"
     set -e
@@ -166,12 +166,12 @@ RUN <<-EOF
 EOF
 
 
-## install stellars_hub_services + stellars-docker-proxy + optimum-hub-web packages (carry all pip dependencies)
+## install optimum_hub_services + stellars-docker-proxy + optimum-hub-web packages (carry all pip dependencies)
 COPY --from=builder /dist/*.whl /tmp/
 RUN <<-EOF
     echo "installing platform packages"
     pip install -U --no-cache-dir \
-	/tmp/stellars_hub_services-*.whl \
+	/tmp/optimum_hub_services-*.whl \
 	/tmp/stellars_docker_proxy-*.whl \
 	/tmp/optimum_hub_web-*.whl \
     && rm -f /tmp/*.whl

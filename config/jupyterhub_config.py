@@ -1,6 +1,6 @@
 # Configuration file for JupyterHub
 #
-# All data (env vars, volumes, groups) is defined here. The stellars_hub_services
+# All data (env vars, volumes, groups) is defined here. The optimum_hub_services
 # package provides pure logic functions only - zero hardcoded data, zero
 # env var reads at module level. Every parameter is passed explicitly.
 #
@@ -16,8 +16,8 @@ import os                       # env var reads
 import jupyterhub               # __version__, __file__ for template paths
 import nativeauthenticator      # __file__ for template path resolution
 
-# stellars_hub_services core functions - pure logic, no side effects on import
-from stellars_hub_services import (
+# optimum_hub_services core functions - pure logic, no side effects on import
+from optimum_hub_services import (
     OptimumHubAuthenticator,                # platform authenticator: NativeAuth logic + antd login/signup presentation
     OptimumSignUpHandler,                   # antd-rendering signup handler (base for the bootstrap signup handler)
     apply_abuse_protection,                 # abuse protection: maps env -> spawn/active caps + login lockout onto c.*
@@ -39,10 +39,10 @@ from stellars_hub_services import (
     schedule_startup_favicon_callback,      # registers CHP favicon routes for already-running servers
     setup_branding,                         # processes logo/favicon/icon URIs, copies file:// to static dir
 )
-from stellars_hub_services.api_keys_pool import PoolManager  # singleton arbiter of api-key slot assignments (post-stop release)
+from optimum_hub_services.api_keys_pool import PoolManager  # singleton arbiter of api-key slot assignments (post-stop release)
 
 # Tornado request handlers - registered via c.JupyterHub.extra_handlers
-from stellars_hub_services.handlers import (
+from optimum_hub_services.handlers import (
     ActivityDataHandler,                    # GET  /api/activity - user activity data with Docker stats
     ActivityResetHandler,                   # POST /api/activity/reset - clear all activity samples
     ActivitySampleHandler,                  # POST /api/activity/sample - trigger manual activity sampling
@@ -67,6 +67,7 @@ from stellars_hub_services.handlers import (
     GroupsReorderHandler,                   # POST /api/admin/groups/reorder - update priorities
     UserProfileHandler,                     # GET/PUT /api/users/{user}/profile - first/last name + email
     UserProfilesListHandler,                # GET  /api/user-profiles - all profiles (Users-list sub-names)
+    UserForcePasswordChangeHandler,         # POST /api/users/{user}/force-password-change - admin set/clear the gate
     EffectiveGrantsHandler,                 # GET  /api/users/{user}/effective-grants - resolved group policy grants
 )
 
@@ -292,7 +293,7 @@ register_events()
 #      on the Settings page.
 #
 # c.Authenticator.admin_users is intentionally NOT set: setting it makes JupyterHub
-# eagerly insert a User row at startup, which fires stellars_hub_services.events' after_insert
+# eagerly insert a User row at startup, which fires optimum_hub_services.events' after_insert
 # listener and creates a UserInfo with a random xkcd password the operator cannot
 # retrieve. Admin role is granted purely at login time via post_auth_hook below.
 
@@ -389,7 +390,7 @@ class BootstrapAdminSignUpHandler(OptimumSignUpHandler):
 
       * Success branch keys off `username in admin_users`, which we deliberately
         leave empty (populating admin_users triggers the eager User insert and
-        the random-password trap in stellars_hub_services.events). With our create_user
+        the random-password trap in optimum_hub_services.events). With our create_user
         override flagging is_authorized=True, the row is correct but the message
         still drops to "Your information has been sent to the admin." Treat
         is_authorized as the success signal here.
@@ -558,7 +559,7 @@ if JUPYTERHUB_SSL_ENABLED == 1:
 # diagnosing where time goes during stop/restart (Docker side vs hub
 # polling lag). Drop back to stock dockerspawner.DockerSpawner if you
 # want to silence the timing probes.
-c.JupyterHub.spawner_class = "stellars_hub_services.timing_spawner.TimingDockerSpawner"
+c.JupyterHub.spawner_class = "optimum_hub_services.timing_spawner.TimingDockerSpawner"
 
 # Environment variables injected into every spawned JupyterLab container
 c.DockerSpawner.environment = {
@@ -732,7 +733,7 @@ async def _post_stop_cleanup(spawner):
     # Record a server-stop event for the portal events feed (best-effort).
     try:
         import html as _html
-        from stellars_hub_services.event_log import record_event
+        from optimum_hub_services.event_log import record_event
         record_event('server', f'<b>{_html.escape(str(spawner.user.name))}</b> server stopped')
     except Exception:
         pass
@@ -801,6 +802,7 @@ c.JupyterHub.extra_handlers = [
     (r'/api/users/([^/]+)/lab-ready', LabReadyHandler),              # GET - silent lab readiness probe (always 200)
     (r'/api/users/([^/]+)/session-info', SessionInfoHandler),        # GET - idle culler status
     (r'/api/users/([^/]+)/profile', UserProfileHandler),             # GET/PUT - first/last name + email
+    (r'/api/users/([^/]+)/force-password-change', UserForcePasswordChangeHandler), # POST - admin set/clear force-pw gate
     (r'/api/users/([^/]+)/effective-grants', EffectiveGrantsHandler), # GET - resolved group policy grants
     (r'/api/user-profiles', UserProfilesListHandler),                # GET - all profiles (Users-list sub-names)
     (r'/api/settings', SettingsDataHandler),                          # GET - platform settings (read-only JSON)

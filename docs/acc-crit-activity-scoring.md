@@ -39,6 +39,15 @@ The activity score is the user's recent active time measured against a daily tar
 - [ ] **Runtime: heavy users read high** - on the live hub a full-time user shows ~100% with a truthful Nh/day tooltip
   - log: 2026-06-17 backend + frontend + tests done; on-screen confirm pends operator rebuild
 
+## Servers-page activity tooltip (added 2026-06-17, #247)
+
+- [ ] **Real uncapped %** - the activity meter tooltip on the Servers page shows the real activity %, which MAY exceed 100% (a user working more than the 8h/day target reads >100%, which is good); the displayed % is NOT clamped
+  - log: 2026-06-17 criterion added - `activity_score` is capped at 100 for the meter fill, so the tooltip needs the uncapped figure (derive from `activity_hours / target_hours * 100`; target_hours must reach the frontend, or expose an uncapped score field on `/activity`)
+- [ ] **Multiline** - the % and the existing "Active on average Nh/day" info on separate lines, not one super-long single line
+  - log: 2026-06-17 criterion added
+- [ ] **Reflected in the design language** - the activity-% tooltip convention appears on /design-language as a visual cue
+  - log: 2026-06-17 criterion added (#252)
+
 ## API
 
 - `GET /api/activity` -> each user gains `activity_hours: number | null` alongside `activity_score`

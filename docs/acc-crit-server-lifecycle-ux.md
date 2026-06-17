@@ -26,7 +26,19 @@ Server start/restart/stop show progress with an INLINE spinner on the control (n
 - [ ] **Runtime: spinner + heal** - on the live hub a spawning row shows the spinner and flips to active within ~2-3s of ready
   - log: 2026-06-17 code + build clean; on-screen confirm pends operator rebuild
 
-## Out of scope (separate tasks)
+## Starting / restarting ANOTHER user's server - inline, no nav (#243, supersedes #237)
 
-- [ ] **Admin start shows the start screen** (#237) - confirm every admin start-another path navigates to `/servers/{user}/starting` (the Servers row offline action already does; audit any silent background-start path)
-  - log: 2026-06-17 pending investigation
+Starting or restarting another user's server from the Servers widget or list must NOT navigate to the start/progress screen. It behaves exactly like Stop/Restart already do: an inline spinner on the play (or restart) button until the server is up, then an immediate row refresh.
+
+- [ ] **No start-screen navigation** - starting another user's server does not route to `/servers/{user}/starting`
+  - log: 2026-06-17 criterion added (#243) - reverses the earlier #237 decision (which routed admin starts to the start screen)
+- [ ] **Inline play spinner** - the play button shows the SAME inline spinner pattern as the stop button (`IconAction busy` / hero `loading`) while the server starts
+  - log: 2026-06-17 criterion added (#243)
+- [ ] **Restart same** - restarting another user's server is also inline-spinner + refresh, no navigation
+  - log: 2026-06-17 criterion added (#243)
+- [ ] **Background monitor + immediate refresh on ready** - the existing `runOp`/`pollUntil` monitor drives the start too; the row flips to active immediately when the server is up (reuse the start op, add a `start` mode to the lifecycle busy map)
+  - log: 2026-06-17 criterion added (#243)
+- [ ] **Self-start unchanged** - a user starting their OWN server keeps the start page (this only changes starting someone ELSE's server); confirm the self path still shows progress
+  - log: 2026-06-17 criterion added (#243) - clarify scope vs the dedicated start page
+- [ ] **Reflected in the design language** - the "admin start = inline spinner, not a nav" cue is on /design-language
+  - log: 2026-06-17 criterion added (#252)
