@@ -83,12 +83,12 @@ body { margin: 0; font-family: var(--font-sans); }
 
 /* ---- Start-server page (spawn progress + container-log tail) ---- */
 .oh-starting { display: flex; justify-content: center; align-items: flex-start; padding: 48px 16px; }
-.oh-starting-card { width: 100%; max-width: 560px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 32px; box-shadow: var(--shadow-1); text-align: center; }
+.oh-starting-card { width: 100%; max-width: 820px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 32px; box-shadow: var(--shadow-1); text-align: center; }
 .oh-starting-mark { width: 48px; height: 48px; margin-bottom: 14px; opacity: 0.92; }
 .oh-starting-title { font-size: 18px; font-weight: 600; margin: 0 0 4px; color: var(--color-text); }
 .oh-starting-status { font-size: var(--text-sm); color: var(--color-text-muted); margin: 0 0 18px; min-height: 20px; }
-.oh-termlog { margin-top: 18px; text-align: left; height: 230px; overflow-y: auto; background: #0e1116; border: 1px solid #1c2430; border-radius: var(--radius-md); padding: 12px 14px; font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 12px; line-height: 1.5; color: #9aa4b2; }
-.oh-termlog-line { white-space: pre-wrap; word-break: break-word; }
+.oh-termlog { margin-top: 18px; text-align: left; height: 230px; overflow: auto; background: #0e1116; border: 1px solid #1c2430; border-radius: var(--radius-md); padding: 12px 14px; font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 12px; line-height: 1.5; color: #9aa4b2; }
+.oh-termlog-line { white-space: pre; } /* no wrap - long log lines scroll horizontally instead of breaking */
 .oh-termlog-wait { color: #5b6675; font-style: italic; }
 
 /* ---- TTL (idle-session timer) gadget ---- */
@@ -96,12 +96,14 @@ body { margin: 0; font-family: var(--font-sans); }
 .oh-ttl > .oh-spark { flex: 1; height: 8px; }
 .oh-ttl-val { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-size: var(--text-sm); color: var(--color-text-muted); }
 .oh-ttl-val b { color: var(--color-text); }
-/* extend flourish: a brief accent glow while the bar fills to the new limit */
+/* extend animation: the bar fills to the new limit over ~1s (override antd's
+   quick default bar transition) with a brief accent glow, like the old design */
 .oh-ttl-bar { display: inline-block; }
-.oh-ttl-boost { animation: oh-ttl-pulse 0.9s ease; }
+.oh-ttl-boost .ant-progress-bg { transition: width var(--oh-ttl-anim, 1s) ease !important; }
+.oh-ttl-boost { animation: oh-ttl-pulse var(--oh-ttl-anim, 1s) ease; }
 @keyframes oh-ttl-pulse {
   0% { filter: none; }
-  45% { filter: drop-shadow(0 0 4px var(--color-accent)); }
+  50% { filter: drop-shadow(0 0 4px var(--color-accent)); }
   100% { filter: none; }
 }
 
