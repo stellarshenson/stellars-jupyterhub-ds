@@ -30,10 +30,10 @@ The portal's visual conventions, applied consistently across every screen. `[x]`
   - log: 2026-06-17 added `.oh-text-neutral/link/success/warning/danger` (global.css) + demoed on /design-language ("Normal text" card); first consumer = the volume-reset "removed" red text; operator "add to design language normal text"
 - [x] **Named palette (dim / normal / intense)** - a named colour palette borrowed from the tokens - green (success), cyan/blue (accent), red (danger), orange (warning), gray (text-subtle) - each as `--oh-<name>` with `-dim` (mixed toward surface) and `-intense` (mixed toward text) variants, referable by name; demoed as labelled squares on /design-language ("Palette" card). Magenta is not in the current tokens
   - log: 2026-06-18 added `:root --oh-*` (global.css) via `color-mix` on the source vars; operator "design palette of colours ... dim, normal, intense ... refer to them by name ... borrow from already defined"
-- [x] **Activity meter is a per-segment gradient** - the 5-segment meter colours each bar by POSITION, not by a single score-tone: segment 1 pale red, segments 2-3 orange, segments 4-5 green (red -> orange -> orange -> green -> green), so the bars climb from red toward green as activity fills them
-  - log: 2026-06-18 switched `.oh-meter i.on` from tone classes (`.low`/`.idle`) to `:nth-child` position rules; removed the dead `tone` var from `ActivityMeter`/`ActivityMeterFill`; operator "last bar must be pale red, then orange, finally green ... currently last is orange"
-- [x] **Activity meter red is pale** - the meter's first (red) segment uses `--oh-red-dim` so the solid block reads as soft as the thin danger / stop-button glyph (both still derive from `--color-danger`); orange = `--color-warning`, green = `--color-success`
-  - log: 2026-06-18 `--oh-red-dim` on `:nth-child(1)`; operator "activity red - make it the same pale colour as the stop button"
+- [x] **Activity meter tone by lit-bar count** - the 5-segment meter is a SINGLE tone across all lit bars, chosen by how many bars are lit: 1 bar pale red, 2-3 bars orange, 4-5 bars green (not a per-position gradient, and keyed off the lit count not a raw-value band) - so a fuller meter reads greener
+  - log: 2026-06-18 `tone = lit<=1 ? 'low' : lit<=3 ? 'idle' : ''` on `ActivityMeter`/`ActivityMeterFill`, CSS `.oh-meter.low/.idle i.on`; operator "1 bar red, 2 both orange, 3 all orange, 4 all green, 5 all green" (corrected an interim per-segment-gradient reading)
+- [x] **Activity meter red is pale** - the meter's red tone (1 lit bar) uses `--oh-red-dim` so the solid blocks read as soft as the thin danger / stop-button glyph (both still derive from `--color-danger`); orange = `--color-warning`, green = `--color-success`
+  - log: 2026-06-18 `--oh-red-dim` on `.oh-meter.low i.on`; operator "activity red - make it the same pale colour as the stop button"
 
 ## Headers / chrome
 
