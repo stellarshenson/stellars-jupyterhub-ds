@@ -49,6 +49,8 @@ export interface UserRow {
   authorized: boolean
   pending: boolean // signed up, awaiting authorisation
   activity: number // 0-100; 0 = inactive
+  activityHours?: number | null // real avg active hours/day behind the score
+  activityPct?: number | null // uncapped activity % (may exceed 100%), for the tooltip
   createdISO: string
   lastSeenISO?: string
   groups: string[]
@@ -153,7 +155,7 @@ export interface PolicyConfig {
   volume_mounts?: PolicyVolumeMount[]
 }
 
-export type EventType = 'server' | 'user' | 'group' | 'policy' | 'broadcast' | 'cull'
+export type EventType = 'server' | 'user' | 'group' | 'policy' | 'broadcast' | 'cull' | 'volume'
 
 export interface EventRow {
   id: string

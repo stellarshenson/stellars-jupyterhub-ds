@@ -22,6 +22,11 @@ The Servers page table column structure, ordering, alignment, widths, and the us
 - [ ] **Activity tooltip multiline** - the % plus the existing info (avg active hours/day) on separate lines, not one super-long single line
   - log: 2026-06-17 criterion added (#247)
 
+## Row actions
+
+- [x] **No "View spawn log" action** - the spawning-row actions are the spinner + Cancel spawn only; the "View spawn log" icon (which navigated to the Start page) is removed - not needed
+  - log: 2026-06-17 removed from `rowActions` spawning branch; `nav` still used by the offline-start branch
+
 ## User name column
 
 - [ ] **Name is a link to the user** - the username links to the user config page (same target as the Users page), no artificial click-friction

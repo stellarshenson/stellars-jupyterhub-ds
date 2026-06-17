@@ -47,6 +47,10 @@ The activity score is the user's recent active time measured against a daily tar
   - log: 2026-06-17 criterion added
 - [ ] **Reflected in the design language** - the activity-% tooltip convention appears on /design-language as a visual cue
   - log: 2026-06-17 criterion added (#252)
+- [x] **Same tooltip on Servers, Users and the server resources widget** - the user-activity meter carries the identical multiline tooltip everywhere it appears (Servers list, Users list, and the "Server status" resources widget): uncapped `% of the daily activity target` + `Active on average Nh/day over the last 3 days`
+  - log: 2026-06-17 added; `getUsers` now derives `activityHours`/`activityPct` like `getServers`; `Users.tsx` passes both to `ActivityMeter` (Servers already did)
+- [x] **Same tooltip on the Home servers widget** - the Home "Active servers" preview activity meter carries the same multiline tooltip as the Servers list; it passes `hours`/`pct` from the shared `ServerRow`, not the bare `value`-only meter
+  - log: 2026-06-17 added; `Home.tsx::ActiveServersPreview` activity column now `<ActivityMeter value hours pct />`
 
 ## API
 
