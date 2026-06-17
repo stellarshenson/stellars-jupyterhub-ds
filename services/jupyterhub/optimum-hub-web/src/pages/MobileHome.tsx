@@ -17,6 +17,8 @@ import { extendSession } from '../services/ops'
 import { userServerUrl } from '../services/hub/client'
 
 const adminTag = { background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4, marginInlineStart: 6 }
+// mobile home is Home, so its sub-screens (Start, Manage volumes) return to Home
+const HOME_ORIGIN = { to: '/dashboard', label: 'Home' }
 
 // status + the SAME action set as the desktop hero (full-width, touch-friendly),
 // plus the TTL extend when running
@@ -48,8 +50,8 @@ function MyServerCard() {
           </>
         ) : (
           <>
-            <Button type="primary" block size="large" icon={<Icon name="play" size={15} filled />} disabled={busy} onClick={() => navigate(`/servers/${hero.user}/starting`)}>Start server</Button>
-            {role === 'admin' && <Button block size="large" icon={<Icon name="disk" size={15} />} disabled={busy} onClick={() => navigate(`/servers/${hero.user}/volumes`)}>Manage volumes</Button>}
+            <Button type="primary" block size="large" icon={<Icon name="play" size={15} filled />} disabled={busy} onClick={() => navigate(`/servers/${hero.user}/starting`, { state: { from: HOME_ORIGIN } })}>Start server</Button>
+            {role === 'admin' && <Button block size="large" icon={<Icon name="disk" size={15} />} disabled={busy} onClick={() => navigate(`/servers/${hero.user}/volumes`, { state: { from: HOME_ORIGIN } })}>Manage volumes</Button>}
           </>
         )}
       </div>

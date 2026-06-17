@@ -5,10 +5,12 @@ socket and uses ``runtime=nvidia`` via the SDK for GPU detection) instead of
 relying on the compose orchestration to bring it up - so it works the same no
 matter which compose project launched the hub.
 
-Idempotent and best-effort: reuse a running container, start a stopped one,
-create a missing one; any failure degrades to GPU-off (``gpu_client`` /
-``gpu_cache`` already tolerate an unreachable sidecar). The sidecar runs on a
-dedicated network that the hub joins, so spawned user labs cannot reach it.
+Recreate-fresh and best-effort: every hub boot removes any pre-existing sidecar
+and creates a new one from the CURRENT image (so a rebuilt image is always picked
+up and a container that survived a hard hub SIGKILL is never reused stale); any
+failure degrades to GPU-off (``gpu_client`` / ``gpu_cache`` already tolerate an
+unreachable sidecar). The sidecar runs on a dedicated network that the hub joins,
+so spawned user labs cannot reach it.
 """
 
 import logging
@@ -81,15 +83,13 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project=''):
             log.info(f"[GPUInfo] created network {network_name}")
         _connect_hub(client, network)
 
-        # 2. reuse / start / create the sidecar container.
+        # 2. recreate fresh: remove any pre-existing sidecar (a clean hub stop
+        # already removes it via stop_gpuinfo_sidecar, but a hard SIGKILL can leave
+        # one behind), then create a new one below - so the hub ALWAYS (re)creates
+        # the sidecar from the CURRENT image, never reuses a stale container.
         try:
-            c = client.containers.get(name)
-            if c.status != 'running':
-                c.start()
-                log.info(f"[GPUInfo] started existing sidecar '{name}'")
-            else:
-                log.info(f"[GPUInfo] sidecar '{name}' already running")
-            return True
+            client.containers.get(name).remove(force=True)
+            log.info(f"[GPUInfo] removed pre-existing sidecar '{name}' to recreate fresh")
         except docker.errors.NotFound:
             pass
 

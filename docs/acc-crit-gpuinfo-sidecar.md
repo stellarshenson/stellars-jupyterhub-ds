@@ -10,6 +10,8 @@ The GPU-info sidecar logs its lifecycle so an operator can see it start, serve a
   - log: 2026-06-17 `_log_detected_hardware`
 - [x] **Health at startup** - each detected-GPU line also reports the current health snapshot (`- health: N% util, U/T GB mem, NN C, NN W`), skipping any metric the driver did not report (so a partial sample never prints `None`)
   - log: 2026-06-17 `_gpu_health` appended to the per-GPU line; operator "show the health of the gpus when starting"
+- [x] **Hub logs caps + health too** - besides the sidecar's own log, the HUB logs a readable per-card line at boot - `[GPU] GPU <i>: <name> (<N> GB) - <util>% util, <used>/<total> GB, <temp> C, <power> W` - capabilities (name, total mem) + a live health snapshot, omitting any metric the sidecar did not report; the raw `[GPU debug] gpus=[...]` dict line stays for debugging
+  - log: 2026-06-17 `gpu_summary_lines()` (gpu.py, fresh sidecar fetch) logged in `jupyterhub_config.py`; 3 unit tests; operator "must show in the logs the info about cards health and capabilities"
 - [x] **Serving line** - logs `ready - serving /health and /gpus`; uvicorn's own "Uvicorn running on ..." also shows
   - log: 2026-06-17
 - [x] **Visible by default** - `GPUINFO_LOG_LEVEL` default changed `warning` -> `info` (warning hid uvicorn's running line); overridable via env
@@ -38,11 +40,13 @@ The GPU-info sidecar logs its lifecycle so an operator can see it start, serve a
 
 The sidecar is hub-managed (created over the docker socket by `ensure_gpuinfo_sidecar`), not a compose service, so compose `down` leaves it orphaned. The hub now owns its teardown too.
 
-- [x] **Removed on hub shutdown** - the hub registers `atexit(stop_gpuinfo_sidecar)` when it started/owns the sidecar, so a clean hub stop (`docker stop` / compose `down`) removes the sidecar instead of leaving it running with no parent
-  - log: 2026-06-17 `stop_gpuinfo_sidecar` + `config/jupyterhub_config.py` atexit; needs a hub rebuild to go live
-- [x] **Recreated fresh next boot** - because shutdown REMOVES (not just stops) the container, the next `ensure_gpuinfo_sidecar` creates it anew from the current `:latest`, so a rebuilt image is always picked up (this is the structural fix for the stale-reuse logging bug above)
-  - log: 2026-06-17 remove-on-exit + create-on-boot
-- [x] **Best-effort** - never raises; a hard SIGKILL of the hub skips the atexit, leaving the sidecar's `unless-stopped` policy to keep it until the next clean cycle
-  - log: 2026-06-17 try/except, `containers.get(name).remove(force=True)`
+- [x] **SIGTERM reaches the hub (exec)** - `start-platform.sh` now `exec`s jupyterhub so it is PID 1 and receives docker's SIGTERM directly on `docker stop` / compose down/restart; without exec the signal hit the shell (no forwarding), jupyterhub was SIGKILLed after the grace period and atexit never ran - the real reason teardown did not fire
+  - log: 2026-06-17 `exec jupyterhub -f ... "$@"` (operator: "torn down when jupyterhub main service dies")
+- [x] **Removed on hub shutdown** - the hub registers `atexit(stop_gpuinfo_sidecar)` when it owns the sidecar; with the exec fix a clean hub stop (SIGTERM -> clean exit) now actually runs it and removes the sidecar instead of leaving it parentless
+  - log: 2026-06-17 `stop_gpuinfo_sidecar` + atexit; activates with the exec fix; needs a hub rebuild to go live
+- [x] **Recreated fresh from the hub every boot** - `ensure_gpuinfo_sidecar` REMOVES any pre-existing sidecar then CREATEs a new one from the current image, so the hub always recreates it (current `:latest`, never a stale reuse) even if a hard SIGKILL left one behind; the structural fix for the stale-reuse logging bug above
+  - log: 2026-06-17 reworked - ensure removes-then-creates (was: reuse a running container)
+- [x] **Best-effort** - never raises; a hard SIGKILL of the hub still skips the atexit, but the next boot's recreate-fresh removes+replaces any survivor, so a stale sidecar never persists across a boot
+  - log: 2026-06-17 try/except + recreate-fresh-on-boot safety net
 - [ ] **Runtime: sidecar gone after hub stop** - on the live host, stopping the hub removes `gpuinfo-nvidia`; starting the hub recreates it
-  - log: 2026-06-17 code clean; pends a hub rebuild + a stop/start cycle to confirm
+  - log: 2026-06-17 code clean (exec + atexit + recreate-fresh); pends a hub rebuild + a stop/start cycle to confirm

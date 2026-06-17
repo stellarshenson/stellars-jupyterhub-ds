@@ -24,12 +24,26 @@ The portal's visual conventions, applied consistently across every screen. `[x]`
 - [x] **List icons wireframe; non-list filled** - list/table action icons stay wireframe (fill only for emphasis e.g. stop); non-list/button icons use the filled glyph when one is available
   - log: 2026-06-17 documented + demoed (design-language: non-list filled row + list wireframe row + note)
 
+## Text colours
+
+- [x] **Normal-text taxonomy** - five text colours, all from the defined palette vars: neutral (`--color-text`, body), link (`--color-accent`, e.g. a user-profile link), success (`--color-success`, green), warning (`--color-warning`, orange), dangerous (`--color-danger`, red); one utility class each (`.oh-text-*`)
+  - log: 2026-06-17 added `.oh-text-neutral/link/success/warning/danger` (global.css) + demoed on /design-language ("Normal text" card); first consumer = the volume-reset "removed" red text; operator "add to design language normal text"
+
 ## Headers / chrome
 
 - [x] **No page title headers** - the big page title + sub-line are removed (the breadcrumb names the page); only the optional right-aligned actions remain
   - log: 2026-06-17 implemented (PageHeader renders only actions; ~50px reclaimed on every page)
 - [x] **Named edits are explicit** - editing a user profile / group is reached via an explicit named link (the username / group-name), never a whole-row click; row-click is reserved for read-only detail (Servers drawer)
   - log: 2026-06-17 verified (Users/Groups name-links to config; Servers row-click = report drawer)
+
+## Navigation (system-wide)
+
+- [x] **Sub-screen footer** - every screen reached from a list (Configure user, Configure group, Manage volumes) carries the standard footer: destructive action left, Cancel + a primary Save/Done/Ok right (`FormFooter`); never a dead-end with no way back
+  - log: 2026-06-17 implemented - Manage volumes joined the pattern (Reset left, Cancel + Done right); UserConfig/GroupConfig already had it; cross-ref [acc-crit-volume-reset]
+- [x] **Respect the navigation path / breadcrumbs** - a screen reachable from more than one parent records its origin in the nav state; the breadcrumb parent AND the Cancel/Done (close) target both reflect where the user actually came from, not a hardcoded route parent
+  - log: 2026-06-17 implemented - nav `state.from` overrides the static breadcrumb parent (`Breadcrumbs.tsx`); Manage volumes from Home returns to Home, from Servers returns to Servers (was always /servers)
+- [x] **Widget actions == list actions** - the Home "Active servers" widget renders the IDENTICAL row actions as the Servers list via the shared `rowActions` (start own -> Start page; start other -> inline spinner; enter/restart/stop; manage volumes), never a divergent widget-only set
+  - log: 2026-06-17 implemented - extracted `components/ServerRowActions.tsx`, reused by Servers + the Home widget; cross-ref [acc-crit-server-lifecycle-ux]
 
 ## Values / feedback
 
@@ -59,7 +73,7 @@ These conventions must be shown on `/design-language` as VISUAL CUES (live examp
   - log: 2026-06-17 criterion added (#248/#252); cross-ref [acc-crit-servers-list-layout]
 - [ ] **Names are links + carry first/last** - a user name in any list links to the user and shows the first/last name (no artificial click-friction)
   - log: 2026-06-17 criterion added (#249/#252)
-- [ ] **Admin lifecycle = inline spinner, not navigation** - starting/restarting another user's server spins the control in place; it does not route to a progress screen
-  - log: 2026-06-17 criterion added (#243/#252); cross-ref [acc-crit-server-lifecycle-ux]
+- [x] **Admin lifecycle = inline spinner, not navigation** - starting/restarting another user's server spins the control in place; it does not route to a progress screen
+  - log: 2026-06-17 criterion added (#243/#252); 2026-06-17 verified via shared `rowActions` (Servers list + Home widget) - own start -> Start page, other start -> inline `lf.start` spinner; cross-ref [acc-crit-server-lifecycle-ux]
 - [ ] **Columns sized to content** - status / last-activity columns are just wide enough, not stretched
   - log: 2026-06-17 criterion added (#250/#252)

@@ -2,21 +2,25 @@
 
 After an admin/user resets selected volumes, the panel reports what was done and offers a clean way back. The list paints volume names instantly with sizes filling in (see [acc-crit-resource-bars] for the names/sizes split). `optimum-hub-web/src/components/VolumeReset.tsx`, `pages/ManageVolumes.tsx`.
 
-## Done report
+## After reset (same screen, no separate view)
 
-- [ ] **Quick confirmation line** - a short success message states the reset happened (e.g. "Reset N volume(s) for <user>")
-  - log: 2026-06-17 criterion added (#244); current message is malformed - to fix
-- [ ] **Volume list in normal text** - below the confirmation, the affected volumes are listed in normal body text (one per line / readable), not crammed into the confirmation line
-  - log: 2026-06-17 criterion added (#244)
-- [ ] **Removed pill per volume** - each listed volume carries a pill/tag stating it was removed
-  - log: 2026-06-17 criterion added (#244)
+- [x] **Stays on the volumes screen** - resetting does NOT switch to a separate confirmation view; the same table + buttons remain and the removed rows are marked in place
+  - log: 2026-06-17 reworked (operator: "stay on the same one with the same buttons") - dropped the `done` early-return; `removed` suffixes marked in the table
+- [x] **"removed" in red, not a pill** - each removed volume reads "removed" in dangerous (red) text in its Size cell, never an antd Tag/pill
+  - log: 2026-06-17 `oh-text-danger` in the Size column; cross-ref [acc-crit-design-language] text colours
+- [x] **Removed rows non-selectable** - a removed volume's checkbox is disabled so it cannot be re-selected; Reset re-disables when nothing is selected
+  - log: 2026-06-17 `getCheckboxProps` disabled on removed suffixes
+- [x] **Irreversibility warning** - the top notice is a WARNING (not the info/activity "EKG" glyph) stating that removing volumes is irreversible - the selected volumes and all their contents are permanently deleted
+  - log: 2026-06-17 reworked (operator: "warning that selecting and removing the volumes is irreversible; not the current EKG message") - Notice type warning, was info
 
 ## Close behaviour
 
-- [ ] **Close returns to the parent screen** - clicking Close navigates back to the screen the user came from (the parent), NOT the now-empty remove-volumes screen
-  - log: 2026-06-17 criterion added (#244); current bug - Close lands on the empty volumes screen
-- [ ] **Edge: reached from the user-config Volumes tab vs the dedicated Manage-volumes page** - Close returns to whichever parent opened it (the tab stays, or the page returns to /servers), not a dead-end empty panel
-  - log: 2026-06-17 criterion added (#244)
+- [x] **Cancel + Done footer** - the dedicated Manage-volumes page uses the standard config footer (Reset destructive on the left; Cancel + a primary Done on the right), matching Configure-user / Configure-group; both Cancel and Done leave the screen
+  - log: 2026-06-17 implemented - `VolumeReset` renders `FormFooter` in page mode (when `onClose` is set); the Configure-user Volumes TAB keeps the bare Reset button (UserConfig owns that footer)
+- [x] **Returns to the true origin** - Cancel / Done return to where the screen was opened from per the nav-origin state - Home if opened from Home, Servers if opened from the Servers list - not a hardcoded /servers
+  - log: 2026-06-17 implemented - `ManageVolumes` reads `location.state.from` (`backTo`); Home hero / widget + Servers list all tag the origin; was the reported bug (Home -> volumes closed to Servers); cross-ref [acc-crit-design-language] "Respect the navigation path"
+- [x] **Edge: reached from the user-config Volumes tab vs the dedicated Manage-volumes page** - Close returns to whichever parent opened it (the tab keeps its own footer; the page returns to its origin), not a dead-end empty panel
+  - log: 2026-06-17 implemented - page mode renders the footer; tab mode (no `onClose`) renders just the Reset action
 
 ## Audit
 

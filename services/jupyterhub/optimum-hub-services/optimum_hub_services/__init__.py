@@ -22,7 +22,7 @@ from .auth import OptimumHubAuthenticator, OptimumSignUpHandler, StellarsNativeA
 from .branding import setup_branding
 from .docker_proxy import register_user, unregister_user
 from .events import register_events
-from .gpu import is_wsl2, resolve_gpu_mode
+from .gpu import gpu_summary_lines, is_wsl2, resolve_gpu_mode
 from .gpuinfo_sidecar import ensure_gpuinfo_sidecar, stop_gpuinfo_sidecar
 from .hooks import (
     make_pre_spawn_hook,
@@ -81,6 +81,7 @@ __all__ = [
     "should_cull",
     "get_user_volume_name_templates",
     "get_user_volume_suffixes",
+    "gpu_summary_lines",
     "is_wsl2",
     "load_merged_user_volumes",
     "make_pre_spawn_hook",
