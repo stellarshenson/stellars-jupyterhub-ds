@@ -226,25 +226,31 @@ export const liveSource: DataSource = {
       const cpuTip = running && cores != null
         ? `${cores} core${cores === 1 ? '' : 's'} ${a?.cpu_cores_limited ? 'assigned' : 'host (no limit)'}`
         : undefined
-      // mem: used vs configured per-user limit vs total host
+      // mem: used vs configured per-user limit vs total host (multiline tooltip)
       const memTip = memMb != null
-        ? `${gb(memMb)} GB used`
-          + (memMax > 0 ? ` / ${gb(memMax)} GB limit` : '')
-          + (memTotal ? ` / ${gb(memTotal)} GB host` : '')
-          + (memMax > 0 && memMb > memMax ? ' (over limit)' : '')
+        ? [
+            `${gb(memMb)} GB used${memMax > 0 && memMb > memMax ? ' (over limit)' : ''}`,
+            memMax > 0 ? `${gb(memMax)} GB limit` : '',
+            memTotal ? `${gb(memTotal)} GB host` : '',
+          ].filter(Boolean).join('\n')
         : undefined
-      // volumes: per-mount breakdown + quota when exceeded
+      // volumes: per-mount breakdown + quota (multiline tooltip, one entry per line)
       const volParts = Object.entries(vbreak).filter(([, mb]) => mb != null)
       const volTip = volMb != null
-        ? (volParts.length ? `${volParts.map(([s, mb]) => `${s} ${gb(mb)} GB`).join(' · ')} (total ${gb(volMb)} GB)` : `${gb(volMb)} GB`)
-          + (volMax > 0 && volMb > volMax ? ` / ${gb(volMax)} GB quota exceeded` : '')
+        ? [
+            ...volParts.map(([s, mb]) => `${s}: ${gb(mb)} GB`),
+            `total ${gb(volMb)} GB`,
+            volMax > 0 ? `quota ${gb(volMax)} GB${volMb > volMax ? ' (exceeded)' : ''}` : '',
+          ].filter(Boolean).join('\n')
         : undefined
-      // system: base image size + writable layer + quota
+      // system: base image size + writable layer + quota (multiline tooltip)
       const baseMb = rootfsMb != null && ctrMb != null ? Math.max(0, rootfsMb - ctrMb) : null
       const sysTip = ctrMb != null
-        ? (baseMb != null ? `base ${gb(baseMb)} GB + ` : '') + `writable ${gb(ctrMb)} GB`
-          + (ctrMax > 0 ? ` / ${gb(ctrMax)} GB quota` : '')
-          + (ctrMax > 0 && ctrMb > ctrMax ? ' (over)' : '')
+        ? [
+            baseMb != null ? `base image ${gb(baseMb)} GB` : '',
+            `writable ${gb(ctrMb)} GB${ctrMax > 0 && ctrMb > ctrMax ? ' (over)' : ''}`,
+            ctrMax > 0 ? `quota ${gb(ctrMax)} GB` : '',
+          ].filter(Boolean).join('\n')
         : undefined
       return {
         user: u.name,

@@ -32,6 +32,8 @@ The CPU/Memory/GPU progress bars on the Server status card, the Servers table, a
   - log: 2026-06-17 implemented; tip reads "~N of H cores in use across M servers"
 - [x] **GPU tooltips native** - per-GPU bars/chips carry the standard browser `title` (name/UUID/memory/util/temp/power), not a bespoke antd popup
   - log: 2026-06-17 verified (gpuTip returns a \n-joined string)
+- [x] **Multiline tooltips** - the Servers memory/volume/system tooltips are `\n`-joined (one fact per line) like the GPU tooltip, not a single long " / "-joined string; the desktop table's native `title` breaks on `\n` and the mobile drawer's inline `detail` uses `white-space: pre-line`
+  - log: 2026-06-17 operator (repeat) "tooltips weirdly long, must be multiline broken nicely" - memTip/volTip/sysTip switched to `[...].filter(Boolean).join('\n')`; Metric detail div got `pre-line`
 
 ## Edge cases
 
