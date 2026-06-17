@@ -3,6 +3,7 @@ import { startServer } from '../services/ops'
 import { hubUrl, xsrfToken } from '../services/hub/client'
 import { isMock } from '../services/dataMode'
 import { getDataSource } from '../services/datasource'
+import { invalidate } from '../services/actions'
 
 export type SpawnPhase = 'spawning' | 'ready' | 'failed'
 export interface SpawnProgress {
@@ -129,6 +130,14 @@ export function useSpawnProgress(user: string): SpawnProgress {
 
     return () => { cancelled = true; es?.close(); timers.forEach(window.clearInterval) }
   }, [user])
+
+  // On spawn completion refresh the server-status queries so the dashboard / servers
+  // list reflects the new server immediately (the SSE 'ready' can precede the hub's
+  // /users ready flip; statusOf reads the settle window as spawning and the adaptive
+  // fast-poll + this kick heal it in ~2-3s instead of waiting out staleTime).
+  useEffect(() => {
+    if (state.phase === 'ready') invalidate(['servers'], ['hero', user], ['stats'], ['resources'])
+  }, [state.phase, user])
 
   return state
 }

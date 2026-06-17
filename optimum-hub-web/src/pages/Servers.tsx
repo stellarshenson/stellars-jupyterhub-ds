@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
-import { Button, Card, Drawer, Input, Modal, Tag } from 'antd'
+import { Button, Card, Drawer, Input, Modal, Spin, Tag } from 'antd'
 import { PageHeader } from '../components/PageHeader'
 import { StatusPill } from '../components/StatusPill'
 import { ActivityMeter } from '../components/meters'
@@ -17,7 +17,7 @@ import { useNavigate } from 'react-router-dom'
 import { timeAgoShort, exactDate } from '../lib/format'
 import { downloadCsv } from '../lib/download'
 import { useServers } from '../hooks/queries'
-import { mockAction, invalidate, notify } from '../services/actions'
+import { invalidate, notify } from '../services/actions'
 import { resetActivity, startAllServers, stopAllServers } from '../services/ops'
 import { userServerUrl } from '../services/hub/client'
 import { useRole } from '../app/RoleContext'
@@ -57,12 +57,16 @@ function enterSession(user: string, me: string) {
 }
 
 function rowActions(r: ServerRow, nav: (to: string) => void, lf: Lifecycle, me: string) {
-  const busy = !!lf.busyOf(r.user)
+  const mode = lf.busyOf(r.user) // 'restart' | 'stop' | null
+  const busy = !!mode
   if (r.status === 'spawning') {
+    // a rotating spinner says "starting" (not the old ekg/activity glyph); the log
+    // link opens the real Start-server page (live progress + container-log tail).
     return (
-      <div className="oh-row" style={{ justifyContent: 'flex-end' }}>
-        <IconAction icon="activity" title="View spawn log" onClick={() => mockAction('Tail live spawn log')} />
-        <IconAction icon="stop" title="Cancel spawn" tone="danger" filled disabled={busy} onClick={() => lf.stop(r.user)} />
+      <div className="oh-row" style={{ justifyContent: 'flex-end', alignItems: 'center', gap: 6 }}>
+        <Spin size="small" />
+        <IconAction icon="code" title="View spawn log" onClick={() => nav(`/servers/${r.user}/starting`)} />
+        <IconAction icon="stop" title="Cancel spawn" tone="danger" filled busy={mode === 'stop'} disabled={busy} onClick={() => lf.stop(r.user)} />
       </div>
     )
   }
@@ -77,8 +81,8 @@ function rowActions(r: ServerRow, nav: (to: string) => void, lf: Lifecycle, me: 
   return (
     <div className="oh-row" style={{ justifyContent: 'flex-end' }}>
       <IconAction icon="play" title={r.user === me ? 'Enter session' : `Open ${r.user}'s session`} tone="primary" disabled={busy} onClick={() => enterSession(r.user, me)} />
-      <IconAction icon="restart" title="Restart" disabled={busy} onClick={() => lf.restart(r.user)} />
-      <IconAction icon="stop" title="Stop" tone="danger" filled disabled={busy} onClick={() => lf.stop(r.user)} />
+      <IconAction icon="restart" title="Restart" busy={mode === 'restart'} disabled={busy} onClick={() => lf.restart(r.user)} />
+      <IconAction icon="stop" title="Stop" tone="danger" filled busy={mode === 'stop'} disabled={busy} onClick={() => lf.stop(r.user)} />
     </div>
   )
 }
@@ -109,7 +113,7 @@ function ServerDetail({ row }: { row: ServerRow }) {
         <StatusPill status={row.status} label={row.statusLabel} />
         {row.admin && <Tag bordered={false} style={accentTag}>admin</Tag>}
       </div>
-      <Metric label="Activity (7d)" value={<ActivityMeter value={row.activity} />} />
+      <Metric label="Activity (7d)" value={<ActivityMeter value={row.activity} hours={row.activityHours} />} />
       <Metric label="CPU" value={row.cpu == null ? dash : `${row.cpu}%`} detail={row.cpuTip} />
       <Metric label="Memory" value={row.mem == null ? dash : `${row.mem}%`} detail={row.memTip} over={row.memOver} />
       {gpuSupported() && <Metric label="GPU" value={row.gpu ?? <span className="oh-muted">not tracked per-server</span>} />}
@@ -217,7 +221,7 @@ export default function Servers() {
       title: 'Activity',
       dataIndex: 'activity',
       sorter: (a, b) => (a.activity ?? -1) - (b.activity ?? -1),
-      render: (_, r) => <ActivityMeter value={r.activity} />,
+      render: (_, r) => <ActivityMeter value={r.activity} hours={r.activityHours} />,
     },
     {
       title: 'CPU', dataIndex: 'cpu', align: 'right', sorter: (a, b) => (a.cpu ?? -1) - (b.cpu ?? -1),
@@ -294,7 +298,7 @@ export default function Servers() {
         actions={
           <>
             <Button icon={<Icon name="play" size={14} />} disabled={!offlineUsers.length} onClick={() => startAllServers(offlineUsers)}>Start all</Button>
-            <Button danger icon={<Icon name="stop" size={14} />} disabled={!runningUsers.length} onClick={stopAll}>Stop all</Button>
+            <Button danger icon={<Icon name="stop" size={14} filled />} disabled={!runningUsers.length} onClick={stopAll}>Stop all</Button>
           </>
         }
       />

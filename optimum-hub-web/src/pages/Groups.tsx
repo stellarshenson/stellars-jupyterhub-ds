@@ -13,6 +13,7 @@ import { Icon } from '../components/Icon'
 import { useGroups } from '../hooks/queries'
 import { notify } from '../services/actions'
 import { deleteGroup, importGroups, reorderGroups } from '../services/ops'
+import { fromPolicies } from '../lib/policyShape'
 import type { GroupRow } from '../services/types'
 
 // Editable rank cell: shows the row position and, on click, a small popover to
@@ -59,9 +60,10 @@ export default function Groups() {
 
   const filtered = useMemo(() => rows.filter((g) => g.name.toLowerCase().includes(q.toLowerCase())), [rows, q])
 
-  // Import a {groups:[{name, description, priority, config}]} bundle (or a bare
-  // array). Parse client-side; importGroups does the real create + PUT-config
-  // writes and owns its own success/error toast (mock toast in mock mode).
+  // Import a {groups:[{name, description, priority, policies[]}]} bundle (or a bare
+  // array). policies[] is unfolded back to the flat config the hub stores; a legacy
+  // flat `config` is still accepted so older exports round-trip. Parse client-side;
+  // importGroups does the real create + PUT-config writes and owns its own toast.
   const fileRef = useRef<HTMLInputElement>(null)
   const onImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -74,7 +76,12 @@ export default function Groups() {
       if (!Array.isArray(list)) throw new Error('expected a { groups: [...] } bundle')
       groups = list
         .filter((g) => g && typeof g.name === 'string' && g.name.trim())
-        .map((g) => ({ name: g.name.trim(), description: g.description ?? '', priority: g.priority, config: g.config ?? {} }))
+        .map((g) => ({
+          name: g.name.trim(),
+          description: g.description ?? '',
+          priority: g.priority,
+          config: Array.isArray(g.policies) ? fromPolicies(g.policies) : (g.config ?? {}),
+        }))
       if (!groups.length) throw new Error('no valid group entries')
     } catch (err) {
       notify.error(`Import failed: ${(err as Error).message}`)

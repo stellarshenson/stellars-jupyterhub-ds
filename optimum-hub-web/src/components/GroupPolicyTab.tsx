@@ -56,8 +56,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
   const [memGB, setMemGB] = useState<number | null>(null)
   const [memSwap, setMemSwap] = useState(false)
   const [cpuCores, setCpuCores] = useState<number | null>(null)
-  const [dStd, setDStd] = useState(false)
-  const [dLim, setDLim] = useState(false)
+  const [dStd, setDStd] = useState(false) // standard (raw socket) vs limited (proxy); limited is the default when the section is on
   const [dPriv, setDPriv] = useState(false)
   const [dq, setDq] = useState({ maxContainers: 10, maxVolumes: 10, maxNetworks: 3, maxStorage: 50, cpuCap: 2, memCap: 8 })
   const [dFlags, setDFlags] = useState({ dangerous: false, composeEnabled: true, composeOverride: true, hubNetwork: true })
@@ -94,8 +93,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
     setMemGB(c.mem_limit_gb ? c.mem_limit_gb : null)
     setMemSwap(!!c.mem_swap_disabled)
     setCpuCores(c.cpu_limit_cores ? c.cpu_limit_cores : null)
-    setDStd(!!c.docker_access)
-    setDLim(!!c.docker_limited)
+    setDStd(!!c.docker_access) // not-standard (incl. a legacy "no access" config) reads as limited, the default
     setDPriv(!!c.docker_privileged)
     setDq({
       maxContainers: c.docker_limited_max_containers ?? 10,
@@ -141,8 +139,10 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       gpu_all: gpuAll,
       gpu_device_ids: gpuIds,
       docker_active: on.docker ?? false,
-      docker_access: dStd,
-      docker_limited: dLim,
+      // section on = access granted; the radio only chooses how. Standard = raw
+      // socket; otherwise limited (the default). Both false when the section is off.
+      docker_access: (on.docker ?? false) && dStd,
+      docker_limited: (on.docker ?? false) && !dStd,
       docker_privileged: dPriv,
       docker_limited_max_containers: dq.maxContainers,
       docker_limited_max_volumes: dq.maxVolumes,
@@ -177,7 +177,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       },
     }
     onChange(config)
-  }, [onChange, on, envVars, gpuAll, gpuIds, memGB, memSwap, cpuCores, dStd, dLim, dPriv, dq, dFlags, volMounts, apiMode, apiVarKey, apiVarId, apiVarSecret, apiCreds, downloadsAllow, sudoEnable])
+  }, [onChange, on, envVars, gpuAll, gpuIds, memGB, memSwap, cpuCores, dStd, dPriv, dq, dFlags, volMounts, apiMode, apiVarKey, apiVarId, apiVarSecret, apiCreds, downloadsAllow, sudoEnable])
 
   const toggle = (key: string) => (v: boolean) => setOn((e) => ({ ...e, [key]: v }))
 
@@ -243,11 +243,10 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       <Section icon="box" title="Docker access" on={on.docker ?? false} onToggle={toggle('docker')}>
         <div className="oh-pol-hint">Across groups the most permissive wins. Standard supersedes Limited; Privileged is orthogonal.</div>
         <Radio.Group
-          value={dStd ? 'std' : dLim ? 'limited' : 'none'}
-          onChange={(e) => { const v = e.target.value as string; setDStd(v === 'std'); setDLim(v === 'limited') }}
+          value={dStd ? 'std' : 'limited'}
+          onChange={(e) => setDStd((e.target.value as string) === 'std')}
           style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}
         >
-          <Radio value="none">No Docker access</Radio>
           <Radio value="std">
             Standard Docker access
             <div className="desc">Mounts the raw /var/run/docker.sock - sees all containers, no quota. For trusted users.</div>
@@ -257,7 +256,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
             <div className="desc">Per-user filtered socket: users manage only their own containers, up to a quota.</div>
           </Radio>
         </Radio.Group>
-        {dLim && (
+        {!dStd && (
           <div style={{ marginLeft: 24, marginTop: 8 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, maxWidth: 560 }}>
               {([['maxContainers', 'Max containers'], ['maxVolumes', 'Max volumes'], ['maxNetworks', 'Max networks'], ['maxStorage', 'Max storage (GB)'], ['cpuCap', 'CPU cap (cores)'], ['memCap', 'Memory cap (GB)']] as const).map(([k, label]) => (

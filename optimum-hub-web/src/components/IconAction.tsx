@@ -5,7 +5,7 @@
  *   danger    - red   (antd danger)          - destructive / stop
  *   warning   - yellow(var(--color-warning)) - caution
  * The single affordance for per-row lifecycle actions. */
-import { Button, Tooltip } from 'antd'
+import { Button, Spin, Tooltip } from 'antd'
 import { Icon } from './Icon'
 import type { IconKey } from './Icon'
 
@@ -18,6 +18,7 @@ export function IconAction({
   tone = 'secondary',
   disabled,
   filled,
+  busy,
 }: {
   icon: IconKey
   title: string
@@ -25,6 +26,7 @@ export function IconAction({
   tone?: IconTone
   disabled?: boolean
   filled?: boolean // solid glyph - used for stop (a stroked square reads as a stray box)
+  busy?: boolean // show an inline spinner in place of the icon while this action is in flight
 }) {
   const color = disabled
     ? undefined
@@ -39,9 +41,9 @@ export function IconAction({
         type="text"
         size="small"
         danger={tone === 'danger'}
-        disabled={disabled}
+        disabled={disabled || busy}
         onClick={onClick}
-        icon={<Icon name={icon} size={filled ? 14 : 16} filled={filled} />}
+        icon={busy ? <Spin size="small" /> : <Icon name={icon} size={filled ? 14 : 16} filled={filled} />}
         style={color ? { color } : undefined}
         aria-label={title}
       />

@@ -2,12 +2,28 @@
  * loading / error / data for free and the source (mock or live) is transparent. */
 import { useQuery } from '@tanstack/react-query'
 import { getDataSource } from '../services/datasource'
+import type { ServerHero, ServerRow } from '../services/types'
 
 const ds = () => getDataSource()
 
+// Background polling for the live dashboard queries (servers/hero/stats/resources):
+// poll FAST while a server is mid-transition (spawning) so a just-started server
+// flips to active within a couple seconds, idle at a cheap SLOW cadence otherwise,
+// and never poll when the tab is hidden (each /activity sample runs docker stats).
+const FAST_POLL = 2500
+const SLOW_POLL = 15000
+const serversSpawning = (rows?: ServerRow[]) => !!rows?.some((r) => r.status === 'spawning')
+const heroSpawning = (h?: ServerHero) => h?.status === 'spawning'
+
 export const useHubInfo = () => useQuery({ queryKey: ['hub-info'], queryFn: () => ds().getHubInfo() })
 export const useStats = () => useQuery({ queryKey: ['stats'], queryFn: () => ds().getStats() })
-export const useServers = () => useQuery({ queryKey: ['servers'], queryFn: () => ds().getServers() })
+export const useServers = () =>
+  useQuery({
+    queryKey: ['servers'],
+    queryFn: () => ds().getServers(),
+    refetchInterval: (q) => (serversSpawning(q.state.data) ? FAST_POLL : SLOW_POLL),
+    refetchIntervalInBackground: false,
+  })
 export const useUsers = () => useQuery({ queryKey: ['users'], queryFn: () => ds().getUsers() })
 export const useGroups = () => useQuery({ queryKey: ['groups'], queryFn: () => ds().getGroups() })
 export const useEvents = () => useQuery({ queryKey: ['events'], queryFn: () => ds().getEvents() })
@@ -27,7 +43,12 @@ export const useUserProfile = (name: string) =>
 export const useGroupConfig = (name: string) =>
   useQuery({ queryKey: ['group-config', name], queryFn: () => ds().getGroupConfig(name), enabled: !!name })
 export const useServerHero = (user: string) =>
-  useQuery({ queryKey: ['hero', user], queryFn: () => ds().getServerHero(user) })
+  useQuery({
+    queryKey: ['hero', user],
+    queryFn: () => ds().getServerHero(user),
+    refetchInterval: (q) => (heroSpawning(q.state.data) ? FAST_POLL : SLOW_POLL),
+    refetchIntervalInBackground: false,
+  })
 export const useSessionInfo = (user: string) =>
   useQuery({ queryKey: ['session', user], queryFn: () => ds().getSessionInfo(user) })
 export const useUserVolumes = (user: string) =>

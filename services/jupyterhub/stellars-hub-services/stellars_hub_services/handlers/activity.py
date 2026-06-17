@@ -8,6 +8,7 @@ from tornado import web
 
 from ..activity.helpers import (
     calculate_activity_score,
+    calculate_avg_active_hours,
     get_activity_sampling_status,
     get_inactive_after_seconds,
     record_samples_for_all_users,
@@ -18,21 +19,6 @@ from ..container_size_cache import get_container_sizes_with_refresh, ContainerSi
 from ..gpu_cache import GpuUtilizationRefresher, get_gpu_utilization_with_refresh
 from ..idle_culler import calc_ceiling, remaining_seconds_for
 from ..volume_cache import VolumeSizeRefresher, get_volume_sizes_with_refresh
-
-
-class ActivityPageHandler(BaseHandler):
-    """Handler for rendering the activity monitoring page (admin only)."""
-
-    @web.authenticated
-    async def get(self):
-        """Render the activity monitoring page."""
-        current_user = self.current_user
-        if not current_user.admin:
-            raise web.HTTPError(403, "Only administrators can access this page")
-
-        self.log.info(f"[Activity Page] Admin {current_user.name} accessed activity monitor")
-        html = self.render_template("activity.html", sync=True, user=current_user)
-        self.finish(html)
 
 
 class ActivityDataHandler(BaseHandler):
@@ -116,6 +102,7 @@ class ActivityDataHandler(BaseHandler):
                 "server_started": None,
                 "lab_image_upgrade_available": False,
                 "activity_score": None,
+                "activity_hours": None,
                 "sample_count": 0,
                 "last_activity": None,
                 "volume_size_mb": user_volume_size,
@@ -126,6 +113,7 @@ class ActivityDataHandler(BaseHandler):
 
             score, sample_count = calculate_activity_score(user.name)
             user_data["activity_score"] = score
+            user_data["activity_hours"] = calculate_avg_active_hours(user.name)
             user_data["sample_count"] = sample_count
 
             inactive_threshold = get_inactive_after_seconds()

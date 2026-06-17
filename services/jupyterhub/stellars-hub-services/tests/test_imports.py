@@ -141,21 +141,17 @@ def test_handlers():
         ManageVolumesHandler,
         RestartServerHandler,
         LabReadyHandler,
-        NotificationsPageHandler,
         ActiveServersHandler,
         BroadcastNotificationHandler,
         GetUserCredentialsHandler,
-        SettingsPageHandler,
         SettingsDataHandler,
         SessionInfoHandler,
         ExtendSessionHandler,
-        ActivityPageHandler,
         ActivityDataHandler,
         ActivityResetHandler,
         ActivitySampleHandler,
         FaviconRedirectHandler,
         HealthCheckHandler,
-        GroupsPageHandler,
         GroupsDataHandler,
         GroupsCreateHandler,
         GroupsDeleteHandler,
@@ -169,9 +165,10 @@ def test_handlers():
         ServerLogsHandler,
         EventsDataHandler,
     )
-    # Verify handler count matches expected
+    # Verify handler count matches expected (legacy server-rendered page handlers
+    # removed - the React portal owns those routes)
     from stellars_hub_services import handlers
-    assert len(handlers.__all__) == 30
+    assert len(handlers.__all__) == 26
 
 
 def test_auth():

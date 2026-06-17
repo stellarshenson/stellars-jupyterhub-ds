@@ -1,20 +1,17 @@
-/* Server lifecycle progress popups for restart / stop: each opens a modal with a
- * progress bar tied to the real hub state, and exposes a `busy` map so the server
- * widgets disable conflicting controls while a transition is in flight. On success
- * the popup auto-closes back to the parent screen; failures keep it open with an
- * error + Close.
+/* Server restart / stop lifecycle. Runs the transition in the background and
+ * exposes a `busy` map so the controls show an INLINE spinner (no modal popup):
+ * the op fires (its `run()` toasts + invalidates), then a background monitor polls
+ * the real hub status until the transition completes and refreshes the affected
+ * views immediately. A failed POST is surfaced by the op's own error toast.
  *
- * Starting a server is deliberately NOT handled here - it navigates to the
- * dedicated Start-server page (`/servers/:name/starting`), which owns the spawn
- * progress bar and the live container-log tail (see pages/Starting.tsx). */
+ * Starting a server is handled by the dedicated Start-server page
+ * (`/servers/:name/starting`), which owns the spawn progress + log tail. */
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
-import { Button, Modal, Progress } from 'antd'
 import { getDataSource } from '../services/datasource'
 import { invalidate } from '../services/actions'
 import { restartServer, stopServer } from '../services/ops'
 
 type Mode = 'restart' | 'stop'
-type Phase = 'busy' | 'done' | 'error'
 
 interface Lifecycle {
   restart: (user: string) => void
@@ -30,44 +27,16 @@ export function useServerLifecycle(): Lifecycle {
   return c
 }
 
-const TITLE: Record<Mode, string> = { restart: 'Restarting server', stop: 'Stopping server' }
 const isRunning = (s: string) => s === 'active' || s === 'idle' || s === 'spawning'
-
-interface ModalState {
-  open: boolean
-  user: string
-  mode: Mode
-  percent: number
-  message: string
-  phase: Phase
-  indeterminate: boolean
-}
 
 export function ServerLifecycleProvider({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState<Record<string, Mode>>({})
-  const [st, setSt] = useState<ModalState>({ open: false, user: '', mode: 'restart', percent: 0, message: '', phase: 'busy', indeterminate: false })
 
   const clearBusy = useCallback((user: string) => setBusy((b) => { const n = { ...b }; delete n[user]; return n }), [])
   const refresh = useCallback((user: string) => invalidate(['servers'], ['hero', user], ['resources'], ['stats']), [])
-  const close = useCallback(() => setSt((s) => ({ ...s, open: false })), [])
 
-  // Resolve a finished transition: success auto-closes back to the parent screen;
-  // failure keeps the popup open with the error so it can be read + dismissed.
-  const settle = useCallback(
-    (user: string, ok: boolean, doneMsg: string, errMsg: string) => {
-      clearBusy(user)
-      refresh(user)
-      if (!ok) {
-        setSt((s) => ({ ...s, indeterminate: false, phase: 'error', message: errMsg }))
-        return
-      }
-      setSt((s) => ({ ...s, indeterminate: false, percent: 100, phase: 'done', message: doneMsg }))
-      window.setTimeout(() => close(), 800)
-    },
-    [clearBusy, refresh, close],
-  )
-
-  // Poll server status until `pred` holds or ~90s elapse. Returns whether it held.
+  // Poll the real server status until `pred` holds or ~90s elapse - the background
+  // monitor that reports completion so we can refresh immediately.
   const pollUntil = useCallback(async (user: string, pred: (status: string) => boolean) => {
     const deadline = Date.now() + 90_000
     while (Date.now() < deadline) {
@@ -81,54 +50,25 @@ export function ServerLifecycleProvider({ children }: { children: ReactNode }) {
     return false
   }, [])
 
-  const restart = useCallback(async (user: string) => {
-    setBusy((b) => ({ ...b, [user]: 'restart' }))
-    setSt({ open: true, user, mode: 'restart', percent: 0, message: 'Restarting container…', phase: 'busy', indeterminate: true })
-    try {
-      await restartServer(user)
-    } catch {
-      settle(user, false, '', 'Restart failed'); return
-    }
-    const ok = await pollUntil(user, isRunning)
-    settle(user, ok, 'Running', 'Restart did not complete')
-  }, [settle, pollUntil])
+  const runOp = useCallback(
+    async (user: string, mode: Mode, op: (u: string) => Promise<unknown>, pred: (s: string) => boolean) => {
+      setBusy((b) => ({ ...b, [user]: mode }))
+      try {
+        await op(user) // run() toasts success/error + invalidates the server keys
+      } catch {
+        clearBusy(user) // the op already toasted the failure
+        return
+      }
+      await pollUntil(user, pred) // monitor until the transition lands
+      clearBusy(user)
+      refresh(user) // immediate refresh on completion
+    },
+    [clearBusy, refresh, pollUntil],
+  )
 
-  const stop = useCallback(async (user: string) => {
-    setBusy((b) => ({ ...b, [user]: 'stop' }))
-    setSt({ open: true, user, mode: 'stop', percent: 0, message: 'Stopping server…', phase: 'busy', indeterminate: true })
-    try {
-      await stopServer(user)
-    } catch {
-      settle(user, false, '', 'Stop failed'); return
-    }
-    const ok = await pollUntil(user, (s) => s === 'offline')
-    settle(user, ok, 'Stopped', 'Stop did not complete')
-  }, [settle, pollUntil])
-
+  const restart = useCallback((user: string) => { void runOp(user, 'restart', restartServer, isRunning) }, [runOp])
+  const stop = useCallback((user: string) => { void runOp(user, 'stop', stopServer, (s) => s === 'offline') }, [runOp])
   const busyOf = useCallback((user: string) => busy[user] ?? null, [busy])
 
-  const stroke = st.phase === 'error' ? 'var(--color-danger)' : st.phase === 'done' ? 'var(--color-success)' : 'var(--color-accent)'
-
-  return (
-    <Ctx.Provider value={{ restart, stop, busyOf }}>
-      {children}
-      <Modal
-        open={st.open}
-        title={TITLE[st.mode]}
-        onCancel={close}
-        maskClosable={st.phase === 'error'}
-        closable={st.phase === 'error'}
-        keyboard={st.phase === 'error'}
-        footer={st.phase === 'error' ? [<Button key="close" type="primary" onClick={close}>Close</Button>] : null}
-      >
-        <p style={{ marginBottom: 12 }}>{st.message}</p>
-        <Progress
-          percent={st.indeterminate && st.phase === 'busy' ? 100 : st.percent}
-          showInfo={!st.indeterminate || st.phase !== 'busy'}
-          status={st.phase === 'error' ? 'exception' : st.indeterminate && st.phase === 'busy' ? 'active' : undefined}
-          strokeColor={stroke}
-        />
-      </Modal>
-    </Ctx.Provider>
-  )
+  return <Ctx.Provider value={{ restart, stop, busyOf }}>{children}</Ctx.Provider>
 }

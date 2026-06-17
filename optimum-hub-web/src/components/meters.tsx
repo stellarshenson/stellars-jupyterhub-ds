@@ -1,7 +1,7 @@
 /* Visual-metaphor primitives: the activity meter, the proportional spark bar, the
  * resource bars, and the TTL gadget. Each carries the precise value in a tooltip,
  * never inline (per the design language). */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { Button, Popover, Progress, Slider } from 'antd'
 import { Icon } from './Icon'
@@ -10,13 +10,22 @@ import { THRESHOLDS, ANIMATION } from '../services/config'
 import { gpuSupported } from '../app/capabilities'
 import type { GpuDevice } from '../services/types'
 
+// Tooltip for the engagement meter. Prefer the real average active hours/day (the
+// honest figure behind the score); fall back to the score as a % of the daily
+// activity target. The 3-day phrasing matches the 72h half-life weighting.
+export function activityTitle(value: number | null, hours?: number | null): string {
+  if (hours != null) return `Active on average ${hours}h/day over the last 3 days`
+  if (value == null) return 'No activity recorded yet'
+  return `${value}% of the daily activity target`
+}
+
 // 5-segment engagement meter. Colour follows the score: low red / mid amber / high green.
-export function ActivityMeter({ value, title }: { value: number | null; title?: string }) {
+export function ActivityMeter({ value, hours, title }: { value: number | null; hours?: number | null; title?: string }) {
   if (value == null) return <span className="oh-muted">-</span>
   const lit = Math.max(0, Math.min(5, Math.round(value / 20)))
   const tone = value < 25 ? 'low' : value < 60 ? 'idle' : ''
   return (
-    <span className={`oh-meter ${tone}`} title={title ?? `${value}% active over the last 7 days`}>
+    <span className={`oh-meter ${tone}`} title={title ?? activityTitle(value, hours)}>
       {[0, 1, 2, 3, 4].map((i) => (
         <i key={i} className={i < lit ? 'on' : ''} />
       ))}
@@ -25,11 +34,11 @@ export function ActivityMeter({ value, title }: { value: number | null; title?: 
 }
 
 // 5-segment meter stretched to fill a row (resource panels).
-export function ActivityMeterFill({ value, title }: { value: number; title?: string }) {
+export function ActivityMeterFill({ value, hours, title }: { value: number; hours?: number | null; title?: string }) {
   const lit = Math.max(0, Math.min(5, Math.round(value / 20)))
   const tone = value < 25 ? 'low' : value < 60 ? 'idle' : ''
   return (
-    <span className={`oh-meter fill ${tone}`} title={title}>
+    <span className={`oh-meter fill ${tone}`} title={title ?? activityTitle(value, hours)}>
       {[0, 1, 2, 3, 4].map((i) => (
         <i key={i} className={i < lit ? 'on' : ''} />
       ))}
@@ -202,25 +211,40 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
   const [open, setOpen] = useState(false)
   const [hours, setHours] = useState(maxH)
   const atCeiling = maxAddHours <= 0
-  // Extend animation: on click the bar fills to 100% immediately (step 1+2) while
-  // the time text holds its old value (the "keep 24h on" feel); once the refetched
-  // timeLeftMin lands, the bar settles on the real % and the text reveals the new
-  // time (step 3). displayMin freezes the shown time during the fill.
+  // Extend animation: on click the bar fills to 100% immediately (slow CSS fill)
+  // while the time text holds its old value. The boost holds - bar pinned full -
+  // until the refetched timeLeftMin actually lands (a changed value), with a
+  // minimum fill window so the growth is always seen and a safety cap so the boost
+  // can never stick if the value never changes. Settling reveals the new time and
+  // lets the bar fall to its true %. displayMin freezes the shown time during fill.
   const [boost, setBoost] = useState(false)
   const [displayMin, setDisplayMin] = useState(timeLeftMin)
+  const baselineMin = useRef(timeLeftMin) // time-left captured at extend click
+  const minFillDone = useRef(false)       // minimum fill window elapsed
+  const valueLanded = useRef(false)       // refetch delivered a changed value
+  // freeze the shown time during the boost; once it ends, track the live value
   useEffect(() => {
-    if (!boost) { setDisplayMin(timeLeftMin); return }
-    // hold for the configured fill duration so the bar visibly grows to the new
-    // limit before the time reveals (ANIMATION.ttlExtendMs in services/config)
-    const t = window.setTimeout(() => { setDisplayMin(timeLeftMin); setBoost(false) }, ANIMATION.ttlExtendMs)
-    return () => window.clearTimeout(t)
+    if (!boost) setDisplayMin(timeLeftMin)
+  }, [boost, timeLeftMin])
+  // end the boost only when the new value has landed AND the fill has had time to play
+  useEffect(() => {
+    if (boost && timeLeftMin !== baselineMin.current) {
+      valueLanded.current = true
+      if (minFillDone.current) setBoost(false)
+    }
   }, [boost, timeLeftMin])
   const shownPct = boost ? 100 : pct
   const apply = () => {
     setOpen(false)
+    baselineMin.current = timeLeftMin
+    minFillDone.current = false
+    valueLanded.current = false
     setBoost(true)
+    // keep the bar pinned full for at least one fill duration so the growth is seen
+    window.setTimeout(() => { minFillDone.current = true; if (valueLanded.current) setBoost(false) }, ANIMATION.ttlExtendMs)
+    // safety: never let the boost hang if the refetch never changes the value
+    window.setTimeout(() => setBoost(false), ANIMATION.ttlExtendMs + 6000)
     // optimistic fill; if the extend request rejects, drop the boost immediately
-    // rather than show a false 100% for the whole animation window
     Promise.resolve(onExtend?.(Math.max(1, Math.min(maxH, hours)))).catch(() => setBoost(false))
   }
   // slider marks: first hour and the last tick labelled "max" (tops to ceiling)

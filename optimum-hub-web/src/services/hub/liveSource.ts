@@ -17,7 +17,6 @@
  *     delegate to mock or an honest empty
  *   - per-user GPU usage: not collected (GPU is a group policy) -> gpu = null */
 import type { DataSource } from '../datasource'
-import { mockSource } from '../mockSource'
 import { IDLE_CULLER, THRESHOLDS } from '../config'
 import { hubGet, getCurrentUser } from './client'
 import { timeAgoShort } from '../../lib/format'
@@ -31,6 +30,7 @@ import type {
   LabContainerInfo,
   ResourceSnapshot,
   SettingsGroup,
+  SettingsRefCategory,
   UserProfile,
   ServerHero,
   ServerRow,
@@ -71,6 +71,7 @@ interface RawActivityUser {
   server_started?: string | null
   lab_image_upgrade_available?: boolean
   activity_score?: number | null
+  activity_hours?: number | null
   last_activity?: string | null
   volume_size_mb?: number | null
   volume_breakdown?: Record<string, number>
@@ -166,12 +167,18 @@ async function fetchNativeUsers(): Promise<NativeUser[]> {
     return []
   }
 }
+// /activity runs docker stats on the hub and is the heavy call; getServers,
+// getUsers, getStats (which calls both) and getServerHero all need it, so a single
+// mutation or poll tick can otherwise fire it 3-4x concurrently. Coalesce calls
+// within a short window to one in-flight request so they share the result.
+let _activityInFlight: { ts: number; p: Promise<RawActivity> } | null = null
+const ACTIVITY_COALESCE_MS = 1500
 async function fetchActivity(): Promise<RawActivity> {
-  try {
-    return await hubGet<RawActivity>('/activity')
-  } catch {
-    return { users: [] }
-  }
+  const now = Date.now()
+  if (_activityInFlight && now - _activityInFlight.ts < ACTIVITY_COALESCE_MS) return _activityInFlight.p
+  const p = hubGet<RawActivity>('/activity').catch(() => ({ users: [] }) as RawActivity)
+  _activityInFlight = { ts: now, p }
+  return p
 }
 // Bulk display profiles -> {username: "First Last"} (blank when no name set), so
 // the Users list can show a sub-name without an N+1 per-user profile fetch.
@@ -193,13 +200,19 @@ function activityByName(a: RawActivity): Map<string, RawActivityUser> {
 }
 
 function statusOf(srv: RawServer | undefined, a: RawActivityUser | undefined): ServerStatus {
-  // A ready/active server is never "spawning" - check readiness FIRST so a
-  // lingering pending==='spawn' (a known hub transient during the ready race)
-  // can't mask an actually-running server as Spawning.
-  const ready = !!srv?.ready || !!a?.server_active
-  if (ready) return a?.recently_active ? 'active' : 'idle'
-  if (srv?.pending === 'spawn') return 'spawning'
-  return 'offline'
+  // The JupyterHub spawner state is authoritative on presence so start/stop
+  // reflect IMMEDIATELY: a ready server is up the instant the hub marks it, and a
+  // user with no spawner object is down the instant it's stopped. The activity
+  // sampler's `server_active` lags ~10s, so it must NOT be ORed in here.
+  // `recently_active` (also sampled) only refines active-vs-idle once up.
+  if (!srv) return 'offline'
+  if (srv.ready) return a?.recently_active ? 'active' : 'idle'
+  if (srv.pending === 'stop') return 'offline' // tearing down -> reads as offline
+  // pending 'spawn' OR the post-spawn settle window (spawner present, not yet
+  // ready, no pending) - both are "coming up". Treating settle as spawning (not
+  // offline) is what lets the adaptive fast-poll heal it in ~2-3s instead of
+  // sticking offline until the slow poll / staleTime.
+  return 'spawning'
 }
 
 export const liveSource: DataSource = {
@@ -263,6 +276,7 @@ export const liveSource: DataSource = {
         statusLabel: `${cap(status)}${a?.last_activity ? ` ${timeAgoShort(a.last_activity)}` : ''}`,
         lastActivityISO: a?.last_activity ?? null,
         activity: running ? clampPct(a?.activity_score ?? 0) : null,
+        activityHours: a?.activity_hours ?? null,
         cpu: running ? cpuBarPct(a?.cpu_percent, cores) : null,
         cpuTip,
         mem: running && memPct != null ? Math.round(memPct) : null,
@@ -354,7 +368,7 @@ export const liveSource: DataSource = {
         config: (g.config ?? {}) as GroupRow['config'],
       }))
     } catch {
-      return mockSource.getGroups()
+      return [] // honest empty - never fabricate groups on a 403/404/500 in live mode
     }
   },
 
@@ -372,14 +386,22 @@ export const liveSource: DataSource = {
       const config = (g.config ?? {}) as GroupConfig['config']
       return { name: g.name, description: g.description ?? '', priority: g.priority ?? 0, members: g.members ?? [], sections, config }
     } catch {
-      return mockSource.getGroupConfig(name)
+      return undefined // honest - never feed a fabricated policy config into the editor (it would PUT back)
     }
   },
 
   async getServerHero(user: string): Promise<ServerHero> {
-    const [activity, ttl] = await Promise.all([fetchActivity(), liveSource.getSessionInfo(user)])
+    // Fetch the authoritative spawner state (/users/{user}) alongside activity so
+    // the status flips the instant the hub marks the server ready/stopped, not a
+    // sampler interval later. statusOf trusts srv.ready over the lagging sample.
+    const [activity, ttl, ru] = await Promise.all([
+      fetchActivity(),
+      liveSource.getSessionInfo(user),
+      hubGet<RawUser>(`/users/${encodeURIComponent(user)}`),
+    ])
     const a = activityByName(activity).get(user)
-    const status: ServerStatus = a?.server_active ? (a.recently_active ? 'active' : 'idle') : 'offline'
+    const srv = ru?.servers?.['']
+    const status = statusOf(srv, a)
     const resources: ResourceSnapshot = a?.server_active
       ? {
           cpu: cpuBarPct(a.cpu_percent, a.cpu_cores) ?? 0,
@@ -391,7 +413,7 @@ export const liveSource: DataSource = {
           memTip: a.memory_mb != null ? `${round1(a.memory_mb / 1024)} GB of host RAM` : undefined,
         }
       : { cpu: 0, mem: 0, gpu: 0 }
-    return { user, status, statusLabel: cap(status), activity: clampPct(a?.activity_score ?? 0), startedISO: a?.server_started ?? null, upgradeAvailable: !!a?.lab_image_upgrade_available, ttl, resources }
+    return { user, status, statusLabel: cap(status), activity: clampPct(a?.activity_score ?? 0), activityHours: a?.activity_hours ?? null, startedISO: a?.server_started ?? srv?.started ?? null, upgradeAvailable: !!a?.lab_image_upgrade_available, ttl, resources }
   },
 
   async getTotalResources(): Promise<ResourceSnapshot> {
@@ -457,7 +479,8 @@ export const liveSource: DataSource = {
         maxAddHours: r.extensions_available_hours ?? r.max_extension_hours ?? IDLE_CULLER.maxExtensionH,
       }
     } catch {
-      return mockSource.getSessionInfo(user)
+      // honest neutral from real config (no fabricated per-user TTL driving the extend control)
+      return { timeLeftMin: 0, baseMin: IDLE_CULLER.timeoutH * 60, maxAddHours: IDLE_CULLER.maxExtensionH }
     }
   },
 
@@ -477,7 +500,7 @@ export const liveSource: DataSource = {
         sizeGB: breakdown[v.suffix] != null ? round1(breakdown[v.suffix] / 1024) : undefined,
       }))
     } catch {
-      return mockSource.getUserVolumes(user)
+      return [] // honest empty - no fabricated volume sizes
     }
   },
 
@@ -511,7 +534,7 @@ export const liveSource: DataSource = {
       }
       return toks
     } catch {
-      return mockSource.getTokens()
+      return [] // honest empty - never fabricate tokens (incl. fake admin-scoped ones)
     }
   },
 
@@ -520,7 +543,7 @@ export const liveSource: DataSource = {
       const resp = await hubGet<RawGroupsResp>('/admin/groups')
       return resp.groups.map((g) => g.name)
     } catch {
-      return mockSource.getGroupCorpus()
+      return [] // honest empty - no fabricated group names in pickers
     }
   },
 
@@ -529,7 +552,7 @@ export const liveSource: DataSource = {
       const users = await fetchUsers()
       return users.map((u) => u.name)
     } catch {
-      return mockSource.getUserCorpus()
+      return [] // honest empty - no fabricated usernames in pickers
     }
   },
 
@@ -602,7 +625,7 @@ export const liveSource: DataSource = {
         whenISO: e.ts,
       }))
     } catch {
-      return mockSource.getEvents()
+      return [] // honest empty - never fabricate a named event feed as the real log
     }
   },
 
@@ -618,7 +641,22 @@ export const liveSource: DataSource = {
     }
   },
 
-  // backend-less or derived views: no read API yet -> mock keeps the UI whole
-  getSettingsReference: mockSource.getSettingsReference,
+  // real settings reference: the same /settings payload (env name + live value +
+  // description), grouped by category. Honest empty on error - never mock fixtures.
+  async getSettingsReference(): Promise<SettingsRefCategory[]> {
+    try {
+      const r = await hubGet<{ settings: Array<{ category: string; name: string; value: string; description: string }> }>('/settings')
+      const cats: SettingsRefCategory[] = []
+      const byCat = new Map<string, SettingsRefCategory>()
+      for (const s of r.settings) {
+        let c = byCat.get(s.category)
+        if (!c) { c = { category: s.category, rows: [] }; byCat.set(s.category, c); cats.push(c) }
+        c.rows.push({ name: s.name, value: s.value || '-', description: s.description })
+      }
+      return cats
+    } catch {
+      return [] // honest empty
+    }
+  },
   getSentNotifications: async () => [], // no backend sent-history store yet - empty in live
 }

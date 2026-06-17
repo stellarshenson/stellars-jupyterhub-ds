@@ -1,7 +1,7 @@
 /* Users - a pending-authorisation section on top (shown only when something
  * waits), then the scaled authorised list with state scope pills, inline
  * authorise toggle, and group chips. The username opens Configure user. */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
 import { Button, Card, Input, Switch, Tag, Tooltip } from 'antd'
@@ -12,6 +12,7 @@ import { ActivityMeter } from '../components/meters'
 import { CappedTags } from '../components/CappedTags'
 import { Icon } from '../components/Icon'
 import { useUsers } from '../hooks/queries'
+import { invalidate } from '../services/actions'
 import { setUserAuthorization, discardUser } from '../services/ops'
 import { isAdminUser } from '../app/capabilities'
 import { exactDate, timeAgoShort } from '../lib/format'
@@ -70,6 +71,12 @@ export default function Users() {
   const { data = [], isLoading } = useUsers()
   const [scope, setScope] = useState('all')
   const [q, setQ] = useState('')
+  // Returning to the list after a profile save can paint a stale full name from
+  // the hydrated cache (staleTime 30s trusts the persisted value). Force a refetch
+  // of the user list on mount so a just-saved first/last name shows immediately.
+  useEffect(() => {
+    invalidate(['users'])
+  }, [])
 
   const pending = useMemo(() => data.filter((u) => u.pending), [data])
   const main = useMemo(() => data.filter((u) => !u.pending), [data])

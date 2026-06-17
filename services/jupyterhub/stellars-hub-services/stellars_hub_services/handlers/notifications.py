@@ -10,21 +10,6 @@ from tornado.httpclient import AsyncHTTPClient, HTTPRequest
 from ..docker_utils import encode_username_for_docker
 
 
-class NotificationsPageHandler(BaseHandler):
-    """Handler for rendering the notifications broadcast page."""
-
-    @web.authenticated
-    async def get(self):
-        """Render the notifications broadcast page (admin only)."""
-        current_user = self.current_user
-        if not current_user.admin:
-            raise web.HTTPError(403, "Only administrators can access this page")
-
-        self.log.info(f"[Notifications Page] Admin {current_user.name} accessed notifications panel")
-        html = self.render_template("notifications.html", sync=True, user=current_user)
-        self.finish(html)
-
-
 class ActiveServersHandler(BaseHandler):
     """Handler for listing active servers for notification targeting."""
 

@@ -20,10 +20,27 @@ export function bindQueryClient(qc: QueryClient): void {
   queryClient = qc
 }
 
-/** Invalidate one or more React Query keys so dependent views refetch. */
+/** Invalidate one or more React Query keys so dependent views refetch.
+ *
+ * `refetchType: 'all'` refetches matching queries immediately even when they are
+ * not currently mounted (RQ's default only refetches active observers and leaves
+ * unmounted ones stale-until-next-mount). After a mutation on a detail page the
+ * list view is unmounted, so the default left it stale and it only refetched -
+ * slowly, gated behind the heavy `/activity` call - once navigated back to. An
+ * immediate background refetch means the users/groups/servers list is already
+ * fresh by the time the user returns. */
 export function invalidate(...keys: ReadonlyArray<readonly unknown[]>): void {
   if (!queryClient) return
-  for (const key of keys) queryClient.invalidateQueries({ queryKey: key as unknown[] })
+  for (const key of keys) queryClient.invalidateQueries({ queryKey: key as unknown[], refetchType: 'all' })
+}
+
+/** Optimistically patch a cached query so a mutation shows in dependent views at
+ * once - the same instant-effect the Groups page gets from its local row state,
+ * but on the shared cache so it survives a detail-page -> list navigation. The
+ * follow-up invalidate() reconciles against the server (and rolls back on error). */
+export function patchQuery<T>(key: readonly unknown[], updater: (prev: T | undefined) => T | undefined): void {
+  if (!queryClient) return
+  queryClient.setQueryData(key as unknown[], updater)
 }
 
 export const notify = {

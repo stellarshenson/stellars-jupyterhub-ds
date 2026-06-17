@@ -32,6 +32,7 @@ class ActivityMonitor:
     DEFAULT_HALF_LIFE = 72
     DEFAULT_INACTIVE_AFTER = 60
     DEFAULT_ACTIVITY_UPDATE_INTERVAL = 600
+    DEFAULT_TARGET_HOURS = 8  # daily active hours that count as a full (100%) score
 
     def __init__(self):
         self._db_session = None
@@ -46,13 +47,15 @@ class ActivityMonitor:
             "JUPYTERHUB_ACTIVITYMON_INACTIVE_AFTER", self.DEFAULT_INACTIVE_AFTER, 1, 1440)
         self.sample_interval = self._get_env_int(
             "JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL", self.DEFAULT_ACTIVITY_UPDATE_INTERVAL, 60, 86400)
+        self.target_hours = self._get_env_int(
+            "JUPYTERHUB_ACTIVITYMON_TARGET_HOURS", self.DEFAULT_TARGET_HOURS, 1, 24)
 
         self.decay_lambda = math.log(2) / self.half_life_hours
 
         log.info(
             f"[ActivityMonitor] Config: retention={self.retention_days}d, "
             f"half_life={self.half_life_hours}h, inactive_after={self.inactive_after_minutes}m, "
-            f"sample_interval={self.sample_interval}s"
+            f"sample_interval={self.sample_interval}s, target_hours={self.target_hours}h"
         )
 
     @classmethod
@@ -126,7 +129,38 @@ class ActivityMonitor:
             return False
 
     def get_score(self, username):
-        """Calculate activity score (0-100). Returns (score, sample_count)."""
+        """Calculate activity score (0-100). Returns (score, sample_count).
+
+        The score is the user's recent active time measured against the daily
+        target (``target_hours``), not against the 24h clock. Samples are taken
+        24/7, so the decay-weighted active fraction equals the share of the day
+        the user is active; multiplying by 24 gives average active hours/day, and
+        dividing by ``target_hours`` (capped at 100%) yields the score. A user who
+        works the target hours scores 100; half the target scores 50. Without
+        this normalisation an 8h/day user caps at 8/24 = 33%.
+        """
+        active_frac, count = self._weighted_active_fraction(username)
+        if active_frac is None:
+            return None, 0
+        hours_per_day = active_frac * 24.0
+        score = int(round(min(1.0, hours_per_day / self.target_hours) * 100)) if self.target_hours > 0 else 0
+        return score, count
+
+    def get_avg_active_hours(self, username):
+        """Average active hours/day over the retention window (decay-weighted).
+
+        The honest hours figure behind the score - real measured activity, not
+        capped at the target. Returns None when there are no samples yet.
+        """
+        active_frac, _ = self._weighted_active_fraction(username)
+        return None if active_frac is None else round(active_frac * 24.0, 1)
+
+    def _weighted_active_fraction(self, username):
+        """Decay-weighted fraction of samples that were active in the window.
+
+        Returns (fraction, sample_count), or (None, 0) when there are no samples.
+        Shared by get_score (normalised vs target) and get_avg_active_hours.
+        """
         db = self._get_db()
         if db is None:
             return None, 0
@@ -153,8 +187,9 @@ class ActivityMonitor:
                 if s.active:
                     weighted_active += weight
 
-            score = int((weighted_active / weighted_total) * 100) if weighted_total > 0 else 0
-            return score, len(samples)
+            if weighted_total <= 0:
+                return 0.0, len(samples)
+            return weighted_active / weighted_total, len(samples)
         except Exception as e:
             log.info(f"[ActivityMonitor] Error calculating score for {username}: {e}")
             return None, 0

@@ -50,25 +50,6 @@ def load_settings_dict(path=SETTINGS_DICT_PATH):
     return settings
 
 
-class SettingsPageHandler(BaseHandler):
-    """Handler for rendering the settings page (admin only, read-only)."""
-
-    SETTINGS_DICT_PATH = SETTINGS_DICT_PATH
-
-    @web.authenticated
-    async def get(self):
-        """Render the settings page showing key environment variables."""
-        current_user = self.current_user
-        if not current_user.admin:
-            raise web.HTTPError(403, "Only administrators can access this page")
-
-        self.log.info(f"[Settings Page] Admin {current_user.name} accessed settings panel")
-        settings = load_settings_dict(self.SETTINGS_DICT_PATH)
-
-        html = self.render_template("settings.html", sync=True, user=current_user, settings=settings)
-        self.finish(html)
-
-
 class SettingsDataHandler(BaseHandler):
     """Read-only JSON of the live platform settings (admin only)."""
 
