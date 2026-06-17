@@ -17,7 +17,7 @@
  *     delegate to mock or an honest empty
  *   - per-user GPU usage: not collected (GPU is a group policy) -> gpu = null */
 import type { DataSource } from '../datasource'
-import { IDLE_CULLER, THRESHOLDS } from '../config'
+import { THRESHOLDS } from '../config'
 import { hubGet, getCurrentUser } from './client'
 import { timeAgoShort } from '../../lib/format'
 import type {
@@ -69,6 +69,7 @@ interface RawActivityUser {
   memory_total_mb?: number | null // assigned ceiling when memory_limited, else host RAM
   memory_limited?: boolean // an explicit per-user mem limit is set (vs host fallback)
   time_remaining_seconds?: number | null
+  timeout_seconds?: number | null // base idle-culler TTL (the configurable "standard limit")
   server_started?: string | null
   lab_image_upgrade_available?: boolean
   activity_score?: number | null
@@ -229,7 +230,7 @@ export const liveSource: DataSource = {
     const byName = activityByName(activity)
     const memMax = activity.memory_max_usage_mb || 0
     const memHostTotal = activity.memory_host_total_mb || 0 // real host RAM ("% of total")
-    const target = activity.activity_target_hours || 8 // uncapped-% denominator
+    const target = activity.activity_target_hours || 0 // uncapped-% denominator (real backend value; 0 = unknown)
     const volMax = activity.volume_max_total_size_mb || 0
     const ctrMax = activity.container_max_extra_space_mb || 0
     return users.map((u) => {
@@ -245,6 +246,7 @@ export const liveSource: DataSource = {
       const rootfsMb = a?.container_size_rootfs_mb ?? null
       const vbreak = a?.volume_breakdown ?? {}
       const tl = a?.time_remaining_seconds != null ? Math.round(a.time_remaining_seconds / 60) : null
+      const baseTtl = a?.timeout_seconds != null ? Math.round(a.timeout_seconds / 60) : null
       const gb = (mb: number) => round1(mb / 1024)
       // cpu: the bar is usage as a % of the assigned cores (cpuBarPct); the tooltip
       // shows that % alongside the assigned-vs-host ceiling (identical to the widget)
@@ -294,7 +296,7 @@ export const liveSource: DataSource = {
         lastActivityISO: a?.last_activity ?? null,
         activity: running ? clampPct(a?.activity_score ?? 0) : null,
         activityHours: a?.activity_hours ?? null,
-        activityPct: running && a?.activity_hours != null ? Math.round((a.activity_hours / target) * 100) : null,
+        activityPct: running && a?.activity_hours != null && target > 0 ? Math.round((a.activity_hours / target) * 100) : null,
         cpu: cpuPct,
         cpuTip,
         mem: running && memPct != null ? Math.round(memPct) : null,
@@ -308,6 +310,7 @@ export const liveSource: DataSource = {
         systemTip: sysTip,
         systemOver: ctrMax > 0 && ctrMb != null && ctrMb > ctrMax,
         timeLeftMin: tl,
+        baseTimeoutMin: baseTtl,
         timeLeftLabel: tl != null ? fmtMinutes(tl) : undefined,
         timeLeftWarn: tl != null && tl < THRESHOLDS.timeLeftWarnMin,
       }
@@ -317,7 +320,7 @@ export const liveSource: DataSource = {
   async getUsers(): Promise<UserRow[]> {
     const [users, activity, native, fullNames] = await Promise.all([fetchUsers(), fetchActivity(), fetchNativeUsers(), fetchFullNames()])
     const byName = activityByName(activity)
-    const target = activity.activity_target_hours || 8 // uncapped-% denominator
+    const target = activity.activity_target_hours || 0 // uncapped-% denominator (real backend value; 0 = unknown)
     const authByName = new Map(native.map((n) => [n.username, n.is_authorized]))
     const hubNames = new Set(users.map((u) => u.name))
     const rows: UserRow[] = users.map((u) => {
@@ -333,7 +336,7 @@ export const liveSource: DataSource = {
         // same engagement tooltip as the server resources widget: real avg hours
         // and the uncapped % behind the capped meter score
         activityHours: a?.activity_hours ?? null,
-        activityPct: a?.activity_hours != null ? Math.round((a.activity_hours / target) * 100) : null,
+        activityPct: a?.activity_hours != null && target > 0 ? Math.round((a.activity_hours / target) * 100) : null,
         createdISO: u.created ?? new Date().toISOString(),
         lastSeenISO: u.last_activity ?? undefined,
         groups: u.groups ?? [],
@@ -427,7 +430,7 @@ export const liveSource: DataSource = {
     const status = statusOf(srv, a)
     const memMax = activity.memory_max_usage_mb || 0
     const memHostTotal = activity.memory_host_total_mb || 0
-    const target = activity.activity_target_hours || 8
+    const target = activity.activity_target_hours || 0 // real backend value; 0 = unknown
     const cpuPct = a?.server_active ? cpuBarPct(a.cpu_percent, a.cpu_cores) ?? 0 : 0
     const memPctTotal = a?.memory_mb != null && memHostTotal > 0 ? Math.round((a.memory_mb / memHostTotal) * 100) : null
     const resources: ResourceSnapshot = a?.server_active
@@ -447,7 +450,7 @@ export const liveSource: DataSource = {
             : undefined,
         }
       : { cpu: 0, mem: 0, gpu: 0 }
-    const activityPct = a?.activity_hours != null ? Math.round((a.activity_hours / target) * 100) : null
+    const activityPct = a?.activity_hours != null && target > 0 ? Math.round((a.activity_hours / target) * 100) : null
     // include the time-ago suffix so the hero status pill reads "Active 1m" like
     // the Servers list, not a bare "Active"
     const statusLabel = `${cap(status)}${a?.last_activity ? ` ${timeAgoShort(a.last_activity)}` : ''}`
@@ -521,12 +524,13 @@ export const liveSource: DataSource = {
       const r = await hubGet<{ time_remaining_seconds?: number | null; timeout_seconds?: number; max_extension_hours?: number; extensions_available_hours?: number }>(`/users/${encodeURIComponent(user)}/session-info`)
       return {
         timeLeftMin: r.time_remaining_seconds != null ? Math.round(r.time_remaining_seconds / 60) : 0,
-        baseMin: r.timeout_seconds != null ? Math.round(r.timeout_seconds / 60) : IDLE_CULLER.timeoutH * 60,
-        maxAddHours: r.extensions_available_hours ?? r.max_extension_hours ?? IDLE_CULLER.maxExtensionH,
+        baseMin: r.timeout_seconds != null ? Math.round(r.timeout_seconds / 60) : 0,
+        maxAddHours: r.extensions_available_hours ?? r.max_extension_hours ?? 0,
       }
     } catch {
-      // honest neutral from real config (no fabricated per-user TTL driving the extend control)
-      return { timeLeftMin: 0, baseMin: IDLE_CULLER.timeoutH * 60, maxAddHours: IDLE_CULLER.maxExtensionH }
+      // never fabricate a TTL: with no real backend value the gadget shows an empty
+      // bar and a disabled extend (baseMin 0 -> 0% in TtlGadget, maxAddHours 0 -> at ceiling)
+      return { timeLeftMin: 0, baseMin: 0, maxAddHours: 0 }
     }
   },
 

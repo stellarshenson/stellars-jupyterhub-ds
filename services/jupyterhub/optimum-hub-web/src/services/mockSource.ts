@@ -248,6 +248,7 @@ function toServerRow(p: Person): ServerRow {
     systemTip: spawning ? undefined : `Writable layer +${s.systemGB} GB${sysOver ? `, over the ${THRESHOLDS.containerExtraSpaceGB} GB quota` : ' above the base image'}`,
     systemOver: sysOver,
     timeLeftMin: spawning ? null : s.timeLeftMin,
+    baseTimeoutMin: spawning ? null : IDLE_CULLER.timeoutH * 60,
     timeLeftLabel: spawning ? undefined : fmtMinutes(s.timeLeftMin),
     timeLeftWarn: warn,
   }

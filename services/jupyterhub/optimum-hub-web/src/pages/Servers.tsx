@@ -17,7 +17,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { timeAgoShort, exactDate } from '../lib/format'
 import { downloadCsv } from '../lib/download'
 import { useServers } from '../hooks/queries'
-import { IDLE_CULLER } from '../services/config'
 import { invalidate, notify } from '../services/actions'
 import { resetActivity, startAllServers, stopAllServers } from '../services/ops'
 import { userServerUrl } from '../services/hub/client'
@@ -279,10 +278,17 @@ export default function Servers() {
       sorter: (a, b) => (a.timeLeftMin ?? -1) - (b.timeLeftMin ?? -1),
       render: (_, r) => {
         if (r.timeLeftMin == null) return <span className="oh-muted">-</span>
-        const overH = (r.timeLeftMin - IDLE_CULLER.timeoutH * 60) / 60
+        // the standard limit is the server's REAL configured idle-culler TTL (from
+        // /activity); if the backend doesn't report it, show the bare time-left
+        // rather than assert a limit we don't actually know
+        if (r.baseTimeoutMin == null)
+          return <span className={r.timeLeftWarn ? 'oh-cell-amber' : 'oh-num'}>{r.timeLeftLabel}</span>
+        const baseMin = r.baseTimeoutMin
+        const baseH = Math.round((baseMin / 60) * 10) / 10
+        const overH = (r.timeLeftMin - baseMin) / 60
         const tip = overH > 0.05
-          ? `${Math.round(overH * 10) / 10}h over the ${IDLE_CULLER.timeoutH}h standard limit`
-          : `within the ${IDLE_CULLER.timeoutH}h standard limit`
+          ? `${Math.round(overH * 10) / 10}h over the ${baseH}h standard limit`
+          : `within the ${baseH}h standard limit`
         return <span className={r.timeLeftWarn ? 'oh-cell-amber' : 'oh-num'} title={tip}>{r.timeLeftLabel}</span>
       },
     },
