@@ -89,9 +89,12 @@ body { margin: 0; font-family: var(--font-sans); }
 /* ---- activity meter (5-segment engagement) ---- */
 .oh-meter { display: inline-flex; gap: 2px; vertical-align: middle; }
 .oh-meter i { display: block; width: 4px; height: 12px; border-radius: 1px; background: var(--color-border-strong); }
-.oh-meter i.on { background: var(--color-success); }
-.oh-meter.idle i.on { background: var(--color-warning); }
-.oh-meter.low i.on { background: var(--oh-red-dim); } /* pale red - solid blocks read softer than a thin danger glyph */
+/* per-segment gradient: bars climb pale-red -> orange -> green as activity fills
+ * them (position-fixed, not a single tone for the whole meter). Pale red keeps
+ * the low block as soft as the thin danger / stop-button glyph. */
+.oh-meter i.on { background: var(--color-success); } /* segments 4-5: green */
+.oh-meter i.on:nth-child(1) { background: var(--oh-red-dim); } /* segment 1: pale red */
+.oh-meter i.on:nth-child(2), .oh-meter i.on:nth-child(3) { background: var(--color-warning); } /* segments 2-3: orange */
 .oh-meter.fill { display: flex; flex: 1; }
 .oh-meter.fill i { flex: 1; width: auto; height: 8px; }
 
