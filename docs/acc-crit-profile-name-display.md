@@ -6,6 +6,8 @@ A user's display name (first + last) edited on the Profile / Configure-user page
   - log: 2026-06-17 FIXED - was `[['user-profile', name], ['user', name]]` only, so a saved last-name change never refreshed the list; the persisted query cache also kept it stale across reloads
 - [x] **Form refetches** - `['user-profile', name]` invalidation refetches the edit form so its own fields/header reflect the save
   - log: 2026-06-17 verified (key already present)
+- [x] **List refetches on mount** - `Users.tsx` force-invalidates `['users']` on mount (mirroring `Home.tsx`), so returning to the list after a save shows the new name immediately instead of repainting the persisted cache (trusted-as-fresh under the 30s staleTime) for ~2 min
+  - log: 2026-06-17 FIXED - root cause of the residual ~2-min staleness: unlike Home, Users had no mount-time refetch, so the hydrated cache held the old name until the query was next re-observed while stale
 - [x] **Backend correct** - PUT `/users/{name}/profile` persists first/last/email; bulk `GET /api/user-profiles` returns `{profiles: {username: {first_name,last_name,email}}}`
   - log: 2026-06-17 verified live (user_profiles.sqlite has 'Konrad','Jelenski'; API 200)
 - [x] **Admin tag spacing** - the Users cell renders the username Link and the "admin" Tag in a flex row with a gap, so they no longer run together as "konrad.jelenadmin"

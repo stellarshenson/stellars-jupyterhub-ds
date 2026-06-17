@@ -8,6 +8,7 @@ import { CappedTags } from '../components/CappedTags'
 import { useGroups } from '../hooks/queries'
 import { notify } from '../services/actions'
 import { downloadJson } from '../lib/download'
+import { toPolicies } from '../lib/policyShape'
 import type { GroupRow } from '../services/types'
 
 export default function GroupsExport() {
@@ -19,13 +20,14 @@ export default function GroupsExport() {
     setSelected((prev) => (prev.length ? prev : data.map((g) => g.name)))
   }, [data])
 
-  // real client-side download: the importable {name, description, priority, config}
-  // for each selected group, exactly the shape the Import action reads back.
+  // real client-side download: each selected group as {name, description, priority,
+  // policies[]} - the flat config folded into named policy sections (group ->
+  // policy[] -> members), exactly the shape the Import action reads back.
   const exportSelected = () => {
     const chosen = new Set(selected)
     const groups = data
       .filter((g) => chosen.has(g.name))
-      .map((g) => ({ name: g.name, description: g.description ?? '', priority: g.priority, config: g.config ?? {} }))
+      .map((g) => ({ name: g.name, description: g.description ?? '', priority: g.priority, policies: toPolicies(g.config ?? {}) }))
     downloadJson('group-policies.json', { groups })
     notify.success(`Exported ${groups.length} group${groups.length === 1 ? '' : 's'} as JSON`)
   }

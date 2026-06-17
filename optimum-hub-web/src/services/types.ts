@@ -13,6 +13,7 @@ export interface ServerRow {
   statusLabel: string // "Active 1m", "Idle 38m", "Offline 2d", "Spawning"
   lastActivityISO?: string | null // last activity timestamp, for the time-ago column
   activity: number | null // 0-100 engagement, null when not running
+  activityHours?: number | null // real avg active hours/day behind the score
   cpu: number | null // % of host
   cpuTip?: string // "4 cores assigned" / "8 host cores (no limit)"
   mem: number | null // % of host RAM
@@ -201,6 +202,7 @@ export interface ServerHero {
   status: ServerStatus
   statusLabel: string
   activity: number
+  activityHours?: number | null // real avg active hours/day behind the score
   startedISO?: string | null // server (container) start time - drives the uptime label
   upgradeAvailable?: boolean // a newer lab image is available locally than the running container
   ttl: SessionInfo

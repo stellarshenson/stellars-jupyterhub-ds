@@ -2,7 +2,6 @@
 
 import html
 import json
-import os
 
 from jupyterhub.handlers import BaseHandler
 from tornado import web
@@ -16,38 +15,6 @@ from ..policy import (
     summarize_config,
     validate_all,
 )
-
-
-class GroupsPageHandler(BaseHandler):
-    """Handler for rendering the groups management page (admin only)."""
-
-    @web.authenticated
-    async def get(self):
-        current_user = self.current_user
-        if not current_user.admin:
-            raise web.HTTPError(403, "Only administrators can access this page")
-
-        self.log.info(f"[Groups Page] Admin {current_user.name} accessed groups management")
-
-        # Host GPUs were enumerated once at startup by the ephemeral CUDA detection
-        # container (the hub has no GPU access of its own); this is a cached read,
-        # no container spin per page load. Empty list -> the GPU section renders
-        # grayed-out and the per-GPU checkboxes are omitted.
-        stellars_config = self.settings.get('stellars_config') or {}
-        gpus = stellars_config.get('gpu_list', [])
-        # False on WSL2 -> the GPU section shows an "advisory, not a hard limit" note
-        gpu_isolation_enforced = stellars_config.get('gpu_isolation_enforced', True)
-
-        # host_cpu_count hints the admin at the upper bound for the per-group CPU
-        # limit (cores visible to the hub container = host cores in the usual
-        # unconstrained-hub deployment).
-        html = self.render_template(
-            "groups.html", sync=True, user=current_user,
-            host_cpu_count=(os.cpu_count() or 1),
-            gpus=gpus,
-            gpu_isolation_enforced=gpu_isolation_enforced,
-        )
-        self.finish(html)
 
 
 class GroupsDataHandler(BaseHandler):

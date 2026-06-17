@@ -1,7 +1,7 @@
 /* Notifications - broadcast to active labs. Send (left, the composer) and past
  * notifications (right, the sent history). Outgoing only. */
 import { useState } from 'react'
-import { Button, Card, Checkbox, Input, Radio, Select, Switch, Table } from 'antd'
+import { Button, Card, Checkbox, Input, Radio, Segmented, Select, Table } from 'antd'
 import { PageHeader } from '../components/PageHeader'
 import { Icon } from '../components/Icon'
 import { NotificationPill } from '../components/NotificationPill'
@@ -53,6 +53,16 @@ function RecipientPicker({ users, value, onChange }: { users: string[]; value: s
   )
 }
 
+// preset auto-close durations (value = milliseconds, what the lab Notification API
+// expects); 30s is the default. The user picks one before sending.
+const AUTO_CLOSE_OPTIONS = [
+  { label: '30s', value: 30000 },
+  { label: '1min', value: 60000 },
+  { label: '10min', value: 600000 },
+  { label: '30min', value: 1800000 },
+  { label: '1h', value: 3600000 },
+]
+
 export default function Notifications() {
   const { data: history = [] } = useSentNotifications()
   const { data: servers = [] } = useServers()
@@ -61,12 +71,12 @@ export default function Notifications() {
   const activeUsers = servers.filter((s) => s.status === 'active' || s.status === 'idle').map((s) => s.user)
   const [msg, setMsg] = useState('')
   const [variant, setVariant] = useState('default')
-  const [autoClose, setAutoClose] = useState(false)
+  const [autoCloseMs, setAutoCloseMs] = useState(30000) // default 30s, user-changeable
   const [mode, setMode] = useState<'all' | 'selected'>('all')
   const [recipients, setRecipients] = useState<string[]>([])
   const send = async () => {
     try {
-      await broadcast(msg.trim(), variant, autoClose, mode === 'selected' ? recipients : undefined)
+      await broadcast(msg.trim(), variant, autoCloseMs, mode === 'selected' ? recipients : undefined)
       setMsg('')
     } catch {
       /* ops surfaced the error */
@@ -89,8 +99,14 @@ export default function Notifications() {
               options={['default', 'info', 'success', 'warning', 'error', 'in-progress'].map((t) => ({ label: t, value: t }))}
             />
           </div>
-          <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Switch size="small" checked={autoClose} onChange={setAutoClose} /> <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Auto-close</span>
+          <div style={{ marginTop: 12, display: 'flex', gap: 12, alignItems: 'center' }}>
+            <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Auto-close</span>
+            <Segmented
+              size="small"
+              value={autoCloseMs}
+              onChange={(v) => setAutoCloseMs(v as number)}
+              options={AUTO_CLOSE_OPTIONS}
+            />
           </div>
           <div style={{ marginTop: 12 }}>
             <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 6 }}>Recipients</div>

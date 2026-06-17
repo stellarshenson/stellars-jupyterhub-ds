@@ -49,8 +49,31 @@ In live mode the portal must never present fabricated mock data as if it were re
 
 ## General rule
 
-- [ ] **Audit remaining mock delegations** - every `mockSource.*` still wired into `liveSource` is either a deliberate honest-empty fallback (documented in the file header) or a tracked gap; no content-bearing method masquerades
-  - log: 2026-06-17 remaining live delegations: `getSettingsReference` (static reference copy), `getSentNotifications` (honest empty), `getEvents`/`getSessionInfo` (mock only on fetch error) - all documented
+- [x] **Audit remaining mock delegations** - an adversarial sweep found 11 live-mode mock-masquerades; every `mockSource.*` in `liveSource` is now removed - on a 403/404/500/network error each method returns honest-empty/neutral, never fabricated content
+  - log: 2026-06-17 adversarial sweep + fix pass; the `mockSource` import is gone from `liveSource.ts`
+
+## Adversarial mock sweep (2026-06-17) - all fixed
+
+- [x] **getGroups / getGroupConfig** - catch returned `mockSource` (fabricated ~15 groups / a policy config that would PUT back on save); now `[]` / `undefined`
+  - log: 2026-06-17 fixed
+- [x] **getTokens** - catch fabricated 5 tokens incl. a fake `admin:users`-scoped one; now `[]`
+  - log: 2026-06-17 fixed
+- [x] **getUserVolumes** - catch fabricated home/workspace/cache sizes; now `[]`
+  - log: 2026-06-17 fixed
+- [x] **getEvents** - catch fabricated a named event feed as the real activity log; now `[]`
+  - log: 2026-06-17 fixed
+- [x] **getSessionInfo** - catch fabricated a per-user TTL driving the extend control; now an honest neutral from real idle-culler config
+  - log: 2026-06-17 fixed
+- [x] **getGroupCorpus / getUserCorpus** - catch injected fixture names into pickers; now `[]`
+  - log: 2026-06-17 fixed
+- [x] **getSettingsReference** - was hardwired to mock (no live attempt) despite a real `/settings`; now fetches `/settings` (env name + live value + description), honest-empty on error
+  - log: 2026-06-17 wired to the real endpoint
+- [x] **Servers "View spawn log"** - was `mockAction('Tail live spawn log')`; now opens the real Start-server page (`/servers/{user}/starting`)
+  - log: 2026-06-17 fixed (#238)
+- [x] **Verified honest (no change)** - getTotalResources, getHubInfo, getUserProfile, getLabContainer, getSettings, getEffectiveGrants, getSentNotifications already return honest-empty/last-known
+  - log: 2026-06-17 confirmed by the sweep
+- [ ] **AppLayout language toast** - `mockAction('Language: ...')` fires in both modes; client-only (no i18n backend) - lowest priority, left as-is
+  - log: 2026-06-17 noted, deliberately not changed
 
 ## API
 

@@ -38,11 +38,16 @@ GPUINFO_IMAGE      := stellars/stellars-gpuinfo-nvidia
 GPUINFO_DOCKERFILE := services/jupyterhub/gpuinfo-nvidia/Dockerfile
 
 # ── Version sync ──
-# The Optimum Hub portal version tracks the platform version - increment_version
-# bumps these in lockstep with the root pyproject.toml so the wheel + npm package
-# never drift from the release tag.
-OPTIMUM_PYPROJECT    := optimum-hub-web/pyproject.toml
-OPTIMUM_PACKAGE_JSON := optimum-hub-web/package.json
+# Every in-repo package baked into the hub image tracks the platform version -
+# increment_version sets them all to the bumped root version in lockstep so the
+# wheels + npm package never drift from the release tag. The gpuinfo-nvidia
+# sidecar is a SEPARATE image with its own version and is intentionally excluded.
+OPTIMUM_PYPROJECT       := optimum-hub-web/pyproject.toml
+OPTIMUM_PACKAGE_JSON    := optimum-hub-web/package.json
+HUB_SERVICES_PYPROJECT  := services/jupyterhub/stellars-hub-services/pyproject.toml
+DOCKER_PROXY_PYPROJECT  := services/jupyterhub/stellars-docker-proxy/pyproject.toml
+# [project] version lines set in lockstep (root + the three packages in the image)
+VERSIONED_PYPROJECTS    := pyproject.toml $(OPTIMUM_PYPROJECT) $(HUB_SERVICES_PYPROJECT) $(DOCKER_PROXY_PYPROJECT)
 
 ## verify tools, python tomllib, docker compose, docker daemon, and key project files
 preflight:
@@ -127,14 +132,17 @@ endif
 # COMMANDS                                                                      #
 #################################################################################
 
-## increment patch version in pyproject.toml (propagated to optimum-hub-web)
+## increment patch version in pyproject.toml (propagated to all in-image packages)
+# Sets the [project] version absolutely (not a CURRENT-string match) so a drifted
+# subpackage is pulled back into lockstep rather than silently skipped.
 increment_version: preflight
 	@CURRENT='$(PROJECT_VERSION)'; \
 	NEW=$$(echo "$$CURRENT" | awk 'BEGIN{FS=OFS="."} {$$NF += 1; print}'); \
-	printf '%s%sVersion bumped: %s -> %s (hub + optimum-hub-web)%s\n' "$(CYAN)" "$(BOLD)" "$$CURRENT" "$$NEW" "$(RESET)"; \
-	sed -i 's/^version = "'"$$CURRENT"'"$$/version = "'"$$NEW"'"/' pyproject.toml; \
-	sed -i 's/^version = "'"$$CURRENT"'"$$/version = "'"$$NEW"'"/' $(OPTIMUM_PYPROJECT); \
-	sed -i 's/"version": "'"$$CURRENT"'"/"version": "'"$$NEW"'"/' $(OPTIMUM_PACKAGE_JSON)
+	printf '%s%sVersion bumped: %s -> %s (hub + optimum-hub-web + hub-services + docker-proxy)%s\n' "$(CYAN)" "$(BOLD)" "$$CURRENT" "$$NEW" "$(RESET)"; \
+	for f in $(VERSIONED_PYPROJECTS); do \
+		sed -i 's/^version = "[^"]*"$$/version = "'"$$NEW"'"/' "$$f"; \
+	done; \
+	sed -i 's/"version": "[^"]*"/"version": "'"$$NEW"'"/' $(OPTIMUM_PACKAGE_JSON)
 
 ## build docker containers (BUILD_OPTS='--no-version-increment --no-cache')
 build: preflight maybe_increment_version

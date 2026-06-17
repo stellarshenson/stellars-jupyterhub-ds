@@ -3,15 +3,15 @@
 from .volumes import ManageVolumesHandler
 from .server import RestartServerHandler, ServerLogsHandler
 from .lab_ready import LabReadyHandler
-from .notifications import NotificationsPageHandler, ActiveServersHandler, BroadcastNotificationHandler
+from .notifications import ActiveServersHandler, BroadcastNotificationHandler
 from .credentials import GetUserCredentialsHandler
-from .settings import SettingsPageHandler, SettingsDataHandler
+from .settings import SettingsDataHandler
 from .session import SessionInfoHandler, ExtendSessionHandler
-from .activity import ActivityPageHandler, ActivityDataHandler, ActivityResetHandler, ActivitySampleHandler
+from .activity import ActivityDataHandler, ActivityResetHandler, ActivitySampleHandler
 from .favicon import FaviconRedirectHandler
 from .health import HealthCheckHandler
 from .groups import (
-    GroupsPageHandler, GroupsDataHandler, GroupsCreateHandler,
+    GroupsDataHandler, GroupsCreateHandler,
     GroupsDeleteHandler, GroupsConfigHandler, GroupsReorderHandler,
 )
 from .native_users import NativeUsersHandler, NativeUserAuthorizationHandler
@@ -24,21 +24,17 @@ __all__ = [
     "RestartServerHandler",
     "ServerLogsHandler",
     "LabReadyHandler",
-    "NotificationsPageHandler",
     "ActiveServersHandler",
     "BroadcastNotificationHandler",
     "GetUserCredentialsHandler",
-    "SettingsPageHandler",
     "SettingsDataHandler",
     "SessionInfoHandler",
     "ExtendSessionHandler",
-    "ActivityPageHandler",
     "ActivityDataHandler",
     "ActivityResetHandler",
     "ActivitySampleHandler",
     "FaviconRedirectHandler",
     "HealthCheckHandler",
-    "GroupsPageHandler",
     "GroupsDataHandler",
     "GroupsCreateHandler",
     "GroupsDeleteHandler",

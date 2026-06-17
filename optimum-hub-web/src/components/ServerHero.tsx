@@ -38,10 +38,10 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
               <Button type="primary" icon={<Icon name="play" size={15} filled />} disabled={!!busy} onClick={() => window.location.assign(userServerUrl(hero.user))}>
                 Open lab
               </Button>
-              <Button icon={<Icon name="restart" size={16} />} disabled={!!busy} onClick={() => lifecycle.restart(hero.user)}>
+              <Button icon={<Icon name="restart" size={16} />} loading={busy === 'restart'} disabled={!!busy} onClick={() => lifecycle.restart(hero.user)}>
                 Restart
               </Button>
-              <Button danger icon={<Icon name="stop" size={14} filled />} disabled={!!busy} onClick={() => lifecycle.stop(hero.user)}>
+              <Button danger icon={<Icon name="stop" size={14} filled />} loading={busy === 'stop'} disabled={!!busy} onClick={() => lifecycle.stop(hero.user)}>
                 Stop
               </Button>
             </>
@@ -79,7 +79,7 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
               label: 'Activity',
               value: 0,
               valueLabel: '',
-              meter: <ActivityMeterFill value={running ? hero.activity : 0} title={`${hero.activity}% active over the last 7 days`} />,
+              meter: <ActivityMeterFill value={running ? hero.activity : 0} hours={running ? hero.activityHours : null} />,
             },
           ]}
         />

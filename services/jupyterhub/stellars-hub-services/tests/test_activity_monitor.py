@@ -134,6 +134,66 @@ class TestScoring:
 
 
 # ---------------------------------------------------------------------------
+# Target-hours normalisation (the under-reporting fix)
+# ---------------------------------------------------------------------------
+
+def _seed(monitor, username, active_count, inactive_count):
+    """Seed active+inactive samples all within a short recent window so decay is
+    roughly uniform and the active fraction ~= active/(active+inactive)."""
+    from stellars_hub_services.activity.model import ActivitySample
+    now = datetime.now(timezone.utc)
+    n = 0
+    for _ in range(active_count):
+        monitor._db_session.add(ActivitySample(
+            username=username, timestamp=now - timedelta(minutes=n), last_activity=now, active=True))
+        n += 1
+    for _ in range(inactive_count):
+        monitor._db_session.add(ActivitySample(
+            username=username, timestamp=now - timedelta(minutes=n),
+            last_activity=now - timedelta(hours=3), active=False))
+        n += 1
+    monitor._db_session.commit()
+
+
+class TestTargetNormalisation:
+    def test_target_hours_default(self, reset_activity_monitor):
+        """target_hours defaults to 8 (daily hours that count as 100%)."""
+        monitor = ActivityMonitor.get_instance()
+        assert monitor.target_hours == ActivityMonitor.DEFAULT_TARGET_HOURS == 8
+
+    def test_target_hours_env(self, reset_activity_monitor, monkeypatch):
+        monkeypatch.setenv("JUPYTERHUB_ACTIVITYMON_TARGET_HOURS", "6")
+        assert ActivityMonitor.get_instance().target_hours == 6
+
+    def test_eight_hours_a_day_scores_100_not_33(self, memory_db_monitor):
+        """The fix: a user active 8/24 of the time scores 100, not 33%.
+
+        Pre-fix the score was the raw active fraction (8/24 = 33%); now it is the
+        active hours measured against the 8h target, so a full-time user reads 100."""
+        _seed(memory_db_monitor, "natalia", active_count=8, inactive_count=16)
+        score, _ = memory_db_monitor.get_score("natalia")
+        assert score == 100
+
+    def test_half_target_scores_about_50(self, memory_db_monitor):
+        """~4h/day (half the 8h target) scores ~50."""
+        _seed(memory_db_monitor, "halfday", active_count=4, inactive_count=20)
+        score, _ = memory_db_monitor.get_score("halfday")
+        assert 45 <= score <= 55
+
+    def test_avg_active_hours_is_real_and_uncapped(self, memory_db_monitor):
+        """get_avg_active_hours returns the real hours/day, uncapped above target."""
+        # 12 active / 24 total -> ~12h/day; score caps at 100 but hours stays 12
+        _seed(memory_db_monitor, "heavy", active_count=12, inactive_count=12)
+        hours = memory_db_monitor.get_avg_active_hours("heavy")
+        score, _ = memory_db_monitor.get_score("heavy")
+        assert 11.0 <= hours <= 13.0
+        assert score == 100  # capped
+
+    def test_avg_active_hours_none_without_samples(self, memory_db_monitor):
+        assert memory_db_monitor.get_avg_active_hours("ghost") is None
+
+
+# ---------------------------------------------------------------------------
 # User management
 # ---------------------------------------------------------------------------
 

@@ -13,8 +13,8 @@
  * pull) keep their existing mock/client-side behaviour. */
 import { isMock } from './dataMode'
 import { hubAuthForm, hubAuthGet, hubSend, HubError } from './hub/client'
-import { invalidate, mockSuccess, notify } from './actions'
-import type { PolicyConfig, UserProfile } from './types'
+import { invalidate, mockSuccess, notify, patchQuery } from './actions'
+import type { PolicyConfig, UserProfile, UserRow } from './types'
 
 /** Run a live write with success/error toasts + cache invalidation; in mock mode
  * just toast. Returns the run() result (or undefined in mock mode). */
@@ -99,15 +99,26 @@ export const renameUser = (name: string, newName: string) =>
   run(`Renamed ${name} to ${newName}`, () => hubSend('PATCH', `/users/${encodeURIComponent(name)}`, { name: newName }), [...USER_KEYS(name), ['groups']])
 
 /** Persist a user's display profile (first/last name + email). Admin or self. */
-export const saveUserProfile = (name: string, profile: UserProfile) =>
-  run(`Saved ${name}'s profile`, () => hubSend('PUT', `/users/${encodeURIComponent(name)}/profile`, {
+export const saveUserProfile = (name: string, profile: UserProfile) => {
+  // Optimistic (live only): patch the table's fullName in the ['users'] cache at
+  // once so a saved name shows immediately on return to the list - the same
+  // instant-effect the Groups page gets from its local row state. Snapshot the
+  // prior rows so a failed write rolls back synchronously. fullName falls to
+  // undefined when both names are blank, matching how getUsers builds it.
+  const fullName = `${profile.firstName} ${profile.lastName}`.trim() || undefined
+  let prev: UserRow[] | undefined
+  if (!isMock()) {
+    patchQuery<UserRow[]>(['users'], (rows) => { prev = rows; return rows?.map((u) => (u.name === name ? { ...u, fullName } : u)) })
+  }
+  return run(`Saved ${name}'s profile`, () => hubSend('PUT', `/users/${encodeURIComponent(name)}/profile`, {
     first_name: profile.firstName,
     last_name: profile.lastName,
     email: profile.email,
-    // ['users'] carries the table's fullName (from /user-profiles) - without it a
-    // saved name change never refreshes the list (and the persisted cache keeps it
-    // stale across reloads); ['user-profile', name] refetches the edit form itself.
-  }), [['user-profile', name], ['user', name], ['users']])
+  }), [['user-profile', name], ['user', name], ['users']]).catch((e) => {
+    if (prev !== undefined) patchQuery<UserRow[]>(['users'], () => prev) // synchronous rollback
+    throw e
+  })
+}
 
 /** Admin sets another user's password (NativeAuth admin change-password). */
 export const setUserPassword = (name: string, password: string) =>
@@ -215,7 +226,7 @@ export interface BroadcastResult {
   successful: number
   failed: number
 }
-export async function broadcast(message: string, variant: string, autoClose: boolean, recipients?: string[]): Promise<BroadcastResult | undefined> {
+export async function broadcast(message: string, variant: string, autoClose: number | boolean, recipients?: string[]): Promise<BroadcastResult | undefined> {
   if (isMock()) {
     const n = recipients?.length ?? 18
     mockSuccess(recipients?.length ? `Broadcast sent to ${n} selected server(s)` : 'Broadcast sent to active servers')

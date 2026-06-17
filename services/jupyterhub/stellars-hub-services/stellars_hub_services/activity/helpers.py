@@ -12,6 +12,11 @@ def calculate_activity_score(username):
     return ActivityMonitor.get_instance().get_score(username)
 
 
+def calculate_avg_active_hours(username):
+    """Average active hours/day behind the score (real, uncapped)."""
+    return ActivityMonitor.get_instance().get_avg_active_hours(username)
+
+
 def get_activity_sampling_status():
     return ActivityMonitor.get_instance().get_status()
 

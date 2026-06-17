@@ -18,7 +18,7 @@ export const IDLE_CULLER = {
 // components or CSS. The TTL extend value drives both the JS hold timer and the
 // CSS bar-fill/glow (threaded to global.css via the `--oh-ttl-anim` variable).
 export const ANIMATION = {
-  ttlExtendMs: 1000, // TTL extend: bar fills to the new limit over this duration
+  ttlExtendMs: 3000, // TTL extend: bar fills to the new limit over this duration
 }
 
 // Mock-mode display fixtures only. Live mode never reads jupyterhubVersion or
