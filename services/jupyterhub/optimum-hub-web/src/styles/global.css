@@ -29,6 +29,8 @@ body { margin: 0; font-family: var(--font-sans); }
 .oh-pending-table .oh-pending-act > button { margin-left: 8px; }
 .oh-kbd { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-muted); background: var(--color-bg-subtle); border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 1px 6px; }
 .oh-row { display: flex; align-items: center; gap: var(--space-2); }
+/* tighter gap for per-row server-control icon clusters (~15% under .oh-row) */
+.oh-actions { gap: calc(var(--space-2) * 0.85); }
 .oh-section-title { font-size: var(--text-sm); text-transform: uppercase; letter-spacing: .5px; color: var(--color-text-subtle); margin: var(--space-6) 0 var(--space-3); }
 .oh-page-sub { color: var(--color-text-muted); font-size: var(--text-sm); }
 

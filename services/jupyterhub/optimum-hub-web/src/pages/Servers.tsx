@@ -78,14 +78,14 @@ function rowActions(r: ServerRow, nav: (to: string) => void, lf: Lifecycle, me: 
     // starting someone ELSE's runs inline with a spinner on the play button (no
     // navigation), monitored + refreshed like restart/stop
     return (
-      <div className="oh-row" style={{ justifyContent: 'flex-end' }}>
+      <div className="oh-row oh-actions" style={{ justifyContent: 'flex-end' }}>
         <IconAction icon="play" title={r.user === me ? 'Start server' : `Start ${r.user}'s server`} busy={mode === 'start'} disabled={busy} onClick={() => (r.user === me ? nav(`/servers/${r.user}/starting`) : lf.start(r.user))} />
         <IconAction icon="disk" title="Manage volumes" disabled={busy} onClick={() => nav(`/servers/${r.user}/volumes`)} />
       </div>
     )
   }
   return (
-    <div className="oh-row" style={{ justifyContent: 'flex-end' }}>
+    <div className="oh-row oh-actions" style={{ justifyContent: 'flex-end' }}>
       <IconAction icon="play" title={r.user === me ? 'Enter session' : `Open ${r.user}'s session`} tone="primary" disabled={busy} onClick={() => enterSession(r.user, me)} />
       <IconAction icon="restart" title="Restart" busy={mode === 'restart'} disabled={busy} onClick={() => lf.restart(r.user)} />
       <IconAction icon="stop" title="Stop" tone="danger" filled busy={mode === 'stop'} disabled={busy} onClick={() => lf.stop(r.user)} />
