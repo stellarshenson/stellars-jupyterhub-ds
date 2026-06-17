@@ -24,6 +24,7 @@ from tornado import web
 from .handlers import (
     ImmutableStaticFileHandler,
     PortalHandler,
+    PortalRedirectHandler,
     brand_dir,
     entry_assets,
     static_dir,
@@ -54,6 +55,10 @@ BRAND_ROUTE = r"/brand/(.*)"
 # they no longer shadow the matching SPA routes. The SPA landing avoids the
 # reserved /home name (see PORTAL_URL). Full rationale: docs/acc-crit-drop-portal-path.md.
 PORTAL_ROUTE = r"/(.*)"
+# Legacy path: 302 stale /hub/portal[/...] links to the hub-root SPA. Matched
+# before the catch-all so the browser never loads the shell at /portal and then
+# client-redirects (the one-second "portal" flash after login).
+LEGACY_PORTAL_ROUTE = r"/portal/?(.*)"
 # Full hub path (the caller prefixes the deploy base_url) for default_url. The SPA
 # landing is /dashboard, not /home, because /hub/home is a JupyterHub built-in.
 PORTAL_URL = "/hub/dashboard"
@@ -84,5 +89,6 @@ def portal_handlers():
     return [
         (ASSETS_ROUTE, ImmutableStaticFileHandler, {"path": os.path.join(static_dir(), "assets")}),
         (BRAND_ROUTE, web.StaticFileHandler, {"path": brand_dir()}),
+        (LEGACY_PORTAL_ROUTE, PortalRedirectHandler),  # 302 old /portal links before the catch-all
         (PORTAL_ROUTE, PortalHandler),
     ]

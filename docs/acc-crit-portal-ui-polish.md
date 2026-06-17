@@ -21,15 +21,15 @@ Running checklist for the rapid UI feedback pass: TTL animation, GPU labels + ri
   - log: 2026-06-17 complete - `gpuTip` renders name/UUID/memory used+total/utilisation/temp/power, one field per line (meters.tsx)
   - [x] **Sub: extend sidecar** - add `temperature.gpu`, `power.draw` to `_GPU_QUERY` + schema (`gpuinfo-nvidia`, separate image)
   - [x] **Sub: thread fields** - keep uuid/temp/power through `gpu_cache` -> activity gpu entry -> `GpuDevice` -> tooltip
-- [x] **Standard tooltip, not a boxy popup** - the GPU tooltip is a compact dark antd `Tooltip` (lineHeight 1.45, `nowrap` lines, `maxWidth:none`), matching the other portal tooltips, not the loose tall box it had become
-  - log: 2026-06-17 fixed - tightened `gpuTip` line-height + `whiteSpace:nowrap`, dropped the wide loose div; both GpuMeter + GpuInventory tooltips share the styling
+- [x] **Standard (native) tooltip, not a styled popup** - the GPU tooltip is the SAME native browser `title` tooltip the CPU/memory/volume/system cells use, so every resource tooltip reads identically - not a bespoke antd `Tooltip` popup
+  - log: 2026-06-17 first tightened the antd Tooltip, then (operator: "must be standard, not a different design") converted `gpuTip` to a plain `\n`-joined string on the `title` attribute of the GpuMeter row + GpuInventory chip; removed the antd `Tooltip` wrapper + import
 
 ## List + resource tooltips
 
 - [ ] **Multiline list tooltips** - long tooltips on Servers, Users and Groups lists wrap to a sensible max-width multiline box, not one ridiculously long line
   - log: 2026-06-17 pending (tooltip `overlayStyle` max-width + normal white-space); names/labels themselves stay single-line (multiline name breaks the row visuals)
-- [ ] **Resource widget tooltips** - on the server resources widget both the % value and the progress bar carry a detail tooltip (not just the bar)
-  - log: 2026-06-17 pending (ResourceBars: tooltip on the value span + the bar)
+- [x] **Resource widget tooltips** - on the resources tracker widget EVERY progress bar carries the detail tooltip, not just the % value
+  - log: 2026-06-17 done - `title={r.tip}` added to the `.oh-res-bar` spans (CPU/Memory) so the bar itself shows the breakdown; GPU per-device bars/chips already carry their own native `title`; the value span keeps its tip too
 
 ## Upgrade pill
 
@@ -39,6 +39,11 @@ Running checklist for the rapid UI feedback pass: TTL animation, GPU labels + ri
   - log: 2026-06-17 implemented (MobileHome), typecheck clean
 - [x] **Recency check** - `docker image ls` newest local image for the repo vs the running container's image created time (`image_upgrade_available`, 6 unit tests); unknown -> no pill
   - log: 2026-06-17 implemented + tested
+
+## Dashboard freshness
+
+- [x] **Refresh server status on return** - returning to the dashboard after starting the lab (the start page navigates out into the lab) must redraw the server control, servers widget and servers list with current status, not a stale "offline" from the hydrated cache for ~10s
+  - log: 2026-06-17 fixed - `Home()` invalidates `['hero',user]`, `['servers']`, `['stats']`, `['resources']`, `['session',user]` on mount so they refetch immediately (staleTime 30s otherwise trusts the hydrated stale value); the refetch resolves in ~1s instead of waiting out the stale window
 
 ## Misc
 

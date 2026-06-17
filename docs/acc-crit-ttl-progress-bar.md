@@ -69,8 +69,10 @@ On Extend the gadget plays a three-step animation instead of a single jump (`Ttl
 
 - [x] **Step 1 - bar fills, time held** - on click the bar animates to 100% immediately (optimistic) while the time text holds its pre-extend value ("keep 24h on")
   - log: 2026-06-17 implemented - `boost` state forces `shownPct=100`; `displayMin` freezes the shown minutes during the fill
-- [x] **Step 2 - grow to new limit** - the bar fills to the new ceiling with a brief accent glow (`oh-ttl-pulse` keyframe ~0.9s) so the extend reads as deliberate, not a flicker
-  - log: 2026-06-17 implemented - antd Progress transitions the fill; `.oh-ttl-boost` adds the drop-shadow pulse
+- [x] **Step 2 - grow to new limit over a configured duration** - the bar visibly fills to the new ceiling (not a snap) with a brief accent glow, like the old design
+  - log: 2026-06-17 implemented, then (operator: "not properly animated ... make it 1s") forced a visible fill - `.oh-ttl-boost .ant-progress-bg { transition: width var(--oh-ttl-anim) ease }` overrides antd's quick default; boost window + `oh-ttl-pulse` glow share the same duration
+- [x] **Duration is package-config** - the fill duration lives in `optimum-hub-web/src/services/config.ts` (`ANIMATION.ttlExtendMs`, default 1000), NOT a Docker env (too granular); it drives the JS hold timer and, via the `--oh-ttl-anim` CSS var on the bar, the CSS transition + glow from one place
+  - log: 2026-06-17 added `ANIMATION` config; `meters.tsx` reads it for the timer + sets `--oh-ttl-anim`; `global.css` uses `var(--oh-ttl-anim, 1s)`
 - [x] **Step 3 - time text updates** - once the refetched `timeLeftMin` lands the bar settles on the real % and the clock text reveals the new remaining time
   - log: 2026-06-17 implemented - `displayMin` snaps to the new value and `boost` clears after the fill (~900ms) or as soon as new data arrives
 - [x] **Clock icon before the time** - the clock glyph renders immediately left of the remaining-time text in the gadget

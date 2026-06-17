@@ -3,10 +3,10 @@
  * never inline (per the design language). */
 import { useEffect, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { Button, Popover, Progress, Slider, Tooltip } from 'antd'
+import { Button, Popover, Progress, Slider } from 'antd'
 import { Icon } from './Icon'
 import { fmtMinutes } from '../lib/format'
-import { THRESHOLDS } from '../services/config'
+import { THRESHOLDS, ANIMATION } from '../services/config'
 import { gpuSupported } from '../app/capabilities'
 import type { GpuDevice } from '../services/types'
 
@@ -70,19 +70,17 @@ export function GpuMeter({ gpus, devices }: { gpus: number[]; devices?: GpuDevic
       {gpus.map((g, i) => {
         const d = devices?.[i]
         return (
-          <Tooltip key={i} title={gpuTip(d, g, i)} styles={{ root: { maxWidth: 'none' } }}>
-            <span className="oh-gpurow">
-              <small>{d ? shortGpuName(d.name) : `GPU ${i}`}</small>
-              <span className="track">
-                <i
-                  style={{
-                    width: `${Math.max(3, g)}%`,
-                    backgroundImage: `repeating-linear-gradient(45deg, ${GPU_STRIPES[i % GPU_STRIPES.length]} 0 3px, transparent 3px 7px)`,
-                  }}
-                />
-              </span>
+          <span className="oh-gpurow" key={i} title={gpuTip(d, g, i)}>
+            <small>{d ? shortGpuName(d.name) : `GPU ${i}`}</small>
+            <span className="track">
+              <i
+                style={{
+                  width: `${Math.max(3, g)}%`,
+                  backgroundImage: `repeating-linear-gradient(45deg, ${GPU_STRIPES[i % GPU_STRIPES.length]} 0 3px, transparent 3px 7px)`,
+                }}
+              />
             </span>
-          </Tooltip>
+          </span>
         )
       })}
     </span>
@@ -103,10 +101,12 @@ function shortGpuName(name: string): string {
   return s || name
 }
 
-// multiline GPU tooltip: full name, UUID, memory, live utilisation, temperature,
-// power. Only lines with data show; falls back to a bare index + load when no
-// device metadata is available.
-function gpuTip(d: GpuDevice | undefined, utilPct?: number, idx?: number): ReactNode {
+// multiline GPU tooltip as a plain newline-joined string for the native `title`
+// attribute - the SAME standard browser tooltip the CPU/memory/volume/system
+// cells use, so every resource tooltip reads identically (no bespoke antd popup).
+// Full name, UUID, memory, live utilisation, temperature, power; only lines with
+// data show; falls back to a bare index + load when no device metadata exists.
+function gpuTip(d: GpuDevice | undefined, utilPct?: number, idx?: number): string {
   if (!d) return `GPU ${idx ?? '?'}${utilPct != null ? ` - ${utilPct}%` : ''}`
   const gb = (mb?: number) => (mb ? (mb / 1024).toFixed(mb >= 10240 ? 0 : 1) : null)
   const total = gb(d.memoryMb)
@@ -118,24 +118,24 @@ function gpuTip(d: GpuDevice | undefined, utilPct?: number, idx?: number): React
   if (util != null) lines.push(`Utilisation ${util}%`)
   if (d.temperatureC != null) lines.push(`Temp ${d.temperatureC}°C`)
   if (d.powerW != null) lines.push(`Power ${Math.round(d.powerW)} W`)
-  return <div style={{ lineHeight: 1.45, whiteSpace: 'nowrap' }}>{lines.map((l, i) => <div key={i}>{l}</div>)}</div>
+  return lines.join('\n')
 }
 
 export function GpuInventory({ devices }: { devices: GpuDevice[] }) {
   return (
     <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
       {devices.map((d) => (
-        <Tooltip key={d.index} title={gpuTip(d)} styles={{ root: { maxWidth: 'none' } }}>
-          <span
-            style={{
-              display: 'inline-flex', alignItems: 'baseline', gap: 5, padding: '1px 8px', borderRadius: 6,
-              fontSize: 12, lineHeight: 1.5, background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
-            }}
-          >
-            <small style={{ opacity: 0.65 }}>{d.index}</small>
-            {shortGpuName(d.name)}
-          </span>
-        </Tooltip>
+        <span
+          key={d.index}
+          title={gpuTip(d)}
+          style={{
+            display: 'inline-flex', alignItems: 'baseline', gap: 5, padding: '1px 8px', borderRadius: 6,
+            fontSize: 12, lineHeight: 1.5, background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+          }}
+        >
+          <small style={{ opacity: 0.65 }}>{d.index}</small>
+          {shortGpuName(d.name)}
+        </span>
       ))}
     </span>
   )
@@ -169,8 +169,10 @@ export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
           ?? (isGpuRow
             ? (n
               ? (utils ? <GpuMeter gpus={utils} devices={devices} /> : <GpuInventory devices={devices!} />)
-              : <span className="oh-res-bar" />)
-            : <span className="oh-res-bar"><i style={{ width: `${r.value}%` }} /></span>)
+              : <span className="oh-res-bar" title={r.tip} />)
+            // the detail tooltip rides BOTH the bar and the value, so hovering the
+            // progress bar itself (not only the % readout) shows the breakdown
+            : <span className="oh-res-bar" title={r.tip}><i style={{ width: `${r.value}%` }} /></span>)
         const val = r.valueLabel
           ?? (r.meter ? '' : isGpuRow ? (n ? (invOnly && memGB ? `${memGB} GB` : '') : '-') : `${r.value}%`)
         return (
@@ -208,7 +210,9 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
   const [displayMin, setDisplayMin] = useState(timeLeftMin)
   useEffect(() => {
     if (!boost) { setDisplayMin(timeLeftMin); return }
-    const t = window.setTimeout(() => { setDisplayMin(timeLeftMin); setBoost(false) }, 900)
+    // hold for the configured fill duration so the bar visibly grows to the new
+    // limit before the time reveals (ANIMATION.ttlExtendMs in services/config)
+    const t = window.setTimeout(() => { setDisplayMin(timeLeftMin); setBoost(false) }, ANIMATION.ttlExtendMs)
     return () => window.clearTimeout(t)
   }, [boost, timeLeftMin])
   const shownPct = boost ? 100 : pct
@@ -222,7 +226,7 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
   const atMax = hours >= maxH
   return (
     <div className="oh-ttl">
-      <span className={boost ? 'oh-ttl-bar oh-ttl-boost' : 'oh-ttl-bar'} style={{ flex: 1, minWidth: 0 }} title="Idle session timer - your server is stopped automatically when this runs out">
+      <span className={boost ? 'oh-ttl-bar oh-ttl-boost' : 'oh-ttl-bar'} style={{ flex: 1, minWidth: 0, '--oh-ttl-anim': `${ANIMATION.ttlExtendMs}ms` } as CSSProperties} title="Idle session timer - your server is stopped automatically when this runs out">
         <Progress percent={shownPct} showInfo={false} strokeColor={boost ? 'var(--color-accent)' : color} trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
       </span>
       <span className="oh-ttl-val">

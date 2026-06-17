@@ -2,6 +2,7 @@
  * Users metrics, total resources, pending callout, active-servers preview, quick
  * actions, recent events). A plain user sees the launchpad (their server hero,
  * their groups, effective access). */
+import { useEffect } from 'react'
 import { Card } from 'antd'
 import { Link, useNavigate } from 'react-router-dom'
 import { ProTable } from '@ant-design/pro-components'
@@ -20,6 +21,7 @@ import { useIsMobile } from '../lib/useIsMobile'
 import MobileHome from './MobileHome'
 import { timeAgoShort } from '../lib/format'
 import { useEffectiveGrants, useEvents, useServerHero, useServers, useStats, useTotalResources, useUser } from '../hooks/queries'
+import { invalidate } from '../services/actions'
 import { restartServer, stopServer } from '../services/ops'
 import type { ServerRow, ServerStatus } from '../services/types'
 
@@ -266,8 +268,15 @@ function UserHome() {
 }
 
 export default function Home() {
-  const { role } = useRole()
+  const { role, username } = useRole()
   const isMobile = useIsMobile()
+  // Returning to the dashboard (e.g. after starting the lab from the start page,
+  // which navigates out into the lab) can paint a stale "offline" status from the
+  // hydrated cache. Force a refetch of the server-status queries on mount so the
+  // server control, servers widget and servers list redraw current immediately.
+  useEffect(() => {
+    invalidate(['hero', username], ['servers'], ['stats'], ['resources'], ['session', username])
+  }, [username])
   // Below the mobile breakpoint, drop to the minimal phone surface (status +
   // Start/Stop/Extend; admins also get a read-only servers widget + links).
   if (isMobile) return <MobileHome />

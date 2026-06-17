@@ -43,8 +43,10 @@ Code-complete; backend `make test` 566+63 green, portal `tsc -b` + `build:hub` c
 
 - [ ] **Centered, branded** - a single centered card with the Optimum Hub mark and the server name as a clear title ("Starting konrad.jelen's lab"), generous standard panel padding, no raw full-width sprawl
   - log: 2026-06-17 criterion added
-- [ ] **Terminal-styled log panel** - the log feed reads like a real terminal: monospaced, dark subdued panel, soft rounded corners, dim line text, fixed height (~10-15 rows) that scrolls, not a plain bulleted list
-  - log: 2026-06-17 criterion added
+- [x] **Terminal-styled log panel** - the log feed reads like a real terminal: monospaced, dark subdued panel, soft rounded corners, dim line text, fixed height (~10-15 rows) that scrolls, not a plain bulleted list
+  - log: 2026-06-17 implemented (`.oh-termlog` in global.css)
+- [x] **Wide enough, no line-wrap** - the panel is wide enough for real log lines and never breaks a line mid-content; long lines scroll horizontally
+  - log: 2026-06-17 fixed (operator: lines were breaking) - start card `max-width` 560px -> 820px, `.oh-termlog` `overflow: auto`, `.oh-termlog-line` `white-space: pre` (no wrap)
 - [ ] **Smooth progress** - the progress bar animates smoothly (antd Progress, accent blue), with a short human status line above it ("Pulling image...", "Starting server...") sourced from the latest SSE message
   - log: 2026-06-17 criterion added
 - [ ] **No layout shift / no flicker** - the card and log panel reserve their space from first paint; new log lines append without the page jumping; the redirect on ready is clean, not a flash

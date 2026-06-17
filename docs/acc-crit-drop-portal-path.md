@@ -27,7 +27,8 @@ Consequence: the SPA can serve at `/hub/<route>` for every route EXCEPT the rese
   - log: 2026-06-17 criterion added
 - [ ] **Shell still gets XSRF** - PortalHandler renders the shell for the catch-all so `window.jhdata.xsrf_token` is injected exactly as today
   - log: 2026-06-17 criterion added
-- [ ] **Old-path redirect (transition)** - `/hub/portal/...` 302 -> `/hub/...` so existing bookmarks/links keep working
+- [x] **Old-path redirect (no /portal flash)** - `/hub/portal[/...]` 302s server-side to the hub-root SPA (`/portal/home` -> `/dashboard`) via `PortalRedirectHandler`, registered before the catch-all - so a stale `next`/bookmark/cached link never loads the shell at `/portal` and then client-redirects (the ~1s "portal" flash after login the operator hit)
+  - log: 2026-06-17 implemented (`handlers.py::PortalRedirectHandler`, `LEGACY_PORTAL_ROUTE` before `PORTAL_ROUTE` in `portal_handlers`)
   - log: 2026-06-17 criterion added
 
 ## Frontend (optimum-hub-web)
