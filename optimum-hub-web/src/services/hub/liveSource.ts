@@ -7,13 +7,14 @@
  *   /admin/groups                  - groups with config + policy_summary (admin)
  *   /users/{u}/session-info        - idle-culler countdown
  *   /users/{u}/manage-volumes      - existing per-user volumes
+ *   /users/{u}/effective-grants    - group policy resolved per user (+ source)
  *   /users/{u}/tokens, /user, /info
  *
  * Endpoints the hub does not (yet) expose stay on the mock so the UI is whole:
  *   - pending (unauthorized) users: live only in NativeAuth's users_info, no
  *     JSON list endpoint -> the pending panel reads empty in live mode
- *   - effective-policy resolve, audit events, sent-notifications history,
- *     lab volumes, settings values: no read API -> delegate to mock
+ *   - sent-notifications history, lab volumes, settings values: no read API ->
+ *     delegate to mock or an honest empty
  *   - per-user GPU usage: not collected (GPU is a group policy) -> gpu = null */
 import type { DataSource } from '../datasource'
 import { mockSource } from '../mockSource'
@@ -22,6 +23,7 @@ import { hubGet, getCurrentUser } from './client'
 import { timeAgoShort } from '../../lib/format'
 import type {
   EventRow,
+  EffectiveGrant,
   EventType,
   GpuDevice,
   GroupConfig,
@@ -348,6 +350,8 @@ export const liveSource: DataSource = {
         members: g.member_count ?? g.members?.length ?? 0,
         memberNames: g.members ?? [],
         policies: (g.policy_summary ?? []).map((s) => ({ key: s.key, label: s.badge || POLICY_LABELS[s.key] || s.key, detail: s.detail })),
+        // raw flat config for the export bundle (the live payload carries it)
+        config: (g.config ?? {}) as GroupRow['config'],
       }))
     } catch {
       return mockSource.getGroups()
@@ -602,8 +606,19 @@ export const liveSource: DataSource = {
     }
   },
 
+  // real effective policy resolved across the user's groups; each grant cites
+  // the winning group. Honest empty when no group grants anything special (the
+  // user runs on platform defaults) - never the fabricated mock grants.
+  async getEffectiveGrants(user: string): Promise<EffectiveGrant[]> {
+    try {
+      const r = await hubGet<{ grants: EffectiveGrant[] }>(`/users/${encodeURIComponent(user)}/effective-grants`)
+      return r.grants ?? []
+    } catch {
+      return []
+    }
+  },
+
   // backend-less or derived views: no read API yet -> mock keeps the UI whole
-  getEffectiveGrants: mockSource.getEffectiveGrants,
   getSettingsReference: mockSource.getSettingsReference,
   getSentNotifications: async () => [], // no backend sent-history store yet - empty in live
 }

@@ -16,6 +16,7 @@ from .groups import (
 )
 from .native_users import NativeUsersHandler, NativeUserAuthorizationHandler
 from .user_profile import UserProfileHandler, UserProfilesListHandler
+from .effective_grants import EffectiveGrantsHandler
 from .events_data import EventsDataHandler
 
 __all__ = [
@@ -47,5 +48,6 @@ __all__ = [
     "NativeUserAuthorizationHandler",
     "UserProfileHandler",
     "UserProfilesListHandler",
+    "EffectiveGrantsHandler",
     "EventsDataHandler",
 ]

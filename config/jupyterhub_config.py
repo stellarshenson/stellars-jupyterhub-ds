@@ -67,6 +67,7 @@ from stellars_hub_services.handlers import (
     GroupsReorderHandler,                   # POST /api/admin/groups/reorder - update priorities
     UserProfileHandler,                     # GET/PUT /api/users/{user}/profile - first/last name + email
     UserProfilesListHandler,                # GET  /api/user-profiles - all profiles (Users-list sub-names)
+    EffectiveGrantsHandler,                 # GET  /api/users/{user}/effective-grants - resolved group policy grants
 )
 
 # Optimum Hub web portal - hub-served React SPA that replaces the stock home/admin UI.
@@ -649,6 +650,7 @@ c.JupyterHub.tornado_settings = {
         'idle_culler_timeout': JUPYTERHUB_IDLE_CULLER_TIMEOUT,  # for SessionInfoHandler, ExtendSessionHandler
         'idle_culler_max_extension': JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION,  # for ExtendSessionHandler limits
         'gpu_list': gpu_list,                                 # host GPUs enumerated at startup (for GroupsPageHandler)
+        'gpu_available': bool(gpu_enabled),                   # hardware-present gate for resolve_policies (EffectiveGrantsHandler)
         'gpu_isolation_enforced': GPU_ISOLATION_ENFORCED,     # False on WSL2 -> GroupsPageHandler shows the advisory note
         'container_max_extra_space_mb': JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB * 1024,  # threshold in MB for container size warning
         'volume_max_total_size_mb': JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB * 1024,        # threshold in MB for volume size warning
@@ -799,6 +801,7 @@ c.JupyterHub.extra_handlers = [
     (r'/api/users/([^/]+)/lab-ready', LabReadyHandler),              # GET - silent lab readiness probe (always 200)
     (r'/api/users/([^/]+)/session-info', SessionInfoHandler),        # GET - idle culler status
     (r'/api/users/([^/]+)/profile', UserProfileHandler),             # GET/PUT - first/last name + email
+    (r'/api/users/([^/]+)/effective-grants', EffectiveGrantsHandler), # GET - resolved group policy grants
     (r'/api/user-profiles', UserProfilesListHandler),                # GET - all profiles (Users-list sub-names)
     (r'/api/settings', SettingsDataHandler),                          # GET - platform settings (read-only JSON)
     (r'/api/events', EventsDataHandler),                              # GET - recent platform events (audit feed)

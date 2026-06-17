@@ -92,7 +92,7 @@ body { margin: 0; font-family: var(--font-sans); }
 .oh-termlog-wait { color: #5b6675; font-style: italic; }
 
 /* ---- TTL (idle-session timer) gadget ---- */
-.oh-ttl { display: flex; align-items: center; gap: var(--space-2); }
+.oh-ttl { display: flex; align-items: center; gap: var(--space-4); }
 .oh-ttl > .oh-spark { flex: 1; height: 8px; }
 .oh-ttl-val { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-size: var(--text-sm); color: var(--color-text-muted); }
 .oh-ttl-val b { color: var(--color-text); }

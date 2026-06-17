@@ -10,6 +10,7 @@ import {
 import { GlobalOutlined } from '@ant-design/icons'
 import { PageHeader } from '../components/PageHeader'
 import { StatusPill } from '../components/StatusPill'
+import { NotificationPill } from '../components/NotificationPill'
 import { ActivityMeter, GpuMeter, ResourceBars, Spark, TtlGadget } from '../components/meters'
 import { ScopeFilterPills } from '../components/ScopeFilterPills'
 import { CappedTags } from '../components/CappedTags'
@@ -120,6 +121,17 @@ export default function DesignLanguage() {
           <StatusPill status="offline" label="offline" />
           <StatusPill status="error" label="error" />
         </Row>
+        <Row label="Notification pills">
+          <NotificationPill type="success" label="success" />
+          <NotificationPill type="warning" label="warning" />
+          <NotificationPill type="info" label="info" />
+          <NotificationPill type="default" label="passive" />
+          <NotificationPill type="error" label="dangerous" />
+          <NotificationPill type="in-progress" label="in-progress" />
+        </Row>
+        <div className="oh-note" style={{ marginTop: 4 }}>
+          <b>Notification tones</b> reuse the status-pill vocabulary so every advisory reads in the same colours: success = Active green, warning = idle amber, info = the "All" scope cyan, passive = neutral gray, dangerous = red, in-progress = pulsing cyan. Broadcast types and the "Upgrade available" badge both draw from this one map (<code>NotificationPill</code>), never an ad-hoc Tag colour.
+        </div>
         <Row label="Tags">
           <Tag bordered={false} style={tagStyle('var(--color-accent-soft)', 'var(--color-accent)')}>accent</Tag>
           <Tag bordered={false} style={tagStyle('var(--color-success-soft)', 'var(--color-success)')}>ok</Tag>

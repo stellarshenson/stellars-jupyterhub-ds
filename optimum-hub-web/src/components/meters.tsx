@@ -16,7 +16,7 @@ export function ActivityMeter({ value, title }: { value: number | null; title?: 
   const lit = Math.max(0, Math.min(5, Math.round(value / 20)))
   const tone = value < 25 ? 'low' : value < 60 ? 'idle' : ''
   return (
-    <span className={`oh-meter ${tone}`} title={title ?? `Activity ${value}% · 24h sampled`}>
+    <span className={`oh-meter ${tone}`} title={title ?? `${value}% active over the last 7 days`}>
       {[0, 1, 2, 3, 4].map((i) => (
         <i key={i} className={i < lit ? 'on' : ''} />
       ))}
@@ -262,7 +262,7 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
           </div>
         }
       >
-        <Button size="small" disabled={atCeiling} title={atCeiling ? 'Already at the maximum session length' : `Add up to ${maxH}h before the idle culler stops the lab`}>
+        <Button size="small" disabled={atCeiling} title={atCeiling ? 'Already at the maximum session length' : `Add up to ${maxH}h before your lab is stopped for inactivity`}>
           Extend
         </Button>
       </Popover>

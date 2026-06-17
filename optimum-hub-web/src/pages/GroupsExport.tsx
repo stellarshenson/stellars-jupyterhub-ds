@@ -6,7 +6,8 @@ import { PageHeader } from '../components/PageHeader'
 import { Icon } from '../components/Icon'
 import { CappedTags } from '../components/CappedTags'
 import { useGroups } from '../hooks/queries'
-import { mockAction } from '../services/actions'
+import { notify } from '../services/actions'
+import { downloadJson } from '../lib/download'
 import type { GroupRow } from '../services/types'
 
 export default function GroupsExport() {
@@ -17,6 +18,17 @@ export default function GroupsExport() {
   useEffect(() => {
     setSelected((prev) => (prev.length ? prev : data.map((g) => g.name)))
   }, [data])
+
+  // real client-side download: the importable {name, description, priority, config}
+  // for each selected group, exactly the shape the Import action reads back.
+  const exportSelected = () => {
+    const chosen = new Set(selected)
+    const groups = data
+      .filter((g) => chosen.has(g.name))
+      .map((g) => ({ name: g.name, description: g.description ?? '', priority: g.priority, config: g.config ?? {} }))
+    downloadJson('group-policies.json', { groups })
+    notify.success(`Exported ${groups.length} group${groups.length === 1 ? '' : 's'} as JSON`)
+  }
 
   return (
     <>
@@ -35,7 +47,7 @@ export default function GroupsExport() {
           ]}
         />
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-          <Button type="primary" icon={<Icon name="download" size={14} />} onClick={() => mockAction(`Exported ${selected.length} groups as JSON`)}>
+          <Button type="primary" icon={<Icon name="download" size={14} />} disabled={!selected.length} onClick={exportSelected}>
             Export {selected.length} groups
           </Button>
           <Button onClick={() => navigate('/groups')}>Cancel</Button>
