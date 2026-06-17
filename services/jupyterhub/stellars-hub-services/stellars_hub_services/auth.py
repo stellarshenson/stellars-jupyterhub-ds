@@ -9,6 +9,7 @@ serves) instead of the stock/enhanced JupyterHub templates. It does this cleanly
 enhanced stock pages and no jinja-loader wrangling.
 """
 
+from traitlets import default
 from jupyterhub.scopes import needs_scope
 from nativeauthenticator import NativeAuthenticator
 from nativeauthenticator.handlers import AuthorizationAreaHandler as BaseAuthorizationHandler
@@ -65,6 +66,22 @@ class CustomAuthorizationAreaHandler(BaseAuthorizationHandler):
 
 class StellarsNativeAuthenticator(NativeAuthenticator):
     """Custom authenticator that injects CustomAuthorizationAreaHandler."""
+
+    @default("db")
+    def _stellars_db_default(self):
+        """Provide the authenticator DB session ourselves, silencing JupyterHub's
+        `Authenticator.db` deprecation warning (JH issue #3700).
+
+        JupyterHub injects the shared session at construction as
+        `_deprecated_db_session` (app.py) and its own `@default("db")` returns it
+        *with* a deprecation log on first access (NativeAuth hits it at startup via
+        `inspect(self.db.bind)`). We override that default to return the same
+        session without the log - so NativeAuth's UserInfo store keeps working
+        unchanged, no concurrency change, just no boot noise. A full own-session
+        migration is an upstream NativeAuthenticator concern; this owns the default
+        until then. Inherited by OptimumHub + BootstrapAdmin authenticators.
+        """
+        return self._deprecated_db_session
 
     def get_handlers(self, app):
         handlers = super().get_handlers(app)

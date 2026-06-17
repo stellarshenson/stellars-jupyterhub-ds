@@ -64,6 +64,8 @@ interface RawActivityUser {
   memory_percent?: number | null
   memory_total_mb?: number | null
   time_remaining_seconds?: number | null
+  server_started?: string | null
+  lab_image_upgrade_available?: boolean
   activity_score?: number | null
   last_activity?: string | null
   volume_size_mb?: number | null
@@ -76,7 +78,7 @@ interface RawActivity {
   container_max_extra_space_mb?: number
   volume_max_total_size_mb?: number
   memory_max_usage_mb?: number
-  gpus?: Array<{ index: string; name: string; memory_mb?: number; utilization?: number; memory_used_mb?: number }> // host GPU inventory + live load
+  gpus?: Array<{ index: string; name: string; uuid?: string; memory_mb?: number; utilization?: number; memory_used_mb?: number; temperature_c?: number; power_w?: number }> // host GPU inventory + live load
   lab_image?: string // spawn image (Lab Container page)
   lab_volumes?: Array<{ suffix: string; mount: string; description?: string }> // standard per-user volumes
 }
@@ -348,7 +350,7 @@ export const liveSource: DataSource = {
           memTip: a.memory_mb != null ? `${round1(a.memory_mb / 1024)} GB of host RAM` : undefined,
         }
       : { cpu: 0, mem: 0, gpu: 0 }
-    return { user, status, statusLabel: cap(status), activity: clampPct(a?.activity_score ?? 0), ttl, resources }
+    return { user, status, statusLabel: cap(status), activity: clampPct(a?.activity_score ?? 0), startedISO: a?.server_started ?? null, upgradeAvailable: !!a?.lab_image_upgrade_available, ttl, resources }
   },
 
   async getTotalResources(): Promise<ResourceSnapshot> {
@@ -362,9 +364,12 @@ export const liveSource: DataSource = {
         ? activity.gpus.map((g) => ({
             index: String(g.index),
             name: g.name,
+            uuid: g.uuid,
             memoryMb: g.memory_mb ?? 0,
             utilizationPct: g.utilization,
             memoryUsedMb: g.memory_used_mb,
+            temperatureC: g.temperature_c,
+            powerW: g.power_w,
           }))
         : undefined
       // Per-GPU utilisation array (ordered by inventory) for the striped meter,

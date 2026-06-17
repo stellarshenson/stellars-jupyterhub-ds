@@ -134,7 +134,7 @@ function VersionFooter() {
   const stackChips = [
     { k: 'JupyterHub', v: hubMajor, c: '#d97f3f' },
     { k: 'JupyterLab', v: '4', c: '#d97f3f' },
-    { k: 'Ant Design Pro', v: '6', c: '#4f86d6' },
+    { k: 'Ant Design', v: '6', c: '#4f86d6' },
   ]
   const tag = { background: 'var(--color-surface-active)', color: 'var(--color-text-muted)', borderRadius: 4, marginInline: 4 }
   return (

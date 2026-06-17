@@ -170,9 +170,12 @@ export interface TokenRow {
 export interface GpuDevice {
   index: string // nvidia-smi index ("0", "1", ...)
   name: string // e.g. "NVIDIA A100-SXM4-80GB"
+  uuid?: string // stable device UUID (GPU-...)
   memoryMb: number // total device memory
   utilizationPct?: number // live per-GPU load % (sampled); absent = not sampled
   memoryUsedMb?: number // live used memory (sampled)
+  temperatureC?: number // live core temp °C (sampled)
+  powerW?: number // live board power draw W (sampled)
 }
 
 export interface ResourceSnapshot {
@@ -195,6 +198,8 @@ export interface ServerHero {
   status: ServerStatus
   statusLabel: string
   activity: number
+  startedISO?: string | null // server (container) start time - drives the uptime label
+  upgradeAvailable?: boolean // a newer lab image is available locally than the running container
   ttl: SessionInfo
   resources: ResourceSnapshot
 }

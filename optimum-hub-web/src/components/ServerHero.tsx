@@ -1,13 +1,14 @@
 /* The two-panel server block reused on both Homes: left is status + controls +
  * TTL, right is the lab's resources. Controls are state-aware: a stopped server
  * shows Start (+ Reset volumes for admins); a running one Open lab / Restart / Stop. */
-import { Button, Card } from 'antd'
+import { Button, Card, Tag } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from './Icon'
 import { StatusPill } from './StatusPill'
 import { ActivityMeterFill, ResourceBars, TtlGadget } from './meters'
 import { extendSession } from '../services/ops'
 import { userServerUrl } from '../services/hub/client'
+import { timeAgoShort } from '../lib/format'
 import { useRole } from '../app/RoleContext'
 import { useServerLifecycle } from '../app/ServerLifecycle'
 import type { ServerHero as Hero } from '../services/types'
@@ -23,7 +24,14 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <h2 style={{ fontSize: 16, margin: 0 }}>Server status</h2>
-          <StatusPill status={hero.status} label={hero.statusLabel} />
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {running && hero.upgradeAvailable && (
+              <Tag color="gold" style={{ margin: 0 }} title="A newer lab image is available locally - restart your server to upgrade">
+                Upgrade available
+              </Tag>
+            )}
+            <StatusPill status={hero.status} label={hero.statusLabel} />
+          </span>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 24, flexWrap: 'wrap' }}>
           {running ? (
@@ -53,7 +61,7 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
         </div>
         {running && (
           <div style={{ marginTop: 20 }}>
-            <TtlGadget timeLeftMin={hero.ttl.timeLeftMin} baseMin={hero.ttl.baseMin} maxAddHours={hero.ttl.maxAddHours} onExtend={(h) => extendSession(hero.user, h)} />
+            <TtlGadget timeLeftMin={hero.ttl.timeLeftMin} baseMin={hero.ttl.baseMin} maxAddHours={hero.ttl.maxAddHours} uptimeLabel={hero.startedISO ? timeAgoShort(hero.startedISO) : undefined} onExtend={(h) => extendSession(hero.user, h)} />
           </div>
         )}
       </Card>

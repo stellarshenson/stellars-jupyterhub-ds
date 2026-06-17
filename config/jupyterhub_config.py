@@ -149,15 +149,34 @@ JUPYTERHUB_TIMEZONE = os.environ.get("JUPYTERHUB_TIMEZONE", "Etc/UTC")          
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")                                     # URL prefix (e.g. /jupyterhub), None or / for root
 JUPYTERHUB_NETWORK_NAME = os.environ.get("JUPYTERHUB_NETWORK_NAME", "jupyterhub_network")       # Docker network for hub + spawned containers
 JUPYTERHUB_LAB_IMAGE = os.environ.get("JUPYTERHUB_LAB_IMAGE", "stellars/stellars-jupyterlab-ds:latest")  # JupyterLab image to spawn
-COMPOSE_PROJECT_NAME = os.environ.get("COMPOSE_PROJECT_NAME", "").strip()                      # passed through by compose - drives docker compose project label and volume namespace; required (every named volume in this config is namespaced as f"{COMPOSE_PROJECT_NAME}_..."; empty would silently mismatch the compose-side namespacing and fail spawns at Subpath resolution)
-if not COMPOSE_PROJECT_NAME:
+# Hub's own compose project. Renamed from the bare COMPOSE_PROJECT_NAME so the
+# hub's notion of its project is an explicit hub var, not docker-compose's magic
+# one; falls back to COMPOSE_PROJECT_NAME during the transition so a not-yet-updated
+# compose file still boots. Drives volume namespace + hub compose labels; required
+# (every named volume is f"{JUPYTERHUB_COMPOSE_PROJECT_NAME}_..."; empty would
+# mismatch compose's namespacing and fail spawns at Subpath resolution).
+JUPYTERHUB_COMPOSE_PROJECT_NAME = (
+    os.environ.get("JUPYTERHUB_COMPOSE_PROJECT_NAME")
+    or os.environ.get("COMPOSE_PROJECT_NAME")
+    or ""
+).strip()
+if not JUPYTERHUB_COMPOSE_PROJECT_NAME:
     raise RuntimeError(
-        "COMPOSE_PROJECT_NAME is empty - cannot start. Every named volume in this "
-        "config is namespaced as f'{COMPOSE_PROJECT_NAME}_...' to match compose's "
-        "own project-prefixing; an empty prefix would resolve to a different "
-        "volume than the one compose creates. Set COMPOSE_PROJECT_NAME (compose "
-        "does this automatically when invoked normally; passthrough is in compose.yml)."
+        "JUPYTERHUB_COMPOSE_PROJECT_NAME is empty - cannot start. Every named volume "
+        "in this config is namespaced as f'{JUPYTERHUB_COMPOSE_PROJECT_NAME}_...' to "
+        "match compose's own project-prefixing; an empty prefix would resolve to a "
+        "different volume than the one compose creates. Set it in compose.yml "
+        "(mapped from compose's COMPOSE_PROJECT_NAME)."
     )
+# Compose project for spawned lab/user containers - the com.docker.compose.project
+# label they carry. Defaults to the hub project (empty suffix = same project); set
+# JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME to group labs under a different project.
+# Volume namespacing is unaffected (it stays on JUPYTERHUB_COMPOSE_PROJECT_NAME) -
+# only the user-container compose label changes.
+JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME = (
+    os.environ.get("JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME", "").strip()
+    or JUPYTERHUB_COMPOSE_PROJECT_NAME
+)
 JUPYTERHUB_GPUINFO_URL = os.environ.get("JUPYTERHUB_GPUINFO_URL", "http://gpuinfo-nvidia:8000")  # GPU-info sidecar base URL (detection + utilisation); image/base-image are compose-level build knobs
 JUPYTERHUB_GPUINFO_NETWORK_NAME = os.environ.get("JUPYTERHUB_GPUINFO_NETWORK_NAME", "jupyterhub-gpuinfo-network")  # dedicated hub<->sidecar network (compose-level)
 JUPYTERHUB_GPUINFO_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_IMAGE", "stellars/stellars-gpuinfo-nvidia:latest")  # sidecar image the hub self-starts
@@ -208,7 +227,7 @@ JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE = os.environ.get('JUPYTERHUB_USER_VOLU
 USER_VOLUMES = load_merged_user_volumes(
     VOLUMES_DICTIONARY_PATH,
     JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE,
-    COMPOSE_PROJECT_NAME,
+    JUPYTERHUB_COMPOSE_PROJECT_NAME,
 )
 
 # DockerSpawner needs the flat {name: mount} shape. Built from USER_VOLUMES only.
@@ -220,12 +239,12 @@ DOCKER_SPAWNER_VOLUMES = {
 }
 
 # Derived: extract user-resettable volume suffixes ['home', 'workspace', 'cache'] from volumes dict
-user_volume_suffixes = get_user_volume_suffixes(DOCKER_SPAWNER_VOLUMES, COMPOSE_PROJECT_NAME)
+user_volume_suffixes = get_user_volume_suffixes(DOCKER_SPAWNER_VOLUMES, JUPYTERHUB_COMPOSE_PROJECT_NAME)
 # Derived: per-suffix volume-name template (still has {username} placeholder).
 # Single source of truth for what the volumes are actually called on disk -
 # UI labels, deletion handler, DockerSpawner, and the activity-monitor sizes
 # cache all read from this map.
-user_volume_name_templates = get_user_volume_name_templates(DOCKER_SPAWNER_VOLUMES, COMPOSE_PROJECT_NAME)
+user_volume_name_templates = get_user_volume_name_templates(DOCKER_SPAWNER_VOLUMES, JUPYTERHUB_COMPOSE_PROJECT_NAME)
 # Wire the templates into the volume-sizes cache so its background `docker
 # system df` parser knows how to recognise per-user volumes after the
 # COMPOSE_PROJECT_NAME-driven namespace refactor (stale match would leave the
@@ -235,7 +254,7 @@ configure_volume_cache(user_volume_name_templates)
 # {suffix, name_template, description} per row. Templates iterate this single
 # list instead of cross-referencing a suffix list against a separate
 # descriptions dict.
-_user_volume_prefix = f"{COMPOSE_PROJECT_NAME}_jupyterlab_{{username}}_"
+_user_volume_prefix = f"{JUPYTERHUB_COMPOSE_PROJECT_NAME}_jupyterlab_{{username}}_"
 user_volumes_for_ui = [
     {
         'suffix': pattern[len(_user_volume_prefix):],
@@ -496,7 +515,7 @@ configure_gpu_cache(JUPYTERHUB_GPUINFO_URL)
 # peer on the local docker host instead of waiting on compose to have brought it
 # up - the old 20x1s probe stalled boot ~20s whenever the sidecar was absent.
 _gpuinfo_sidecar_up = (
-    ensure_gpuinfo_sidecar(JUPYTERHUB_GPUINFO_NVIDIA_IMAGE, JUPYTERHUB_GPUINFO_NETWORK_NAME, JUPYTERHUB_GPUINFO_URL)
+    ensure_gpuinfo_sidecar(JUPYTERHUB_GPUINFO_NVIDIA_IMAGE, JUPYTERHUB_GPUINFO_NETWORK_NAME, JUPYTERHUB_GPUINFO_URL, JUPYTERHUB_COMPOSE_PROJECT_NAME)
     if JUPYTERHUB_GPU_ENABLED in (1, 2) else False
 )
 # probe only when the sidecar is actually up; otherwise skip straight to
@@ -531,8 +550,8 @@ branding = setup_branding(
 # Direct SSL termination (certs auto-generated by /mkcert.sh at container startup)
 # Disable when running behind a reverse proxy that handles TLS (e.g. Traefik)
 if JUPYTERHUB_SSL_ENABLED == 1:
-    c.JupyterHub.ssl_cert = '/mnt/certs/server.crt'
-    c.JupyterHub.ssl_key = '/mnt/certs/server.key'
+    c.JupyterHub.ssl_cert = '/certs/server.crt'
+    c.JupyterHub.ssl_key = '/certs/server.key'
 
 # ── Spawner ──
 # TimingDockerSpawner is a thin subclass of DockerSpawner that logs
@@ -638,7 +657,7 @@ c.JupyterHub.tornado_settings = {
         'memory_max_usage_mb': JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning
         'reserved_env_var_names': RESERVED_ENV_VAR_NAMES,                              # names groups cannot override
         'reserved_env_var_prefixes': RESERVED_ENV_VAR_PREFIXES,                        # prefixes reserved for JupyterHub/platform
-        'shared_volume_name': f"{COMPOSE_PROJECT_NAME}_jupyterhub_shared",             # standard shared volume offered by the groups volume-mounts UI
+        'shared_volume_name': f"{JUPYTERHUB_COMPOSE_PROJECT_NAME}_jupyterhub_shared",             # standard shared volume offered by the groups volume-mounts UI
         'lab_image': JUPYTERHUB_LAB_IMAGE,                                             # image every lab spawns from (for the Lab Container page)
         'lab_volumes': [                                                              # standard per-user volumes mounted into every lab
             {'suffix': v['suffix'], 'mount': DOCKER_SPAWNER_VOLUMES.get(v['name_template'], ''), 'description': v['description']}
@@ -664,7 +683,7 @@ c.JupyterHub.tornado_settings = {
 # lab, otherwise Docker silently auto-creates an empty volume with the bare name
 # and the per-user subdir lookup fails with 404 at container start.
 JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR = os.environ.get("JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR", "/var/run/jupyterhub-docker-proxy-sockets")
-JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME = f"{COMPOSE_PROJECT_NAME}_jupyterhub_docker"
+JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME = f"{JUPYTERHUB_COMPOSE_PROJECT_NAME}_jupyterhub_docker"
 # Template rendered into a per-user com.docker.compose.project label when a
 # docker-limited group opts in. Placeholders: {compose_project}, {username}.
 # Baked into the image via Dockerfile ENV; operator can override in compose.yml.
@@ -681,7 +700,7 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     gpu_uuid_by_index=GPU_UUID_BY_INDEX,                     # index->UUID for CUDA_VISIBLE_DEVICES
     reserved_env_var_names=RESERVED_ENV_VAR_NAMES,           # names groups cannot override
     reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,     # prefixes reserved for JupyterHub/platform
-    compose_project=COMPOSE_PROJECT_NAME,                    # docker compose project label so user containers group with the hub in `docker compose ls`
+    compose_project=JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME,     # compose project label on spawned labs (defaults to the hub project; overridable to differ)
     docker_proxy_socket_dir=JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR,   # path inside hub where per-user sockets live (backed by named volume)
     docker_proxy_volume_name=JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME,      # named docker volume; the spawner subpath-mounts this into each lab
     user_compose_project_template=JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE,  # rendered per-user when a docker-limited group enables it

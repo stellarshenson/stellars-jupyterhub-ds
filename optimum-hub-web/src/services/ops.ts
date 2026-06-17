@@ -60,7 +60,9 @@ export const stopAllServers = (users: string[]) =>
   run(`Stopped ${users.length} server(s)`, () => Promise.all(users.map((u) => hubSend('DELETE', `/users/${u}/server`))), [['servers'], ['stats'], ['resources']])
 
 export const extendSession = (user: string, hours = 2) =>
-  run(`Extended ${user}'s session by ${hours}h`, () => hubSend('POST', `/users/${user}/extend-session`, { hours }), [['session', user], ['servers']])
+  // invalidate ['hero', user] too: the TTL bar reads from the hero query, so
+  // without it an extend updated the backend but the bar never refetched
+  run(`Extended ${user}'s session by ${hours}h`, () => hubSend('POST', `/users/${user}/extend-session`, { hours }), [['hero', user], ['session', user], ['servers']])
 
 export const resetActivity = () =>
   run('Reset activity samples', () => hubSend('POST', '/activity/reset'), [['servers'], ['stats'], ['resources']])

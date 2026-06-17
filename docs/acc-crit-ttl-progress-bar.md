@@ -44,3 +44,39 @@ Each row is demonstrated live on `/design-language` (TTL behaviour matrix row).
   - log: 2026-06-17 pending deploy (onExtend -> extendSession wired; live round-trip needs the running hub)
 - [x] **Runtime: visual drain + colour shift** - the matrix renders blue -> amber -> red with the base-relative cap and the at-ceiling disable
   - log: 2026-06-17 VISUALLY CONFIRMED via Playwright headless render of /design-language (6 gadgets): full=100% blue, ample=75% blue, warn=amber, low=red, extended(5h>base)=full bar capped not overflowing, at-ceiling=Extend disabled. Screenshot reviewed. (Live drain over wall-clock + extend round-trip on a running session still observable on the deployed hub.)
+
+## Replenish laws (SSOT: idle_culler.py, mirrored in the bar)
+
+- [x] **Activity floor = base** - an active server retains at least base; activity replenishes remaining up to base, never above (`calc_remaining` activity_floor = base - idle)
+  - log: 2026-06-17 verified (test_remaining_keeps_active_server_at_base)
+- [x] **No replenish above base** - while extended (remaining > base) an active server is NOT topped up; the banked time drains via the deadline until it falls to base
+  - log: 2026-06-17 added test_remaining_extended_not_inflated_by_activity
+- [x] **Drains to base then replenishes** - once remaining falls below base, an active server is topped back to exactly base ("max becomes base again") and normal replenish resumes
+  - log: 2026-06-17 added test_remaining_below_base_active_replenishes_to_base
+- [x] **Ceiling cap** - no extend sequence banks lifetime past base + max_extension; the deadline never sits more than ceiling ahead of now
+  - log: 2026-06-17 verified (test_remaining_clamped_to_ceiling, test_extend_caps_at_ceiling)
+
+## Extend refetches the bar
+
+- [x] **Extend invalidates hero** - `extendSession` invalidates `['hero', user]` (plus session, servers) so the bar refetches and grows after a successful extend
+  - log: 2026-06-17 FIXED - was `['session', user]` + `['servers']` only; the bar reads from the hero query so an extend updated the backend but only a toast showed, the bar never moved
+- [ ] **Runtime: extend grows the bar** - on a running session below full, Extend visibly refills the bar to the new remaining (pinned at 100% if pushed above base), like the old design
+  - log: 2026-06-17 invalidation fixed; live round-trip pending deploy
+
+## Test harness
+
+- [x] **Python SSOT matrix runs all scenarios** - `test_ttl_matrix.py` + `test_idle_culler.py` cover progress pct, ceiling, available hours, extend (add/cap/maxed), remaining (activity floor, replenish, ceiling, floor), cull
+  - log: 2026-06-17 extended with the two replenish-law scenarios; `make test` green
+- [ ] **No JS test harness for the bar** - the portal has no vitest setup; the `TtlGadget` pct formula mirrors `calc_progress_pct` verbatim and is covered in Python; a JS unit test would need a new harness
+  - log: 2026-06-17 gap documented
+
+## Home server-controls additions
+
+- [x] **Uptime on the TTL line** - the TtlGadget shows "up Xh" inline (next to the remaining-time clock) for a running server
+  - log: 2026-06-17 implemented - `server_started` (spawner `orm_spawner.started`) added to the activity payload -> `getServerHero.startedISO` -> `TtlGadget uptimeLabel={timeAgoShort(startedISO)}`; mock + typecheck clean
+- [x] **Upgrade-available pill** - a gold "Upgrade available" pill shows left of the status pill on the Server status card when a newer lab image is available locally than the running container's
+  - log: 2026-06-17 implemented - `lab_image_id` (cached ~5min) vs the container's running image id (`container.attrs['Image']`, reused from the stats inspect); `image_upgrade_available` pure helper (5 unit tests); surfaced as `lab_image_upgrade_available` -> `hero.upgradeAvailable`
+- [x] **Edge: image id unknown** - local image absent / docker unreachable -> `lab_image_id` None -> no upgrade offered (never a false pill)
+  - log: 2026-06-17 covered by test_image_upgrade (None cases)
+- [ ] **Edge: re-tag to older** - if the local tag is moved to an OLDER image the pill still shows (different-id heuristic; watchtower only pulls forward so this is theoretical)
+  - log: 2026-06-17 documented limitation - a created-time compare would close it at the cost of extra docker inspects; left out by design

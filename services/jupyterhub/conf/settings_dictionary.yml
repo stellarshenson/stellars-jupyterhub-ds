@@ -8,9 +8,13 @@ JupyterHub Core:
     description: Admin username
     default: admin
 
-  - name: COMPOSE_PROJECT_NAME
-    description: Docker compose project name - groups hub and user containers in `docker compose ls`, prefixes per-user volume names
+  - name: JUPYTERHUB_COMPOSE_PROJECT_NAME
+    description: Hub's docker compose project - prefixes per-user volume names and labels the hub's own containers; mapped from compose's COMPOSE_PROJECT_NAME
     default: jupyterhub
+
+  - name: JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME
+    description: Compose project label stamped on spawned lab containers; empty = same project as the hub, set to group user containers under a different `docker compose` project
+    default: ""
 
   - name: JUPYTERHUB_BASE_URL
     description: Base URL path

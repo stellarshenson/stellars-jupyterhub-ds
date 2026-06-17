@@ -347,6 +347,8 @@ export const mockSource: DataSource = {
       status,
       statusLabel: s ? (status === 'active' ? `Active ${s.since}` : status === 'idle' ? `Idle ${s.since}` : 'Spawning') : 'Offline',
       activity: p.activity,
+      startedISO: s ? new Date(Date.now() - 3 * 3600_000).toISOString() : null,
+      upgradeAvailable: false,
       ttl: { timeLeftMin: s ? s.timeLeftMin : 0, baseMin: IDLE_CULLER.timeoutH * 60, maxAddHours: IDLE_CULLER.maxExtensionH },
       resources: s
         ? { cpu: s.cpu, mem: s.memPct, gpu: s.gpu ? 100 : 0, gpus: gpuUtils(s.gpu), memTip: `${s.memGB} GB of host RAM` }

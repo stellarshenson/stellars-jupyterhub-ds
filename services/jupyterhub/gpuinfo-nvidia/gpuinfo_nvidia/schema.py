@@ -26,6 +26,8 @@ class Gpu(BaseModel):
     utilization: Optional[int] = None  # percent; None if the backend has no counter
     memory_used_mb: Optional[int] = None
     memory_total_mb: Optional[int] = None
+    temperature_c: Optional[int] = None  # GPU core temp in Celsius
+    power_w: Optional[float] = None  # current board power draw in Watts
     processes: List[GpuProcess] = []
 
 

@@ -37,6 +37,8 @@ The portal's visual conventions, applied consistently across every screen. `[x]`
   - log: 2026-06-17 documented (design-language note); cells use title tooltips for breakdowns
 - [x] **Progress bars** - the standard bar is base-relative and drains blue -> amber -> red toward the cull; the GPU striped bars are the alternative (one labelled bar per device) for multi-device load
   - log: 2026-06-17 verified (TtlGadget + ResourceBars + GpuMeter; documented on /design-language)
+- [x] **GPU device labels = mini names** - per-GPU bars label each device with its mini name (vendor/brand boilerplate stripped: "NVIDIA GeForce RTX 5090" -> "5090") instead of the bare index; full index + name stay in the hover tooltip
+  - log: 2026-06-17 implemented (shortGpuName strips NVIDIA/GeForce/RTX/Generation; GpuMeter label uses it); typecheck clean, live render pending deploy
 
 ## Mobile
 

@@ -16,7 +16,7 @@ services:
     container_name: stellars-functest-jupyterhub
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw   # DockerSpawner
-      - certs:/mnt/certs
+      - certs:/certs
       - data:/data
       - shared:/mnt/shared
       - docker_sockets:/var/run/jupyterhub-docker-proxy-sockets

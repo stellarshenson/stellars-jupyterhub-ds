@@ -1,19 +1,21 @@
 #!/bin/bash
 # Two-stage cert provisioning for Traefik: operator -> persisted -> auto.
 #
-#   /mnt/user_certs   operator-supplied yml + cert/key (optional bind-mount)
-#   /mnt/certs        runtime dir Traefik scans (directory provider + watch=true)
+#   /user-certs   operator-supplied yml + cert/key (optional bind-mount)
+#   /certs        runtime dir Traefik scans (directory provider + watch=true)
 #
-# Decision: operator if /mnt/user_certs has at least one *.yml/*.yaml AND
+# Decision: operator if /user-certs has at least one *.yml/*.yaml AND
 # every certFile/keyFile/caFile referenced by those yml files resolves to an
-# existing file under /mnt/user_certs (or another extant absolute path).
-# Otherwise persisted (anything already in /mnt/certs from a prior boot).
+# existing file under /user-certs (or another extant absolute path). A
+# certFile written as /certs/... (the runtime dir Traefik reads) maps back to the
+# overlay for this validation, so operator yml can use the same /certs paths
+# Traefik sees. Otherwise persisted (anything already in /certs from a prior boot).
 # Otherwise auto-generate via /mkcert.sh.
 
 set -e
 
-USER_CERTS="${CERTIFICATE_USER_CERTS_DIR:-/mnt/user_certs}"
-TARGET="${CERTIFICATE_TARGET_DIR:-/mnt/certs}"
+USER_CERTS="${CERTIFICATE_USER_CERTS_DIR:-/user-certs}"
+TARGET="${CERTIFICATE_TARGET_DIR:-/certs}"
 DEFAULT_CN="${CERTIFICATE_DOMAIN_NAME:-localhost}"
 LOG_PREFIX="[Certificates]"
 
@@ -30,14 +32,18 @@ extract_paths() {
     yq eval '.. | (.certFile? , .keyFile? , .caFile?) | select(. != null)' "$yml" 2>/dev/null
 }
 
-# Normalise an extracted path to where it should live inside /mnt/user_certs
-# while we're still validating; absolute-elsewhere paths pass through.
-resolve_user_path() {
-    case "$1" in
-        "$USER_CERTS"/*) echo "$1" ;;
-        "$TARGET"/*)     echo "$USER_CERTS/${1#$TARGET/}" ;;
-        /*)              echo "$1" ;;            # other absolute - operator's own path
-        *)               echo "$USER_CERTS/$1" ;; # relative -> under user_certs/
+# Resolve an extracted cert path to where it should live under <dir> for
+# validation. Paths written against either known cert dir (the USER_CERTS overlay
+# or the TARGET runtime) are remapped under <dir>; other absolute paths pass
+# through; bare/relative names go under <dir>. Used for both the operator overlay
+# (dir=USER_CERTS) and the persisted volume (dir=TARGET).
+resolve_under() {
+    local dir="$1" p="$2"
+    case "$p" in
+        "$USER_CERTS"/*) echo "$dir/${p#$USER_CERTS/}" ;;
+        "$TARGET"/*)     echo "$dir/${p#$TARGET/}" ;;
+        /*)              echo "$p" ;;            # other absolute - operator's own path
+        *)               echo "$dir/$p" ;;       # bare/relative -> under <dir>
     esac
 }
 
@@ -48,7 +54,7 @@ operator_certs_valid() {
     local yml p resolved
     for yml in "${ymls[@]}"; do
         for p in $(extract_paths "$yml"); do
-            resolved=$(resolve_user_path "$p")
+            resolved=$(resolve_under "$USER_CERTS" "$p")
             if [ ! -f "$resolved" ]; then
                 log_err "operator yml $yml references $p but $resolved is missing"
                 return 1
@@ -69,10 +75,24 @@ apply_operator_certs() {
         sed -i "s|${USER_CERTS}/|${TARGET}/|g" {} \;
 }
 
+# Persisted: the volume already holds a usable set from a prior boot. Symmetric
+# with operator validation - at least one yml under TARGET whose every referenced
+# cert/key/ca file exists - so a copied operator set (e.g. *.pem in a subdir) is
+# recognised across a restart where the host overlay fails to mount, and is never
+# clobbered by auto-generate. The old check only saw top-level *.crt and missed
+# subdir/.pem layouts, falling through to self-signed whenever the host bind
+# failed to mount - the exact case this volume copy exists to survive.
 persisted_certs_valid() {
-    local crts=("$TARGET"/*.crt)
     local ymls=("$TARGET"/*.yml "$TARGET"/*.yaml)
-    [ "${#crts[@]}" -gt 0 ] && [ "${#ymls[@]}" -gt 0 ]
+    [ "${#ymls[@]}" -gt 0 ] || return 1
+    local yml p resolved
+    for yml in "${ymls[@]}"; do
+        for p in $(extract_paths "$yml"); do
+            resolved=$(resolve_under "$TARGET" "$p")
+            [ -f "$resolved" ] || return 1
+        done
+    done
+    return 0
 }
 
 auto_generate() {

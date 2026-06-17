@@ -90,6 +90,22 @@ def test_remaining_floored_at_zero():
     assert calc_remaining(-100, BASE + 100, BASE, CEIL) == 0
 
 
+# ---- replenish laws: no auto-replenish above base; drains to base then tops up
+
+def test_remaining_extended_not_inflated_by_activity():
+    # extended above base (deadline 1.5x base) and freshly active (0s idle):
+    # activity floor is only `base`, so remaining stays the extended deadline -
+    # activity does NOT replenish above base; the banked time just drains.
+    assert calc_remaining(int(1.5 * BASE), 0, BASE, CEIL) == int(1.5 * BASE)
+
+
+def test_remaining_below_base_active_replenishes_to_base():
+    # deadline drained below base but the server is active (0s idle): the activity
+    # floor tops remaining back up to exactly base ("max becomes base again"),
+    # resuming the normal replenish law once back in the base window.
+    assert calc_remaining(BASE // 3, 0, BASE, CEIL) == BASE
+
+
 # ---- cull decision --------------------------------------------------------
 
 @pytest.mark.parametrize("remaining, age, max_age, culled", [
