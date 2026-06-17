@@ -203,7 +203,7 @@ export default function DesignLanguage() {
           <div style={{ width: 320 }}>
             <ResourceBars rows={[
               { label: 'CPU', value: 47, tip: '47% used\n32 cores assigned' },
-              { label: 'Memory', value: 62, tip: '5.0 GB used\n62% of 8 GB assigned\n8% of 64 GB host' },
+              { label: 'Memory', value: 62, tip: '62% used\n5.0 of 8 GB assigned\n8% of 64 GB host' },
             ]} />
           </div>
         </Row>

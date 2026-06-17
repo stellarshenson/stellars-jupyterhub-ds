@@ -23,8 +23,25 @@ from .schema import GpuReport, Health
 log = logging.getLogger("uvicorn.error")
 
 
+def _gpu_health(g, total_mb):
+    """One-line current-health summary for a GPU; skips any metric the driver did
+    not report (so a partial sample never prints 'None')."""
+    used = g.get("memory_used_mb")
+    util = g.get("utilization")
+    temp = g.get("temperature_c")
+    power = g.get("power_w")
+    parts = [
+        f"{util}% util" if util is not None else "",
+        f"{used / 1024:.1f}/{total_mb / 1024:.0f} GB mem" if used is not None and total_mb else "",
+        f"{temp}C" if temp is not None else "",
+        f"{power:.0f} W" if power is not None else "",
+    ]
+    return ", ".join(p for p in parts if p)
+
+
 def _log_detected_hardware():
-    """Sample the GPUs once at startup and log what was detected (or its absence)."""
+    """Sample the GPUs once at startup and log the inventory + current health (or
+    the absence of any GPU)."""
     available, gpus = nvidia.sample()
     if not available or not gpus:
         log.warning("[gpuinfo-nvidia] no NVIDIA driver/GPU detected - serving empty inventory")
@@ -33,9 +50,11 @@ def _log_detected_hardware():
     for g in gpus:
         mb = g.get("memory_total_mb")
         mem = f"{mb / 1024:.0f} GB" if mb else "? GB"
+        health = _gpu_health(g, mb)
         log.info(
-            "[gpuinfo-nvidia]   GPU %s: %s (%s, %s)",
+            "[gpuinfo-nvidia]   GPU %s: %s (%s, %s)%s",
             g.get("index"), g.get("name") or "unknown", g.get("uuid") or "no-uuid", mem,
+            f" - health: {health}" if health else "",
         )
 
 

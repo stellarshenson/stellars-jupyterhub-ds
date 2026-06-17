@@ -119,8 +119,10 @@ export default function UserConfig() {
       {/* admins can always spawn -> the force-password gate is meaningless for
           them; the control hides the moment admin is toggled on (like Authorised) */}
       {!isBuiltinAdmin && !liveAdmin && (
-        <Form.Item label="Force password change on next login" name="forcePw" valuePropName="checked" tooltip="The user cannot start their server until they set a new password">
-          <Switch />
+        <Form.Item label="Force password change on next login" name="forcePw" valuePropName="checked">
+          {/* native hover tooltip on the control itself (antd Switch forwards
+              `title` to its button) - not a Form.Item `tooltip` (?) icon */}
+          <Switch title="The user cannot start their server until they set a new password" />
         </Form.Item>
       )}
     </Form>

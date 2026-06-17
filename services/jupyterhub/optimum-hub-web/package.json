@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:mock": "vite --mode mock",
     "build": "tsc -b && vite build",
     "build:live": "tsc -b && vite build --mode live",
     "build:hub": "tsc -b && vite build --mode hub",

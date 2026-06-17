@@ -123,3 +123,36 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project=''):
         except Exception:
             pass
     return running
+
+
+def stop_gpuinfo_sidecar(url):
+    """Stop + remove the GPU-info sidecar. Never raises.
+
+    Registered as the hub's at-exit cleanup so the hub-managed sidecar does not
+    outlive its parent: when the hub stops, the sidecar stops too, instead of
+    lingering as an orphaned container (compose `down` leaves it untouched - the
+    hub owns it, not compose). Removing rather than only stopping also means the
+    next hub boot recreates it fresh from the current image (so a rebuilt image
+    is always picked up, never a stale reused container). Best-effort: a hard
+    SIGKILL of the hub skips this, leaving the `unless-stopped` policy to keep
+    the sidecar until the next clean cycle.
+    """
+    import docker
+
+    name = container_name_from_url(url)
+    try:
+        client = docker.DockerClient('unix://var/run/docker.sock')
+    except Exception:
+        return
+    try:
+        client.containers.get(name).remove(force=True)
+        log.info(f"[GPUInfo] removed sidecar '{name}' on hub shutdown")
+    except docker.errors.NotFound:
+        pass
+    except Exception as e:
+        log.warning(f"[GPUInfo] could not stop sidecar on shutdown: {e}")
+    finally:
+        try:
+            client.close()
+        except Exception:
+            pass

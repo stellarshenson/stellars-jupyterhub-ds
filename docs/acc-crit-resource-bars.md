@@ -54,6 +54,12 @@ The CPU/Memory/GPU progress bars on the "Server Status" panel (the server card's
   - log: 2026-06-17 FIXED - added `cpuTip` to `getTotalResources`, passed `total.cpuTip`/`total.memTip` in Home.tsx
 - [x] **Host status tips quote % used** - both Host CPU and Memory tooltips lead with a `N% used` line (the bar value) followed by the absolute breakdown (`~N of H cores ...` / `N of M GB ...`), multiline like the per-server widget
   - log: 2026-06-17 added - `getTotalResources` now derives `cpuBar`/`memBar` and prefixes both tips; memTip also names the host total GB
+- [x] **Host memory denominator is host RAM** - the Host memory bar + tooltip divide by `activity.memory_host_total_mb` (real host RAM), NOT `active[0].memory_total_mb` (which is the first user's cgroup ceiling when that user is mem-limited, and would over-report the host %)
+  - log: 2026-06-17 adversarial-sweep finding - `getTotalResources` was using the first active user's ceiling; fixed to `memory_host_total_mb` (matching getServers/getServerHero)
+- [x] **Mock parity** - the demo (`mockSource`) matches live: `getTotalResources` returns `cpuTip`/`memTip` leading with `N% used`, and the activity meter carries `activityHours` (so the tooltip's "Active on average Nh/day" line shows in demo too)
+  - log: 2026-06-17 adversarial-sweep finding - mock lacked both; added to `toServerRow`/`toUserRow`/`getServerHero`/`getTotalResources`
+- [x] **Per-server memory tooltip leads with % used** - the per-server memory tooltip leads with `N% used` (the bar value), matching CPU and the Host tooltips, then the absolute `X of Y GB assigned/host` line and the `% of host` line; previously it led with `X GB used`
+  - log: 2026-06-17 operator "unify memory to lead with % used too" - `getServers` + `getServerHero` (live), `toServerRow` + `getServerHero` (mock), and the `/design-language` example
 - [x] **Total CPU is host-relative** - the aggregate CPU bar = total cores-used / host cores (largest assigned-core count among active servers), not a clamped sum that always pegged ~100%
   - log: 2026-06-17 implemented; tip reads "~N of H cores in use across M servers"
 - [x] **GPU tooltips native** - per-GPU bars/chips carry the standard browser `title` (name/UUID/memory/util/temp/power), not a bespoke antd popup

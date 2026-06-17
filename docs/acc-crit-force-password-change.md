@@ -35,8 +35,8 @@ An admin can require a user to change their password before they can use the pla
   - log: 2026-06-17 `UserConfig.tsx`
 - [x] **Hidden for admins** - the toggle only shows when the configured user is NOT an admin; flipping Administrator on hides it reactively (admins can always spawn, so the gate is meaningless for them) - gated on `liveAdmin`, mirroring the Authorised switch
   - log: 2026-06-17 `UserConfig.tsx` `!isBuiltinAdmin && !liveAdmin`
-- [x] **Help is a tooltip, not an inline note** - "The user cannot start their server until they set a new password" is the control's `tooltip`, not an `extra` note (prefer tooltip over inline descriptive copy)
-  - log: 2026-06-17 `Form.Item tooltip=...` (was `extra=...`)
+- [x] **Help is a tooltip on the control, not an inline note or (?) icon** - "The user cannot start their server until they set a new password" is a standard hover tooltip on the switch itself (native `title` on `<Switch>`, which antd forwards to the control), not an `extra` note and not a `Form.Item tooltip` (?) label icon
+  - log: 2026-06-17 `extra=` -> `Form.Item tooltip=` (?) icon -> native `<Switch title=...>` per operator ("no (?) icon, normal standard tooltip on the control")
 - [x] **Applied after the password set** - in `save()` the flag is applied AFTER any password set, so an admin setting a temp password + forcing a change leaves the gate ON (the password set clears it, the toggle re-sets it)
   - log: 2026-06-17 order enforced in `save()`; `setForcePasswordChange` ops, admin-only
 - [x] **Reactive admin reveal** - flipping Administrator updates the dependent controls at once via `Form.useWatch` (admins are auto-authorised -> the Authorised switch yields to a note)
