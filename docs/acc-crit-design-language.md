@@ -28,6 +28,10 @@ The portal's visual conventions, applied consistently across every screen. `[x]`
 
 - [x] **Normal-text taxonomy** - five text colours, all from the defined palette vars: neutral (`--color-text`, body), link (`--color-accent`, e.g. a user-profile link), success (`--color-success`, green), warning (`--color-warning`, orange), dangerous (`--color-danger`, red); one utility class each (`.oh-text-*`)
   - log: 2026-06-17 added `.oh-text-neutral/link/success/warning/danger` (global.css) + demoed on /design-language ("Normal text" card); first consumer = the volume-reset "removed" red text; operator "add to design language normal text"
+- [x] **Named palette (dim / normal / intense)** - a named colour palette borrowed from the tokens - green (success), cyan/blue (accent), red (danger), orange (warning), gray (text-subtle) - each as `--oh-<name>` with `-dim` (mixed toward surface) and `-intense` (mixed toward text) variants, referable by name; demoed as labelled squares on /design-language ("Palette" card). Magenta is not in the current tokens
+  - log: 2026-06-18 added `:root --oh-*` (global.css) via `color-mix` on the source vars; operator "design palette of colours ... dim, normal, intense ... refer to them by name ... borrow from already defined"
+- [x] **Activity meter red is pale** - the activity meter's low (red) segments use `--oh-red-dim` so the solid blocks read as soft as the thin danger / stop-button glyph (both still derive from `--color-danger`)
+  - log: 2026-06-18 `.oh-meter.low i.on` -> `--oh-red-dim`; operator "activity red - make it the same pale colour as the stop button"
 
 ## Headers / chrome
 

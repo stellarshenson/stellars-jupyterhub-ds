@@ -21,6 +21,29 @@ body { margin: 0; font-family: var(--font-sans); }
 .oh-text-success { color: var(--color-success); }
 .oh-text-warning { color: var(--color-warning); }
 .oh-text-danger { color: var(--color-danger); }
+
+/* Named colour palette (design language) - borrowed from the defined tokens, each
+   in three intensities so they can be referred to by name: --oh-<name>{,-dim,-intense}.
+   normal = the token; dim = mixed toward the surface (softer, lower contrast);
+   intense = mixed toward the text colour (stronger, higher contrast). Both adapt per
+   theme because the source vars do. (cyan is the accent - we call it "blue".) */
+:root {
+  --oh-green: var(--color-success);
+  --oh-green-dim: color-mix(in srgb, var(--color-success) 45%, var(--color-surface));
+  --oh-green-intense: color-mix(in srgb, var(--color-success) 80%, var(--color-text));
+  --oh-cyan: var(--color-accent);
+  --oh-cyan-dim: color-mix(in srgb, var(--color-accent) 45%, var(--color-surface));
+  --oh-cyan-intense: color-mix(in srgb, var(--color-accent) 80%, var(--color-text));
+  --oh-red: var(--color-danger);
+  --oh-red-dim: color-mix(in srgb, var(--color-danger) 45%, var(--color-surface));
+  --oh-red-intense: color-mix(in srgb, var(--color-danger) 80%, var(--color-text));
+  --oh-orange: var(--color-warning);
+  --oh-orange-dim: color-mix(in srgb, var(--color-warning) 45%, var(--color-surface));
+  --oh-orange-intense: color-mix(in srgb, var(--color-warning) 80%, var(--color-text));
+  --oh-gray: var(--color-text-subtle);
+  --oh-gray-dim: color-mix(in srgb, var(--color-text-subtle) 45%, var(--color-surface));
+  --oh-gray-intense: color-mix(in srgb, var(--color-text-subtle) 80%, var(--color-text));
+}
 .oh-name-hint { display: block; color: var(--color-text-subtle); font-size: 10px; line-height: 1; margin-top: 1px; }
 /* user cell: reserve a constant height so rows with a full name match rows without */
 .oh-user-cell { display: flex; flex-direction: column; justify-content: center; min-height: 32px; }
@@ -68,7 +91,7 @@ body { margin: 0; font-family: var(--font-sans); }
 .oh-meter i { display: block; width: 4px; height: 12px; border-radius: 1px; background: var(--color-border-strong); }
 .oh-meter i.on { background: var(--color-success); }
 .oh-meter.idle i.on { background: var(--color-warning); }
-.oh-meter.low i.on { background: var(--color-danger); }
+.oh-meter.low i.on { background: var(--oh-red-dim); } /* pale red - solid blocks read softer than a thin danger glyph */
 .oh-meter.fill { display: flex; flex: 1; }
 .oh-meter.fill i { flex: 1; width: auto; height: 8px; }
 

@@ -7,7 +7,7 @@ from ..event_log import EventLogManager
 
 
 class EventsDataHandler(BaseHandler):
-    """GET the most recent platform events for the portal Overview + Events page."""
+    """The platform event log: GET the recent feed, DELETE to clear it (admin-only)."""
 
     @web.authenticated
     async def get(self):
@@ -17,3 +17,13 @@ class EventsDataHandler(BaseHandler):
 
         events = EventLogManager.get_instance().recent(limit=100)
         self.finish({"events": events})
+
+    @web.authenticated
+    async def delete(self):
+        """Clear the entire event log (the Events panel "Clear" action)."""
+        current_user = self.current_user
+        if not current_user.admin:
+            raise web.HTTPError(403, "Only administrators can access this endpoint")
+
+        cleared = EventLogManager.get_instance().clear()
+        self.finish({"cleared": cleared})

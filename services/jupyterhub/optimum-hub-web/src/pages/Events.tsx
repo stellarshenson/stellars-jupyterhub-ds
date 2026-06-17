@@ -3,10 +3,11 @@
 import { useMemo, useState } from 'react'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
-import { Input, Segmented } from 'antd'
+import { Button, Input, Modal, Segmented } from 'antd'
 import { PageHeader } from '../components/PageHeader'
 import { ScopeFilterPills, TONE_CLASS } from '../components/ScopeFilterPills'
 import { Icon } from '../components/Icon'
+import { clearEvents } from '../services/ops'
 import { useEvents } from '../hooks/queries'
 import { timeAgoShort, exactDate } from '../lib/format'
 import type { EventRow, EventType } from '../services/types'
@@ -44,6 +45,16 @@ export default function Events() {
   }, [rangeFiltered])
 
   const filtered = useMemo(() => rangeFiltered.filter((e) => scope === 'all' || e.type === scope), [rangeFiltered, scope])
+
+  // clearing the persisted audit log is destructive + irreversible -> confirm first
+  const clearLog = () =>
+    Modal.confirm({
+      title: 'Clear the event log?',
+      content: 'This permanently deletes every recorded event. This cannot be undone.',
+      okText: 'Clear log',
+      okButtonProps: { danger: true },
+      onOk: () => clearEvents(),
+    })
 
   const columns: ProColumns<EventRow>[] = [
     {
@@ -122,6 +133,7 @@ export default function Events() {
             onChange={(e) => setQ(e.target.value)}
             style={{ width: 220 }}
           />,
+          <Button key="clear" danger icon={<Icon name="close" size={14} />} disabled={!data.length} onClick={clearLog}>Clear log</Button>,
         ]}
       />
     </>

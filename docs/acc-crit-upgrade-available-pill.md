@@ -37,10 +37,12 @@ The home/server "Upgrade available" pill tells a user that a stop/start would la
 
 - [x] **Running server only** - the pill shows only for an active server (the upgrade check runs on the container stats path, default `lab_image_upgrade_available: False`)
   - log: 2026-06-17 verified (activity.py only sets it inside the active-users stats merge)
-- [ ] **Pill desktop + mobile** - `hero.upgradeAvailable` renders a gold "Upgrade available" pill on the "Server Control" card (desktop) and the mobile MyServerCard
+- [x] **Label is "Update available"** - the user-facing pill label reads "Update available" (capital U); internal identifiers (`upgradeAvailable`, `lab_image_upgrade_available`) keep "upgrade"
+  - log: 2026-06-18 renamed (operator "upgrade available -> update available ... with capital U") in `ServerHero.tsx` + `MobileHome.tsx`; also the /design-language reference text
+- [ ] **Pill desktop + mobile** - `hero.upgradeAvailable` renders a gold "Update available" pill on the "Server Control" card (desktop) and the mobile MyServerCard
   - log: 2026-06-17 backend confirmed live (pill=True for konrad); on-screen render pends operator rebuild
-- [x] **Tooltip says stop/start, not restart** - the pill tooltip reads "A newer lab image is available locally - stop your server and start a new one to upgrade"; a Docker restart reuses the existing container/image so it would NOT upgrade
-  - log: 2026-06-17 corrected from "restart ... to upgrade" in `ServerHero.tsx` + `MobileHome.tsx`
+- [x] **Tooltip says stop/start, not restart** - the pill tooltip reads "A newer lab image is available locally - stop your server and start a new one to update"; a Docker restart reuses the existing container/image so it would NOT update
+  - log: 2026-06-17 corrected from "restart ... to upgrade" in `ServerHero.tsx` + `MobileHome.tsx`; 2026-06-18 verb "upgrade"->"update" with the label rename
 - [ ] **Runtime: pill clears after upgrade** - after stop/start onto the new image the running id == tag id -> pill disappears on the next `/activity` refresh
   - log: 2026-06-17 logic verified (`newer_lab_image_available(ref, latest_id)` -> False); live confirm pends rebuild
 

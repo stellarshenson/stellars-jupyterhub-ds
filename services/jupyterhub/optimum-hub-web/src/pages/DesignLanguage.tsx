@@ -88,6 +88,25 @@ export default function DesignLanguage() {
         </div>
       </Card>
 
+      <Card title="Palette (named, dim / normal / intense)" style={{ marginBottom: 16 }}>
+        {[
+          { v: 'green', label: 'green' },
+          { v: 'cyan', label: 'cyan (blue)' },
+          { v: 'red', label: 'red' },
+          { v: 'orange', label: 'orange' },
+          { v: 'gray', label: 'gray' },
+        ].map((c) => (
+          <Row key={c.v} label={c.label}>
+            <Swatch token={`--oh-${c.v}-dim`} name="dim" />
+            <Swatch token={`--oh-${c.v}`} name="normal" />
+            <Swatch token={`--oh-${c.v}-intense`} name="intense" />
+          </Row>
+        ))}
+        <div className="oh-note" style={{ marginTop: 4 }}>
+          <b>Palette:</b> borrowed from the defined tokens (green = success, cyan/blue = accent, red = danger, orange = warning, gray = text-subtle), each <code>--oh-&lt;name&gt;</code> with <code>-dim</code> (toward surface) and <code>-intense</code> (toward text) variants - refer to them by name. Magenta is not in the current tokens.
+        </div>
+      </Card>
+
       <Card title="Action buttons" style={{ marginBottom: 16 }}>
         <Row label="page (primary/secondary/danger/disabled)">
           <Button type="primary">Save</Button>
@@ -143,7 +162,7 @@ export default function DesignLanguage() {
           <NotificationPill type="in-progress" label="in-progress" />
         </Row>
         <div className="oh-note" style={{ marginTop: 4 }}>
-          <b>Notification tones</b> reuse the status-pill vocabulary so every advisory reads in the same colours: success = Active green, warning = idle amber, info = the "All" scope cyan, passive = neutral gray, dangerous = red, in-progress = pulsing cyan. Broadcast types and the "Upgrade available" badge both draw from this one map (<code>NotificationPill</code>), never an ad-hoc Tag colour.
+          <b>Notification tones</b> reuse the status-pill vocabulary so every advisory reads in the same colours: success = Active green, warning = idle amber, info = the "All" scope cyan, passive = neutral gray, dangerous = red, in-progress = pulsing cyan. Broadcast types and the "Update available" badge both draw from this one map (<code>NotificationPill</code>), never an ad-hoc Tag colour.
         </div>
         <Row label="Tags">
           <Tag bordered={false} style={tagStyle('var(--color-accent-soft)', 'var(--color-accent)')}>accent</Tag>

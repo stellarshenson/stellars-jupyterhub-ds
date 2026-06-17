@@ -47,3 +47,19 @@ def test_table_is_pruned_to_max_rows(manager, monkeypatch):
     rows = manager.recent(limit=100)
     assert len(rows) == 5
     assert rows[0]['text'] == 'event 11'  # newest retained
+
+
+def test_clear_empties_the_log(manager):
+    manager.record('user', 'one')
+    manager.record('group', 'two')
+    removed = manager.clear()
+    assert removed == 2
+    assert manager.recent() == []
+    # log keeps working after a clear
+    manager.record('user', 'three')
+    assert [r['text'] for r in manager.recent()] == ['three']
+
+
+def test_clear_empty_log_is_noop(manager):
+    assert manager.clear() == 0
+    assert manager.recent() == []
