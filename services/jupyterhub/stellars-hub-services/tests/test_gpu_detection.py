@@ -41,8 +41,8 @@ def test_reachable_detects_persists_and_uses_bounded_probe(monkeypatch, _data_di
     enabled, detected, gpus = gpu.resolve_gpu_mode(2, probe_sidecar=True)
     assert (enabled, detected) == (1, 1)
     assert gpus and gpus[0]["uuid"] == "GPU-abc"
-    # bounded boot probe, not the old 20x1s
-    assert calls["kwargs"] == {"attempts": 6, "delay": 0.5, "timeout": 2}
+    # bounded boot probe (~5s worst case), not the old 20x1s
+    assert calls["kwargs"] == {"attempts": 3, "delay": 0.5, "timeout": 1}
     assert (_data_dir / "gpu_inventory.json").exists()
 
 

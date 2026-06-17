@@ -72,7 +72,6 @@ def _fetch_gpu_utilization():
 
 def _refresh_sync():
     """Synchronous refresh of the GPU utilisation cache."""
-    global _gpu_util_cache
     logger = _get_logger()
 
     if _gpu_util_cache['refreshing']:

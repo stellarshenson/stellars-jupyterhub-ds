@@ -93,6 +93,16 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project=''):
         except docker.errors.NotFound:
             pass
 
+        # Don't let containers.run auto-pull a missing image - a cold/absent image
+        # would block hub boot on a registry pull (the very stall this self-start
+        # exists to avoid). If it isn't present locally, degrade to GPU-off; the
+        # caller skips the probe and seeds the UI from last-known inventory.
+        try:
+            client.images.get(image)
+        except docker.errors.ImageNotFound:
+            log.warning(f"[GPUInfo] image '{image}' not present locally; not pulling at boot - GPU off until available")
+            return False
+
         client.containers.run(
             image=image,
             name=name,

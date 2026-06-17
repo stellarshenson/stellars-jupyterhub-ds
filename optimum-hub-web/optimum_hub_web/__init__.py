@@ -48,13 +48,21 @@ BRAND_ROUTE = r"/brand/(.*)"
 # Tornado catch-all, relative to the hub prefix -> serves the SPA shell for every
 # /hub/<path> not already claimed by a JupyterHub built-in. extra_handlers run
 # AFTER the built-ins (app.py registers default_handlers first, first-match-wins),
-# so /hub/login, /hub/logout, /hub/api/*, /hub/static/*, /hub/home, /hub/admin,
-# /hub/spawn*, /hub/token etc. are served by the hub; only leftover SPA routes
-# (/dashboard, /servers, /users, ...) fall through here. The legacy server-page
-# handlers (/notifications, /settings, /activity, /groups) were unregistered so
-# they no longer shadow the matching SPA routes. The SPA landing avoids the
-# reserved /home name (see PORTAL_URL). Full rationale: docs/acc-crit-drop-portal-path.md.
-PORTAL_ROUTE = r"/(.*)"
+# so /hub/login, /hub/logout, /hub/static/*, /hub/home, /hub/admin, /hub/spawn*,
+# /hub/token etc. are served by the hub; only leftover SPA routes (/dashboard,
+# /servers, /users, ...) fall through here. The legacy server-page handlers
+# (/notifications, /settings, /activity, /groups) were unregistered so they no
+# longer shadow the matching SPA routes. The SPA landing avoids the reserved
+# /home name (see PORTAL_URL).
+#
+# The negative lookahead is load-bearing: TWO built-ins are appended AFTER
+# extra_handlers (jupyterhub/app.py: `/logo` -> LogoHandler and `/api/(.*)` ->
+# API404), so a bare /(.*) shadowed both - the lab logo (<img src=.../hub/logo>)
+# rendered the SPA HTML instead of the PNG, and an unknown /hub/api/* returned the
+# shell instead of a JSON 404. Excluding `logo` and `api/` lets them fall through
+# to those late built-ins (the custom /api/* data handlers register earlier in
+# extra_handlers, so they still win). Full rationale: docs/acc-crit-drop-portal-path.md.
+PORTAL_ROUTE = r"/(?!logo(?:/|$)|api/)(.*)"
 # Legacy path: 302 stale /hub/portal[/...] links to the hub-root SPA. Matched
 # before the catch-all so the browser never loads the shell at /portal and then
 # client-redirects (the one-second "portal" flash after login).

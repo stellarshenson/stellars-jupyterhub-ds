@@ -13,9 +13,11 @@ volume (see ``persisted_cache``) rather than blocking or showing nothing.
 
 from .persisted_cache import load_cached, save_cached
 
-# inventory rarely changes between restarts, so a short bounded probe (~3s) is
-# enough to catch a just-self-started local sidecar - never the old 20x1s stall.
-_BOOT_PROBE = {'attempts': 6, 'delay': 0.5, 'timeout': 2}
+# inventory rarely changes between restarts, so a short bounded probe (~5s worst
+# case: 3 attempts x (1s timeout + 0.5s delay)) is enough to catch a just-self-
+# started local sidecar - never the old 20x1s stall. A miss falls back to the
+# last-known inventory and self-heals on the next background refresh.
+_BOOT_PROBE = {'attempts': 3, 'delay': 0.5, 'timeout': 1}
 _INVENTORY_CACHE = 'gpu_inventory'
 
 

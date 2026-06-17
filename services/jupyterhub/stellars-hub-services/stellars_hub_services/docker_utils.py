@@ -1,8 +1,10 @@
 """Docker utility functions for container and volume operations."""
 
 import asyncio
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 
 _docker_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="docker-ops")
 
@@ -38,12 +40,26 @@ def get_container_stats(username):
             if system_delta > 0 and cpu_delta > 0:
                 cpu_percent = (cpu_delta / system_delta) * online_cpus * 100
 
-            # Assigned cores: the explicit CPU limit (HostConfig.NanoCpus, in
-            # billionths of a core) when one is set, else the host cores the
-            # container can actually use. cpu_cores_limited distinguishes the two
-            # so the UI can say "assigned" vs "host (no limit)".
-            nano_cpus = (container.attrs.get('HostConfig') or {}).get('NanoCpus') or 0
-            cpu_cores = round(nano_cpus / 1e9, 2) if nano_cpus else online_cpus
+            # Assigned cores: the explicit CPU limit when one is set, else the host
+            # cores the container can actually use. A limit comes two ways -
+            # DockerSpawner cpu_limit sets HostConfig.NanoCpus (billionths of a
+            # core); a cgroup cfs quota (the cpu-quota-* groups) sets CpuQuota /
+            # CpuPeriod. Check both so a quota-limited user's bar measures against
+            # their ceiling, not the host. cpu_cores_limited drives the "assigned"
+            # vs "host (no limit)" tooltip.
+            hostcfg = container.attrs.get('HostConfig') or {}
+            nano_cpus = hostcfg.get('NanoCpus') or 0
+            cpu_quota = hostcfg.get('CpuQuota') or 0
+            if nano_cpus:
+                cpu_cores = round(nano_cpus / 1e9, 2)
+                cpu_cores_limited = True
+            elif cpu_quota > 0:
+                cpu_period = hostcfg.get('CpuPeriod') or 100000  # kernel cfs default
+                cpu_cores = round(cpu_quota / cpu_period, 2)
+                cpu_cores_limited = True
+            else:
+                cpu_cores = online_cpus
+                cpu_cores_limited = False
 
             memory_usage = stats['memory_stats'].get('usage', 0)
             memory_limit = stats['memory_stats'].get('limit', 1)
@@ -52,7 +68,7 @@ def get_container_stats(username):
             return {
                 'cpu_percent': round(cpu_percent, 1),
                 'cpu_cores': cpu_cores,
-                'cpu_cores_limited': bool(nano_cpus),
+                'cpu_cores_limited': cpu_cores_limited,
                 'memory_mb': round(memory_usage / (1024 * 1024), 1),
                 'memory_percent': round(memory_percent, 1),
                 'memory_total_mb': round(memory_limit / (1024 * 1024), 1),
@@ -100,13 +116,15 @@ def get_executor():
 
 
 # ── Lab image upgrade detection ──────────────────────────────────────────────
-# "docker image ls" the lab repo and ask: is any local image more recently
-# created than the one the running container uses? Recency (not just a differing
-# id) so a re-tag to an older image never falsely offers an upgrade. The full
-# image list is snapshotted briefly to keep the polled activity endpoint off the
-# socket; the per-container check is then a dict lookup.
+# Ask: does the lab image tag now resolve to a different image than the one the
+# running container uses? Compare image IDs, not Created times - a rebuilt+pruned
+# image (the moment an upgrade exists) is gone from the store, so its timestamp is
+# unreadable; the tag's current target id is the reliable signal. A re-tag to an
+# older image is rejected by requiring the tag to be the repo's newest image. The
+# image list is snapshotted briefly (~5min) to keep the polled activity endpoint
+# off the socket; the per-container check is then a dict lookup.
 _IMAGE_TTL = 300  # seconds
-_image_snapshot = {'data': None, 'expires': 0.0}  # data = (created_by_id, newest_by_repo)
+_image_snapshot = {'data': None, 'expires': 0.0}  # data = (tag_to_id, newest_id_by_repo)
 
 
 def _image_repo(image_ref):
@@ -119,52 +137,97 @@ def _image_repo(image_ref):
     return ref
 
 
+def _parse_created(created):
+    """Epoch float from a docker image's ``Created`` field. Current docker clients
+    return an ISO-8601 string with up to nanosecond precision and a trailing 'Z';
+    older ones return an epoch int/float. Returns None when unparseable (unknown)."""
+    if isinstance(created, (int, float)):
+        return float(created)
+    if not isinstance(created, str) or not created:
+        return None
+    s = created.strip()
+    if s.endswith('Z'):
+        s = s[:-1] + '+00:00'
+    s = re.sub(r'(\.\d{6})\d+', r'\1', s)        # trim ns -> us (fromisoformat limit)
+    try:
+        return datetime.fromisoformat(s).timestamp()
+    except ValueError:
+        return None
+
+
+def _normalize_ref(image_ref):
+    """Full ``repo:tag`` for matching ``RepoTags``: drop any @sha256 digest and add
+    an implicit ``:latest`` when the ref carries no tag (docker's own default)."""
+    if not image_ref:
+        return ''
+    ref = image_ref.split('@', 1)[0]             # drop @sha256 digest
+    if ':' not in ref.rsplit('/', 1)[-1]:        # no tag on the final path segment
+        ref += ':latest'
+    return ref
+
+
 def _image_snapshot_get():
-    """(created_by_id, newest_by_repo) from `docker image ls -a`, cached ~5min.
-    `Created` is the list endpoint's epoch int, so both sides compare in the same
-    unit. Empty/best-effort on any docker failure."""
+    """(tag_to_id, newest_id_by_repo) from `docker image ls -a`, cached ~5min.
+
+    tag_to_id maps each ``repo:tag`` to the image id it currently points to, so the
+    configured lab image tag resolves to its current target. newest_id_by_repo maps
+    a repo to the id of its most-recently-created image, used to reject a re-tag to
+    an older image. ``Created`` is parsed via ``_parse_created``. Best-effort/empty
+    on any docker failure."""
     now = time.monotonic()
     if _image_snapshot['data'] is not None and _image_snapshot['expires'] > now:
         return _image_snapshot['data']
-    created_by_id = {}
-    newest_by_repo = {}
+    tag_to_id = {}
+    newest = {}                                  # repo -> (created_epoch, id)
     try:
         import docker
         client = docker.DockerClient(base_url='unix://var/run/docker.sock')
         try:
             for img in client.images.list(all=True):
-                created = img.attrs.get('Created')
-                if not isinstance(created, int):
-                    continue
-                created_by_id[img.id] = created
+                created = _parse_created(img.attrs.get('Created'))
                 for tag in (img.attrs.get('RepoTags') or []):
                     repo = tag.rsplit(':', 1)[0]
-                    if repo and repo != '<none>' and created > newest_by_repo.get(repo, -1):
-                        newest_by_repo[repo] = created
+                    if not repo or repo == '<none>':
+                        continue
+                    tag_to_id[tag] = img.id
+                    if created is not None and created > newest.get(repo, (-1.0, None))[0]:
+                        newest[repo] = (created, img.id)
         finally:
             client.close()
     except Exception:
         pass
-    data = (created_by_id, newest_by_repo)
+    data = (tag_to_id, {repo: cid for repo, (_, cid) in newest.items()})
     _image_snapshot['data'] = data
     _image_snapshot['expires'] = now + _IMAGE_TTL
     return data
 
 
 def newer_lab_image_available(image_ref, container_image_id):
-    """True when `docker image ls` has a local image for image_ref's repo created
-    more recently than the image the running container uses. Conservative: False
-    when anything is unknown (image absent, docker unreachable, container image not
-    in the listing) so the upgrade pill is never falsely shown."""
-    repo = _image_repo(image_ref)
-    if not repo or not container_image_id:
+    """True when the configured lab image tag now resolves to a different image than
+    the one the running container uses - i.e. a stop/start would pick up a newer
+    image.
+
+    Compares image IDs, not ``Created`` times: the image a running container was
+    built from is frequently pruned right after a rebuild (the very moment an
+    upgrade exists), so its timestamp is unreadable - the reliable signal is that
+    the tag's current target id differs from the running id. Guarded so the tag must
+    also be the repo's newest image, so a deliberate re-tag to an OLDER image never
+    offers a false upgrade. Conservative False when anything is unknown."""
+    ref = _normalize_ref(image_ref)
+    if not ref or not container_image_id:
         return False
-    created_by_id, newest_by_repo = _image_snapshot_get()
-    return image_upgrade_available(newest_by_repo.get(repo), created_by_id.get(container_image_id))
+    tag_to_id, newest_id_by_repo = _image_snapshot_get()
+    repo = _image_repo(ref)
+    return image_upgrade_available(tag_to_id.get(ref), container_image_id, newest_id_by_repo.get(repo))
 
 
-def image_upgrade_available(newest_local_created, container_image_created):
-    """Pure: True when a local image is more recently created than the running
-    container's image. `Created` values are docker epochs (ints). False when
-    either is missing (unknown -> never a false upgrade)."""
-    return bool(newest_local_created and container_image_created and newest_local_created > container_image_created)
+def image_upgrade_available(latest_tag_id, container_image_id, newest_repo_id):
+    """Pure: True when the lab image tag's current target differs from the running
+    container's image AND that target is the repo's newest image (so a re-tag to an
+    older image is not offered as an upgrade). False when the tag id or the running
+    id is unknown."""
+    if not latest_tag_id or not container_image_id:
+        return False
+    if latest_tag_id == container_image_id:
+        return False
+    return latest_tag_id == newest_repo_id
