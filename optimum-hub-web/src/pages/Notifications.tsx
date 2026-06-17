@@ -1,10 +1,9 @@
 /* Notifications - broadcast to active labs. Send (left, the composer) and past
  * notifications (right, the sent history). Outgoing only. */
 import { useState } from 'react'
-import { Button, Card, Input, Radio, Select, Switch, Table } from 'antd'
+import { Button, Card, Checkbox, Input, Radio, Select, Switch, Table } from 'antd'
 import { PageHeader } from '../components/PageHeader'
 import { Icon } from '../components/Icon'
-import { Combo } from '../components/Combo'
 import { useSentNotifications, useServers } from '../hooks/queries'
 import { broadcast } from '../services/ops'
 import { timeAgoShort, exactDate } from '../lib/format'
@@ -13,6 +12,49 @@ import type { SentNotification } from '../services/types'
 // notification type -> status-pill tone (same coloured-pill vocabulary as the rest)
 const TYPE_PILL: Record<string, string> = {
   info: 'spawning', success: 'running', warning: 'idle', error: 'error', default: 'stopped', 'in-progress': 'accent',
+}
+
+// Scrollable, filterable recipient list: per-user checkboxes plus a select-all
+// (scoped to the current filter) so an operator can select all, then unselect a few.
+function RecipientPicker({ users, value, onChange }: { users: string[]; value: string[]; onChange: (v: string[]) => void }) {
+  const [q, setQ] = useState('')
+  if (!users.length) return <div className="oh-muted" style={{ fontSize: 13 }}>No active servers to notify</div>
+  const filtered = users.filter((u) => u.toLowerCase().includes(q.toLowerCase()))
+  const selected = new Set(value)
+  const allOn = filtered.length > 0 && filtered.every((u) => selected.has(u))
+  const someOn = filtered.some((u) => selected.has(u))
+  const toggle = (u: string, on: boolean) => {
+    const next = new Set(value)
+    if (on) next.add(u)
+    else next.delete(u)
+    onChange([...next])
+  }
+  const toggleAll = (on: boolean) => {
+    const next = new Set(value)
+    filtered.forEach((u) => {
+      if (on) next.add(u)
+      else next.delete(u)
+    })
+    onChange([...next])
+  }
+  return (
+    <div style={{ border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: 8 }}>
+      <Input size="small" allowClear placeholder="Filter users…" value={q} onChange={(e) => setQ(e.target.value)} style={{ marginBottom: 8 }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 6, borderBottom: '1px solid var(--color-border-subtle)' }}>
+        <Checkbox checked={allOn} indeterminate={someOn && !allOn} onChange={(e) => toggleAll(e.target.checked)}>
+          Select all{q ? ' shown' : ''}
+        </Checkbox>
+        <span className="oh-muted" style={{ fontSize: 12 }}>{value.length} selected</span>
+      </div>
+      <div style={{ maxHeight: 200, overflowY: 'auto', marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {filtered.length === 0
+          ? <span className="oh-muted" style={{ fontSize: 13 }}>No match</span>
+          : filtered.map((u) => (
+              <Checkbox key={u} checked={selected.has(u)} onChange={(e) => toggle(u, e.target.checked)}>{u}</Checkbox>
+            ))}
+      </div>
+    </div>
+  )
 }
 
 export default function Notifications() {
@@ -62,7 +104,7 @@ export default function Notifications() {
             </Radio.Group>
             {mode === 'selected' && (
               <div style={{ marginTop: 8 }}>
-                <Combo corpus={activeUsers} value={recipients} onChange={setRecipients} placeholder="Add an active user…" />
+                <RecipientPicker users={activeUsers} value={recipients} onChange={setRecipients} />
               </div>
             )}
           </div>

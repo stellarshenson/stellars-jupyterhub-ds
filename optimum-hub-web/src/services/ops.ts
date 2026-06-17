@@ -38,9 +38,12 @@ async function run<T>(
   }
 }
 
-const SERVER_KEYS = (user: string): unknown[][] => [['servers'], ['stats'], ['resources'], ['hero', user], ['session', user]]
-const USER_KEYS = (name: string): unknown[][] => [['users'], ['stats'], ['user', name], ['servers']]
-const GROUP_KEYS = (name?: string): unknown[][] => (name ? [['groups'], ['group-config', name], ['group-corpus']] : [['groups'], ['group-corpus']])
+// ['events'] rides every mutation that records an event (server lifecycle, user
+// create/delete/rename, group create/delete/policy) so the RecentEvents + Events
+// feed refresh immediately instead of waiting out staleTime.
+const SERVER_KEYS = (user: string): unknown[][] => [['servers'], ['stats'], ['resources'], ['hero', user], ['session', user], ['events']]
+const USER_KEYS = (name: string): unknown[][] => [['users'], ['stats'], ['user', name], ['servers'], ['events']]
+const GROUP_KEYS = (name?: string): unknown[][] => (name ? [['groups'], ['group-config', name], ['group-corpus'], ['events']] : [['groups'], ['group-corpus'], ['events']])
 
 // ── Server lifecycle ────────────────────────────────────────────────────────
 export const startServer = (user: string) =>
@@ -54,10 +57,10 @@ export const restartServer = (user: string) =>
 
 // bulk admin actions (old-JupyterHub Start All / Stop All) - fan out per user
 export const startAllServers = (users: string[]) =>
-  run(`Started ${users.length} server(s)`, () => Promise.all(users.map((u) => hubSend('POST', `/users/${u}/server`))), [['servers'], ['stats'], ['resources']])
+  run(`Started ${users.length} server(s)`, () => Promise.all(users.map((u) => hubSend('POST', `/users/${u}/server`))), [['servers'], ['stats'], ['resources'], ['events']])
 
 export const stopAllServers = (users: string[]) =>
-  run(`Stopped ${users.length} server(s)`, () => Promise.all(users.map((u) => hubSend('DELETE', `/users/${u}/server`))), [['servers'], ['stats'], ['resources']])
+  run(`Stopped ${users.length} server(s)`, () => Promise.all(users.map((u) => hubSend('DELETE', `/users/${u}/server`))), [['servers'], ['stats'], ['resources'], ['events']])
 
 export const extendSession = (user: string, hours = 2) =>
   // invalidate ['hero', user] too: the TTL bar reads from the hero query, so
@@ -65,7 +68,7 @@ export const extendSession = (user: string, hours = 2) =>
   run(`Extended ${user}'s session by ${hours}h`, () => hubSend('POST', `/users/${user}/extend-session`, { hours }), [['hero', user], ['session', user], ['servers']])
 
 export const resetActivity = () =>
-  run('Reset activity samples', () => hubSend('POST', '/activity/reset'), [['servers'], ['stats'], ['resources']])
+  run('Reset activity samples', () => hubSend('POST', '/activity/reset'), [['servers'], ['stats'], ['resources'], ['users']])
 
 // ── Users ─────────────────────────────────────────────────────────────────--
 /** Idempotently set a user's NativeAuth authorisation. Unlike NativeAuth's
@@ -85,13 +88,15 @@ export const createUser = (name: string) =>
   run(`Created user ${name}`, () => hubSend('POST', `/users/${encodeURIComponent(name)}`), USER_KEYS(name))
 
 export const deleteUser = (name: string) =>
-  run(`Removed user ${name}`, () => hubSend('DELETE', `/users/${encodeURIComponent(name)}`), USER_KEYS(name))
+  // + ['groups']: removing a user drops them from groups, changing member counts
+  run(`Removed user ${name}`, () => hubSend('DELETE', `/users/${encodeURIComponent(name)}`), [...USER_KEYS(name), ['groups']])
 
 export const setAdmin = (name: string, admin: boolean) =>
   run(`${admin ? 'Granted' : 'Revoked'} admin for ${name}`, () => hubSend('PATCH', `/users/${encodeURIComponent(name)}`, { admin }), USER_KEYS(name))
 
 export const renameUser = (name: string, newName: string) =>
-  run(`Renamed ${name} to ${newName}`, () => hubSend('PATCH', `/users/${encodeURIComponent(name)}`, { name: newName }), USER_KEYS(name))
+  // + ['groups']: a rename changes the name shown in group member lists
+  run(`Renamed ${name} to ${newName}`, () => hubSend('PATCH', `/users/${encodeURIComponent(name)}`, { name: newName }), [...USER_KEYS(name), ['groups']])
 
 /** Persist a user's display profile (first/last name + email). Admin or self. */
 export const saveUserProfile = (name: string, profile: UserProfile) =>
@@ -138,17 +143,18 @@ export async function getCredentials(usernames: string[]): Promise<Credential[]>
 
 // ── Group membership ─────────────────────────────────────────────────────────
 export const addMember = (group: string, user: string) =>
-  run(`Added ${user} to ${group}`, () => hubSend('POST', `/groups/${encodeURIComponent(group)}/users`, { users: [user] }), [['groups'], ['group-config', group], ['user', user]])
+  run(`Added ${user} to ${group}`, () => hubSend('POST', `/groups/${encodeURIComponent(group)}/users`, { users: [user] }), [['groups'], ['group-config', group], ['user', user], ['users']])
 
 export const removeMember = (group: string, user: string) =>
-  run(`Removed ${user} from ${group}`, () => hubSend('DELETE', `/groups/${encodeURIComponent(group)}/users`, { users: [user] }), [['groups'], ['group-config', group], ['user', user]])
+  run(`Removed ${user} from ${group}`, () => hubSend('DELETE', `/groups/${encodeURIComponent(group)}/users`, { users: [user] }), [['groups'], ['group-config', group], ['user', user], ['users']])
 
 // ── Groups ────────────────────────────────────────────────────────────────--
 export const createGroup = (name: string, description = '') =>
   run(`Created group ${name}`, () => hubSend('POST', '/admin/groups/create', { name, description }), GROUP_KEYS(name))
 
 export const deleteGroup = (name: string) =>
-  run(`Deleted group ${name}`, () => hubSend('DELETE', `/admin/groups/${encodeURIComponent(name)}/delete`), GROUP_KEYS(name))
+  // + ['users']: dropping a group removes its chip from every member in the table
+  run(`Deleted group ${name}`, () => hubSend('DELETE', `/admin/groups/${encodeURIComponent(name)}/delete`), [...GROUP_KEYS(name), ['users']])
 
 export const reorderGroups = (order: Array<{ name: string; priority: number }>) =>
   run('Reordered groups by priority', () => hubSend('POST', '/admin/groups/reorder', { groups: order }), [['groups']])
@@ -197,7 +203,7 @@ export async function broadcast(message: string, variant: string, autoClose: boo
   try {
     const r = await hubSend<BroadcastResult>('POST', '/notifications/broadcast', { message, variant, autoClose, recipients })
     notify.success(`Broadcast delivered to ${r.successful}/${r.total} server(s)`)
-    invalidate(['sent-notifications'])
+    invalidate(['sent-notifications'], ['events'])
     return r
   } catch (e) {
     notify.error(`Broadcast failed: ${(e as Error).message}`)

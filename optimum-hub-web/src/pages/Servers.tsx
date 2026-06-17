@@ -91,7 +91,7 @@ function Metric({ label, value, detail, over }: { label: string; value: ReactNod
         <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
         <span className={over ? 'oh-cell-warn' : ''}>{value}</span>
       </div>
-      {detail && <div className="oh-muted" style={{ fontSize: 12, marginTop: 3 }}>{detail}</div>}
+      {detail && <div className="oh-muted" style={{ fontSize: 12, marginTop: 3, whiteSpace: 'pre-line' }}>{detail}</div>}
     </div>
   )
 }

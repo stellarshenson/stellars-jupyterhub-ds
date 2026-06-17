@@ -33,7 +33,7 @@ function MyServerCard() {
         <h2 style={{ fontSize: 16, margin: 0 }}>Server status</h2>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {running && hero.upgradeAvailable && (
-            <Tag color="gold" style={{ margin: 0 }} title="A newer lab image is available locally - restart to upgrade">Upgrade available</Tag>
+            <Tag color="blue" style={{ margin: 0 }} title="A newer lab image is available locally - restart to upgrade">Upgrade available</Tag>
           )}
           <StatusPill status={hero.status} label={hero.statusLabel} />
         </span>
