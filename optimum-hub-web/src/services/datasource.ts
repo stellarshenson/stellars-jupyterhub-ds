@@ -38,6 +38,7 @@ export interface DataSource {
   getEvents(): Promise<EventRow[]>
   getTokens(): Promise<TokenRow[]>
   getUserVolumes(user: string): Promise<Volume[]>
+  getUserVolumeSizes(user: string): Promise<Record<string, number>>
   getEffectiveGrants(user: string): Promise<EffectiveGrant[]>
   getSessionInfo(user: string): Promise<SessionInfo>
   getLabContainer(): Promise<LabContainerInfo>

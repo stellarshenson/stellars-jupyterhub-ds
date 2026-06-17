@@ -44,6 +44,7 @@ GPUINFO_DOCKERFILE := services/jupyterhub/gpuinfo-nvidia/Dockerfile
 # sidecar is a SEPARATE image with its own version and is intentionally excluded.
 OPTIMUM_PYPROJECT       := optimum-hub-web/pyproject.toml
 OPTIMUM_PACKAGE_JSON    := optimum-hub-web/package.json
+OPTIMUM_PACKAGE_LOCK    := optimum-hub-web/package-lock.json
 HUB_SERVICES_PYPROJECT  := services/jupyterhub/stellars-hub-services/pyproject.toml
 DOCKER_PROXY_PYPROJECT  := services/jupyterhub/stellars-docker-proxy/pyproject.toml
 # [project] version lines set in lockstep (root + the three packages in the image)
@@ -142,7 +143,8 @@ increment_version: preflight
 	for f in $(VERSIONED_PYPROJECTS); do \
 		sed -i 's/^version = "[^"]*"$$/version = "'"$$NEW"'"/' "$$f"; \
 	done; \
-	sed -i 's/"version": "[^"]*"/"version": "'"$$NEW"'"/' $(OPTIMUM_PACKAGE_JSON)
+	sed -i 's/"version": "[^"]*"/"version": "'"$$NEW"'"/' $(OPTIMUM_PACKAGE_JSON); \
+	awk -v v="$$NEW" 'BEGIN{n=0} /"version":/ && n<2 {sub(/"version": "[^"]*"/, "\"version\": \"" v "\""); n++} {print}' $(OPTIMUM_PACKAGE_LOCK) > $(OPTIMUM_PACKAGE_LOCK).tmp && mv $(OPTIMUM_PACKAGE_LOCK).tmp $(OPTIMUM_PACKAGE_LOCK)
 
 ## build docker containers (BUILD_OPTS='--no-version-increment --no-cache')
 build: preflight maybe_increment_version

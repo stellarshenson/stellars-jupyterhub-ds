@@ -218,7 +218,7 @@ export const revokeToken = (user: string, id: string, note = '') =>
 
 // ── Volumes ───────────────────────────────────────────────────────────────--
 export const resetVolumes = (user: string, suffixes: string[]) =>
-  run(`Reset volumes for ${user}`, () => hubSend('DELETE', `/users/${encodeURIComponent(user)}/manage-volumes`, { volumes: suffixes }), [['user-volumes', user], ['servers']])
+  run(`Reset volumes for ${user}`, () => hubSend('DELETE', `/users/${encodeURIComponent(user)}/manage-volumes`, { volumes: suffixes }), [['user-volumes', user], ['user-volume-sizes', user], ['servers']])
 
 // ── Notifications ─────────────────────────────────────────────────────────--
 export interface BroadcastResult {

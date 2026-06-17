@@ -98,6 +98,7 @@ class ActivityDataHandler(BaseHandler):
                 "memory_mb": None,
                 "memory_percent": None,
                 "memory_total_mb": None,
+                "memory_limited": False,
                 "time_remaining_seconds": None,
                 "server_started": None,
                 "lab_image_upgrade_available": False,
@@ -161,6 +162,7 @@ class ActivityDataHandler(BaseHandler):
                     user_data["memory_mb"] = stats["memory_mb"]
                     user_data["memory_percent"] = stats["memory_percent"]
                     user_data["memory_total_mb"] = stats.get("memory_total_mb")
+                    user_data["memory_limited"] = stats.get("memory_limited", False)
                     user_data["lab_image_upgrade_available"] = newer_lab_image_available(_lab_image, stats.get("image_id"))
 
         users_data.sort(key=lambda u: (not u["server_active"], -(u["activity_score"] or 0)))

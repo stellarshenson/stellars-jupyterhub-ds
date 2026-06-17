@@ -160,6 +160,20 @@ export interface ResourceRow {
   meter?: ReactNode // override the bar (e.g. an activity meter)
 }
 
+// Resource-bar fill colour: the calm accent up to the 50% mark, then a gradual
+// ramp accent -> warning -> danger so a bar only starts "warning" as it fills
+// past half. color-mix keeps the shift smooth and reuses the design tokens (no
+// hardcoded RGB). Returns undefined at <=50% so the CSS default accent applies.
+export function barColor(pct: number): string | undefined {
+  if (pct <= 50) return undefined
+  if (pct <= 75) {
+    const k = Math.round(((pct - 50) / 25) * 100) // 0 -> 100 across 50..75%
+    return `color-mix(in srgb, var(--color-warning) ${k}%, var(--color-accent))`
+  }
+  const k = Math.round(((pct - 75) / 25) * 100) // 0 -> 100 across 75..100%
+  return `color-mix(in srgb, var(--color-danger) ${k}%, var(--color-warning))`
+}
+
 export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
   // Hide every GPU row when the platform has no GPU (no sidecar / none detected),
   // rather than rendering a "none"/empty GPU bar.
@@ -181,7 +195,7 @@ export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
               : <span className="oh-res-bar" title={r.tip} />)
             // the detail tooltip rides BOTH the bar and the value, so hovering the
             // progress bar itself (not only the % readout) shows the breakdown
-            : <span className="oh-res-bar" title={r.tip}><i style={{ width: `${r.value}%` }} /></span>)
+            : <span className="oh-res-bar" title={r.tip}><i style={{ width: `${r.value}%`, background: barColor(r.value), transition: 'width .4s ease, background .4s ease' }} /></span>)
         const val = r.valueLabel
           ?? (r.meter ? '' : isGpuRow ? (n ? (invOnly && memGB ? `${memGB} GB` : '') : '-') : `${r.value}%`)
         return (

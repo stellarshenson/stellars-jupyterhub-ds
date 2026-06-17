@@ -34,6 +34,10 @@ export default function UserConfig() {
   const isBuiltinAdmin = name === (adminUser() || PLATFORM.admin)
   // effective admin includes the hook-promoted admin whose persistent row is False
   const userIsAdmin = isAdminUser(name, !!user?.admin)
+  // dependent controls react to the LIVE admin toggle, not the saved state, so
+  // flipping Administrator updates them at once (before undefined: saved value)
+  const watchedAdmin = Form.useWatch('admin', form)
+  const liveAdmin = watchedAdmin ?? userIsAdmin
 
   // React Query resolves after mount; the Form is keyed on the stable `name` (no
   // remount), so push each async source into it imperatively as it arrives.
@@ -101,8 +105,10 @@ export default function UserConfig() {
         </Space.Compact>
       </Form.Item>
       {!isBuiltinAdmin && <Form.Item label="Administrator" name="admin" valuePropName="checked"><Switch /></Form.Item>}
-      {/* admins are always authorised -> hide the switch for the built-in and any effective admin */}
-      {!isBuiltinAdmin && !userIsAdmin && <Form.Item label="Authorised" name="authorized" valuePropName="checked"><Switch /></Form.Item>}
+      {/* admins are always authorised -> the switch yields to a note the moment admin is toggled on */}
+      {!isBuiltinAdmin && (liveAdmin
+        ? <div style={{ marginBottom: 16 }}><Notice type="info">Administrators are authorised automatically.</Notice></div>
+        : <Form.Item label="Authorised" name="authorized" valuePropName="checked"><Switch /></Form.Item>)}
     </Form>
   )
 
