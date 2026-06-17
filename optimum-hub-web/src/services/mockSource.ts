@@ -232,7 +232,7 @@ function toServerRow(p: Person): ServerRow {
     cpu: spawning ? null : s.cpu,
     cpuTip: spawning ? undefined : '8 host cores (no limit)',
     mem: spawning ? null : s.memPct,
-    memTip: spawning ? undefined : `${s.memGB} GB · ${s.memPct}% of host RAM${memOver ? `, over the ${THRESHOLDS.memPerUserPct}% per-user limit` : ''}`,
+    memTip: spawning ? undefined : `${s.memGB} GB used${memOver ? ' (over warning threshold)' : ''}\nof host RAM (no limit)`,
     memOver,
     gpu: s.gpu ?? null,
     volumesGB: s.volumesGB,
@@ -352,7 +352,7 @@ export const mockSource: DataSource = {
       upgradeAvailable: false,
       ttl: { timeLeftMin: s ? s.timeLeftMin : 0, baseMin: IDLE_CULLER.timeoutH * 60, maxAddHours: IDLE_CULLER.maxExtensionH },
       resources: s
-        ? { cpu: s.cpu, mem: s.memPct, gpu: s.gpu ? 100 : 0, gpus: gpuUtils(s.gpu), memTip: `${s.memGB} GB of host RAM` }
+        ? { cpu: s.cpu, mem: s.memPct, gpu: s.gpu ? 100 : 0, gpus: gpuUtils(s.gpu), memTip: `${s.memGB} GB used of host RAM (no limit)` }
         : { cpu: 0, mem: 0, gpu: 0 },
     })
   },
@@ -484,13 +484,16 @@ export const mockSource: DataSource = {
   },
 
   getUserVolumes(user: string) {
-    const p = PEOPLE.find((x) => x.name === user)
     const vols: Volume[] = [
-      { suffix: 'home', name: `jupyterlab-${user}_home`, mount: '/home', description: 'User home directory, configs', sizeGB: 2.1, standard: true },
-      { suffix: 'workspace', name: `jupyterlab-${user}_workspace`, mount: '/home/lab/workspace', description: 'Project files, notebooks, code', sizeGB: p?.server?.volumesGB ?? 9.8, standard: true },
-      { suffix: 'cache', name: `jupyterlab-${user}_cache`, mount: '/home/lab/.cache', description: 'pip / conda cache', sizeGB: 0.5, standard: true },
+      { suffix: 'home', name: `jupyterlab-${user}_home`, mount: '/home', description: 'User home directory, configs', standard: true },
+      { suffix: 'workspace', name: `jupyterlab-${user}_workspace`, mount: '/home/lab/workspace', description: 'Project files, notebooks, code', standard: true },
+      { suffix: 'cache', name: `jupyterlab-${user}_cache`, mount: '/home/lab/.cache', description: 'pip / conda cache', standard: true },
     ]
     return delay(vols)
+  },
+  getUserVolumeSizes(user: string) {
+    const p = PEOPLE.find((x) => x.name === user)
+    return delay({ home: 2.1, workspace: p?.server?.volumesGB ?? 9.8, cache: 0.5 } as Record<string, number>)
   },
 
   getEffectiveGrants(user: string) {

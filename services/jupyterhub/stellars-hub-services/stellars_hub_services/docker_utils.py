@@ -19,6 +19,40 @@ def encode_username_for_docker(username):
     return escape(username, escape_char='-').lower()
 
 
+def derive_cpu_assignment(hostcfg, online_cpus):
+    """Assigned CPU cores and whether it is an explicit limit, from a container's
+    HostConfig. A DockerSpawner ``cpu_limit`` sets ``NanoCpus`` (billionths of a
+    core); a cgroup cfs quota sets ``CpuQuota`` / ``CpuPeriod``. Either means the
+    user is capped, so the bar measures against that ceiling. With neither, the
+    assignment is the host cores the container may use (no limit).
+
+    Returns ``(cores, limited)``. Pure - unit-tested independently of Docker.
+    """
+    nano_cpus = hostcfg.get('NanoCpus') or 0
+    cpu_quota = hostcfg.get('CpuQuota') or 0
+    if nano_cpus:
+        return round(nano_cpus / 1e9, 2), True
+    if cpu_quota > 0:
+        cpu_period = hostcfg.get('CpuPeriod') or 100000  # kernel cfs default
+        return round(cpu_quota / cpu_period, 2), True
+    return online_cpus, False
+
+
+def derive_memory_assignment(hostcfg, stats_limit_bytes):
+    """Assigned memory (bytes) and whether it is an explicit limit, from a
+    container's HostConfig. A DockerSpawner ``mem_limit`` sets ``HostConfig.Memory``
+    (bytes) - the user's ceiling, what the bar measures against. Without it the
+    cgroup ``limit`` Docker reports in stats is the host RAM, so the bar falls back
+    to the host total (no limit). Parallel to ``derive_cpu_assignment``.
+
+    Returns ``(bytes, limited)``. Pure - unit-tested independently of Docker.
+    """
+    mem_limit = hostcfg.get('Memory') or 0
+    if mem_limit > 0:
+        return mem_limit, True
+    return stats_limit_bytes, False
+
+
 def get_container_stats(username):
     """Get CPU and memory stats for a user's container (blocking, fast ~2s)."""
     try:
@@ -48,22 +82,12 @@ def get_container_stats(username):
             # their ceiling, not the host. cpu_cores_limited drives the "assigned"
             # vs "host (no limit)" tooltip.
             hostcfg = container.attrs.get('HostConfig') or {}
-            nano_cpus = hostcfg.get('NanoCpus') or 0
-            cpu_quota = hostcfg.get('CpuQuota') or 0
-            if nano_cpus:
-                cpu_cores = round(nano_cpus / 1e9, 2)
-                cpu_cores_limited = True
-            elif cpu_quota > 0:
-                cpu_period = hostcfg.get('CpuPeriod') or 100000  # kernel cfs default
-                cpu_cores = round(cpu_quota / cpu_period, 2)
-                cpu_cores_limited = True
-            else:
-                cpu_cores = online_cpus
-                cpu_cores_limited = False
+            cpu_cores, cpu_cores_limited = derive_cpu_assignment(hostcfg, online_cpus)
 
             memory_usage = stats['memory_stats'].get('usage', 0)
-            memory_limit = stats['memory_stats'].get('limit', 1)
-            memory_percent = (memory_usage / memory_limit) * 100 if memory_limit > 0 else 0
+            memory_assigned, memory_limited = derive_memory_assignment(
+                hostcfg, stats['memory_stats'].get('limit', 1))
+            memory_percent = (memory_usage / memory_assigned) * 100 if memory_assigned > 0 else 0
 
             return {
                 'cpu_percent': round(cpu_percent, 1),
@@ -71,7 +95,10 @@ def get_container_stats(username):
                 'cpu_cores_limited': cpu_cores_limited,
                 'memory_mb': round(memory_usage / (1024 * 1024), 1),
                 'memory_percent': round(memory_percent, 1),
-                'memory_total_mb': round(memory_limit / (1024 * 1024), 1),
+                # assigned ceiling when mem-limited, else the host RAM the cgroup
+                # reports; memory_limited tells the UI which, for the bar label
+                'memory_total_mb': round(memory_assigned / (1024 * 1024), 1),
+                'memory_limited': memory_limited,
                 # image id the container is running (from the inspect we already
                 # did) - compared against the local tag for upgrade detection
                 'image_id': container.attrs.get('Image'),

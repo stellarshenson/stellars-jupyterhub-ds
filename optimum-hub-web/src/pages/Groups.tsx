@@ -1,7 +1,7 @@
 /* Groups - priority-ordered (higher wins on conflict), each row a link to its
  * policy config. Policy tags are type-only with the valued detail in a tooltip;
  * reorder by the up/down arrows; import / export a JSON of many groups. */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { DragSortTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
 import { Button, Input, InputNumber, Popover, Space, Tooltip } from 'antd'
@@ -11,9 +11,8 @@ import { CappedTags } from '../components/CappedTags'
 import { IconAction } from '../components/IconAction'
 import { Icon } from '../components/Icon'
 import { useGroups } from '../hooks/queries'
-import { notify } from '../services/actions'
-import { deleteGroup, importGroups, reorderGroups } from '../services/ops'
-import { fromPolicies } from '../lib/policyShape'
+import { deleteGroup, reorderGroups } from '../services/ops'
+import { GroupImportModal } from '../components/GroupImportModal'
 import type { GroupRow } from '../services/types'
 
 // Editable rank cell: shows the row position and, on click, a small popover to
@@ -60,35 +59,7 @@ export default function Groups() {
 
   const filtered = useMemo(() => rows.filter((g) => g.name.toLowerCase().includes(q.toLowerCase())), [rows, q])
 
-  // Import a {groups:[{name, description, priority, policies[]}]} bundle (or a bare
-  // array). policies[] is unfolded back to the flat config the hub stores; a legacy
-  // flat `config` is still accepted so older exports round-trip. Parse client-side;
-  // importGroups does the real create + PUT-config writes and owns its own toast.
-  const fileRef = useRef<HTMLInputElement>(null)
-  const onImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = '' // let the same file be re-picked later
-    if (!file) return
-    let groups
-    try {
-      const parsed = JSON.parse(await file.text())
-      const list = Array.isArray(parsed) ? parsed : parsed?.groups
-      if (!Array.isArray(list)) throw new Error('expected a { groups: [...] } bundle')
-      groups = list
-        .filter((g) => g && typeof g.name === 'string' && g.name.trim())
-        .map((g) => ({
-          name: g.name.trim(),
-          description: g.description ?? '',
-          priority: g.priority,
-          config: Array.isArray(g.policies) ? fromPolicies(g.policies) : (g.config ?? {}),
-        }))
-      if (!groups.length) throw new Error('no valid group entries')
-    } catch (err) {
-      notify.error(`Import failed: ${(err as Error).message}`)
-      return
-    }
-    importGroups(groups).catch(() => {}) // importGroups already toasted the failure
-  }
+  const [importOpen, setImportOpen] = useState(false)
 
   // Persist a new full ordering: top row gets the highest contiguous priority.
   // The backend re-normalises on the next fetch, so optimistic + persisted agree.
@@ -178,8 +149,7 @@ export default function Groups() {
         sub="Membership grants policy - priority decides who wins on conflict"
         actions={
           <>
-            <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={onImportFile} />
-            <Button onClick={() => fileRef.current?.click()}>Import</Button>
+            <Button onClick={() => setImportOpen(true)}>Import</Button>
             <Link to="/groups/export"><Button icon={<Icon name="download" size={14} />}>Export</Button></Link>
             <Link to="/groups/new"><Button type="primary" icon={<Icon name="plus" size={14} />}>Add group</Button></Link>
           </>
@@ -212,6 +182,7 @@ export default function Groups() {
           />,
         ]}
       />
+      <GroupImportModal open={importOpen} existing={data.map((g) => g.name)} onClose={() => setImportOpen(false)} />
     </>
   )
 }

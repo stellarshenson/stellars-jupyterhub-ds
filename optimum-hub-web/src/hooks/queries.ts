@@ -53,5 +53,7 @@ export const useSessionInfo = (user: string) =>
   useQuery({ queryKey: ['session', user], queryFn: () => ds().getSessionInfo(user) })
 export const useUserVolumes = (user: string) =>
   useQuery({ queryKey: ['user-volumes', user], queryFn: () => ds().getUserVolumes(user), enabled: !!user })
+export const useUserVolumeSizes = (user: string) =>
+  useQuery({ queryKey: ['user-volume-sizes', user], queryFn: () => ds().getUserVolumeSizes(user), enabled: !!user })
 export const useEffectiveGrants = (user: string) =>
   useQuery({ queryKey: ['grants', user], queryFn: () => ds().getEffectiveGrants(user), enabled: !!user })

@@ -19,8 +19,32 @@ The CPU/Memory/GPU progress bars on the Server status card, the Servers table, a
 
 - [x] **Bar is usage/limit** - `memory_percent` = usage / container memory limit; a 256 GiB-limited user reads against 256 GiB, not host RAM
   - log: 2026-06-17 verified live (konrad memory_total_mb=262144 reflected) - was already correct
-- [x] **Memory tooltip** - Servers: "X GB used / Y GB limit / Z GB host (over limit)"; hero: "X GB of host RAM"
-  - log: 2026-06-17 present
+- [x] **memory_limited flag** - the service exposes whether the bar's denominator is an explicit per-user limit or the host fallback, parallel to `cpu_cores_limited`; from `HostConfig.Memory > 0`
+  - log: 2026-06-17 added so the tooltip can name "assigned" vs "host (no limit)" - previously the hero tooltip said "of host RAM" unconditionally (the reported bug)
+- [x] **Memory tooltip names the ceiling honestly** - "N GB used of M GB assigned" when `memory_limited`, else "of M GB host (no limit)"; Servers also annotates "(over warning threshold)" on a `memory_max_usage_mb` breach
+  - log: 2026-06-17 FIXED - hero was "X GB of host RAM" regardless; both paths now flag-driven (`getServers`, `getServerHero`)
+
+## Granular assigned-resource service design
+
+- [x] **Pure, tested helpers** - `derive_cpu_assignment(hostcfg, online_cpus)` and `derive_memory_assignment(hostcfg, stats_limit_bytes)` in `docker_utils` are pure functions, unit-tested independently of Docker (8 cases), so the assignment logic is granular and verifiable, not inlined in the socket call
+  - log: 2026-06-17 operator "make sure the service that calculates it is properly designed and granular" - extracted both; `tests/test_docker_resource_assignment.py`, 600 backend pass
+- [x] **Edge: nano-cpus wins over quota; zero mem limit = unlimited** - explicit `NanoCpus` takes precedence over a cfs quota; `HostConfig.Memory == 0` reads as host fallback, not a 0-byte ceiling
+  - log: 2026-06-17 covered by `test_cpu_nano_cpus_wins_over_quota`, `test_memory_zero_limit_is_unlimited`
+- [x] **Exposed on /activity** - per-user `memory_limited` added (default `False`, set from the stats passthrough in `handlers/activity.py`)
+  - log: 2026-06-17
+
+## Colour ramp (mem + cpu, both Total and the widget)
+
+- [x] **Calm to 50%** - the CPU/memory fill keeps the default accent up to and including 50% (`meters.barColor` returns undefined)
+  - log: 2026-06-17 operator "only past 50% mark start slowly changing colours"
+- [x] **Gradual ramp past 50%** - 50-75% blends accent -> warning, 75-100% blends warning -> danger via `color-mix` (smooth, design-token based, no hardcoded RGB)
+  - log: 2026-06-17 `meters.barColor`
+- [x] **Smooth recolour** - the fill transitions width + background ~0.4s so a value change eases rather than jumps
+  - log: 2026-06-17 inline transition on the bar fill
+- [x] **CPU/memory only** - the ramp rides the standard fill bar; GPU rows (striped meter / inventory chips) and the activity meter keep their own colours
+  - log: 2026-06-17 applied only on the `<i style=width>` branch in `ResourceBars`
+- [x] **Both surfaces** - one helper in `meters.tsx`, used by the server widget and Total resources alike
+  - log: 2026-06-17
 
 ## Tooltips on every bar
 

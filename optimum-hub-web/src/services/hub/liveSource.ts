@@ -66,7 +66,8 @@ interface RawActivityUser {
   cpu_cores_limited?: boolean
   memory_mb?: number | null
   memory_percent?: number | null
-  memory_total_mb?: number | null
+  memory_total_mb?: number | null // assigned ceiling when memory_limited, else host RAM
+  memory_limited?: boolean // an explicit per-user mem limit is set (vs host fallback)
   time_remaining_seconds?: number | null
   server_started?: string | null
   lab_image_upgrade_available?: boolean
@@ -178,6 +179,11 @@ async function fetchActivity(): Promise<RawActivity> {
   if (_activityInFlight && now - _activityInFlight.ts < ACTIVITY_COALESCE_MS) return _activityInFlight.p
   const p = hubGet<RawActivity>('/activity').catch(() => ({ users: [] }) as RawActivity)
   _activityInFlight = { ts: now, p }
+  // Release the slot once settled so this is genuine in-flight coalescing, not a
+  // 1.5s stale-result cache: the invalidate(refetchType:'all') storm fires its
+  // refetches synchronously so concurrent callers still share this one promise,
+  // but a later fast-poll tick gets fresh /activity instead of a settled snapshot.
+  void p.finally(() => { if (_activityInFlight?.p === p) _activityInFlight = null })
   return p
 }
 // Bulk display profiles -> {username: "First Last"} (blank when no name set), so
@@ -241,12 +247,14 @@ export const liveSource: DataSource = {
       const cpuTip = running && cores != null
         ? `${cores} core${cores === 1 ? '' : 's'} ${a?.cpu_cores_limited ? 'assigned' : 'host (no limit)'}`
         : undefined
-      // mem: used vs configured per-user limit vs total host (multiline tooltip)
+      // mem: the bar is usage vs the assigned ceiling (memory_percent, server-side
+      // = usage / cgroup limit); the tooltip names that ceiling as assigned vs the
+      // host fallback, and flags a breach of the per-user warning threshold (memMax)
+      const memLimited = !!a?.memory_limited
       const memTip = memMb != null
         ? [
-            `${gb(memMb)} GB used${memMax > 0 && memMb > memMax ? ' (over limit)' : ''}`,
-            memMax > 0 ? `${gb(memMax)} GB limit` : '',
-            memTotal ? `${gb(memTotal)} GB host` : '',
+            `${gb(memMb)} GB used${memMax > 0 && memMb > memMax ? ' (over warning threshold)' : ''}`,
+            memTotal ? `of ${gb(memTotal)} GB ${memLimited ? 'assigned' : 'host (no limit)'}` : '',
           ].filter(Boolean).join('\n')
         : undefined
       // volumes: per-mount breakdown + quota (multiline tooltip, one entry per line)
@@ -408,9 +416,11 @@ export const liveSource: DataSource = {
           cpuTip: a.cpu_cores != null
             ? `${a.cpu_cores} core${a.cpu_cores === 1 ? '' : 's'} ${a.cpu_cores_limited ? 'assigned' : 'host (no limit)'}`
             : undefined,
-          mem: Math.round(a.memory_percent ?? 0),
+          mem: Math.round(a.memory_percent ?? 0), // usage vs the assigned ceiling (server-side)
           gpu: 0,
-          memTip: a.memory_mb != null ? `${round1(a.memory_mb / 1024)} GB of host RAM` : undefined,
+          memTip: a.memory_mb != null
+            ? `${round1(a.memory_mb / 1024)} GB used${a.memory_total_mb ? ` of ${round1(a.memory_total_mb / 1024)} GB ${a.memory_limited ? 'assigned' : 'host (no limit)'}` : ''}`
+            : undefined,
         }
       : { cpu: 0, mem: 0, gpu: 0 }
     return { user, status, statusLabel: cap(status), activity: clampPct(a?.activity_score ?? 0), activityHours: a?.activity_hours ?? null, startedISO: a?.server_started ?? srv?.started ?? null, upgradeAvailable: !!a?.lab_image_upgrade_available, ttl, resources }
@@ -486,21 +496,31 @@ export const liveSource: DataSource = {
 
   async getUserVolumes(user: string): Promise<Volume[]> {
     try {
-      const [resp, activity] = await Promise.all([
-        hubGet<{ volumes: Array<{ suffix: string; name: string; description?: string }> }>(`/users/${encodeURIComponent(user)}/manage-volumes`),
-        fetchActivity(),
-      ])
-      const breakdown = activityByName(activity).get(user)?.volume_breakdown ?? {}
+      // Names only - the fast /manage-volumes call, decoupled from the slow
+      // /activity sizes (getUserVolumeSizes) so the table paints at once and the
+      // size cells fill in when the docker-stats sample lands.
+      const resp = await hubGet<{ volumes: Array<{ suffix: string; name: string; description?: string }> }>(`/users/${encodeURIComponent(user)}/manage-volumes`)
       return resp.volumes.map((v) => ({
         suffix: v.suffix,
         name: v.name,
         mount: MOUNT_BY_SUFFIX[v.suffix] ?? '',
         description: v.description,
         standard: true,
-        sizeGB: breakdown[v.suffix] != null ? round1(breakdown[v.suffix] / 1024) : undefined,
       }))
     } catch {
-      return [] // honest empty - no fabricated volume sizes
+      return [] // honest empty - no fabricated volume list
+    }
+  },
+
+  async getUserVolumeSizes(user: string): Promise<Record<string, number>> {
+    try {
+      const activity = await fetchActivity()
+      const breakdown = activityByName(activity).get(user)?.volume_breakdown ?? {}
+      const out: Record<string, number> = {}
+      for (const [suffix, mb] of Object.entries(breakdown)) out[suffix] = round1(mb / 1024)
+      return out
+    } catch {
+      return {} // honest empty - no fabricated sizes
     }
   },
 
