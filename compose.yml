@@ -99,7 +99,7 @@ services:
       - JUPYTERHUB_LAB_IMAGE=stellars/stellars-jupyterlab-ds:latest # user container image
       # GPU passthrough to labs
       - JUPYTERHUB_GPU_ENABLED=2 # 0=disabled, 1=enabled, 2=auto-detect
-      - JUPYTERHUB_NVIDIA_IMAGE=nvidia/cuda:13.0.2-base-ubuntu24.04 # CUDA image the gpuinfo-nvidia sidecar is built from
+      - JUPYTERHUB_GPUINFO_NVIDIA_IMAGE=stellars/stellars-gpuinfo-nvidia:latest # GPU-info sidecar image (pulled from stellars/ DockerHub, built from base when absent)
       - JUPYTERHUB_GPUINFO_URL=http://gpuinfo-nvidia:8000 # GPU-info sidecar (detection + utilisation + processes)
       - JUPYTERHUB_GPUINFO_NETWORK_NAME=${JUPYTERHUB_GPUINFO_NETWORK_NAME:-jupyterhub-gpuinfo-network} # dedicated hub<->sidecar network
       # Services started inside the lab
@@ -176,11 +176,9 @@ services:
   gpuinfo-nvidia:
     build:
       context: .
-      dockerfile: services/jupyterhub/gpuinfo-nvidia/Dockerfile
-      args:
-        - NVIDIA_IMAGE=${JUPYTERHUB_NVIDIA_IMAGE:-nvidia/cuda:13.0.2-base-ubuntu24.04}
-    image: stellars/stellars-gpuinfo-nvidia:latest
-    pull_policy: build
+      dockerfile: services/jupyterhub/gpuinfo-nvidia/Dockerfile # CUDA base pinned in the Dockerfile
+    image: ${JUPYTERHUB_GPUINFO_NVIDIA_IMAGE:-stellars/stellars-gpuinfo-nvidia:latest}
+    pull_policy: missing # prefer the published stellars/ image; build from base only when absent
     container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-gpuinfo-nvidia
     runtime: nvidia # expose the host GPUs / nvidia-smi
     environment:

@@ -117,7 +117,8 @@ export default function GroupConfig() {
 
   const general = (
     <Form form={form} key={cfg ? `g-${cfg.name}` : 'loading'} layout="vertical" initialValues={{ name: cfg?.name, description: cfg?.description, priority: curPos }}>
-      <Form.Item label="Name" name="name"><Input /></Form.Item>
+      {/* groups are keyed by name; rename is not supported -> read-only, not a dead editable field */}
+      <Form.Item label="Name" name="name" extra="Group name cannot be changed"><Input disabled /></Form.Item>
       <Form.Item label="Description" name="description"><Input.TextArea rows={2} /></Form.Item>
       <Form.Item label="Position" name="priority" extra={`Rank in the Groups list - 1 = top, wins when policies conflict (1-${total})`}><InputNumber min={1} max={total} /></Form.Item>
     </Form>

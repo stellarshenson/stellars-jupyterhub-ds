@@ -52,6 +52,13 @@ export const stopServer = (user: string) =>
 export const restartServer = (user: string) =>
   run(`Restarted ${user}'s server`, () => hubSend('POST', `/users/${user}/restart-server`), SERVER_KEYS(user))
 
+// bulk admin actions (old-JupyterHub Start All / Stop All) - fan out per user
+export const startAllServers = (users: string[]) =>
+  run(`Started ${users.length} server(s)`, () => Promise.all(users.map((u) => hubSend('POST', `/users/${u}/server`))), [['servers'], ['stats'], ['resources']])
+
+export const stopAllServers = (users: string[]) =>
+  run(`Stopped ${users.length} server(s)`, () => Promise.all(users.map((u) => hubSend('DELETE', `/users/${u}/server`))), [['servers'], ['stats'], ['resources']])
+
 export const extendSession = (user: string, hours = 2) =>
   run(`Extended ${user}'s session by ${hours}h`, () => hubSend('POST', `/users/${user}/extend-session`, { hours }), [['session', user], ['servers']])
 

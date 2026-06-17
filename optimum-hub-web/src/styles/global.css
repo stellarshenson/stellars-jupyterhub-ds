@@ -136,6 +136,9 @@ body { margin: 0; font-family: var(--font-sans); }
  * per-table wiring; the explicit .oh-row-alt rowClassName lands on the same rows. */
 .ant-table-tbody > tr:nth-child(even) > td.ant-table-cell { background: color-mix(in srgb, var(--color-text) 3%, transparent); }
 .oh-row-alt > td.ant-table-cell { background: color-mix(in srgb, var(--color-text) 3%, transparent); }
+/* row hover: subtle accent tint, across every table (overrides zebra + antd's
+ * default grey hover) so the hovered/clickable row reads consistently system-wide */
+.ant-table-tbody > tr:hover > td.ant-table-cell { background: color-mix(in srgb, var(--color-accent) 8%, transparent) !important; }
 
 /* ---- quick-action tiles ---- */
 .oh-qa { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-2); }
@@ -221,3 +224,11 @@ body { margin: 0; font-family: var(--font-sans); }
 .oh-pol-check { display: flex; gap: 8px; padding: 6px 0; }
 .oh-pol-check .desc { color: var(--color-text-subtle); font-size: var(--text-xs); margin-top: 2px; }
 .oh-pol-field-label { font-size: 13px; color: var(--color-text-muted); margin-bottom: 4px; }
+
+/* Mobile (<768px): the portal drops to the minimal mobile home (see MobileHome +
+ * useIsMobile). The sider menu is suppressed (menuRender=false) and the custom
+ * collapse handle is not rendered; also hide ProLayout's mobile header hamburger
+ * so there is neither a panel nor a button to toggle one. */
+@media (max-width: 767px) {
+  .ant-pro-global-header-collapsed-button { display: none !important; }
+}

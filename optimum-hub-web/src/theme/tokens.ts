@@ -138,4 +138,3 @@ export const FONT = {
 
 export const SIDEBAR_W = 248
 export const TOPBAR_H = 56
-export const VERSION = '1.0.0'

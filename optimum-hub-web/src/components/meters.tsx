@@ -3,10 +3,11 @@
  * never inline (per the design language). */
 import { useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { Button, InputNumber, Popover, Progress, Space } from 'antd'
+import { Button, Popover, Progress, Slider } from 'antd'
 import { Icon } from './Icon'
 import { fmtMinutes } from '../lib/format'
 import { THRESHOLDS } from '../services/config'
+import { gpuSupported } from '../app/capabilities'
 import type { GpuDevice } from '../services/types'
 
 // 5-segment engagement meter. Colour follows the score: low red / mid amber / high green.
@@ -125,9 +126,12 @@ export interface ResourceRow {
 }
 
 export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
+  // Hide every GPU row when the platform has no GPU (no sidecar / none detected),
+  // rather than rendering a "none"/empty GPU bar.
+  const visible = gpuSupported() ? rows : rows.filter((r) => r.gpus === undefined && r.gpuDevices === undefined)
   return (
     <div className="oh-res">
-      {rows.map((r) => {
+      {visible.map((r) => {
         const utils = r.gpus // per-GPU utilisation (when sampled)
         const devices = r.gpuDevices // real inventory (when utilisation is not sampled)
         const isGpuRow = utils !== undefined || devices !== undefined
@@ -142,7 +146,7 @@ export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
               : <span className="oh-res-bar" />)
             : <span className="oh-res-bar"><i style={{ width: `${r.value}%` }} /></span>)
         const val = r.valueLabel
-          ?? (r.meter ? '' : isGpuRow ? (n ? (invOnly && memGB ? `${memGB} GB` : '') : 'none') : `${r.value}%`)
+          ?? (r.meter ? '' : isGpuRow ? (n ? (invOnly && memGB ? `${memGB} GB` : '') : '-') : `${r.value}%`)
         return (
           <div className="oh-res-row" key={r.label}>
             <span className="oh-res-label">{label}</span>
@@ -157,24 +161,29 @@ export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
 
 // idle-session timer: a standard progress bar that reads 100% (blue) when time
 // is ample and drains down, shifting blue -> orange -> red as the cull nears; the
-// used-up remainder shows as the gray trail. Extend opens a small popover to type
-// the number of hours to add (capped at the configured ceiling).
-export function TtlGadget({ timeLeftMin, maxMin, onExtend }: { timeLeftMin: number; maxMin: number; onExtend?: (hours: number) => void }) {
-  const pct = maxMin ? Math.min(100, Math.round((timeLeftMin / maxMin) * 100)) : 0
+// used-up remainder shows as the gray trail. The whole gadget spans the row
+// (bar + time + Extend). Extend opens an hours slider whose last tick is "max",
+// which tops the session up to the configured ceiling (old-JupyterHub style).
+export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, onExtend }: { timeLeftMin: number; baseMin: number; maxAddHours?: number; onExtend?: (hours: number) => void }) {
+  // Measure remaining against the BASE timeout, not the extension ceiling, so a
+  // fresh session reads ~100% and drains; an extended session caps at 100%.
+  const pct = baseMin ? Math.min(100, Math.round((timeLeftMin / baseMin) * 100)) : 0
   const warn = THRESHOLDS.timeLeftWarnMin
   const color = timeLeftMin <= warn / 3 ? 'var(--color-danger)' : timeLeftMin <= warn ? 'var(--color-warning)' : 'var(--color-accent)'
-  const maxH = Math.max(1, Math.round(maxMin / 60))
+  const maxH = Math.max(1, Math.round(maxAddHours))
   const [open, setOpen] = useState(false)
-  const [hours, setHours] = useState<number | null>(2)
-  const atCeiling = timeLeftMin >= maxMin && maxMin > 0
+  const [hours, setHours] = useState(maxH)
+  const atCeiling = maxAddHours <= 0
   const apply = () => {
-    const h = Math.max(1, Math.min(maxH, Math.round(hours ?? 1)))
     setOpen(false)
-    onExtend?.(h)
+    onExtend?.(Math.max(1, Math.min(maxH, hours)))
   }
+  // slider marks: first hour and the last tick labelled "max" (tops to ceiling)
+  const marks: Record<number, ReactNode> = { 1: '1h', [maxH]: 'max' }
+  const atMax = hours >= maxH
   return (
     <div className="oh-ttl">
-      <span style={{ flex: 'none', width: '50%' }} title="Idle session timer - your server is stopped automatically when this runs out">
+      <span style={{ flex: 1, minWidth: 0 }} title="Idle session timer - your server is stopped automatically when this runs out">
         <Progress percent={pct} showInfo={false} strokeColor={color} trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
       </span>
       <span className="oh-ttl-val">
@@ -187,10 +196,20 @@ export function TtlGadget({ timeLeftMin, maxMin, onExtend }: { timeLeftMin: numb
         trigger="click"
         title="Extend session"
         content={
-          <Space.Compact>
-            <InputNumber min={1} max={maxH} value={hours} onChange={(v) => setHours(v == null ? null : Number(v))} onPressEnter={apply} size="small" addonAfter="h" style={{ width: 120 }} autoFocus />
-            <Button size="small" type="primary" onClick={apply}>Extend</Button>
-          </Space.Compact>
+          <div style={{ width: 240 }}>
+            <Slider
+              min={1}
+              max={maxH}
+              step={1}
+              value={hours}
+              onChange={(v) => setHours(v as number)}
+              marks={marks}
+              tooltip={{ formatter: (v) => (v != null && v >= maxH ? 'max' : `+${v}h`) }}
+            />
+            <Button size="small" type="primary" block onClick={apply} style={{ marginTop: 6 }}>
+              {atMax ? 'Extend to max' : `Extend +${hours}h`}
+            </Button>
+          </div>
         }
       >
         <Button size="small" disabled={atCeiling} title={atCeiling ? 'Already at the maximum session length' : `Add up to ${maxH}h before the idle culler stops the lab`}>

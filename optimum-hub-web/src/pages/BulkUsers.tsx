@@ -45,7 +45,7 @@ export default function BulkUsers() {
     <>
       <PageHeader title="Bulk add users" sub="Paste usernames and configure the batch once - passwords are auto-generated" />
       <Card style={{ maxWidth: 820 }}>
-        <Form form={form} layout="vertical" initialValues={{ authorize: true, require: true }}>
+        <Form form={form} layout="vertical" initialValues={{ authorize: true }}>
           <Form.Item label="Usernames" name="usernames" extra="One per line">
             <Input.TextArea rows={6} placeholder={'jdoe\nasmith\nmkovac'} />
           </Form.Item>
@@ -53,7 +53,6 @@ export default function BulkUsers() {
             <GroupPicker value={groups} onChange={setGroups} label="" />
           </Form.Item>
           <Form.Item label="Authorise now" name="authorize" valuePropName="checked"><Switch /></Form.Item>
-          <Form.Item label="Require password change at first login" name="require" valuePropName="checked"><Switch /></Form.Item>
         </Form>
         <FormFooter onCancel={() => navigate('/users')} onSave={submit} saveLabel="Create" />
       </Card>

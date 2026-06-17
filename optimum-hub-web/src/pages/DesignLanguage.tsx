@@ -91,18 +91,21 @@ export default function DesignLanguage() {
           <Button size="small">Reset samples</Button>
           <Button danger size="small">Discard</Button>
         </Row>
-        <Row label="list-icon (incl. filled stop)">
-          <IconAction icon="play" title="Enter" tone="primary" />
-          <IconAction icon="restart" title="Restart" />
-          <IconAction icon="stop" title="Stop" tone="danger" filled />
-          <IconAction icon="close" title="Remove" tone="danger" />
+        <Row label="action icons - non-list (filled if a fill exists)">
+          <IconAction icon="play" title="primary - blue (active / go-to)" tone="primary" filled />
+          <IconAction icon="disk" title="secondary - gray (neutral)" tone="secondary" filled />
+          <IconAction icon="stop" title="dangerous - red (destructive)" tone="danger" filled />
+          <IconAction icon="activity" title="warning - yellow (caution)" tone="warning" filled />
         </Row>
-        <Row label="icon tones">
-          <IconAction icon="play" title="primary - blue (active / go-to)" tone="primary" />
-          <IconAction icon="restart" title="secondary - gray (neutral, default)" tone="secondary" />
-          <IconAction icon="stop" title="danger - red (destructive)" tone="danger" filled />
-          <IconAction icon="activity" title="warning - yellow (caution)" tone="warning" />
+        <Row label="list icons - wireframe (filled on demand)">
+          <IconAction icon="play" title="list-primary - blue" tone="primary" />
+          <IconAction icon="restart" title="list-secondary - gray" tone="secondary" />
+          <IconAction icon="stop" title="list-dangerous - red" tone="danger" />
+          <IconAction icon="activity" title="list-warning - yellow" tone="warning" />
         </Row>
+        <div className="oh-note" style={{ marginTop: 4 }}>
+          <b>Icons:</b> wireframe by default, filled on demand. Tones - primary (blue, active / go-to), secondary (gray, neutral), dangerous (red, destructive), warning (yellow, caution). List icons stay wireframe and fill only for emphasis (e.g. stop); non-list / button icons use the filled glyph when one is available.
+        </div>
         <Row label="text / link">
           <Button type="text" icon={<GlobalOutlined />} />
           <Button type="link">View all</Button>
@@ -169,11 +172,18 @@ export default function DesignLanguage() {
           <div style={{ width: 160 }}><GpuMeter gpus={[82, 40]} /></div>
           <div style={{ width: 220 }}><GpuMeter gpus={[62, 41, 18, 9]} /></div>
         </Row>
-        <Row label="TTL gadget (ok / warn / low)">
-          <div style={{ width: 340 }}><TtlGadget timeLeftMin={180} maxMin={480} /></div>
-          <div style={{ width: 340 }}><TtlGadget timeLeftMin={45} maxMin={480} /></div>
-          <div style={{ width: 340 }}><TtlGadget timeLeftMin={12} maxMin={480} /></div>
+        <Row label="TTL gadget - behaviour matrix (full / ample / warn / low / extended-capped / at-ceiling)">
+          <div style={{ width: 320 }}><TtlGadget timeLeftMin={240} baseMin={240} maxAddHours={12} /></div>
+          <div style={{ width: 320 }}><TtlGadget timeLeftMin={180} baseMin={240} maxAddHours={12} /></div>
+          <div style={{ width: 320 }}><TtlGadget timeLeftMin={45} baseMin={240} maxAddHours={12} /></div>
+          <div style={{ width: 320 }}><TtlGadget timeLeftMin={12} baseMin={240} maxAddHours={12} /></div>
+          <div style={{ width: 320 }}><TtlGadget timeLeftMin={300} baseMin={240} maxAddHours={6} /></div>
+          <div style={{ width: 320 }}><TtlGadget timeLeftMin={180} baseMin={240} maxAddHours={0} /></div>
         </Row>
+        <div className="oh-note" style={{ marginTop: 4 }}>
+          <b>Progress bars:</b> the standard bar (antd Progress) is base-relative and drains blue -&gt; amber -&gt; red toward the cull; the resource bars are the same family. The <b>alternative striped bars</b> (one per GPU) are for multi-device load - a labelled bar per device rather than a single aggregate. The TTL extend is an hours slider whose last tick "max" tops the session to the ceiling.
+          <br /><b>Tooltips, not static text:</b> precise values (exact GB, %, dates, breakdowns) live in a tooltip on hover, never as wasteful static text under the control - the control shows the glanceable shape, the tooltip the precise number.
+        </div>
       </Card>
 
       <Card title="Effective policy and feed" style={{ marginBottom: 16 }}>

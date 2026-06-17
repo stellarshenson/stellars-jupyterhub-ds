@@ -14,11 +14,11 @@ import { useRole } from '../app/RoleContext'
 import { useTheme } from '../theme/ThemeProvider'
 import { PALETTES } from '../theme/tokens'
 import type { ThemeMode } from '../theme/tokens'
-import { PLATFORM } from '../services/config'
 import { portalAssetBase } from '../services/hub/client'
 import { useHubInfo } from '../hooks/queries'
 import { mockAction } from '../services/actions'
 import { hubUrl } from '../services/hub/client'
+import { useIsMobile } from '../lib/useIsMobile'
 import { SiderMenu } from './SiderMenu'
 import { Breadcrumbs } from './Breadcrumbs'
 import { MockSwitch } from './MockSwitch'
@@ -127,24 +127,25 @@ function SiderHandle({ collapsed, onToggle }: { collapsed: boolean; onToggle: ()
   )
 }
 
-const STACK_CHIPS = [
-  { k: 'JupyterHub', v: '3', c: '#d97f3f' },
-  { k: 'JupyterLab', v: '4', c: '#d97f3f' },
-  { k: 'Ant Design Pro', v: '6', c: '#4f86d6' },
-]
-
 function VersionFooter() {
   const { data: hub } = useHubInfo()
+  // JupyterHub major derived from the live version (5.5.0 -> "5"), not hardcoded
+  const hubMajor = hub?.version ? hub.version.split('.')[0] : '5'
+  const stackChips = [
+    { k: 'JupyterHub', v: hubMajor, c: '#d97f3f' },
+    { k: 'JupyterLab', v: '4', c: '#d97f3f' },
+    { k: 'Ant Design Pro', v: '6', c: '#4f86d6' },
+  ]
   const tag = { background: 'var(--color-surface-active)', color: 'var(--color-text-muted)', borderRadius: 4, marginInline: 4 }
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 12, padding: '14px 0', color: 'var(--color-text-subtle)', fontSize: 12 }}>
       <span>
-        Optimum Hub<Tag bordered={false} style={tag}>v{PLATFORM.version}</Tag>
+        Optimum Hub<Tag bordered={false} style={tag}>v{__APP_VERSION__}</Tag>
         <span style={{ margin: '0 6px' }}>·</span>
         JupyterHub<Tag bordered={false} style={tag}>v{hub?.version ?? '…'}</Tag>
       </span>
       <span className="oh-techchips" style={{ marginTop: 0 }}>
-        {STACK_CHIPS.map((c) => (
+        {stackChips.map((c) => (
           <span className="oh-chip" key={c.k}>
             <span className="k">{c.k}</span>
             <span className="v" style={{ background: c.c }}>{c.v}</span>
@@ -164,6 +165,9 @@ export function AppLayout() {
   const logoSrc = `${portalAssetBase()}brand/jh-logo.svg`
   const markSrc = `${portalAssetBase()}brand/jl-logo.svg`
   const [collapsed, setCollapsed] = useState(false)
+  // below the mobile breakpoint we drop the sider menu entirely (the mobile home
+  // is the whole surface) and never render the collapse handle
+  const isMobile = useIsMobile()
 
   return (
     <ProLayout
@@ -176,6 +180,7 @@ export function AppLayout() {
       siderWidth={248}
       location={{ pathname }}
       route={{ path: '/', routes: [] }}
+      menuRender={isMobile ? false : undefined}
       menuContentRender={(props) => <SiderMenu collapsed={!!props?.collapsed} />}
       menuHeaderRender={(_logo, _title, props) => (
         <Link to="/home" style={{ display: 'flex', alignItems: 'center', justifyContent: props?.collapsed ? 'center' : 'flex-start', height: '100%', flex: 1, minWidth: 0 }} title="Optimum Hub">
@@ -197,7 +202,7 @@ export function AppLayout() {
     >
       <MessageBinder />
       <CommandPalette />
-      <SiderHandle collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
+      {!isMobile && <SiderHandle collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />}
       <div style={{ maxWidth: 1320, margin: '0 auto', width: '100%' }}>
         <div className="oh-topbar">
           <Breadcrumbs />

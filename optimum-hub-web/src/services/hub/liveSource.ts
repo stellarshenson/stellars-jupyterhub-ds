@@ -19,6 +19,7 @@ import type { DataSource } from '../datasource'
 import { mockSource } from '../mockSource'
 import { IDLE_CULLER, THRESHOLDS } from '../config'
 import { hubGet, getCurrentUser } from './client'
+import { timeAgoShort } from '../../lib/format'
 import type {
   EventRow,
   EventType,
@@ -68,6 +69,7 @@ interface RawActivityUser {
   volume_size_mb?: number | null
   volume_breakdown?: Record<string, number>
   container_size_rw_mb?: number | null
+  container_size_rootfs_mb?: number | null
 }
 interface RawActivity {
   users: RawActivityUser[]
@@ -166,9 +168,12 @@ function activityByName(a: RawActivity): Map<string, RawActivityUser> {
 }
 
 function statusOf(srv: RawServer | undefined, a: RawActivityUser | undefined): ServerStatus {
-  if (srv?.pending === 'spawn') return 'spawning'
+  // A ready/active server is never "spawning" - check readiness FIRST so a
+  // lingering pending==='spawn' (a known hub transient during the ready race)
+  // can't mask an actually-running server as Spawning.
   const ready = !!srv?.ready || !!a?.server_active
   if (ready) return a?.recently_active ? 'active' : 'idle'
+  if (srv?.pending === 'spawn') return 'spawning'
   return 'offline'
 }
 
@@ -186,23 +191,52 @@ export const liveSource: DataSource = {
       const running = status === 'active' || status === 'idle'
       const memMb = a?.memory_mb ?? null
       const memPct = a?.memory_percent ?? null
+      const memTotal = a?.memory_total_mb ?? null
       const volMb = a?.volume_size_mb ?? null
       const ctrMb = a?.container_size_rw_mb ?? null
+      const rootfsMb = a?.container_size_rootfs_mb ?? null
+      const vbreak = a?.volume_breakdown ?? {}
       const tl = a?.time_remaining_seconds != null ? Math.round(a.time_remaining_seconds / 60) : null
+      const gb = (mb: number) => round1(mb / 1024)
+      // mem: used vs configured per-user limit vs total host
+      const memTip = memMb != null
+        ? `${gb(memMb)} GB used`
+          + (memMax > 0 ? ` / ${gb(memMax)} GB limit` : '')
+          + (memTotal ? ` / ${gb(memTotal)} GB host` : '')
+          + (memMax > 0 && memMb > memMax ? ' (over limit)' : '')
+        : undefined
+      // volumes: per-mount breakdown + quota when exceeded
+      const volParts = Object.entries(vbreak).filter(([, mb]) => mb != null)
+      const volTip = volMb != null
+        ? (volParts.length ? `${volParts.map(([s, mb]) => `${s} ${gb(mb)} GB`).join(' · ')} (total ${gb(volMb)} GB)` : `${gb(volMb)} GB`)
+          + (volMax > 0 && volMb > volMax ? ` / ${gb(volMax)} GB quota exceeded` : '')
+        : undefined
+      // system: base image size + writable layer + quota
+      const baseMb = rootfsMb != null && ctrMb != null ? Math.max(0, rootfsMb - ctrMb) : null
+      const sysTip = ctrMb != null
+        ? (baseMb != null ? `base ${gb(baseMb)} GB + ` : '') + `writable ${gb(ctrMb)} GB`
+          + (ctrMax > 0 ? ` / ${gb(ctrMax)} GB quota` : '')
+          + (ctrMax > 0 && ctrMb > ctrMax ? ' (over)' : '')
+        : undefined
       return {
         user: u.name,
         admin: !!u.admin,
         status,
-        statusLabel: cap(status),
+        // match the mock's timed label ("Active 1m", "Idle 38m", "Offline 2d");
+        // spawning has no last_activity so it stays a bare "Spawning"
+        statusLabel: `${cap(status)}${a?.last_activity ? ` ${timeAgoShort(a.last_activity)}` : ''}`,
+        lastActivityISO: a?.last_activity ?? null,
         activity: running ? clampPct(a?.activity_score ?? 0) : null,
         cpu: running && a?.cpu_percent != null ? Math.round(a.cpu_percent) : null,
         mem: running && memPct != null ? Math.round(memPct) : null,
-        memTip: memMb != null ? `${round1(memMb / 1024)} GB${memPct != null ? ` - ${Math.round(memPct)}% of host RAM` : ''}` : undefined,
+        memTip,
         memOver: memMax > 0 && memMb != null && memMb > memMax,
         gpu: null, // per-user GPU usage not collected server-side
         volumesGB: volMb != null ? round1(volMb / 1024) : null,
+        volumesTip: volTip,
         volumesOver: volMax > 0 && volMb != null && volMb > volMax,
         systemGB: running && ctrMb != null ? round1(ctrMb / 1024) : null,
+        systemTip: sysTip,
         systemOver: ctrMax > 0 && ctrMb != null && ctrMb > ctrMax,
         timeLeftMin: tl,
         timeLeftLabel: tl != null ? fmtMinutes(tl) : undefined,
@@ -355,16 +389,20 @@ export const liveSource: DataSource = {
         memTip: `${round1(memUsed / 1024)} GB across ${active.length} server(s)`,
       }
     } catch {
-      return mockSource.getTotalResources()
+      // never fabricate platform facts: on a live error return empty resources
+      // (no fake GPUs). keepPreviousData holds the last real snapshot on a
+      // transient error; a cold error shows nothing rather than mock A100s.
+      return { cpu: 0, mem: 0, gpu: 0 }
     }
   },
 
   async getSessionInfo(user: string): Promise<SessionInfo> {
     try {
-      const r = await hubGet<{ time_remaining_seconds?: number | null; max_extension_hours?: number }>(`/users/${encodeURIComponent(user)}/session-info`)
+      const r = await hubGet<{ time_remaining_seconds?: number | null; timeout_seconds?: number; max_extension_hours?: number; extensions_available_hours?: number }>(`/users/${encodeURIComponent(user)}/session-info`)
       return {
         timeLeftMin: r.time_remaining_seconds != null ? Math.round(r.time_remaining_seconds / 60) : 0,
-        maxMin: (r.max_extension_hours ?? IDLE_CULLER.maxExtensionH) * 60,
+        baseMin: r.timeout_seconds != null ? Math.round(r.timeout_seconds / 60) : IDLE_CULLER.timeoutH * 60,
+        maxAddHours: r.extensions_available_hours ?? r.max_extension_hours ?? IDLE_CULLER.maxExtensionH,
       }
     } catch {
       return mockSource.getSessionInfo(user)
@@ -446,10 +484,11 @@ export const liveSource: DataSource = {
   async getHubInfo() {
     try {
       const raw = await hubGet<{ version?: string }>('/info')
-      if (raw.version) return { version: raw.version }
-      return mockSource.getHubInfo()
+      return { version: raw.version ?? '' }
     } catch {
-      return mockSource.getHubInfo()
+      // honest empty, not a hardcoded mock version; keepPreviousData holds the
+      // last real version on a transient error
+      return { version: '' }
     }
   },
 
@@ -472,7 +511,7 @@ export const liveSource: DataSource = {
         volumes: (a.lab_volumes ?? []).map((v) => ({ name: v.suffix, mount: v.mount, description: v.description })),
       }
     } catch {
-      return mockSource.getLabContainer()
+      return { image: '', volumes: [] } // honest empty, not the mock lab image
     }
   },
 
@@ -494,7 +533,7 @@ export const liveSource: DataSource = {
       }
       return groups
     } catch {
-      return mockSource.getSettings()
+      return [] // honest empty, not the curated mock settings
     }
   },
 

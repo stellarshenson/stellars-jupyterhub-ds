@@ -1,5 +1,5 @@
 /* Export groups - check / uncheck a subset and download it as one JSON bundle. */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button, Card, Table } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
@@ -12,7 +12,11 @@ import type { GroupRow } from '../services/types'
 export default function GroupsExport() {
   const navigate = useNavigate()
   const { data = [] } = useGroups()
-  const [selected, setSelected] = useState<React.Key[]>(data.map((g) => g.name))
+  const [selected, setSelected] = useState<React.Key[]>([])
+  // seed all-selected once the groups load (the initializer runs before data arrives)
+  useEffect(() => {
+    setSelected((prev) => (prev.length ? prev : data.map((g) => g.name)))
+  }, [data])
 
   return (
     <>
@@ -21,8 +25,9 @@ export default function GroupsExport() {
         <Table<GroupRow>
           rowKey="name"
           pagination={false}
+          rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
           rowSelection={{ selectedRowKeys: selected, onChange: setSelected }}
-          dataSource={[...data].sort((a, b) => a.priority - b.priority)}
+          dataSource={[...data].sort((a, b) => b.priority - a.priority)}
           columns={[
             { title: 'Group', dataIndex: 'name' },
             { title: 'Description', dataIndex: 'description', render: (v) => <span className="oh-muted">{v}</span> },

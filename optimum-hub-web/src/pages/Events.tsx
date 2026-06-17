@@ -5,7 +5,7 @@ import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
 import { Input, Segmented } from 'antd'
 import { PageHeader } from '../components/PageHeader'
-import { ScopeFilterPills } from '../components/ScopeFilterPills'
+import { ScopeFilterPills, TONE_CLASS } from '../components/ScopeFilterPills'
 import { Icon } from '../components/Icon'
 import { useEvents } from '../hooks/queries'
 import { timeAgoShort, exactDate } from '../lib/format'
@@ -61,7 +61,7 @@ export default function Events() {
       title: 'Type',
       dataIndex: 'type',
       width: 120,
-      render: (_, e) => <span className={`oh-pill ${TYPE_TONE[e.type] === 'danger' ? 'error' : TYPE_TONE[e.type] === 'warn' ? 'idle' : 'accent'}`}>{e.type}</span>,
+      render: (_, e) => <span className={`oh-pill ${TONE_CLASS[TYPE_TONE[e.type]]}`}>{e.type}</span>,
     },
     {
       title: 'When',
@@ -93,7 +93,9 @@ export default function Events() {
               { key: 'all', label: 'All', count: rangeFiltered.length, tone: 'accent' },
               { key: 'server', label: 'Server', count: counts.server, tone: 'ok' },
               { key: 'user', label: 'User', count: counts.user, tone: 'accent' },
+              { key: 'group', label: 'Group', count: counts.group, tone: 'accent' },
               { key: 'policy', label: 'Policy', count: counts.policy, tone: 'warn' },
+              { key: 'broadcast', label: 'Broadcast', count: counts.broadcast, tone: 'accent' },
               { key: 'cull', label: 'Culled', count: counts.cull, tone: 'danger' },
             ]}
           />

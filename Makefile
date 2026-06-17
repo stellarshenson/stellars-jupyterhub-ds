@@ -29,6 +29,21 @@ JH_VERSION      := $(word 4,$(PROJECT_META))
 VERSION         := $(PROJECT_VERSION)_cuda-$(CUDA_VERSION)_jh-$(JH_VERSION)
 TAG             := $(VERSION)
 
+# ── Images ──
+# The GPU-info sidecar ships as stellars/stellars-gpuinfo-nvidia (CUDA base
+# pinned in its Dockerfile). `make build` builds it via compose (it has a build
+# section); rebuild/push/pull handle it explicitly alongside the hub below.
+HUB_IMAGE          := stellars/stellars-jupyterhub-ds
+GPUINFO_IMAGE      := stellars/stellars-gpuinfo-nvidia
+GPUINFO_DOCKERFILE := services/jupyterhub/gpuinfo-nvidia/Dockerfile
+
+# ── Version sync ──
+# The Optimum Hub portal version tracks the platform version - increment_version
+# bumps these in lockstep with the root pyproject.toml so the wheel + npm package
+# never drift from the release tag.
+OPTIMUM_PYPROJECT    := optimum-hub-web/pyproject.toml
+OPTIMUM_PACKAGE_JSON := optimum-hub-web/package.json
+
 ## verify tools, python tomllib, docker compose, docker daemon, and key project files
 preflight:
 	@rc=0; \
@@ -112,12 +127,14 @@ endif
 # COMMANDS                                                                      #
 #################################################################################
 
-## increment patch version in pyproject.toml
+## increment patch version in pyproject.toml (propagated to optimum-hub-web)
 increment_version: preflight
 	@CURRENT='$(PROJECT_VERSION)'; \
 	NEW=$$(echo "$$CURRENT" | awk 'BEGIN{FS=OFS="."} {$$NF += 1; print}'); \
-	printf '%s%sVersion bumped: %s -> %s%s\n' "$(CYAN)" "$(BOLD)" "$$CURRENT" "$$NEW" "$(RESET)"; \
-	sed -i 's/^version = "'"$$CURRENT"'"$$/version = "'"$$NEW"'"/' pyproject.toml
+	printf '%s%sVersion bumped: %s -> %s (hub + optimum-hub-web)%s\n' "$(CYAN)" "$(BOLD)" "$$CURRENT" "$$NEW" "$(RESET)"; \
+	sed -i 's/^version = "'"$$CURRENT"'"$$/version = "'"$$NEW"'"/' pyproject.toml; \
+	sed -i 's/^version = "'"$$CURRENT"'"$$/version = "'"$$NEW"'"/' $(OPTIMUM_PYPROJECT); \
+	sed -i 's/"version": "'"$$CURRENT"'"/"version": "'"$$NEW"'"/' $(OPTIMUM_PACKAGE_JSON)
 
 ## build docker containers (BUILD_OPTS='--no-version-increment --no-cache')
 build: preflight maybe_increment_version
@@ -151,16 +168,27 @@ _rebuild_impl:
 		--tag stellars/stellars-jupyterhub-ds:latest \
 		-f services/jupyterhub/Dockerfile.jupyterhub \
 		.
+	@echo "Rebuilding GPU-info sidecar ($(GPUINFO_IMAGE):latest)..."
+	@docker build \
+		--network=host \
+		--platform linux/amd64 \
+		--target target \
+		$(DOCKER_BUILD_OPTS) \
+		--tag $(GPUINFO_IMAGE):latest \
+		-f $(GPUINFO_DOCKERFILE) \
+		.
 	$(PRINT_BUILD_SUCCESS)
 
-## pull docker image from dockerhub
+## pull docker images from dockerhub (hub + GPU-info sidecar)
 pull: preflight
-	docker pull stellars/stellars-jupyterhub-ds:latest
+	docker pull $(HUB_IMAGE):latest
+	docker pull $(GPUINFO_IMAGE):latest
 
-## push docker containers to repo
+## push docker containers to repo (hub + GPU-info sidecar)
 push: preflight tag
-	docker push stellars/stellars-jupyterhub-ds:latest
-	docker push stellars/stellars-jupyterhub-ds:$(TAG)
+	docker push $(HUB_IMAGE):latest
+	docker push $(HUB_IMAGE):$(TAG)
+	docker push $(GPUINFO_IMAGE):latest
 	$(PRINT_PUSH_SUCCESS)
 
 tag: preflight

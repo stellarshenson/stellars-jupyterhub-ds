@@ -284,6 +284,39 @@ Make repeat portal loads near-instant: paint from cache, revalidate only what ch
 - [~] **Notification sent-history** - already honest in live: `liveSource.getSentNotifications` returns `[]` (no fabricated history); the mock-mode list is demo-only. A real persistence store is a future enhancement, not a live mock
   - log: 2026-06-16 confirmed honest in live (liveSource.ts)
 
+## Live QA - round 3 (start UX, TTL, versions, perf)
+
+Server-start experience graduates from a modal to a dedicated page with a live spawn-log tail; plus TTL-bar, version-banner and preload fixes found during live testing.
+
+- [ ] **Start -> dedicated page** - starting your OWN server navigates to a start page (e.g. `/servers/:name/starting`), no modal; restart/stop keep the lightweight popup (they settle in seconds)
+  - log: 2026-06-16 proposed + criteria captured; not yet implemented
+- [ ] **Progress + spawn-log tail** - the page shows a progress bar bound to the spawn SSE plus a rolling tail of the last ~10 progress messages (the SSE `message` field - that IS the spawn log; no new backend needed)
+  - log: 2026-06-16 criterion added
+- [ ] **Auto-navigate on ready** - on the SSE `ready` event the page redirects to the running server (`userServerUrl`); there is NO Close button on the success path
+  - log: 2026-06-16 criterion added
+- [ ] **Failure path** - on `failed` (or stream drop without ready), the page shows the error + a Back-to-portal action; no auto-redirect
+  - log: 2026-06-16 criterion added
+- [ ] **Admin starting another user's server** - lands on the page but on ready returns to the parent screen, never auto-enters someone else's server (consistent with the open-someone-else confirm rule)
+  - log: 2026-06-16 criterion added
+- [ ] **Edge: SSE unsupported / drops** - fall back to status polling (`isRunning`) as today; still tail the last message
+  - log: 2026-06-16 criterion added
+- [ ] **Edge: navigate away mid-spawn** - spawn continues server-side; returning reflects current state
+  - log: 2026-06-16 criterion added
+- [x] **Start popup: no Close on success** - success auto-resolves (navigate own / auto-close other); Close shows only on error (interim, until the start page lands)
+  - log: 2026-06-16 done (ServerLifecycle.tsx footer)
+- [x] **TTL bar base-relative** - the drain bar measures remaining against the BASE timeout, not the extension ceiling, so a fresh 24h session reads ~100% not ~50%; the extend cap uses available-hours (ceiling gap)
+  - log: 2026-06-16 root-caused (wrapper sets MAX_EXTENSION_MINUTES=2880 -> max_extension_hours=48 used as the bar denominator); 2026-06-17 verified (meters.tsx:169 pct = timeLeftMin/baseMin; SessionInfo.baseMin from timeout_seconds)
+- [x] **TTL hidden when server stopped** - no progress bar rendered when the server is offline
+  - log: 2026-06-17 verified (ServerHero.tsx:54 `{running && <TtlGadget/>}`)
+- [x] **Volume reset spinner** - the Reset button shows a loading state while the delete is in flight so the user sees activity
+  - log: 2026-06-17 verified (VolumeReset.tsx:16 busy state, :51 `loading={busy}` + "Resetting…")
+- [x] **Optimum Hub version** - footer + sidebar badge show the build-stamped package version (tracks `package.json`/`pyproject`; `make increment_version` syncs all three), not a hardcoded 1.0.0
+  - log: 2026-06-17 verified (vite.config.ts:25 __APP_VERSION__ from package.json 3.12.2; AppLayout.tsx:141 + VersionBadge.tsx:4)
+- [x] **JupyterHub version banner** - the footer banner reads live from `/hub/api/info` (5.5.0). CORRECTION: the "JupyterHub 3" the user kept seeing was NOT a stale bundle - it was a hardcoded `STACK_CHIPS` tech-chip `{k:'JupyterHub', v:'3'}` in AppLayout. Fixed to derive the major from the live hub version (5.5.0 -> "5")
+  - log: 2026-06-16 mis-attributed to stale bundle; 2026-06-17 ROOT-CAUSED + fixed (AppLayout.tsx VersionFooter hubMajor from hub.version); supersedes the stale-bundle claim
+- [x] **Preload core lists** - servers/users/groups/events/stats prefetched at portal start so navigation paints immediately instead of empty-then-lazy (complements the localStorage query cache)
+  - log: 2026-06-17 verified (App.tsx prefetchCore warm[] - servers/users/groups/events/stats/resources/hub-info + tokens/lab-container/settings/sent-notifications)
+
 ## API (new/changed endpoints)
 
 - GPU inventory: delivered inside the existing `GET /activity` payload as `gpus:[{index,name,memory_mb}]` (admin) - no separate endpoint; reuses the startup-cached `gpu_list`

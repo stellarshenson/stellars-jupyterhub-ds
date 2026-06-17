@@ -18,7 +18,9 @@ const TYPE_PILL: Record<string, string> = {
 export default function Notifications() {
   const { data: history = [] } = useSentNotifications()
   const { data: servers = [] } = useServers()
-  const activeUsers = servers.filter((s) => s.status !== 'offline' && s.status !== 'error').map((s) => s.user)
+  // only READY servers can receive a broadcast (a spawning lab has no extension
+  // to ingest it yet -> selecting it would guarantee a delivery failure)
+  const activeUsers = servers.filter((s) => s.status === 'active' || s.status === 'idle').map((s) => s.user)
   const [msg, setMsg] = useState('')
   const [variant, setVariant] = useState('default')
   const [autoClose, setAutoClose] = useState(false)
@@ -75,6 +77,7 @@ export default function Notifications() {
           <Table<SentNotification>
             rowKey="id"
             pagination={false}
+            locale={{ emptyText: 'No broadcasts sent yet' }}
             dataSource={history}
             columns={[
               { title: 'Message', dataIndex: 'message' },

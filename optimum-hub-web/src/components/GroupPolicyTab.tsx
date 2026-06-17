@@ -11,6 +11,7 @@ import { Button, Checkbox, Input, InputNumber, Radio, Select, Switch, Table } fr
 import { Icon } from './Icon'
 import type { IconKey } from './Icon'
 import { useTotalResources } from '../hooks/queries'
+import { gpuSupported } from '../app/capabilities'
 import type { GroupConfig, PolicyConfig } from '../services/types'
 
 interface EnvVar { name: string; value: string; desc: string }
@@ -85,8 +86,11 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       sudo: !!c.sudo_active,
     })
     setEnvVars((c.env_vars ?? []).map((e) => ({ name: e.name, value: e.value, desc: e.description ?? '' })))
-    setGpuAll(c.gpu_all ?? true)
-    setGpuIds((c.gpu_device_ids ?? []).map(String))
+    const gpuIdsSeed = (c.gpu_device_ids ?? []).map(String)
+    // default all-GPUs only when no specific devices are granted - never silently
+    // widen a device-scoped group to all GPUs on load
+    setGpuAll(c.gpu_all ?? gpuIdsSeed.length === 0)
+    setGpuIds(gpuIdsSeed)
     setMemGB(c.mem_limit_gb ? c.mem_limit_gb : null)
     setMemSwap(!!c.mem_swap_disabled)
     setCpuCores(c.cpu_limit_cores ? c.cpu_limit_cores : null)
@@ -131,7 +135,9 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
     const config: PolicyConfig = {
       env_vars_active: on.env_vars ?? false,
       env_vars: envVars.map((e) => ({ name: e.name, value: e.value, description: e.desc })),
-      gpu_access: on.gpu ?? false,
+      // when the platform has no GPU the section is hidden; never let a seeded
+      // gpu_access:true round-trip invisibly through Save on a GPU-less host
+      gpu_access: gpuSupported() ? (on.gpu ?? false) : false,
       gpu_all: gpuAll,
       gpu_device_ids: gpuIds,
       docker_active: on.docker ?? false,
@@ -196,7 +202,8 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
         <Button size="small" icon={<Icon name="plus" size={13} />} style={{ marginTop: 8 }} onClick={() => setEnvVars((p) => [...p, { name: '', value: '', desc: '' }])}>Add variable</Button>
       </Section>
 
-      {/* GPU */}
+      {/* GPU - only when the platform has GPU */}
+      {gpuSupported() && (
       <Section icon="gpu" title="GPU access" on={on.gpu ?? false} onToggle={toggle('gpu')}>
         <div className="oh-pol-hint">Gives members the selected GPU devices in their containers.</div>
         <Checkbox checked={gpuAll} onChange={(e) => setGpuAll(e.target.checked)}>All GPUs</Checkbox>
@@ -215,6 +222,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
           )}
         </div>
       </Section>
+      )}
 
       {/* Memory */}
       <Section icon="memory" title="Memory" on={on.mem ?? false} onToggle={toggle('mem')}>

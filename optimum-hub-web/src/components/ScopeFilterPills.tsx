@@ -2,7 +2,9 @@
  * active. Drives a list's visible scope. The default scope is never "everything". */
 export type ScopeTone = 'ok' | 'warn' | 'grey' | 'accent' | 'danger'
 
-const TONE_CLASS: Record<ScopeTone, string> = {
+// tone -> oh-pill colour class; exported so other pills (e.g. the Events Type
+// column) colour-match the legend instead of re-deriving it
+export const TONE_CLASS: Record<ScopeTone, string> = {
   ok: 'running',
   warn: 'idle',
   grey: 'stopped',

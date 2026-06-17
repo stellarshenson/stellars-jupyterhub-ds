@@ -18,6 +18,7 @@ def test_top_level_imports():
     from stellars_hub_services import setup_branding
     from stellars_hub_services import register_events
     from stellars_hub_services import resolve_gpu_mode
+    from stellars_hub_services import ensure_gpuinfo_sidecar
     from stellars_hub_services import make_pre_spawn_hook
     from stellars_hub_services import schedule_policy_startup
     from stellars_hub_services import schedule_startup_favicon_callback
@@ -28,6 +29,8 @@ def test_top_level_imports():
     from stellars_hub_services import ratelimit_disabled
     assert callable(get_user_volume_suffixes)
     assert callable(apply_abuse_protection)
+    assert callable(resolve_gpu_mode)
+    assert callable(ensure_gpuinfo_sidecar)
 
 
 def test_volumes():
@@ -57,6 +60,26 @@ def test_docker_utils():
     from stellars_hub_services.docker_utils import encode_username_for_docker
     assert encode_username_for_docker("test.user") == "test-2euser"
     assert encode_username_for_docker("simple") == "simple"
+
+
+def test_persisted_cache(tmp_path, monkeypatch):
+    from stellars_hub_services import persisted_cache as pc
+    monkeypatch.setenv("JUPYTERHUB_DATA_DIR", str(tmp_path))
+
+    # fresh round-trip seeds
+    sample = {"alice": {"total": 12.3}}
+    pc.save_cached("widget", sample)
+    loaded = pc.load_cached("widget")
+    assert loaded is not None and loaded[0] == sample
+
+    # >TTL is ignored (set TTL to 0 minutes -> any age is stale)
+    monkeypatch.setenv("JUPYTERHUB_CACHED_DATA_TTL_MINUTES", "0")
+    assert pc.load_cached("widget") is None
+
+    # missing + corrupt return None, never raise
+    assert pc.load_cached("never-written") is None
+    (tmp_path / "broken.json").write_text("{not json")
+    assert pc.load_cached("broken") is None
 
 
 def test_activity_model():

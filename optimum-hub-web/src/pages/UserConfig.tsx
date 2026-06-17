@@ -15,6 +15,7 @@ import { mockSuccess } from '../services/actions'
 import { isMock } from '../services/dataMode'
 import { addMember, setUserAuthorization, deleteUser, removeMember, saveUserProfile, setAdmin, setUserPassword } from '../services/ops'
 import { PLATFORM } from '../services/config'
+import { adminUser, isAdminUser } from '../app/capabilities'
 import { genPassword } from '../lib/password'
 
 export default function UserConfig() {
@@ -28,33 +29,40 @@ export default function UserConfig() {
   const [tab, setTab] = useState('profile')
   const [pw, setPw] = useState('')
 
-  // the platform-configured admin (JUPYTERHUB_ADMIN): always admin + authorised,
-  // never removable - those controls are owned by system config, not this screen
-  const isBuiltinAdmin = name === PLATFORM.admin
+  // the platform-configured admin (JUPYTERHUB_ADMIN, from the live shell; mock
+  // falls back to the fixture): always admin + authorised, never removable.
+  const isBuiltinAdmin = name === (adminUser() || PLATFORM.admin)
+  // effective admin includes the hook-promoted admin whose persistent row is False
+  const userIsAdmin = isAdminUser(name, !!user?.admin)
 
   // React Query resolves after mount; the Form is keyed on the stable `name` (no
   // remount), so push each async source into it imperatively as it arrives.
   useEffect(() => {
     if (user) {
       setGroups(user.groups)
-      form.setFieldsValue({ admin: user.admin, authorized: user.authorized })
+      const eff = isAdminUser(name, !!user.admin)
+      form.setFieldsValue({ admin: eff, authorized: user.authorized || eff })
     }
-  }, [user, form])
+  }, [user, form, name])
   useEffect(() => {
     if (userProfile) form.setFieldsValue({ first: userProfile.firstName, last: userProfile.lastName, email: userProfile.email })
   }, [userProfile, form])
 
   const save = async () => {
-    if (isMock()) {
-      mockSuccess(`Saved ${name}`)
-      navigate('/users')
-      return
-    }
     try {
       const v = await form.validateFields()
+      // validate in both modes; the mock demo should gate on the same rules, not
+      // "save" invalid data
+      if (isMock()) {
+        mockSuccess(`Saved ${name}`)
+        navigate('/users')
+        return
+      }
       await saveUserProfile(name, { firstName: v.first ?? '', lastName: v.last ?? '', email: v.email ?? '' })
-      if (!isBuiltinAdmin && user && !!v.admin !== user.admin) await setAdmin(name, !!v.admin)
-      if (!isBuiltinAdmin && user && !!v.authorized !== user.authorized) await setUserAuthorization(name, !!v.authorized)
+      const effAdmin = isAdminUser(name, !!user?.admin)
+      if (!isBuiltinAdmin && user && !!v.admin !== effAdmin) await setAdmin(name, !!v.admin)
+      // admins are always authorised -> the switch is hidden for them; only persist for non-admins
+      if (!isBuiltinAdmin && !effAdmin && user && !!v.authorized !== user.authorized) await setUserAuthorization(name, !!v.authorized)
       if (pw) await setUserPassword(name, pw)
       const before = new Set(user?.groups ?? [])
       const after = new Set(groups)
@@ -93,7 +101,8 @@ export default function UserConfig() {
         </Space.Compact>
       </Form.Item>
       {!isBuiltinAdmin && <Form.Item label="Administrator" name="admin" valuePropName="checked"><Switch /></Form.Item>}
-      {!isBuiltinAdmin && <Form.Item label="Authorised" name="authorized" valuePropName="checked"><Switch /></Form.Item>}
+      {/* admins are always authorised -> hide the switch for the built-in and any effective admin */}
+      {!isBuiltinAdmin && !userIsAdmin && <Form.Item label="Authorised" name="authorized" valuePropName="checked"><Switch /></Form.Item>}
     </Form>
   )
 

@@ -227,6 +227,7 @@ function toServerRow(p: Person): ServerRow {
     admin: !!p.admin,
     status: s.status,
     statusLabel: s.status === 'active' ? `Active ${s.since}` : s.status === 'idle' ? `Idle ${s.since}` : 'Spawning',
+    lastActivityISO: spawning ? null : iso(0, parseInt(s.since, 10) || 0),
     activity: spawning ? null : p.activity,
     cpu: spawning ? null : s.cpu,
     mem: spawning ? null : s.memPct,
@@ -346,7 +347,7 @@ export const mockSource: DataSource = {
       status,
       statusLabel: s ? (status === 'active' ? `Active ${s.since}` : status === 'idle' ? `Idle ${s.since}` : 'Spawning') : 'Offline',
       activity: p.activity,
-      ttl: { timeLeftMin: s ? s.timeLeftMin : 0, maxMin: IDLE_CULLER.maxExtensionH * 60 },
+      ttl: { timeLeftMin: s ? s.timeLeftMin : 0, baseMin: IDLE_CULLER.timeoutH * 60, maxAddHours: IDLE_CULLER.maxExtensionH },
       resources: s
         ? { cpu: s.cpu, mem: s.memPct, gpu: s.gpu ? 100 : 0, gpus: gpuUtils(s.gpu), memTip: `${s.memGB} GB of host RAM` }
         : { cpu: 0, mem: 0, gpu: 0 },
@@ -503,7 +504,7 @@ export const mockSource: DataSource = {
 
   getSessionInfo(user: string) {
     const p = PEOPLE.find((x) => x.name === user)
-    return delay<SessionInfo>({ timeLeftMin: p?.server?.timeLeftMin ?? 0, maxMin: IDLE_CULLER.maxExtensionH * 60 })
+    return delay<SessionInfo>({ timeLeftMin: p?.server?.timeLeftMin ?? 0, baseMin: IDLE_CULLER.timeoutH * 60, maxAddHours: IDLE_CULLER.maxExtensionH })
   },
 
   getLabContainer() {
@@ -564,7 +565,7 @@ export const mockSource: DataSource = {
       ] },
       { category: 'GPU', rows: [
         { name: 'JUPYTERHUB_GPU_ENABLED', value: '2', description: '0 disabled, 1 enabled, 2 auto-detect' },
-        { name: 'JUPYTERHUB_NVIDIA_IMAGE', value: 'nvidia/cuda:13.0.2-base-ubuntu24.04', description: 'Image used for GPU auto-detection' },
+        { name: 'JUPYTERHUB_GPUINFO_NVIDIA_IMAGE', value: 'stellars/stellars-gpuinfo-nvidia:latest', description: 'GPU-info sidecar image (detection + utilisation)' },
       ] },
       { category: 'Services', rows: [
         { name: 'JUPYTERHUB_LAB_SERVICE_MLFLOW', value: '1', description: 'Enable MLflow tracking' },

@@ -16,6 +16,9 @@ import { CappedTags } from '../components/CappedTags'
 import { IconAction } from '../components/IconAction'
 import { Icon } from '../components/Icon'
 import { useRole } from '../app/RoleContext'
+import { useIsMobile } from '../lib/useIsMobile'
+import MobileHome from './MobileHome'
+import { timeAgoShort } from '../lib/format'
 import { useEffectiveGrants, useEvents, useServerHero, useServers, useStats, useTotalResources, useUser } from '../hooks/queries'
 import { restartServer, startServer, stopServer } from '../services/ops'
 import type { ServerRow, ServerStatus } from '../services/types'
@@ -45,12 +48,12 @@ function PendingCallout({ count }: { count: number }) {
 function ActiveServersPreview() {
   const { data = [] } = useServers()
   const top = [...data].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]).slice(0, 10)
+  // minimal info on the home preview - the detailed CPU/mem/vol/sys breakdowns
+  // live in the Servers screen drawer now
   const columns: ProColumns<ServerRow>[] = [
     { title: 'User', dataIndex: 'user', render: (_, r) => <span>{r.user}</span> },
     { title: 'Status', render: (_, r) => <StatusPill status={r.status} label={r.statusLabel} /> },
     { title: 'Activity', render: (_, r) => <ActivityMeter value={r.activity} /> },
-    { title: 'CPU', align: 'right', render: (_, r) => (r.cpu == null ? <span className="oh-muted">-</span> : <span className="oh-num">{r.cpu}%</span>) },
-    { title: 'Mem', align: 'right', render: (_, r) => (r.mem == null ? <span className="oh-muted">-</span> : <span className={r.memOver ? 'oh-cell-warn' : 'oh-num'} title={r.memTip}>{r.mem}%</span>) },
     {
       title: 'Time left',
       align: 'right',
@@ -85,6 +88,7 @@ function ActiveServersPreview() {
         ghost
         style={{ marginTop: 12 }}
         pagination={false}
+        rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
       />
     </Card>
   )
@@ -139,13 +143,9 @@ function RecentEvents() {
   )
 }
 
-function timeAgoShort(iso: string): string {
-  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins} min ago`
-  const h = Math.round(mins / 60)
-  if (h < 24) return `${h} hour${h > 1 ? 's' : ''} ago`
-  return `${Math.round(h / 24)} day${h >= 48 ? 's' : ''} ago`
+// proportional segment width, guarded so an empty platform (total 0) yields 0, not NaN%
+function segPct(n: number, total: number): number {
+  return total > 0 ? (n / total) * 100 : 0
 }
 
 function AdminHome() {
@@ -169,9 +169,9 @@ function AdminHome() {
             value={s.total.toLocaleString()}
             to="/servers"
             segments={[
-              { width: (s.running / s.total) * 100, color: 'var(--color-success)' },
-              { width: (s.idle / s.total) * 100, color: 'var(--color-warning)' },
-              { width: (s.offline / s.total) * 100, color: 'var(--color-border)' },
+              { width: segPct(s.running, s.total), color: 'var(--color-success)' },
+              { width: segPct(s.idle, s.total), color: 'var(--color-warning)' },
+              { width: segPct(s.offline, s.total), color: 'var(--color-border)' },
             ]}
             breakdown={
               <>
@@ -189,10 +189,10 @@ function AdminHome() {
             value={u.total.toLocaleString()}
             to="/users"
             segments={[
-              { width: (u.pending / u.total) * 100, color: 'var(--color-accent-2)' },
-              { width: (u.active / u.total) * 100, color: 'var(--color-success)' },
-              { width: (u.new / u.total) * 100, color: 'var(--color-accent)' },
-              { width: (u.inactive / u.total) * 100, color: 'var(--color-text-subtle)' },
+              { width: segPct(u.pending, u.total), color: 'var(--color-accent-2)' },
+              { width: segPct(u.active, u.total), color: 'var(--color-success)' },
+              { width: segPct(u.new, u.total), color: 'var(--color-accent)' },
+              { width: segPct(u.inactive, u.total), color: 'var(--color-text-subtle)' },
             ]}
             breakdown={
               <>
@@ -266,5 +266,9 @@ function UserHome() {
 
 export default function Home() {
   const { role } = useRole()
+  const isMobile = useIsMobile()
+  // Below the mobile breakpoint, drop to the minimal phone surface (status +
+  // Start/Stop/Extend; admins also get a read-only servers widget + links).
+  if (isMobile) return <MobileHome />
   return role === 'admin' ? <AdminHome /> : <UserHome />
 }

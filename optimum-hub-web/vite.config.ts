@@ -1,5 +1,10 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+
+// Stamp the build with the package version so the UI always shows the current
+// release (kept in lockstep with the platform via `make increment_version`).
+const pkgVersion = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8')).version
 
 // Optimum Hub web.
 // - base: when the hub serves the SPA at a sub-path, set VITE_BASE (the hub
@@ -16,6 +21,9 @@ export default defineConfig(({ mode }) => {
   return {
     base: env.VITE_BASE || '/',
     plugins: [react()],
+    define: {
+      __APP_VERSION__: JSON.stringify(pkgVersion),
+    },
     build: {
       manifest: true,
     },

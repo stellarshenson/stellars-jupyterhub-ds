@@ -1,17 +1,14 @@
-/* Standard page header - title, optional sub-line, optional right-aligned actions
- * (the `.page-head` of the static mock). */
+/* Page header. The big title + sub-line were removed - the breadcrumb already
+ * names the page, so they only cost ~50px of vertical space. Only the optional
+ * right-aligned actions remain (so pages that put a primary action here keep it).
+ * `title`/`sub` are accepted but ignored, so no call site needs touching. */
 import type { ReactNode } from 'react'
 
-export function PageHeader({ title, sub, actions }: { title: string; sub?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({ actions }: { title?: string; sub?: ReactNode; actions?: ReactNode }) {
+  if (!actions) return null
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24 }}>
-      <div style={{ minWidth: 0 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 600, margin: 0, color: 'var(--color-text)' }}>{title}</h1>
-        {sub && <div className="oh-page-sub" style={{ marginTop: 2 }}>{sub}</div>}
-      </div>
-      {actions && (
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>{actions}</div>
-      )}
+    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+      {actions}
     </div>
   )
 }

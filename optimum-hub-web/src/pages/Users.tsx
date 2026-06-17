@@ -13,7 +13,7 @@ import { CappedTags } from '../components/CappedTags'
 import { Icon } from '../components/Icon'
 import { useUsers } from '../hooks/queries'
 import { setUserAuthorization, discardUser } from '../services/ops'
-import { PLATFORM } from '../services/config'
+import { isAdminUser } from '../app/capabilities'
 import { exactDate, timeAgoShort } from '../lib/format'
 import type { UserRow } from '../services/types'
 
@@ -108,13 +108,16 @@ export default function Users() {
       title: 'Authorised',
       dataIndex: 'authorized',
       width: 110,
+      // admins are always authorised -> no switch for them (just a muted state);
+      // others get a controlled switch (checked, not defaultChecked, so it can't
+      // desync from the data after a refetch)
       render: (_, u) =>
-        u.name === PLATFORM.admin ? (
-          <Tooltip title="Built-in admin - authorisation controlled by system config">
-            <Switch size="small" checked disabled />
+        isAdminUser(u.name, !!u.admin) ? (
+          <Tooltip title="Admins are always authorised">
+            <span className="oh-muted">authorised</span>
           </Tooltip>
         ) : (
-          <Switch size="small" defaultChecked={u.authorized} onChange={(checked) => setUserAuthorization(u.name, checked)} />
+          <Switch size="small" checked={u.authorized} onChange={(checked) => setUserAuthorization(u.name, checked)} />
         ),
     },
     {
@@ -127,7 +130,8 @@ export default function Users() {
       title: 'Last seen',
       dataIndex: 'lastSeenISO',
       sorter: (a, b) => (a.lastSeenISO ?? '').localeCompare(b.lastSeenISO ?? ''),
-      render: (_, u) => <span title={u.lastSeenISO ? exactDate(u.lastSeenISO) : 'never signed in'}>{timeAgoShort(u.lastSeenISO)}</span>,
+      render: (_, u) =>
+        u.lastSeenISO ? <span title={exactDate(u.lastSeenISO)}>{timeAgoShort(u.lastSeenISO)}</span> : <span className="oh-muted" title="never signed in">-</span>,
     },
     {
       title: 'Activity',

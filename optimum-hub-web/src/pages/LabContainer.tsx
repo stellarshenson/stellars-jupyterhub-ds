@@ -28,6 +28,7 @@ export default function LabContainer() {
         <Table<LabMount>
           rowKey="name"
           pagination={false}
+          locale={{ emptyText: 'No standard volumes configured' }}
           dataSource={volumes}
           rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
           columns={[

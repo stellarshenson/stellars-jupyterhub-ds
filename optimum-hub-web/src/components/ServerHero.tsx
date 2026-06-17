@@ -51,9 +51,11 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
             </>
           )}
         </div>
-        <div style={{ marginTop: 20 }}>
-          <TtlGadget timeLeftMin={hero.ttl.timeLeftMin} maxMin={hero.ttl.maxMin} onExtend={(h) => extendSession(hero.user, h)} />
-        </div>
+        {running && (
+          <div style={{ marginTop: 20 }}>
+            <TtlGadget timeLeftMin={hero.ttl.timeLeftMin} baseMin={hero.ttl.baseMin} maxAddHours={hero.ttl.maxAddHours} onExtend={(h) => extendSession(hero.user, h)} />
+          </div>
+        )}
       </Card>
       <Card>
         <h3 style={{ fontSize: 14, margin: '0 0 12px' }}>{resourcesTitle}</h3>
