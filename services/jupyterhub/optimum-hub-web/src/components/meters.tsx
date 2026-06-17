@@ -22,13 +22,13 @@ export function activityTitle(pct: number | null, hours?: number | null): string
 }
 
 // 5-segment engagement meter. Fill follows the capped score; the tooltip shows
-// the uncapped `pct` (when supplied) so >100% is visible. Colour: low/mid/high.
+// the uncapped `pct` (when supplied) so >100% is visible. Colour is per-segment
+// (pale red -> orange -> green), set in CSS by position, not by the score.
 export function ActivityMeter({ value, hours, pct, title }: { value: number | null; hours?: number | null; pct?: number | null; title?: string }) {
   if (value == null) return <span className="oh-muted">-</span>
   const lit = Math.max(0, Math.min(5, Math.round(value / 20)))
-  const tone = value < 25 ? 'low' : value < 60 ? 'idle' : ''
   return (
-    <span className={`oh-meter ${tone}`} title={title ?? activityTitle(pct ?? value, hours)}>
+    <span className="oh-meter" title={title ?? activityTitle(pct ?? value, hours)}>
       {[0, 1, 2, 3, 4].map((i) => (
         <i key={i} className={i < lit ? 'on' : ''} />
       ))}
@@ -39,9 +39,8 @@ export function ActivityMeter({ value, hours, pct, title }: { value: number | nu
 // 5-segment meter stretched to fill a row (resource panels).
 export function ActivityMeterFill({ value, hours, pct, title }: { value: number; hours?: number | null; pct?: number | null; title?: string }) {
   const lit = Math.max(0, Math.min(5, Math.round(value / 20)))
-  const tone = value < 25 ? 'low' : value < 60 ? 'idle' : ''
   return (
-    <span className={`oh-meter fill ${tone}`} title={title ?? activityTitle(pct ?? value, hours)}>
+    <span className="oh-meter fill" title={title ?? activityTitle(pct ?? value, hours)}>
       {[0, 1, 2, 3, 4].map((i) => (
         <i key={i} className={i < lit ? 'on' : ''} />
       ))}
