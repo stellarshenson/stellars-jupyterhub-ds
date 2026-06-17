@@ -70,6 +70,9 @@ export const extendSession = (user: string, hours = 2) =>
 export const resetActivity = () =>
   run('Reset activity samples', () => hubSend('POST', '/activity/reset'), [['servers'], ['stats'], ['resources'], ['users']])
 
+export const clearEvents = () =>
+  run('Cleared the event log', () => hubSend('DELETE', '/events'), [['events']])
+
 // ── Users ─────────────────────────────────────────────────────────────────--
 /** Idempotently set a user's NativeAuth authorisation. Unlike NativeAuth's
  * /authorize/{name} GET-toggle, this sets the requested state directly, so a

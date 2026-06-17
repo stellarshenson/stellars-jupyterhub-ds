@@ -91,6 +91,19 @@ class EventLogManager:
         finally:
             db.close()
 
+    def clear(self):
+        """Delete every event (the admin "Clear log" action). Returns the count removed."""
+        db = self._get_db()
+        try:
+            n = db.query(Event).delete()
+            db.commit()
+            return n
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
 
 def record_event(event_type, text):
     """Best-effort event recording - never raises into the caller's request/hook."""
