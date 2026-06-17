@@ -31,6 +31,7 @@ from optimum_hub_services import (
     unregister_user,                        # central docker-proxy: unregister on server stop
     get_user_volume_name_templates,         # maps suffix -> full volume-name template (with {username} placeholder)
     get_user_volume_suffixes,               # extracts ['home', 'workspace', 'cache'] from volumes dict
+    gpu_summary_lines,                      # readable per-GPU capabilities + health snapshot for the startup log
     is_wsl2,                                # host is WSL2 -> per-GPU isolation not enforceable (advisory)
     load_merged_user_volumes,               # loads + merges platform-defaults YAML with operator overrides
     make_pre_spawn_hook,                    # factory returning async hook for group perms, favicon, icons
@@ -535,6 +536,12 @@ GPU_UUID_BY_INDEX = {str(g.get('index')): g.get('uuid', '') for g in gpu_list if
 GPU_ISOLATION_ENFORCED = bool(gpu_list) and not is_wsl2()
 print(f"[GPU debug] enabled={gpu_enabled} detected={nvidia_detected} "
       f"isolation_enforced={GPU_ISOLATION_ENFORCED} gpus={gpu_list}", flush=True)
+# operator-facing per-card inventory: capabilities (name, total memory) + a live
+# health snapshot (utilisation, used memory, temperature, power) from the sidecar.
+# The raw dict line above is for debugging; these are the readable lines.
+if _gpuinfo_sidecar_up:
+    for _gpu_line in gpu_summary_lines():
+        print(f"[GPU] {_gpu_line}", flush=True)
 # The background GPU-utilisation sampler queries the same sidecar periodically
 # (gated on a non-empty inventory) so the portal's GPU bar shows real per-device
 # utilisation, used memory and the processes holding each device.

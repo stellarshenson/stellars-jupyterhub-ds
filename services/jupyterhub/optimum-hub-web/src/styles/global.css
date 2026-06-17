@@ -14,6 +14,13 @@ body { margin: 0; font-family: var(--font-sans); }
 .oh-right { text-align: right; }
 .oh-cell-warn { color: var(--color-danger); font-variant-numeric: tabular-nums; }
 .oh-cell-amber { color: var(--color-warning); font-variant-numeric: tabular-nums; }
+/* normal-text colour taxonomy (design language) - reuse the defined palette vars:
+   neutral body text, link (accent), success (green), warning (orange), danger (red) */
+.oh-text-neutral { color: var(--color-text); }
+.oh-text-link { color: var(--color-accent); }
+.oh-text-success { color: var(--color-success); }
+.oh-text-warning { color: var(--color-warning); }
+.oh-text-danger { color: var(--color-danger); }
 .oh-name-hint { display: block; color: var(--color-text-subtle); font-size: 10px; line-height: 1; margin-top: 1px; }
 /* user cell: reserve a constant height so rows with a full name match rows without */
 .oh-user-cell { display: flex; flex-direction: column; justify-content: center; min-height: 32px; }

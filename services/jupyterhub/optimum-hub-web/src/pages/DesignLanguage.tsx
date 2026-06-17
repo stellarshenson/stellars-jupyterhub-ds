@@ -75,6 +75,19 @@ export default function DesignLanguage() {
         ))}
       </Card>
 
+      <Card title="Normal text" style={{ marginBottom: 16 }}>
+        <Row label="text colours (reuse the palette vars)">
+          <span className="oh-text-neutral">neutral</span>
+          <span className="oh-text-link">link</span>
+          <span className="oh-text-success">success</span>
+          <span className="oh-text-warning">warning</span>
+          <span className="oh-text-danger">dangerous</span>
+        </Row>
+        <div className="oh-note" style={{ marginTop: 4 }}>
+          <b>Normal text:</b> neutral (body), link (accent - e.g. a user-profile link), success (green), warning (orange), dangerous (red). One class each (<code>oh-text-*</code>), all from the defined colour vars.
+        </div>
+      </Card>
+
       <Card title="Action buttons" style={{ marginBottom: 16 }}>
         <Row label="page (primary/secondary/danger/disabled)">
           <Button type="primary">Save</Button>

@@ -14,6 +14,10 @@ import { useRole } from '../app/RoleContext'
 import { useServerLifecycle } from '../app/ServerLifecycle'
 import type { ServerHero as Hero } from '../services/types'
 
+// the hero only renders on Home, so the sub-screens it opens (Start, Manage
+// volumes) and their breadcrumb return to Home
+const HERO_ORIGIN = { to: '/dashboard', label: 'Home' }
+
 export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitle: string }) {
   const running = hero.status === 'active' || hero.status === 'idle'
   const navigate = useNavigate()
@@ -47,11 +51,11 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
             </>
           ) : (
             <>
-              <Button type="primary" icon={<Icon name="play" size={15} filled />} disabled={!!busy} onClick={() => navigate(`/servers/${hero.user}/starting`)}>
+              <Button type="primary" icon={<Icon name="play" size={15} filled />} disabled={!!busy} onClick={() => navigate(`/servers/${hero.user}/starting`, { state: { from: HERO_ORIGIN } })}>
                 Start server
               </Button>
               {role === 'admin' && (
-                <Button icon={<Icon name="disk" size={15} />} disabled={!!busy} onClick={() => navigate(`/servers/${hero.user}/volumes`)}>
+                <Button icon={<Icon name="disk" size={15} />} disabled={!!busy} onClick={() => navigate(`/servers/${hero.user}/volumes`, { state: { from: HERO_ORIGIN } })}>
                   Manage volumes
                 </Button>
               )}

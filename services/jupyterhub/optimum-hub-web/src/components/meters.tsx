@@ -219,9 +219,19 @@ export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
 // (bar + time + Extend). Extend opens an hours slider whose last tick is "max",
 // which tops the session up to the configured ceiling (old-JupyterHub style).
 export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, onExtend }: { timeLeftMin: number; baseMin: number; maxAddHours?: number; uptimeLabel?: string; onExtend?: (hours: number) => void | Promise<unknown> }) {
-  // Measure remaining against the BASE timeout, not the extension ceiling, so a
-  // fresh session reads ~100% and drains; an extended session caps at 100%.
-  const pct = baseMin ? Math.min(100, Math.round((timeLeftMin / baseMin) * 100)) : 0
+  // Below base: measure against the BASE timeout (fresh session ~100%, drains).
+  // Extended (time banked above base): measure against the extension ceiling
+  // (base + max_extension, derived from the remaining headroom maxAddHours) so the
+  // bar visibly shrinks as the banked time burns down - the user sees it running
+  // out. The instant it falls to the standard baseline it rescales to base and
+  // reads full again (against the standard baseline, not the extended one).
+  const ceilingMin = timeLeftMin + maxAddHours * 60
+  const pct =
+    timeLeftMin > baseMin && ceilingMin > 0
+      ? Math.round((timeLeftMin / ceilingMin) * 100)
+      : baseMin
+        ? Math.min(100, Math.round((timeLeftMin / baseMin) * 100))
+        : 0
   const warn = THRESHOLDS.timeLeftWarnMin
   const color = timeLeftMin <= warn / 3 ? 'var(--color-danger)' : timeLeftMin <= warn ? 'var(--color-warning)' : 'var(--color-accent)'
   const maxH = Math.max(1, Math.round(maxAddHours))

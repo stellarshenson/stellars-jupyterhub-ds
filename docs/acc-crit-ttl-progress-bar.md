@@ -1,13 +1,13 @@
 # Acceptance Criteria - TTL progress bar behaviour matrix
 
-The idle-session TTL bar (`TtlGadget`, `components/meters.tsx`) reads ~100% when time is ample and drains as the session is used, shifting blue -> orange -> red as the cull nears; the used-up remainder is the gray trail. Extend opens a popover to type the hours to add, capped at the configured ceiling. The bar measures remaining against the BASE timeout (not the extension ceiling), so a fresh session reads ~100%, and an extended session caps at 100%. Verified against the code 2026-06-17, warn threshold = 60 min (`THRESHOLDS.timeLeftWarnMin`).
+The idle-session TTL bar (`TtlGadget`, `components/meters.tsx`) reads ~100% when time is ample and drains as the session is used, shifting blue -> orange -> red as the cull nears; the used-up remainder is the gray trail. Extend opens a popover to type the hours to add, capped at the configured ceiling. A fresh session reads ~100% and drains; an EXTENDED session (time banked above base) drains against the extension ceiling (base + max_extension) so the user sees it running out, then rescales to full at the standard baseline. Verified against the code 2026-06-17, warn threshold = 60 min (`THRESHOLDS.timeLeftWarnMin`).
 
 ## Rules (verified in meters.tsx)
 
-- [x] **Base-relative pct** - `pct = baseMin ? min(100, round(timeLeftMin / baseMin * 100)) : 0`
-  - log: 2026-06-17 verified (meters.tsx)
-- [x] **Caps at 100** - an extended session (timeLeft > base) shows 100%, never over
-  - log: 2026-06-17 verified (Math.min(100, ...))
+- [x] **Two-phase pct** - below base: `min(100, timeLeft/base)`; extended (timeLeft > base): `timeLeft / ceiling` where `ceiling = timeLeft + maxAddHours*60` (= base + max_extension), so the extended bar drains instead of pinning at 100%
+  - log: 2026-06-17 reworked (operator: extended must visibly drain) - was `min(100, timeLeft/base)` capped
+- [x] **Rescale to base at the baseline** - the moment timeLeft falls to base the scale switches to base (full again), then drains normally below; a visible snap-to-full at the baseline crossover (operator-chosen model)
+  - log: 2026-06-17 implemented (meters.tsx ceilingMin branch)
 - [x] **Colour bands** - danger (red) at `timeLeftMin <= 20` (warn/3); warning (amber) at `<= 60`; accent (blue) above
   - log: 2026-06-17 verified (color ternary, warn=60)
 - [x] **Extend = hours input** - Extend opens a popover with an InputNumber (min 1, max = round(maxAddHours)); apply clamps and calls onExtend
@@ -29,8 +29,8 @@ Each row is demonstrated live on `/design-language` (TTL behaviour matrix row).
   - log: 2026-06-17 verified (45 <= 60, > 20)
 - [x] **Low / danger** - timeLeft 12, maxAdd 12 -> pct 5, red, Extend enabled
   - log: 2026-06-17 verified (12 <= 20)
-- [x] **Extended-capped** - timeLeft 300 (> base), maxAdd 6 -> pct 100 (capped), blue, Extend enabled (max 6h)
-  - log: 2026-06-17 verified (min(100,125)=100)
+- [x] **Extended-drains** - timeLeft 300 (> base 240), maxAdd 6 -> ceiling 300+360=660, pct 45 (drains against the ceiling, NOT capped at 100), blue, Extend enabled (max 6h)
+  - log: 2026-06-17 reworked (operator: extended must visibly drain) - was pct 100 capped
 - [x] **At ceiling** - timeLeft 180, maxAdd 0 -> pct 75, blue, Extend DISABLED
   - log: 2026-06-17 verified (atCeiling true)
 - [x] **Stopped** - server offline -> gadget not rendered at all
@@ -55,6 +55,17 @@ Each row is demonstrated live on `/design-language` (TTL behaviour matrix row).
   - log: 2026-06-17 added test_remaining_below_base_active_replenishes_to_base
 - [x] **Ceiling cap** - no extend sequence banks lifetime past base + max_extension; the deadline never sits more than ceiling ahead of now
   - log: 2026-06-17 verified (test_remaining_clamped_to_ceiling, test_extend_caps_at_ceiling)
+
+## Extended TTL must visibly drain (operator 2026-06-17)
+
+The backend already drains banked extension down to base; the BAR now shows it. Operator-chosen model: scale the extended bar to the extension ceiling so it drains (gray trail growing), then rescale to the standard baseline at the crossover (snaps full again, against the standard baseline not the extended scale).
+
+- [x] **Drains while extended** - when remaining > base the bar shrinks against the ceiling as time passes (the user sees time running out), no longer pinned at 100%
+  - log: 2026-06-17 implemented (meters.tsx `ceilingMin` two-phase pct)
+- [x] **Gray leftover** - the drained portion above the current remaining shows as the standard gray trail (antd Progress trailColor)
+  - log: 2026-06-17 implemented
+- [x] **Full again at the standard TTL** - at the standard baseline the bar rescales to base and reads full again (against the standard baseline, not the extended scale); below base it drains normally
+  - log: 2026-06-17 implemented (operator-chosen: visible snap-to-full at the baseline crossover)
 
 ## Extend refetches the bar
 

@@ -82,6 +82,36 @@ def resolve_gpu_mode(gpu_enabled, _image=None, probe_sidecar=True):
     return gpu_enabled, nvidia_detected, gpu_list
 
 
+def gpu_summary_lines():
+    """Readable per-GPU lines for the hub startup log: capabilities (name, total
+    memory) plus a live health snapshot (utilisation, used memory, temperature,
+    power) fetched once from the sidecar. Any metric the sidecar did not report is
+    omitted (never printed as None). Returns [] when the sidecar is unreachable -
+    the caller logs nothing extra (no health to report for unreachable cards).
+    """
+    from . import gpu_client
+
+    payload = gpu_client.fetch_payload_with_retry(attempts=1, delay=0, timeout=1)
+    lines = []
+    for g in (payload or {}).get('gpus', []) or []:
+        idx = g.get('index', '?')
+        name = g.get('name') or 'unknown'
+        total_mb = g.get('memory_total_mb')
+        cap = f"GPU {idx}: {name}" + (f" ({total_mb / 1024:.0f} GB)" if total_mb else "")
+        health = []
+        if g.get('utilization') is not None:
+            health.append(f"{g['utilization']}% util")
+        used_mb = g.get('memory_used_mb')
+        if used_mb is not None:
+            health.append(f"{used_mb / 1024:.1f}/{total_mb / 1024:.0f} GB" if total_mb else f"{used_mb / 1024:.1f} GB used")
+        if g.get('temperature_c') is not None:
+            health.append(f"{g['temperature_c']} C")
+        if g.get('power_w') is not None:
+            health.append(f"{g['power_w']:.0f} W")
+        lines.append(cap + (" - " + ", ".join(health) if health else ""))
+    return lines
+
+
 def is_wsl2():
     """True if the host is WSL2.
 

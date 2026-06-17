@@ -8,7 +8,7 @@ detection is derived from the inventory so one sidecar serves both.
 
 from unittest.mock import patch
 
-from optimum_hub_services.gpu import enumerate_gpus, resolve_gpu_mode
+from optimum_hub_services.gpu import enumerate_gpus, gpu_summary_lines, resolve_gpu_mode
 
 
 def _payload(gpus):
@@ -87,3 +87,24 @@ class TestEnumerateGpus:
         with patch("optimum_hub_services.gpu_client.fetch_payload_with_retry", return_value=_payload(gpus)):
             result = enumerate_gpus()
         assert result == [{"index": "0", "name": "NV", "uuid": "u", "memory_mb": 24576}]
+
+
+class TestGpuSummaryLines:
+    def test_caps_and_full_health(self):
+        gpus = [{"index": "0", "name": "NVIDIA L4", "uuid": "GPU-x", "utilization": 42,
+                 "memory_used_mb": 4096, "memory_total_mb": 24576, "temperature_c": 55, "power_w": 70.0}]
+        with patch("optimum_hub_services.gpu_client.fetch_payload_with_retry", return_value=_payload(gpus)):
+            lines = gpu_summary_lines()
+        assert lines == ["GPU 0: NVIDIA L4 (24 GB) - 42% util, 4.0/24 GB, 55 C, 70 W"]
+
+    def test_omits_missing_metrics_never_none(self):
+        # only capabilities + utilisation reported; temp/power/used absent -> omitted
+        gpus = [{"index": "0", "name": "NV", "memory_total_mb": 24576, "utilization": 0}]
+        with patch("optimum_hub_services.gpu_client.fetch_payload_with_retry", return_value=_payload(gpus)):
+            lines = gpu_summary_lines()
+        assert lines == ["GPU 0: NV (24 GB) - 0% util"]
+        assert "None" not in lines[0]
+
+    def test_empty_when_unreachable(self):
+        with patch("optimum_hub_services.gpu_client.fetch_payload_with_retry", return_value=None):
+            assert gpu_summary_lines() == []

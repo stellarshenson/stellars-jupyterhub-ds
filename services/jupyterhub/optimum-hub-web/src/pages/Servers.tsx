@@ -6,20 +6,19 @@ import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
-import { Button, Card, Drawer, Input, Modal, Spin, Tag } from 'antd'
+import { Button, Card, Drawer, Input, Modal, Tag } from 'antd'
 import { PageHeader } from '../components/PageHeader'
 import { StatusPill } from '../components/StatusPill'
 import { ActivityMeter } from '../components/meters'
 import { ScopeFilterPills } from '../components/ScopeFilterPills'
-import { IconAction } from '../components/IconAction'
+import { rowActions } from '../components/ServerRowActions'
 import { Icon } from '../components/Icon'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, type NavigateFunction } from 'react-router-dom'
 import { timeAgoShort, exactDate } from '../lib/format'
 import { downloadCsv } from '../lib/download'
 import { useServers } from '../hooks/queries'
 import { invalidate, notify } from '../services/actions'
 import { resetActivity, startAllServers, stopAllServers } from '../services/ops'
-import { userServerUrl } from '../services/hub/client'
 import { useRole } from '../app/RoleContext'
 import { gpuSupported } from '../app/capabilities'
 import { useIsMobile } from '../lib/useIsMobile'
@@ -46,52 +45,10 @@ function inScope(r: ServerRow, scope: string): boolean {
   return true
 }
 
-function enterSession(user: string, me: string) {
-  if (user === me) {
-    window.location.assign(userServerUrl(user))
-    return
-  }
-  Modal.confirm({
-    title: `Open ${user}'s server?`,
-    content: `You are about to enter another user's lab. Everything you do happens inside ${user}'s environment.`,
-    okText: `Open ${user}'s server`,
-    cancelText: 'Cancel',
-    onOk: () => window.location.assign(userServerUrl(user)),
-  })
-}
-
-function rowActions(r: ServerRow, nav: (to: string) => void, lf: Lifecycle, me: string) {
-  const mode = lf.busyOf(r.user) // 'start' | 'restart' | 'stop' | null
-  const busy = !!mode
-  if (r.status === 'spawning') {
-    // a rotating spinner says "starting" (not the old ekg/activity glyph); Cancel
-    // stops the in-flight spawn.
-    return (
-      <div className="oh-row" style={{ justifyContent: 'flex-end', alignItems: 'center', gap: 6 }}>
-        <Spin size="small" />
-        <IconAction icon="stop" title="Cancel spawn" tone="danger" filled busy={mode === 'stop'} disabled={busy} onClick={() => lf.stop(r.user)} />
-      </div>
-    )
-  }
-  if (r.status === 'offline') {
-    // starting your OWN server opens the dedicated Start page (progress + log);
-    // starting someone ELSE's runs inline with a spinner on the play button (no
-    // navigation), monitored + refreshed like restart/stop
-    return (
-      <div className="oh-row oh-actions" style={{ justifyContent: 'flex-end' }}>
-        <IconAction icon="play" title={r.user === me ? 'Start server' : `Start ${r.user}'s server`} busy={mode === 'start'} disabled={busy} onClick={() => (r.user === me ? nav(`/servers/${r.user}/starting`) : lf.start(r.user))} />
-        <IconAction icon="disk" title="Manage volumes" disabled={busy} onClick={() => nav(`/servers/${r.user}/volumes`)} />
-      </div>
-    )
-  }
-  return (
-    <div className="oh-row oh-actions" style={{ justifyContent: 'flex-end' }}>
-      <IconAction icon="play" title={r.user === me ? 'Enter session' : `Open ${r.user}'s session`} tone="primary" disabled={busy} onClick={() => enterSession(r.user, me)} />
-      <IconAction icon="restart" title="Restart" busy={mode === 'restart'} disabled={busy} onClick={() => lf.restart(r.user)} />
-      <IconAction icon="stop" title="Stop" tone="danger" filled busy={mode === 'stop'} disabled={busy} onClick={() => lf.stop(r.user)} />
-    </div>
-  )
-}
+// row actions (start/enter/restart/stop/manage-volumes) live in a shared module
+// so the Home "Active servers" widget renders the IDENTICAL controls; this origin
+// tags every nav so the opened sub-screen + breadcrumb return to the Servers list
+const SERVERS_ORIGIN = { to: '/servers', label: 'Servers' }
 
 // one labelled metric row in the detail drawer; `detail` is the breakdown line
 // (the data that lives in the table cell's tooltip, surfaced inline here)
@@ -134,7 +91,7 @@ function ServerDetail({ row }: { row: ServerRow }) {
 // mobile servers view - a card list mirroring the old JupyterHub admin mobile
 // info (user + admin badge, server status, last activity) plus the row actions;
 // tapping a card opens the same detail drawer
-function MobileServerList({ rows, nav, lf, me, onDetail }: { rows: ServerRow[]; nav: (to: string) => void; lf: Lifecycle; me: string; onDetail: (r: ServerRow) => void }) {
+function MobileServerList({ rows, nav, lf, me, onDetail }: { rows: ServerRow[]; nav: NavigateFunction; lf: Lifecycle; me: string; onDetail: (r: ServerRow) => void }) {
   if (!rows.length) return <div className="oh-muted" style={{ padding: '12px 4px' }}>No servers in scope</div>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -149,7 +106,7 @@ function MobileServerList({ rows, nav, lf, me, onDetail }: { rows: ServerRow[]; 
             </div>
             <StatusPill status={r.status} label={r.statusLabel} />
           </div>
-          <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>{rowActions(r, nav, lf, me)}</div>
+          <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>{rowActions(r, nav, lf, me, SERVERS_ORIGIN)}</div>
         </Card>
       ))}
     </div>
@@ -292,7 +249,7 @@ export default function Servers() {
         return <span className={r.timeLeftWarn ? 'oh-cell-amber' : 'oh-num'} title={tip}>{r.timeLeftLabel}</span>
       },
     },
-    { title: 'Actions', align: 'right', render: (_, r) => <span onClick={(e) => e.stopPropagation()}>{rowActions(r, navigate, lifecycle, me)}</span> },
+    { title: 'Actions', align: 'right', render: (_, r) => <span onClick={(e) => e.stopPropagation()}>{rowActions(r, navigate, lifecycle, me, SERVERS_ORIGIN)}</span> },
   ]
 
   const scopes = [
@@ -357,7 +314,7 @@ export default function Servers() {
         onClose={() => setDetail(null)}
         width={440}
         title={detail ? `${detail.user} - activity report` : ''}
-        extra={detail ? <span onClick={(e) => e.stopPropagation()}>{rowActions(detail, navigate, lifecycle, me)}</span> : null}
+        extra={detail ? <span onClick={(e) => e.stopPropagation()}>{rowActions(detail, navigate, lifecycle, me, SERVERS_ORIGIN)}</span> : null}
       >
         {detail && <ServerDetail row={detail} />}
       </Drawer>

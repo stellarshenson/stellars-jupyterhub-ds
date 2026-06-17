@@ -3,7 +3,7 @@
  * actions, recent events). A plain user sees the launchpad (their server hero,
  * their groups, effective access). */
 import { useEffect } from 'react'
-import { Card, Modal, Tag } from 'antd'
+import { Card, Tag } from 'antd'
 import { Link, useNavigate } from 'react-router-dom'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
@@ -14,7 +14,7 @@ import { ResourceBars, ActivityMeter } from '../components/meters'
 import { StatusPill } from '../components/StatusPill'
 import { CardHeadLink } from '../components/CardHeadLink'
 import { CappedTags } from '../components/CappedTags'
-import { IconAction } from '../components/IconAction'
+import { rowActions } from '../components/ServerRowActions'
 import { Icon } from '../components/Icon'
 import { useRole } from '../app/RoleContext'
 import { useIsMobile } from '../lib/useIsMobile'
@@ -22,28 +22,15 @@ import MobileHome from './MobileHome'
 import { timeAgoShort } from '../lib/format'
 import { useEffectiveGrants, useEvents, useServerHero, useServers, useStats, useTotalResources, useUser } from '../hooks/queries'
 import { invalidate } from '../services/actions'
-import { restartServer, stopServer } from '../services/ops'
-import { userServerUrl } from '../services/hub/client'
+import { useServerLifecycle } from '../app/ServerLifecycle'
 import type { ServerRow, ServerStatus } from '../services/types'
 
 const STATUS_ORDER: Record<ServerStatus, number> = { active: 1, idle: 2, spawning: 3, offline: 4, error: 5 }
 const accentTag = { background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4, marginInlineStart: 6 }
 
-// entering another user's running lab confirms first (you act inside their env);
-// your own opens straight through - same guard the Servers list uses
-function enterSession(user: string, me: string) {
-  if (user === me) {
-    window.location.assign(userServerUrl(user))
-    return
-  }
-  Modal.confirm({
-    title: `Open ${user}'s server?`,
-    content: `You are about to enter another user's lab. Everything you do happens inside ${user}'s environment.`,
-    okText: `Open ${user}'s server`,
-    cancelText: 'Cancel',
-    onOk: () => window.location.assign(userServerUrl(user)),
-  })
-}
+// the Home widget lists OTHER users' servers too, so its row actions tag Home as
+// the origin -> the Start / Manage-volumes sub-screens + breadcrumb return here
+const HOME_ORIGIN = { to: '/dashboard', label: 'Home' }
 
 function PendingCallout({ count }: { count: number }) {
   if (count === 0) return null
@@ -69,6 +56,7 @@ function ActiveServersPreview() {
   const { data = [] } = useServers()
   const navigate = useNavigate()
   const { username: me } = useRole()
+  const lifecycle = useServerLifecycle()
   const top = [...data].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]).slice(0, 10)
   // minimal info on the home preview - the detailed CPU/mem/vol/sys breakdowns
   // live in the Servers screen drawer now
@@ -109,22 +97,9 @@ function ActiveServersPreview() {
     {
       title: '',
       align: 'right',
-      render: (_, r) => (
-        <div className="oh-row oh-actions" style={{ justifyContent: 'flex-end' }}>
-          {r.status === 'offline' || r.status === 'error' ? (
-            <>
-              <IconAction icon="play" title={r.user === me ? 'Start server' : `Start ${r.user}'s server`} onClick={() => navigate(`/servers/${r.user}/starting`)} />
-              <IconAction icon="disk" title="Manage volumes" onClick={() => navigate(`/servers/${r.user}/volumes`)} />
-            </>
-          ) : (
-            <>
-              <IconAction icon="play" title={r.user === me ? 'Enter session' : `Open ${r.user}'s session`} tone="primary" onClick={() => enterSession(r.user, me)} />
-              <IconAction icon="restart" title="Restart" onClick={() => restartServer(r.user)} />
-              <IconAction icon="stop" title="Stop" tone="danger" filled onClick={() => stopServer(r.user)} />
-            </>
-          )}
-        </div>
-      ),
+      // identical controls + behaviour to the Servers list (shared rowActions),
+      // tagged with Home as the origin so sub-screens return here
+      render: (_, r) => rowActions(r, navigate, lifecycle, me, HOME_ORIGIN),
     },
   ]
   return (
