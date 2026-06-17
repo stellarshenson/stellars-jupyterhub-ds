@@ -1,6 +1,6 @@
 # Acceptance Criteria - resource bars (limits + tooltips)
 
-The CPU/Memory/GPU progress bars on the Server status card, the Servers table, and the Home "Total resources" widget. Each bar must read 0-100% against the right reference (a quota-limited user's bar measures against THEIR ceiling, not the host) and every bar must carry a hover tooltip with the precise breakdown. Backend `docker_utils.get_container_stats`; frontend `liveSource` (`getServerHero`/`getServers`/`getTotalResources`) + `components/meters.tsx` (`ResourceBars`).
+The CPU/Memory/GPU progress bars on the "Server status" panel (the server card's right half), the Servers table, and the Home "Host status" widget (renamed from "Total resources usage"; the server card's status+controls half is titled "Server"). Each bar must read 0-100% against the right reference (a quota-limited user's bar measures against THEIR ceiling, not the host) and every bar must carry a hover tooltip with the precise breakdown. Backend `docker_utils.get_container_stats`; frontend `liveSource` (`getServerHero`/`getServers`/`getTotalResources`) + `components/meters.tsx` (`ResourceBars`).
 
 ## CPU bar reference
 
@@ -43,15 +43,17 @@ The CPU/Memory/GPU progress bars on the Server status card, the Servers table, a
   - log: 2026-06-17 inline transition on the bar fill
 - [x] **CPU/memory only** - the ramp rides the standard fill bar; GPU rows (striped meter / inventory chips) and the activity meter keep their own colours
   - log: 2026-06-17 applied only on the `<i style=width>` branch in `ResourceBars`
-- [x] **Both surfaces** - one helper in `meters.tsx`, used by the server widget and Total resources alike
+- [x] **Both surfaces** - one helper in `meters.tsx`, used by the "Server status" panel and the "Host status" widget alike
   - log: 2026-06-17
 
 ## Tooltips on every bar
 
 - [x] **Bar + value carry the tip** - `ResourceBars` puts `title={r.tip}` on BOTH the `.oh-res-bar` span and the value readout, so hovering the bar itself (not only the %) shows the breakdown
   - log: 2026-06-17 verified (meters.tsx)
-- [x] **Total resources tips populated** - the Home "Total resources" rows pass `tip` for CPU (`cpuTip`) and Memory (`memTip`); previously they passed none so the bars had no tooltip
+- [x] **Host status tips populated** - the Home "Host status" rows pass `tip` for CPU (`cpuTip`) and Memory (`memTip`); previously they passed none so the bars had no tooltip
   - log: 2026-06-17 FIXED - added `cpuTip` to `getTotalResources`, passed `total.cpuTip`/`total.memTip` in Home.tsx
+- [x] **Host status tips quote % used** - both Host CPU and Memory tooltips lead with a `N% used` line (the bar value) followed by the absolute breakdown (`~N of H cores ...` / `N of M GB ...`), multiline like the per-server widget
+  - log: 2026-06-17 added - `getTotalResources` now derives `cpuBar`/`memBar` and prefixes both tips; memTip also names the host total GB
 - [x] **Total CPU is host-relative** - the aggregate CPU bar = total cores-used / host cores (largest assigned-core count among active servers), not a clamped sum that always pegged ~100%
   - log: 2026-06-17 implemented; tip reads "~N of H cores in use across M servers"
 - [x] **GPU tooltips native** - per-GPU bars/chips carry the standard browser `title` (name/UUID/memory/util/temp/power), not a bespoke antd popup

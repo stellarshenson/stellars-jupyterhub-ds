@@ -18,6 +18,17 @@ After an admin/user resets selected volumes, the panel reports what was done and
 - [ ] **Edge: reached from the user-config Volumes tab vs the dedicated Manage-volumes page** - Close returns to whichever parent opened it (the tab stays, or the page returns to /servers), not a dead-end empty panel
   - log: 2026-06-17 criterion added (#244)
 
+## Audit
+
+- [x] **Event logged on reset** - a successful reset records a `volume` event on the event log (`record_event`), surfaced in Recent events and on the Events page with the disk icon and a `warn` tone; hub log keeps its `[Manage Volumes]` lines too
+  - log: 2026-06-17 added; `handlers/volumes.py` after the removal loop, only when >=1 volume actually removed
+- [x] **Event names actor and owner** - text names the actor; when an admin resets another user's volumes it names both ("<b>admin</b> reset <b>alice</b> volumes: home, workspace"), all HTML-escaped
+  - log: 2026-06-17 added
+- [x] **No UI notify** - the event log + hub log are the record; no extra toast/notification is sent on reset
+  - log: 2026-06-17 per request - event log only
+- [ ] **Edge: all requested volumes already gone** - when nothing is actually removed (all not-found) no event is recorded
+  - log: 2026-06-17 added; guarded on non-empty `reset_volumes`
+
 ## Already in place (keep)
 
 - [x] **Names instant, sizes fill in** - the table paints volume names at once and sizes show "updating…" then fill (split fast names / slow sizes)

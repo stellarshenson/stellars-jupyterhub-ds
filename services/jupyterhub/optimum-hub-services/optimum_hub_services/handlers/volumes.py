@@ -1,5 +1,6 @@
 """Handler for managing user volumes."""
 
+import html
 import json
 
 import docker
@@ -7,6 +8,7 @@ from jupyterhub.handlers import BaseHandler
 from tornado import web
 
 from ..docker_utils import encode_username_for_docker
+from ..event_log import record_event
 
 
 class ManageVolumesHandler(BaseHandler):
@@ -159,6 +161,19 @@ class ManageVolumesHandler(BaseHandler):
                 failed_volumes.append({"volume": volume_type, "reason": str(e)})
 
         docker_client.close()
+
+        # audit the destructive reset on the event log (best-effort; never raises).
+        # Names the actor and, when an admin resets someone else's volumes, the owner.
+        if reset_volumes:
+            vols = html.escape(', '.join(reset_volumes))
+            actor = html.escape(str(current_user.name))
+            owner = html.escape(str(username))
+            text = (
+                f'<b>{actor}</b> reset volumes: {vols}'
+                if current_user.name == username
+                else f'<b>{actor}</b> reset <b>{owner}</b> volumes: {vols}'
+            )
+            record_event('volume', text)
 
         response = {
             "message": f"Successfully reset {len(reset_volumes)} volume(s)",

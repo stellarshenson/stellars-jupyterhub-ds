@@ -56,7 +56,7 @@ function ActiveServersPreview() {
   const columns: ProColumns<ServerRow>[] = [
     { title: 'User', dataIndex: 'user', render: (_, r) => <span>{r.user}</span> },
     { title: 'Status', render: (_, r) => <StatusPill status={r.status} label={r.statusLabel} /> },
-    { title: 'Activity', render: (_, r) => <ActivityMeter value={r.activity} /> },
+    { title: 'Activity', render: (_, r) => <ActivityMeter value={r.activity} hours={r.activityHours} pct={r.activityPct} /> },
     {
       title: 'Time left',
       align: 'right',
@@ -162,7 +162,7 @@ function AdminHome() {
   return (
     <>
       <PageHeader title="Home" sub="Platform at a glance - what is running and what needs attention" />
-      {hero && <ServerHero hero={hero} resourcesTitle="Server resources usage" />}
+      {hero && <ServerHero hero={hero} resourcesTitle="Server status" />}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
         {s && (
@@ -208,7 +208,7 @@ function AdminHome() {
           />
         )}
         <Card style={{ gridColumn: 'span 2' }}>
-          <h3 style={{ margin: '0 0 12px' }}>Total resources usage</h3>
+          <h3 style={{ fontSize: 14, margin: '0 0 12px' }}>Host status</h3>
           {total && (
             <ResourceBars
               rows={[
@@ -243,7 +243,7 @@ function UserHome() {
   return (
     <>
       <PageHeader title="Home" sub="Your lab - launch it, watch it, manage it" />
-      {hero && <ServerHero hero={hero} resourcesTitle="Server resources usage" />}
+      {hero && <ServerHero hero={hero} resourcesTitle="Server status" />}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <Card>
           <h3 style={{ margin: '0 0 12px' }}>Your groups</h3>

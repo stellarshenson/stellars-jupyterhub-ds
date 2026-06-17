@@ -144,7 +144,7 @@ export default function Users() {
       title: 'Activity',
       dataIndex: 'activity',
       sorter: (a, b) => a.activity - b.activity,
-      render: (_, u) => <ActivityMeter value={u.activity} />,
+      render: (_, u) => <ActivityMeter value={u.activity} hours={u.activityHours} pct={u.activityPct} />,
     },
     {
       title: 'Groups',

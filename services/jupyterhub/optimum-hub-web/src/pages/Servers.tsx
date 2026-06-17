@@ -65,12 +65,11 @@ function rowActions(r: ServerRow, nav: (to: string) => void, lf: Lifecycle, me: 
   const mode = lf.busyOf(r.user) // 'start' | 'restart' | 'stop' | null
   const busy = !!mode
   if (r.status === 'spawning') {
-    // a rotating spinner says "starting" (not the old ekg/activity glyph); the log
-    // link opens the real Start-server page (live progress + container-log tail).
+    // a rotating spinner says "starting" (not the old ekg/activity glyph); Cancel
+    // stops the in-flight spawn.
     return (
       <div className="oh-row" style={{ justifyContent: 'flex-end', alignItems: 'center', gap: 6 }}>
         <Spin size="small" />
-        <IconAction icon="code" title="View spawn log" onClick={() => nav(`/servers/${r.user}/starting`)} />
         <IconAction icon="stop" title="Cancel spawn" tone="danger" filled busy={mode === 'stop'} disabled={busy} onClick={() => lf.stop(r.user)} />
       </div>
     )

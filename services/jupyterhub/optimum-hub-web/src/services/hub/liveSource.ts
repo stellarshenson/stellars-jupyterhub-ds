@@ -110,7 +110,7 @@ interface RawGroupsResp {
 
 // event type -> icon key (the hub records type; the portal picks the icon)
 const EVENT_ICON: Record<string, string> = {
-  server: 'play', user: 'user', group: 'group', policy: 'shield', broadcast: 'megaphone', cull: 'stop',
+  server: 'play', user: 'user', group: 'group', policy: 'shield', broadcast: 'megaphone', cull: 'stop', volume: 'disk',
 }
 
 // registry order + display labels (mirrors optimum_hub_services POLICY_TYPES)
@@ -317,6 +317,7 @@ export const liveSource: DataSource = {
   async getUsers(): Promise<UserRow[]> {
     const [users, activity, native, fullNames] = await Promise.all([fetchUsers(), fetchActivity(), fetchNativeUsers(), fetchFullNames()])
     const byName = activityByName(activity)
+    const target = activity.activity_target_hours || 8 // uncapped-% denominator
     const authByName = new Map(native.map((n) => [n.username, n.is_authorized]))
     const hubNames = new Set(users.map((u) => u.name))
     const rows: UserRow[] = users.map((u) => {
@@ -329,6 +330,10 @@ export const liveSource: DataSource = {
         authorized: authByName.get(u.name) ?? a?.is_authorized ?? true,
         pending: false,
         activity: clampPct(a?.activity_score ?? 0),
+        // same engagement tooltip as the server resources widget: real avg hours
+        // and the uncapped % behind the capped meter score
+        activityHours: a?.activity_hours ?? null,
+        activityPct: a?.activity_hours != null ? Math.round((a.activity_hours / target) * 100) : null,
         createdISO: u.created ?? new Date().toISOString(),
         lastSeenISO: u.last_activity ?? undefined,
         groups: u.groups ?? [],
@@ -483,14 +488,19 @@ export const liveSource: DataSource = {
       // unlimited server's assignment IS the host core count) - the bar denominator
       // so the total reads as a fraction of the host, not an always-maxed sum.
       const hostCores = Math.max(1, ...active.map((u) => u.cpu_cores ?? 0))
+      // both Host bars carry a "N% used" first line (the bar value) followed by the
+      // absolute breakdown, mirroring the per-server widget tooltip convention
+      const cpuBar = clampPct((coresUsed / hostCores) * 100)
+      const memBar = totalMb > 0 ? clampPct((memUsed / totalMb) * 100) : 0
+      const svrs = `${active.length} server${active.length === 1 ? '' : 's'}`
       return {
-        cpu: clampPct((coresUsed / hostCores) * 100),
-        cpuTip: `~${round1(coresUsed)} of ${hostCores} core${hostCores === 1 ? '' : 's'} in use across ${active.length} server${active.length === 1 ? '' : 's'}`,
-        mem: totalMb > 0 ? clampPct((memUsed / totalMb) * 100) : 0,
+        cpu: cpuBar,
+        cpuTip: `${cpuBar}% used\n~${round1(coresUsed)} of ${hostCores} core${hostCores === 1 ? '' : 's'} in use across ${svrs}`,
+        mem: memBar,
         gpu: gpuAgg, // busiest GPU's real load
         gpus,
         gpuDevices,
-        memTip: `${round1(memUsed / 1024)} GB across ${active.length} server${active.length === 1 ? '' : 's'}`,
+        memTip: `${memBar}% used\n${round1(memUsed / 1024)} of ${round1(totalMb / 1024)} GB across ${svrs}`,
       }
     } catch {
       // never fabricate platform facts: on a live error return empty resources
