@@ -41,10 +41,6 @@ function inScope(r: ServerRow, scope: string): boolean {
   return true
 }
 
-function num(v: number | null) {
-  return v == null ? <span className="oh-muted">-</span> : <span className="oh-num">{v}%</span>
-}
-
 function enterSession(user: string, me: string) {
   if (user === me) {
     window.location.assign(userServerUrl(user))
@@ -72,7 +68,7 @@ function rowActions(r: ServerRow, nav: (to: string) => void, lf: Lifecycle, me: 
   if (r.status === 'offline') {
     return (
       <div className="oh-row" style={{ justifyContent: 'flex-end' }}>
-        <IconAction icon="play" title="Start server" disabled={busy} onClick={() => lf.start(r.user)} />
+        <IconAction icon="play" title="Start server" disabled={busy} onClick={() => nav(`/servers/${r.user}/starting`)} />
         <IconAction icon="disk" title="Manage volumes" disabled={busy} onClick={() => nav(`/servers/${r.user}/volumes`)} />
       </div>
     )
@@ -113,7 +109,7 @@ function ServerDetail({ row }: { row: ServerRow }) {
         {row.admin && <Tag bordered={false} style={accentTag}>admin</Tag>}
       </div>
       <Metric label="Activity (24h)" value={<ActivityMeter value={row.activity} />} />
-      <Metric label="CPU" value={row.cpu == null ? dash : `${row.cpu}%`} />
+      <Metric label="CPU" value={row.cpu == null ? dash : `${row.cpu}%`} detail={row.cpuTip} />
       <Metric label="Memory" value={row.mem == null ? dash : `${row.mem}%`} detail={row.memTip} over={row.memOver} />
       {gpuSupported() && <Metric label="GPU" value={row.gpu ?? <span className="oh-muted">not tracked per-server</span>} />}
       <Metric label="Volumes" value={row.volumesGB == null ? dash : `${row.volumesGB} GB`} detail={row.volumesTip} over={row.volumesOver} />
@@ -181,10 +177,12 @@ export default function Servers() {
       width: 160,
       sorter: (a, b) => a.user.localeCompare(b.user),
       render: (_, r) => (
-        <span title={`Container jupyterlab-${r.user}`}>
-          {r.user}
-          {r.admin && <Tag bordered={false} style={accentTag}>admin</Tag>}
-        </span>
+        <div className="oh-user-cell">
+          <span title={`Container jupyterlab-${r.user}`}>
+            {r.user}
+            {r.admin && <Tag bordered={false} style={accentTag}>admin</Tag>}
+          </span>
+        </div>
       ),
     },
     {
@@ -207,7 +205,10 @@ export default function Servers() {
       sorter: (a, b) => (a.activity ?? -1) - (b.activity ?? -1),
       render: (_, r) => <ActivityMeter value={r.activity} />,
     },
-    { title: 'CPU', dataIndex: 'cpu', align: 'right', sorter: (a, b) => (a.cpu ?? -1) - (b.cpu ?? -1), render: (_, r) => num(r.cpu) },
+    {
+      title: 'CPU', dataIndex: 'cpu', align: 'right', sorter: (a, b) => (a.cpu ?? -1) - (b.cpu ?? -1),
+      render: (_, r) => (r.cpu == null ? <span className="oh-muted">-</span> : <span className="oh-num" title={r.cpuTip}>{r.cpu}%</span>),
+    },
     {
       title: 'Mem',
       dataIndex: 'mem',

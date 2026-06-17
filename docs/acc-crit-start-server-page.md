@@ -4,6 +4,15 @@ Starting your OWN server leaves the lightweight modal behind and navigates to a 
 
 Two data sources: the **progress bar** rides the hub spawn-progress SSE (`GET /hub/api/users/{name}/server/progress`, no backend change); the **log feed** is the actual container stdout/stderr via a new backend tail endpoint (the SSE `message` field is spawn-progress text, not container logs).
 
+## Implementation status (2026-06-17)
+
+Code-complete; backend `make test` 566+63 green, portal `tsc -b` + `build:hub` clean. The visual "must look polished" criteria below are coded to spec but await the user's image rebuild for on-screen confirmation (no live verify possible here). Elegant architecture per directive: two focused hooks own the data, the page is composition + presentation only, and the start path is unified (no duplicate modal-vs-page logic).
+
+- Backend: `ServerLogsHandler` (`handlers/server.py`) - `GET /api/users/{name}/server/logs?tail=N`, admin-or-self, tail capped at 200, 404 before the container exists; exported + route-registered; handler count test 27->29
+- Frontend data: `hooks/useSpawnProgress.ts` (spawn POST + progress SSE + bounded status-poll fallback + mock ramp) and `hooks/useContainerLogTail.ts` (1.5s poll while spawning, stops on unmount, mock sample)
+- Frontend page: `pages/Starting.tsx` at route `servers/:name/starting` (not admin-gated; backend enforces admin-or-self) - centered branded card, progress bar, terminal-styled log panel (`.oh-termlog` in global.css), redirect-on-ready (own -> lab, admin-other -> Servers), failure -> error + Back
+- Start path unified: ServerHero, MobileHome, Servers, Home(preview) Start buttons now navigate to the page; `ServerLifecycle` trimmed to restart/stop only (the duplicated start/SSE/modal path removed)
+
 ## Page + navigation
 
 - [ ] **Start -> dedicated page** - clicking Start on your own server navigates to `/servers/:name/starting` (no modal); restart/stop keep the lightweight popup

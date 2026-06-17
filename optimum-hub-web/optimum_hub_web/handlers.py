@@ -1,10 +1,11 @@
 """Optimum Hub portal handler - serves the React SPA from the hub itself.
 
-A single ``@web.authenticated`` handler covers the whole ``/hub/portal`` subtree:
+A single ``@web.authenticated`` catch-all covers the hub-root SPA subtree
+(``/hub/...``, no ``portal`` segment):
 
 * a request that maps to a real bundled file (``assets/*``, ``brand/*``,
   ``favicon.ico``) is served as that file
-* anything else (``/hub/portal``, ``/hub/portal/home``, deep links, refresh)
+* anything else (``/hub/dashboard``, ``/hub/servers``, deep links, refresh)
   renders the SPA shell via ``BaseHandler.render_template`` - which injects the
   hub-signed ``xsrf_token``/``base_url``/``user`` that the SPA reads from
   ``window.jhdata`` (see ``optimum-hub-web/src/services/hub/client.ts``)
@@ -88,7 +89,7 @@ def entry_assets():
 
 
 class ImmutableStaticFileHandler(web.StaticFileHandler):
-    """StaticFileHandler for the hashed SPA bundle (``/hub/portal/assets``).
+    """StaticFileHandler for the hashed SPA bundle (``/hub/assets``).
 
     Vite emits content-hashed filenames, so the bytes at a given path never
     change - mark them immutable with a long max-age. StaticFileHandler gives us

@@ -63,6 +63,23 @@ Each row is demonstrated live on `/design-language` (TTL behaviour matrix row).
 - [ ] **Runtime: extend grows the bar** - on a running session below full, Extend visibly refills the bar to the new remaining (pinned at 100% if pushed above base), like the old design
   - log: 2026-06-17 invalidation fixed; live round-trip pending deploy
 
+## Staged extend animation
+
+On Extend the gadget plays a three-step animation instead of a single jump (`TtlGadget` boost state + `.oh-ttl-boost` in global.css).
+
+- [x] **Step 1 - bar fills, time held** - on click the bar animates to 100% immediately (optimistic) while the time text holds its pre-extend value ("keep 24h on")
+  - log: 2026-06-17 implemented - `boost` state forces `shownPct=100`; `displayMin` freezes the shown minutes during the fill
+- [x] **Step 2 - grow to new limit** - the bar fills to the new ceiling with a brief accent glow (`oh-ttl-pulse` keyframe ~0.9s) so the extend reads as deliberate, not a flicker
+  - log: 2026-06-17 implemented - antd Progress transitions the fill; `.oh-ttl-boost` adds the drop-shadow pulse
+- [x] **Step 3 - time text updates** - once the refetched `timeLeftMin` lands the bar settles on the real % and the clock text reveals the new remaining time
+  - log: 2026-06-17 implemented - `displayMin` snaps to the new value and `boost` clears after the fill (~900ms) or as soon as new data arrives
+- [x] **Clock icon before the time** - the clock glyph renders immediately left of the remaining-time text in the gadget
+  - log: 2026-06-17 present (`Icon name="clock"` before `<b>` in `.oh-ttl-val`)
+- [ ] **Edge: partial extend below base** - extending only part-way (remaining still < base) fills to 100% then settles back to the real % when data lands; acceptable since Extend normally tops toward the ceiling
+  - log: 2026-06-17 noted; common path (extend exceeds base) ends at 100% with no settle-back
+- [ ] **Runtime: animation on the live hub** - the three-step sequence is visible end-to-end on a real extend round-trip
+  - log: 2026-06-17 coded; visual confirm pends rebuild
+
 ## Test harness
 
 - [x] **Python SSOT matrix runs all scenarios** - `test_ttl_matrix.py` + `test_idle_culler.py` cover progress pct, ceiling, available hours, extend (add/cap/maxed), remaining (activity floor, replenish, ceiling, floor), cull

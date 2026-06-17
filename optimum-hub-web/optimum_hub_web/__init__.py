@@ -13,8 +13,8 @@ and serves the bundled static assets. Wire it into ``jupyterhub_config.py``::
     c.JupyterHub.default_url = JUPYTERHUB_BASE_URL_PREFIX + PORTAL_URL
 
 The route is relative to the hub prefix (JupyterHub prepends ``/hub``), so the
-portal lives at ``/hub/portal``; ``PORTAL_URL`` is the full hub path for
-``default_url``.
+portal lives at the hub root ``/hub/...`` (no ``portal`` segment); ``PORTAL_URL``
+is the full hub path (``/hub/dashboard``) for ``default_url``.
 """
 
 import os
@@ -40,15 +40,23 @@ except Exception:
 
 # Hashed SPA bundle: served by StaticFileHandler (async, ETag/304) and matched
 # before the catch-all so it never falls through to the shell renderer.
-ASSETS_ROUTE = r"/portal/assets/(.*)"
+ASSETS_ROUTE = r"/assets/(.*)"
 # Brand assets (logo/favicon) served publicly (no auth) so the unauthenticated
 # login/signup pages can show the logo; matched before the @authenticated catch-all.
-BRAND_ROUTE = r"/portal/brand/(.*)"
-# Tornado route, relative to the hub prefix. The catch-all serves the shell for
-# client-side routes and any other real bundled file (favicon, brand).
-PORTAL_ROUTE = r"/portal/?(.*)"
-# Full hub path (the caller prefixes the deploy base_url) for default_url.
-PORTAL_URL = "/hub/portal"
+BRAND_ROUTE = r"/brand/(.*)"
+# Tornado catch-all, relative to the hub prefix -> serves the SPA shell for every
+# /hub/<path> not already claimed by a JupyterHub built-in. extra_handlers run
+# AFTER the built-ins (app.py registers default_handlers first, first-match-wins),
+# so /hub/login, /hub/logout, /hub/api/*, /hub/static/*, /hub/home, /hub/admin,
+# /hub/spawn*, /hub/token etc. are served by the hub; only leftover SPA routes
+# (/dashboard, /servers, /users, ...) fall through here. The legacy server-page
+# handlers (/notifications, /settings, /activity, /groups) were unregistered so
+# they no longer shadow the matching SPA routes. The SPA landing avoids the
+# reserved /home name (see PORTAL_URL). Full rationale: docs/acc-crit-drop-portal-path.md.
+PORTAL_ROUTE = r"/(.*)"
+# Full hub path (the caller prefixes the deploy base_url) for default_url. The SPA
+# landing is /dashboard, not /home, because /hub/home is a JupyterHub built-in.
+PORTAL_URL = "/hub/dashboard"
 
 __all__ = [
     "PortalHandler",
@@ -69,8 +77,8 @@ def portal_handlers():
     """``extra_handlers`` tuples registering the portal (auto-prefixed with /hub).
 
     Order matters - Tornado matches first: the hashed-assets and public brand
-    routes come before the SPA catch-all so ``/hub/portal/assets/*`` and
-    ``/hub/portal/brand/*`` are served as files (brand without auth, so the
+    routes come before the SPA catch-all so ``/hub/assets/*`` and
+    ``/hub/brand/*`` are served as files (brand without auth, so the
     login/signup pages can load the logo).
     """
     return [

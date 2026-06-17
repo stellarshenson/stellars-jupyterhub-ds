@@ -1,7 +1,7 @@
 """Custom JupyterHub request handlers."""
 
 from .volumes import ManageVolumesHandler
-from .server import RestartServerHandler
+from .server import RestartServerHandler, ServerLogsHandler
 from .lab_ready import LabReadyHandler
 from .notifications import NotificationsPageHandler, ActiveServersHandler, BroadcastNotificationHandler
 from .credentials import GetUserCredentialsHandler
@@ -15,12 +15,13 @@ from .groups import (
     GroupsDeleteHandler, GroupsConfigHandler, GroupsReorderHandler,
 )
 from .native_users import NativeUsersHandler, NativeUserAuthorizationHandler
-from .user_profile import UserProfileHandler
+from .user_profile import UserProfileHandler, UserProfilesListHandler
 from .events_data import EventsDataHandler
 
 __all__ = [
     "ManageVolumesHandler",
     "RestartServerHandler",
+    "ServerLogsHandler",
     "LabReadyHandler",
     "NotificationsPageHandler",
     "ActiveServersHandler",
@@ -45,5 +46,6 @@ __all__ = [
     "NativeUsersHandler",
     "NativeUserAuthorizationHandler",
     "UserProfileHandler",
+    "UserProfilesListHandler",
     "EventsDataHandler",
 ]

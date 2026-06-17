@@ -1,7 +1,7 @@
 /* Visual-metaphor primitives: the activity meter, the proportional spark bar, the
  * resource bars, and the TTL gadget. Each carries the precise value in a tooltip,
  * never inline (per the design language). */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { Button, Popover, Progress, Slider, Tooltip } from 'antd'
 import { Icon } from './Icon'
@@ -70,7 +70,7 @@ export function GpuMeter({ gpus, devices }: { gpus: number[]; devices?: GpuDevic
       {gpus.map((g, i) => {
         const d = devices?.[i]
         return (
-          <Tooltip key={i} title={gpuTip(d, g, i)}>
+          <Tooltip key={i} title={gpuTip(d, g, i)} styles={{ root: { maxWidth: 'none' } }}>
             <span className="oh-gpurow">
               <small>{d ? shortGpuName(d.name) : `GPU ${i}`}</small>
               <span className="track">
@@ -118,14 +118,14 @@ function gpuTip(d: GpuDevice | undefined, utilPct?: number, idx?: number): React
   if (util != null) lines.push(`Utilisation ${util}%`)
   if (d.temperatureC != null) lines.push(`Temp ${d.temperatureC}°C`)
   if (d.powerW != null) lines.push(`Power ${Math.round(d.powerW)} W`)
-  return <div style={{ lineHeight: 1.7 }}>{lines.map((l, i) => <div key={i}>{l}</div>)}</div>
+  return <div style={{ lineHeight: 1.45, whiteSpace: 'nowrap' }}>{lines.map((l, i) => <div key={i}>{l}</div>)}</div>
 }
 
 export function GpuInventory({ devices }: { devices: GpuDevice[] }) {
   return (
     <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
       {devices.map((d) => (
-        <Tooltip key={d.index} title={gpuTip(d)}>
+        <Tooltip key={d.index} title={gpuTip(d)} styles={{ root: { maxWidth: 'none' } }}>
           <span
             style={{
               display: 'inline-flex', alignItems: 'baseline', gap: 5, padding: '1px 8px', borderRadius: 6,
@@ -200,8 +200,21 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
   const [open, setOpen] = useState(false)
   const [hours, setHours] = useState(maxH)
   const atCeiling = maxAddHours <= 0
+  // Extend animation: on click the bar fills to 100% immediately (step 1+2) while
+  // the time text holds its old value (the "keep 24h on" feel); once the refetched
+  // timeLeftMin lands, the bar settles on the real % and the text reveals the new
+  // time (step 3). displayMin freezes the shown time during the fill.
+  const [boost, setBoost] = useState(false)
+  const [displayMin, setDisplayMin] = useState(timeLeftMin)
+  useEffect(() => {
+    if (!boost) { setDisplayMin(timeLeftMin); return }
+    const t = window.setTimeout(() => { setDisplayMin(timeLeftMin); setBoost(false) }, 900)
+    return () => window.clearTimeout(t)
+  }, [boost, timeLeftMin])
+  const shownPct = boost ? 100 : pct
   const apply = () => {
     setOpen(false)
+    setBoost(true)
     onExtend?.(Math.max(1, Math.min(maxH, hours)))
   }
   // slider marks: first hour and the last tick labelled "max" (tops to ceiling)
@@ -209,12 +222,12 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
   const atMax = hours >= maxH
   return (
     <div className="oh-ttl">
-      <span style={{ flex: 1, minWidth: 0 }} title="Idle session timer - your server is stopped automatically when this runs out">
-        <Progress percent={pct} showInfo={false} strokeColor={color} trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
+      <span className={boost ? 'oh-ttl-bar oh-ttl-boost' : 'oh-ttl-bar'} style={{ flex: 1, minWidth: 0 }} title="Idle session timer - your server is stopped automatically when this runs out">
+        <Progress percent={shownPct} showInfo={false} strokeColor={boost ? 'var(--color-accent)' : color} trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
       </span>
       <span className="oh-ttl-val">
         <Icon name="clock" size={14} />
-        <b>{fmtMinutes(timeLeftMin)}</b>
+        <b>{fmtMinutes(displayMin)}</b>
       </span>
       {uptimeLabel && (
         <span className="oh-muted" title="Server uptime" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>

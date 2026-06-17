@@ -41,3 +41,19 @@ class UserProfileHandler(BaseHandler):
         )
         self.log.info(f"[UserProfile] {self.current_user.name} updated profile for '{username}'")
         self.finish(manager.get_profile(username))
+
+
+class UserProfilesListHandler(BaseHandler):
+    """GET every user's profile as {username: {first_name, last_name, email}}.
+
+    Admin-only. Backs the Users list, which shows each user's display name under
+    the username; one bulk read avoids an N+1 per-user profile fetch.
+    """
+
+    @web.authenticated
+    async def get(self):
+        current_user = self.current_user
+        if current_user is None or not current_user.admin:
+            raise web.HTTPError(403, "Only administrators can list user profiles")
+        profiles = UserProfileManager.get_instance().get_all_profiles()
+        self.finish({"profiles": profiles})

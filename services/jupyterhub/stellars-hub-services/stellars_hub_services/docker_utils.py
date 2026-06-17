@@ -33,10 +33,17 @@ def get_container_stats(username):
             system_delta = stats['cpu_stats']['system_cpu_usage'] - \
                            stats['precpu_stats']['system_cpu_usage']
 
+            online_cpus = stats['cpu_stats'].get('online_cpus', 1) or 1
             cpu_percent = 0.0
             if system_delta > 0 and cpu_delta > 0:
-                online_cpus = stats['cpu_stats'].get('online_cpus', 1)
                 cpu_percent = (cpu_delta / system_delta) * online_cpus * 100
+
+            # Assigned cores: the explicit CPU limit (HostConfig.NanoCpus, in
+            # billionths of a core) when one is set, else the host cores the
+            # container can actually use. cpu_cores_limited distinguishes the two
+            # so the UI can say "assigned" vs "host (no limit)".
+            nano_cpus = (container.attrs.get('HostConfig') or {}).get('NanoCpus') or 0
+            cpu_cores = round(nano_cpus / 1e9, 2) if nano_cpus else online_cpus
 
             memory_usage = stats['memory_stats'].get('usage', 0)
             memory_limit = stats['memory_stats'].get('limit', 1)
@@ -44,6 +51,8 @@ def get_container_stats(username):
 
             return {
                 'cpu_percent': round(cpu_percent, 1),
+                'cpu_cores': cpu_cores,
+                'cpu_cores_limited': bool(nano_cpus),
                 'memory_mb': round(memory_usage / (1024 * 1024), 1),
                 'memory_percent': round(memory_percent, 1),
                 'memory_total_mb': round(memory_limit / (1024 * 1024), 1),

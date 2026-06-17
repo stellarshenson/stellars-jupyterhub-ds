@@ -82,9 +82,19 @@ def _refresh_sync():
     try:
         data = _fetch_gpu_utilization()
         if data:
+            # First successful sample logs once at INFO with the cadence so
+            # operators see the cache come alive; every later refresh is DEBUG
+            # to keep the periodic tick out of the logs.
+            first = _gpu_util_cache['timestamp'] is None
             _gpu_util_cache['data'] = data
             _gpu_util_cache['timestamp'] = datetime.now(timezone.utc)
-            logger.info(f"[GPU Util] Cache updated: {len(data)} device(s)")
+            if first:
+                logger.info(
+                    f"[GPU Util] Cache initialised: {len(data)} device(s); "
+                    f"refreshing every {_get_update_interval()}s"
+                )
+            else:
+                logger.debug(f"[GPU Util] Cache updated: {len(data)} device(s)")
         else:
             logger.info("[GPU Util] Sample empty - keeping previous cache")
     finally:

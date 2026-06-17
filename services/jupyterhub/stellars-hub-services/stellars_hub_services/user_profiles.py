@@ -74,6 +74,21 @@ class UserProfileManager:
         finally:
             db.close()
 
+    def get_all_profiles(self):
+        """Return {username: profile_dict} for every stored profile.
+
+        Backs the admin Users list, which shows each user's display name under
+        the username - one read instead of an N+1 per-user fetch.
+        """
+        db = self._get_db()
+        try:
+            return {
+                row.username: self._row_to_dict(row, row.username)
+                for row in db.query(UserProfile).all()
+            }
+        finally:
+            db.close()
+
     def save_profile(self, username, first_name=None, last_name=None, email=None):
         """Create or update a profile. Only the provided fields are changed."""
         db = self._get_db()

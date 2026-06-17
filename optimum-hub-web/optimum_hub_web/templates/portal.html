@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" href="{{ base_url }}portal/brand/favicon.ico" />
+    <link rel="icon" href="{{ base_url }}brand/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Optimum Hub</title>
     <script>
@@ -33,10 +33,10 @@
         xsrf_token: "{{ xsrf_token }}"
       };
     </script>
-    {% if entry_css %}<link rel="stylesheet" crossorigin href="{{ base_url }}portal/{{ entry_css }}" />{% endif %}
+    {% if entry_css %}<link rel="stylesheet" crossorigin href="{{ base_url }}{{ entry_css }}" />{% endif %}
   </head>
   <body>
     <div id="root"></div>
-    {% if entry_js %}<script type="module" crossorigin src="{{ base_url }}portal/{{ entry_js }}"></script>{% endif %}
+    {% if entry_js %}<script type="module" crossorigin src="{{ base_url }}{{ entry_js }}"></script>{% endif %}
   </body>
 </html>

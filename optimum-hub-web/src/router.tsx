@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Home from './pages/Home'
 import Profile from './pages/Profile'
+import Starting from './pages/Starting'
 import Servers from './pages/Servers'
 import Users from './pages/Users'
 import NewUser from './pages/NewUser'
@@ -41,9 +42,15 @@ export const router = createBrowserRouter(
       path: '/',
       element: <AppLayout />,
       children: [
-        { index: true, element: <Navigate to="/home" replace /> },
-        { path: 'home', handle: { crumb: 'Home' }, element: <Home /> },
+        { index: true, element: <Navigate to="/dashboard" replace /> },
+        // Landing route is /dashboard, not /home: /hub/home is a JupyterHub
+        // built-in page, so at the hub root (no /portal segment) the SPA must
+        // not reuse that path. Nav label stays "Home".
+        { path: 'dashboard', handle: { crumb: 'Home' }, element: <Home /> },
         { path: 'profile', handle: { crumb: 'Profile' }, element: <Profile /> },
+        // Spawn progress + live log tail. Not admin-gated: a plain user starts
+        // their OWN server here; the backend endpoints enforce admin-or-self.
+        { path: 'servers/:name/starting', handle: { crumb: 'Starting server' }, element: <Starting /> },
         { path: 'design-system', handle: { crumb: 'Design system' }, element: <DesignSystem /> },
         { path: 'design-language', handle: { crumb: 'Design language' }, element: <DesignLanguage /> },
 
@@ -76,7 +83,7 @@ export const router = createBrowserRouter(
           ],
         },
 
-        { path: '*', element: <Navigate to="/home" replace /> },
+        { path: '*', element: <Navigate to="/dashboard" replace /> },
       ],
     },
   ],

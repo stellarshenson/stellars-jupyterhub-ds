@@ -60,6 +60,8 @@ interface RawActivityUser {
   server_active?: boolean
   recently_active?: boolean
   cpu_percent?: number | null
+  cpu_cores?: number | null
+  cpu_cores_limited?: boolean
   memory_mb?: number | null
   memory_percent?: number | null
   memory_total_mb?: number | null
@@ -163,6 +165,19 @@ async function fetchActivity(): Promise<RawActivity> {
     return { users: [] }
   }
 }
+// Bulk display profiles -> {username: "First Last"} (blank when no name set), so
+// the Users list can show a sub-name without an N+1 per-user profile fetch.
+async function fetchFullNames(): Promise<Map<string, string>> {
+  const m = new Map<string, string>()
+  try {
+    const r = await hubGet<{ profiles: Record<string, { first_name?: string; last_name?: string }> }>('/user-profiles')
+    for (const [name, p] of Object.entries(r.profiles ?? {})) {
+      const full = `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim()
+      if (full) m.set(name, full)
+    }
+  } catch { /* profiles unavailable - list just omits sub-names */ }
+  return m
+}
 function activityByName(a: RawActivity): Map<string, RawActivityUser> {
   const m = new Map<string, RawActivityUser>()
   for (const u of a.users) m.set(u.username, u)
@@ -200,6 +215,11 @@ export const liveSource: DataSource = {
       const vbreak = a?.volume_breakdown ?? {}
       const tl = a?.time_remaining_seconds != null ? Math.round(a.time_remaining_seconds / 60) : null
       const gb = (mb: number) => round1(mb / 1024)
+      // cpu: assigned cores - the configured limit, else the host cores the lab can use
+      const cores = a?.cpu_cores ?? null
+      const cpuTip = running && cores != null
+        ? `${cores} core${cores === 1 ? '' : 's'} ${a?.cpu_cores_limited ? 'assigned' : 'host (no limit)'}`
+        : undefined
       // mem: used vs configured per-user limit vs total host
       const memTip = memMb != null
         ? `${gb(memMb)} GB used`
@@ -230,6 +250,7 @@ export const liveSource: DataSource = {
         lastActivityISO: a?.last_activity ?? null,
         activity: running ? clampPct(a?.activity_score ?? 0) : null,
         cpu: running && a?.cpu_percent != null ? Math.round(a.cpu_percent) : null,
+        cpuTip,
         mem: running && memPct != null ? Math.round(memPct) : null,
         memTip,
         memOver: memMax > 0 && memMb != null && memMb > memMax,
@@ -248,7 +269,7 @@ export const liveSource: DataSource = {
   },
 
   async getUsers(): Promise<UserRow[]> {
-    const [users, activity, native] = await Promise.all([fetchUsers(), fetchActivity(), fetchNativeUsers()])
+    const [users, activity, native, fullNames] = await Promise.all([fetchUsers(), fetchActivity(), fetchNativeUsers(), fetchFullNames()])
     const byName = activityByName(activity)
     const authByName = new Map(native.map((n) => [n.username, n.is_authorized]))
     const hubNames = new Set(users.map((u) => u.name))
@@ -256,6 +277,7 @@ export const liveSource: DataSource = {
       const a = byName.get(u.name)
       return {
         name: u.name,
+        fullName: fullNames.get(u.name),
         admin: !!u.admin,
         // NativeAuth is_authorized is authoritative; fall back to activity, then true.
         authorized: authByName.get(u.name) ?? a?.is_authorized ?? true,
@@ -345,6 +367,9 @@ export const liveSource: DataSource = {
     const resources: ResourceSnapshot = a?.server_active
       ? {
           cpu: Math.round(a.cpu_percent ?? 0),
+          cpuTip: a.cpu_cores != null
+            ? `${a.cpu_cores} core${a.cpu_cores === 1 ? '' : 's'} ${a.cpu_cores_limited ? 'assigned' : 'host (no limit)'}`
+            : undefined,
           mem: Math.round(a.memory_percent ?? 0),
           gpu: 0,
           memTip: a.memory_mb != null ? `${round1(a.memory_mb / 1024)} GB of host RAM` : undefined,

@@ -3,7 +3,7 @@
  * actions, recent events). A plain user sees the launchpad (their server hero,
  * their groups, effective access). */
 import { Card } from 'antd'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
 import { PageHeader } from '../components/PageHeader'
@@ -20,7 +20,7 @@ import { useIsMobile } from '../lib/useIsMobile'
 import MobileHome from './MobileHome'
 import { timeAgoShort } from '../lib/format'
 import { useEffectiveGrants, useEvents, useServerHero, useServers, useStats, useTotalResources, useUser } from '../hooks/queries'
-import { restartServer, startServer, stopServer } from '../services/ops'
+import { restartServer, stopServer } from '../services/ops'
 import type { ServerRow, ServerStatus } from '../services/types'
 
 const STATUS_ORDER: Record<ServerStatus, number> = { active: 1, idle: 2, spawning: 3, offline: 4, error: 5 }
@@ -47,6 +47,7 @@ function PendingCallout({ count }: { count: number }) {
 
 function ActiveServersPreview() {
   const { data = [] } = useServers()
+  const navigate = useNavigate()
   const top = [...data].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]).slice(0, 10)
   // minimal info on the home preview - the detailed CPU/mem/vol/sys breakdowns
   // live in the Servers screen drawer now
@@ -65,7 +66,7 @@ function ActiveServersPreview() {
       render: (_, r) => (
         <div className="oh-row" style={{ justifyContent: 'flex-end' }}>
           {r.status === 'offline' || r.status === 'error' ? (
-            <IconAction icon="play" title="Start" onClick={() => startServer(r.user)} />
+            <IconAction icon="play" title="Start" onClick={() => navigate(`/servers/${r.user}/starting`)} />
           ) : (
             <>
               <IconAction icon="restart" title="Restart" onClick={() => restartServer(r.user)} />

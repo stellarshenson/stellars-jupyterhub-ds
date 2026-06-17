@@ -164,11 +164,13 @@ def test_handlers():
         NativeUsersHandler,
         NativeUserAuthorizationHandler,
         UserProfileHandler,
+        UserProfilesListHandler,
+        ServerLogsHandler,
         EventsDataHandler,
     )
     # Verify handler count matches expected
     from stellars_hub_services import handlers
-    assert len(handlers.__all__) == 27
+    assert len(handlers.__all__) == 29
 
 
 def test_auth():

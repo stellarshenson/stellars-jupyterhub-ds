@@ -31,7 +31,7 @@ export const NAV_ADMIN: NavGroup[] = [
   {
     group: '',
     items: [
-      { id: 'home', label: 'Home', icon: 'grid', path: '/home' },
+      { id: 'home', label: 'Home', icon: 'grid', path: '/dashboard' },
       { id: 'profile', label: 'Profile', icon: 'user', path: '/profile' },
     ],
   },
@@ -61,7 +61,7 @@ export const NAV_USER: NavGroup[] = [
   {
     group: '',
     items: [
-      { id: 'home', label: 'Home', icon: 'grid', path: '/home' },
+      { id: 'home', label: 'Home', icon: 'grid', path: '/dashboard' },
       { id: 'profile', label: 'Profile', icon: 'user', path: '/profile' },
     ],
   },

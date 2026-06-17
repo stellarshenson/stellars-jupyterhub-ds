@@ -161,7 +161,7 @@ export function AppLayout() {
   const { resolved } = useTheme()
   const { live } = useRole()
   const p = PALETTES[resolved]
-  const isHome = pathname === '/home' || pathname === '/'
+  const isHome = pathname === '/dashboard' || pathname === '/'
   const logoSrc = `${portalAssetBase()}brand/jh-logo.svg`
   const markSrc = `${portalAssetBase()}brand/jl-logo.svg`
   const [collapsed, setCollapsed] = useState(false)
@@ -183,7 +183,7 @@ export function AppLayout() {
       menuRender={isMobile ? false : undefined}
       menuContentRender={(props) => <SiderMenu collapsed={!!props?.collapsed} />}
       menuHeaderRender={(_logo, _title, props) => (
-        <Link to="/home" style={{ display: 'flex', alignItems: 'center', justifyContent: props?.collapsed ? 'center' : 'flex-start', height: '100%', flex: 1, minWidth: 0 }} title="Optimum Hub">
+        <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', justifyContent: props?.collapsed ? 'center' : 'flex-start', height: '100%', flex: 1, minWidth: 0 }} title="Optimum Hub">
           {props?.collapsed
             ? <img src={markSrc} alt="Optimum Hub" style={{ width: 30, height: 30, objectFit: 'contain' }} />
             : <img className="oh-brand-logo" src={logoSrc} alt="Stellars Tech AI Lab" />}
