@@ -12,7 +12,7 @@
  * validates); a few unsupported or client-only actions (signup-enable env, image
  * pull) keep their existing mock/client-side behaviour. */
 import { isMock } from './dataMode'
-import { hubAuthForm, hubAuthGet, hubSend } from './hub/client'
+import { hubAuthForm, hubAuthGet, hubSend, HubError } from './hub/client'
 import { invalidate, mockSuccess, notify } from './actions'
 import type { PolicyConfig, UserProfile } from './types'
 
@@ -162,6 +162,27 @@ export const reorderGroups = (order: Array<{ name: string; priority: number }>) 
 /** Save a group's general fields (description). Priority is owned by reorder. */
 export const saveGroupConfig = (name: string, description: string, config?: PolicyConfig) =>
   run(`Saved ${name}`, () => hubSend('PUT', `/admin/groups/${encodeURIComponent(name)}/config`, { description, ...(config ?? {}) }), GROUP_KEYS(name))
+
+export interface ImportGroup {
+  name: string
+  description?: string
+  priority?: number
+  config?: PolicyConfig
+}
+/** Import a group-policy bundle: create each group (a 409 "already exists" is
+ * fine - fall through and overwrite its config), then PUT the flat config (the
+ * hub coerces + validates). One toast, one invalidation for the whole batch. */
+export const importGroups = (groups: ImportGroup[]) =>
+  run(`Imported ${groups.length} group${groups.length === 1 ? '' : 's'}`, async () => {
+    for (const g of groups) {
+      try {
+        await hubSend('POST', '/admin/groups/create', { name: g.name, description: g.description ?? '' })
+      } catch (e) {
+        if (!(e instanceof HubError) || e.status !== 409) throw e
+      }
+      await hubSend('PUT', `/admin/groups/${encodeURIComponent(g.name)}/config`, { description: g.description ?? '', ...(g.config ?? {}) })
+    }
+  }, [['groups'], ['group-corpus'], ['events']])
 
 // ── Tokens ────────────────────────────────────────────────────────────────--
 export interface NewToken {

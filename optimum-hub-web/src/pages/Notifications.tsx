@@ -4,15 +4,11 @@ import { useState } from 'react'
 import { Button, Card, Checkbox, Input, Radio, Select, Switch, Table } from 'antd'
 import { PageHeader } from '../components/PageHeader'
 import { Icon } from '../components/Icon'
+import { NotificationPill } from '../components/NotificationPill'
 import { useSentNotifications, useServers } from '../hooks/queries'
 import { broadcast } from '../services/ops'
 import { timeAgoShort, exactDate } from '../lib/format'
 import type { SentNotification } from '../services/types'
-
-// notification type -> status-pill tone (same coloured-pill vocabulary as the rest)
-const TYPE_PILL: Record<string, string> = {
-  info: 'spawning', success: 'running', warning: 'idle', error: 'error', default: 'stopped', 'in-progress': 'accent',
-}
 
 // Scrollable, filterable recipient list: per-user checkboxes plus a select-all
 // (scoped to the current filter) so an operator can select all, then unselect a few.
@@ -123,7 +119,7 @@ export default function Notifications() {
             dataSource={history}
             columns={[
               { title: 'Message', dataIndex: 'message' },
-              { title: 'Type', dataIndex: 'type', width: 120, render: (v) => <span className={`oh-pill ${TYPE_PILL[v] ?? 'stopped'}`}>{v}</span> },
+              { title: 'Type', dataIndex: 'type', width: 120, render: (v) => <NotificationPill type={v} /> },
               { title: 'Delivered', dataIndex: 'delivered', align: 'right', width: 100, render: (_, n) => <span className="oh-num">{n.delivered}/{n.total}</span> },
               { title: 'Sent', dataIndex: 'sentISO', align: 'right', width: 120, render: (v) => <span className="oh-muted" title={exactDate(v)}>{timeAgoShort(v)}</span> },
             ]}

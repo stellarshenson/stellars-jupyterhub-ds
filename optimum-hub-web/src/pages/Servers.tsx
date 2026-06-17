@@ -1,5 +1,5 @@
 /* Servers - the fleet monitor fused with lifecycle actions. Status (lifecycle,
- * drives the actions) and Activity (24h engagement meter) are distinct columns;
+ * drives the actions) and Activity (7-day engagement meter) are distinct columns;
  * quota breaches are colour-only; the scope pills keep Offline out of the default
  * view. Every action is mocked. */
 import { useMemo, useState } from 'react'
@@ -15,8 +15,9 @@ import { IconAction } from '../components/IconAction'
 import { Icon } from '../components/Icon'
 import { useNavigate } from 'react-router-dom'
 import { timeAgoShort, exactDate } from '../lib/format'
+import { downloadCsv } from '../lib/download'
 import { useServers } from '../hooks/queries'
-import { mockAction, invalidate } from '../services/actions'
+import { mockAction, invalidate, notify } from '../services/actions'
 import { resetActivity, startAllServers, stopAllServers } from '../services/ops'
 import { userServerUrl } from '../services/hub/client'
 import { useRole } from '../app/RoleContext'
@@ -108,7 +109,7 @@ function ServerDetail({ row }: { row: ServerRow }) {
         <StatusPill status={row.status} label={row.statusLabel} />
         {row.admin && <Tag bordered={false} style={accentTag}>admin</Tag>}
       </div>
-      <Metric label="Activity (24h)" value={<ActivityMeter value={row.activity} />} />
+      <Metric label="Activity (7d)" value={<ActivityMeter value={row.activity} />} />
       <Metric label="CPU" value={row.cpu == null ? dash : `${row.cpu}%`} detail={row.cpuTip} />
       <Metric label="Memory" value={row.mem == null ? dash : `${row.mem}%`} detail={row.memTip} over={row.memOver} />
       {gpuSupported() && <Metric label="GPU" value={row.gpu ?? <span className="oh-muted">not tracked per-server</span>} />}
@@ -169,6 +170,19 @@ export default function Servers() {
     () => data.filter((r) => inScope(r, scope) && r.user.toLowerCase().includes(q.toLowerCase())),
     [data, scope, q],
   )
+
+  // real client-side CSV of the servers currently in scope - the live fleet
+  // activity, not a mock; one row per server with the same numbers the table shows
+  const downloadReport = () => {
+    const header = ['User', 'Admin', 'Status', 'Activity %', 'CPU %', 'Memory %', 'Volumes GB', 'System GB', 'Time left (min)', 'Last activity']
+    const rows = filtered.map((r) => [
+      r.user, r.admin ? 'yes' : 'no', r.statusLabel,
+      r.activity ?? '', r.cpu ?? '', r.mem ?? '', r.volumesGB ?? '', r.systemGB ?? '',
+      r.timeLeftMin ?? '', r.lastActivityISO ?? '',
+    ])
+    downloadCsv(`activity-report-${scope}.csv`, header, rows)
+    notify.success(`Exported activity report (${filtered.length} server${filtered.length === 1 ? '' : 's'})`)
+  }
 
   const columns: ProColumns<ServerRow>[] = [
     {
@@ -305,7 +319,7 @@ export default function Servers() {
           toolBarRender={() => [
             search,
             <Button key="reset" onClick={() => resetActivity()}>Reset samples</Button>,
-            <Button key="report" icon={<Icon name="download" size={14} />} onClick={() => mockAction('Downloaded activity report')}>Report</Button>,
+            <Button key="report" icon={<Icon name="download" size={14} />} disabled={!filtered.length} onClick={downloadReport}>Report</Button>,
             <Button key="refresh" icon={<Icon name="restart" size={14} />} onClick={() => invalidate(['servers'], ['stats'], ['resources'])}>Refresh</Button>,
           ]}
         />

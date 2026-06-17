@@ -6,6 +6,7 @@
 import { Button, Card, Tag } from 'antd'
 import { Link, useNavigate } from 'react-router-dom'
 import { StatusPill } from '../components/StatusPill'
+import { NotificationPill } from '../components/NotificationPill'
 import { TtlGadget } from '../components/meters'
 import { Icon } from '../components/Icon'
 import { timeAgoShort } from '../lib/format'
@@ -33,7 +34,7 @@ function MyServerCard() {
         <h2 style={{ fontSize: 16, margin: 0 }}>Server status</h2>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {running && hero.upgradeAvailable && (
-            <Tag color="blue" style={{ margin: 0 }} title="A newer lab image is available locally - restart to upgrade">Upgrade available</Tag>
+            <NotificationPill type="info" label="Upgrade available" title="A newer lab image is available locally - restart to upgrade" />
           )}
           <StatusPill status={hero.status} label={hero.statusLabel} />
         </span>

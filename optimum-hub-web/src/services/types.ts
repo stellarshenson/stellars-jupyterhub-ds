@@ -63,6 +63,7 @@ export interface GroupRow {
   members: number
   memberNames?: string[] // for the members tooltip
   policies: PolicyTag[]
+  config?: PolicyConfig // raw flat policy config (live only) - drives the export bundle
 }
 
 export interface GroupConfig {

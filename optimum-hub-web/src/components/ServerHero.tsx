@@ -1,10 +1,11 @@
 /* The two-panel server block reused on both Homes: left is status + controls +
  * TTL, right is the lab's resources. Controls are state-aware: a stopped server
  * shows Start (+ Reset volumes for admins); a running one Open lab / Restart / Stop. */
-import { Button, Card, Tag } from 'antd'
+import { Button, Card } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from './Icon'
 import { StatusPill } from './StatusPill'
+import { NotificationPill } from './NotificationPill'
 import { ActivityMeterFill, ResourceBars, TtlGadget } from './meters'
 import { extendSession } from '../services/ops'
 import { userServerUrl } from '../services/hub/client'
@@ -26,9 +27,7 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
           <h2 style={{ fontSize: 16, margin: 0 }}>Server status</h2>
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {running && hero.upgradeAvailable && (
-              <Tag color="blue" style={{ margin: 0 }} title="A newer lab image is available locally - restart your server to upgrade">
-                Upgrade available
-              </Tag>
+              <NotificationPill type="info" label="Upgrade available" title="A newer lab image is available locally - restart your server to upgrade" />
             )}
             <StatusPill status={hero.status} label={hero.statusLabel} />
           </span>
@@ -80,7 +79,7 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
               label: 'Activity',
               value: 0,
               valueLabel: '',
-              meter: <ActivityMeterFill value={running ? hero.activity : 0} title={`${hero.activity}% active · 24h sampled`} />,
+              meter: <ActivityMeterFill value={running ? hero.activity : 0} title={`${hero.activity}% active over the last 7 days`} />,
             },
           ]}
         />
