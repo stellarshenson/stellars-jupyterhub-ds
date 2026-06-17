@@ -19,6 +19,7 @@ def test_top_level_imports():
     from optimum_hub_services import register_events
     from optimum_hub_services import resolve_gpu_mode
     from optimum_hub_services import ensure_gpuinfo_sidecar
+    from optimum_hub_services import stop_gpuinfo_sidecar
     from optimum_hub_services import make_pre_spawn_hook
     from optimum_hub_services import schedule_policy_startup
     from optimum_hub_services import schedule_startup_favicon_callback
@@ -31,6 +32,7 @@ def test_top_level_imports():
     assert callable(apply_abuse_protection)
     assert callable(resolve_gpu_mode)
     assert callable(ensure_gpuinfo_sidecar)
+    assert callable(stop_gpuinfo_sidecar)
 
 
 def test_volumes():

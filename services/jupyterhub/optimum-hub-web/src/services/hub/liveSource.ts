@@ -260,8 +260,8 @@ export const liveSource: DataSource = {
       const memPctTotal = memMb != null && memHostTotal > 0 ? Math.round((memMb / memHostTotal) * 100) : null
       const memTip = memMb != null
         ? [
-            `${gb(memMb)} GB used${memMax > 0 && memMb > memMax ? ' (over warning threshold)' : ''}`,
-            memTotal ? `${memPct != null ? Math.round(memPct) + '% ' : ''}of ${gb(memTotal)} GB ${memLimited ? 'assigned' : 'host (no limit)'}` : '',
+            `${memPct != null ? Math.round(memPct) : 0}% used${memMax > 0 && memMb > memMax ? ' (over warning threshold)' : ''}`,
+            memTotal ? `${gb(memMb)} of ${gb(memTotal)} GB ${memLimited ? 'assigned' : 'host (no limit)'}` : `${gb(memMb)} GB used`,
             memLimited && memPctTotal != null ? `${memPctTotal}% of ${gb(memHostTotal)} GB host` : '',
           ].filter(Boolean).join('\n')
         : undefined
@@ -440,15 +440,18 @@ export const liveSource: DataSource = {
           gpu: 0,
           memTip: a.memory_mb != null
             ? [
-                `${round1(a.memory_mb / 1024)} GB used${memMax > 0 && a.memory_mb > memMax ? ' (over warning threshold)' : ''}`,
-                a.memory_total_mb ? `${a.memory_percent != null ? Math.round(a.memory_percent) + '% ' : ''}of ${round1(a.memory_total_mb / 1024)} GB ${a.memory_limited ? 'assigned' : 'host (no limit)'}` : '',
+                `${a.memory_percent != null ? Math.round(a.memory_percent) : 0}% used${memMax > 0 && a.memory_mb > memMax ? ' (over warning threshold)' : ''}`,
+                a.memory_total_mb ? `${round1(a.memory_mb / 1024)} of ${round1(a.memory_total_mb / 1024)} GB ${a.memory_limited ? 'assigned' : 'host (no limit)'}` : `${round1(a.memory_mb / 1024)} GB used`,
                 a.memory_limited && memPctTotal != null ? `${memPctTotal}% of ${round1(memHostTotal / 1024)} GB host` : '',
               ].filter(Boolean).join('\n')
             : undefined,
         }
       : { cpu: 0, mem: 0, gpu: 0 }
     const activityPct = a?.activity_hours != null ? Math.round((a.activity_hours / target) * 100) : null
-    return { user, status, statusLabel: cap(status), activity: clampPct(a?.activity_score ?? 0), activityHours: a?.activity_hours ?? null, activityPct, startedISO: a?.server_started ?? srv?.started ?? null, upgradeAvailable: !!a?.lab_image_upgrade_available, ttl, resources }
+    // include the time-ago suffix so the hero status pill reads "Active 1m" like
+    // the Servers list, not a bare "Active"
+    const statusLabel = `${cap(status)}${a?.last_activity ? ` ${timeAgoShort(a.last_activity)}` : ''}`
+    return { user, status, statusLabel, activity: clampPct(a?.activity_score ?? 0), activityHours: a?.activity_hours ?? null, activityPct, startedISO: a?.server_started ?? srv?.started ?? null, upgradeAvailable: !!a?.lab_image_upgrade_available, ttl, resources }
   },
 
   async getTotalResources(): Promise<ResourceSnapshot> {
@@ -480,7 +483,10 @@ export const liveSource: DataSource = {
       const gpuAgg = gpus && gpus.length ? Math.max(...gpus) : 0
       const active = activity.users.filter((u) => u.server_active)
       if (!active.length) return { cpu: 0, mem: 0, gpu: gpuAgg, gpus, gpuDevices }
-      const totalMb = active[0].memory_total_mb || 0
+      // host RAM, NOT the first user's cgroup ceiling (memory_total_mb is the
+      // per-user assigned limit when that user is mem-limited) - else the host
+      // bar/tooltip would read against a too-small denominator and over-report
+      const totalMb = activity.memory_host_total_mb || active[0].memory_total_mb || 0
       const memUsed = active.reduce((s, u) => s + (u.memory_mb ?? 0), 0)
       const cpuSum = active.reduce((s, u) => s + (u.cpu_percent ?? 0), 0) // cores-used x 100, summed
       const coresUsed = cpuSum / 100

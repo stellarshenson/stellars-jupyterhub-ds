@@ -203,6 +203,7 @@ function toServerRow(p: Person): ServerRow {
     const volOver = volumesGB != null && volumesGB > THRESHOLDS.volumeTotalGB
     return {
       user: p.name,
+      name: p.fullName,
       admin: !!p.admin,
       status: 'offline',
       statusLabel: p.offlineSince ? `Offline ${p.offlineSince}` : 'Offline',
@@ -231,12 +232,15 @@ function toServerRow(p: Person): ServerRow {
     lastActivityISO: spawning ? null : iso(0, parseInt(s.since, 10) || 0),
     activity: spawning ? null : p.activity,
     activityPct: spawning ? null : p.activity,
+    activityHours: spawning ? null : Math.round((p.activity / 100) * 8 * 10) / 10,
     cpu: spawning ? null : s.cpu,
     cpuTip: spawning ? undefined : `${s.cpu}% used\n8 host cores (no limit)`,
     mem: spawning ? null : s.memPct,
-    memTip: spawning ? undefined : `${s.memGB} GB used${memOver ? ' (over warning threshold)' : ''}\n${s.memPct}% of host RAM (no limit)`,
+    memTip: spawning ? undefined : `${s.memPct}% used${memOver ? ' (over warning threshold)' : ''}\n${s.memGB} GB of host RAM (no limit)`,
     memOver,
-    gpu: s.gpu ?? null,
+    // per-user GPU usage is not collected live (only host inventory) - keep the
+    // mock honest so the demo's Servers GPU column hides exactly as it does live
+    gpu: null,
     volumesGB: s.volumesGB,
     volumesTip: s.volMounts,
     volumesOver: volOver,
@@ -257,6 +261,8 @@ function toUserRow(p: Person): UserRow {
     authorized: p.authorized,
     pending: !!p.pending,
     activity: p.activity,
+    activityPct: p.activity,
+    activityHours: Math.round((p.activity / 100) * 8 * 10) / 10,
     createdISO: iso(p.createdDaysAgo),
     lastSeenISO: p.lastSeenMinAgo != null ? iso(0, p.lastSeenMinAgo) : undefined,
     groups: p.groups,
@@ -269,8 +275,8 @@ function statusOf(p: Person): ServerStatus {
 
 // ---------- groups ----------
 const POLICY_LABELS: Record<string, string> = {
-  gpu: 'GPU', mem: 'Mem', cpu: 'CPU', docker: 'Docker', sudo: 'Sudo',
-  downloads: 'Downloads', api_keys: 'API keys', env_vars: 'Env', volume_mounts: 'Volumes',
+  gpu: 'GPU', mem: 'Memory', cpu: 'CPU', docker: 'Docker', sudo: 'Sudo',
+  downloads: 'Downloads', api_keys: 'API keys', env_vars: 'Env vars', volume_mounts: 'Volume mounts',
 }
 
 interface GroupSeed {
@@ -301,14 +307,6 @@ function policyTags(seed: GroupSeed): PolicyTag[] {
 
 function memberCount(group: string): number {
   return PEOPLE.filter((p) => p.groups.includes(group)).length
-}
-
-// per-GPU utilisation from a device spec ("0", "0,1") - drives the segmented meter
-function gpuUtils(spec?: string): number[] | undefined {
-  if (!spec) return undefined
-  const n = spec.split(',').filter(Boolean).length || 1
-  const base = [82, 57, 34, 13]
-  return Array.from({ length: n }, (_, i) => base[i % base.length])
 }
 
 // ---------- the source ----------
@@ -351,11 +349,14 @@ export const mockSource: DataSource = {
       statusLabel: s ? (status === 'active' ? `Active ${s.since}` : status === 'idle' ? `Idle ${s.since}` : 'Spawning') : 'Offline',
       activity: p.activity,
       activityPct: p.activity,
+      activityHours: Math.round((p.activity / 100) * 8 * 10) / 10,
       startedISO: s ? new Date(Date.now() - 3 * 3600_000).toISOString() : null,
       upgradeAvailable: false,
       ttl: { timeLeftMin: s ? s.timeLeftMin : 0, baseMin: IDLE_CULLER.timeoutH * 60, maxAddHours: IDLE_CULLER.maxExtensionH },
+      // per-user GPU is not collected live (only host inventory), so the hero
+      // never shows a per-server GPU meter - keep the mock's shape matching live
       resources: s
-        ? { cpu: s.cpu, mem: s.memPct, gpu: s.gpu ? 100 : 0, gpus: gpuUtils(s.gpu), cpuTip: `${s.cpu}% used\n8 host cores (no limit)`, memTip: `${s.memGB} GB used\n${s.memPct}% of host RAM (no limit)` }
+        ? { cpu: s.cpu, mem: s.memPct, gpu: 0, cpuTip: `${s.cpu}% used\n8 host cores (no limit)`, memTip: `${s.memPct}% used\n${s.memGB} GB of host RAM (no limit)` }
         : { cpu: 0, mem: 0, gpu: 0 },
     })
   },
@@ -363,6 +364,8 @@ export const mockSource: DataSource = {
   getTotalResources() {
     return delay<ResourceSnapshot>({
       cpu: 41, mem: 63, gpu: 62, gpus: [62, 41, 18],
+      cpuTip: '41% used\n~3.3 of 8 cores in use across 3 servers',
+      memTip: '63% used\n40.3 of 64 GB across 3 servers',
       gpuDevices: [
         { index: '0', name: 'NVIDIA A100-SXM4-80GB', memoryMb: 81920, utilizationPct: 62, memoryUsedMb: 40000 },
         { index: '1', name: 'NVIDIA A100-SXM4-80GB', memoryMb: 81920, utilizationPct: 41, memoryUsedMb: 22000 },
@@ -465,6 +468,7 @@ export const mockSource: DataSource = {
       { id: 'e6', type: 'broadcast', icon: 'megaphone', text: 'Broadcast sent to <b>18</b> active servers', whenISO: iso(0, 300) },
       { id: 'e7', type: 'user', icon: 'user', text: '<b>hugo</b> signed up - awaiting approval', whenISO: iso(0, 420) },
       { id: 'e8', type: 'server', icon: 'restart', text: "<b>konrad</b> restarted their server", whenISO: iso(0, 600) },
+      { id: 'e9', type: 'volume', icon: 'disk', text: '<b>natalia</b> reset volumes: workspace', whenISO: iso(0, 90) },
     ]
     const filler: EventRow[] = FILLER_NAMES.slice(0, 24).map((n, i) => ({
       id: `f${i}`,

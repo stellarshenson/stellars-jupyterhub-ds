@@ -23,7 +23,7 @@ from .branding import setup_branding
 from .docker_proxy import register_user, unregister_user
 from .events import register_events
 from .gpu import is_wsl2, resolve_gpu_mode
-from .gpuinfo_sidecar import ensure_gpuinfo_sidecar
+from .gpuinfo_sidecar import ensure_gpuinfo_sidecar, stop_gpuinfo_sidecar
 from .hooks import (
     make_pre_spawn_hook,
     schedule_policy_startup,
@@ -72,6 +72,7 @@ __all__ = [
     "configure_gpu_cache",
     "configure_volume_cache",
     "ensure_gpuinfo_sidecar",
+    "stop_gpuinfo_sidecar",
     "register_user",
     "unregister_user",
     "get_services_and_roles",

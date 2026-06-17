@@ -25,7 +25,8 @@ export default function BulkUsers() {
     if (!names.length) return
 
     if (isMock()) {
-      navigate('/users/bulk/result', { state: { groups: groups.join(', ') } })
+      const creds = await getCredentials(names)
+      navigate('/users/bulk/result', { state: { creds, groups: groups.join(', '), requested: names.length } })
       return
     }
     try {

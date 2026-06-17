@@ -24,6 +24,7 @@ from optimum_hub_services import (
     configure_gpu_cache,                    # one-time init: sets the CUDA image the background GPU-utilisation sampler uses
     configure_volume_cache,                 # one-time init: feeds canonical volume-name templates to the activity-monitor sizes cache
     ensure_gpuinfo_sidecar,                 # hub self-starts the gpuinfo-nvidia sidecar (so detection never waits on compose)
+    stop_gpuinfo_sidecar,                   # hub removes the sidecar on shutdown so it never outlives its parent (recreated fresh next boot)
     get_services_and_roles,                 # builds JupyterHub services list (activity sampler)
     schedule_idle_culler,                   # in-hub idle culler (honours per-user session extensions)
     register_user,                          # central docker-proxy: register a limited user (admin HTTP API client)
@@ -518,6 +519,12 @@ _gpuinfo_sidecar_up = (
     ensure_gpuinfo_sidecar(JUPYTERHUB_GPUINFO_NVIDIA_IMAGE, JUPYTERHUB_GPUINFO_NETWORK_NAME, JUPYTERHUB_GPUINFO_URL, JUPYTERHUB_COMPOSE_PROJECT_NAME)
     if JUPYTERHUB_GPU_ENABLED in (1, 2) else False
 )
+# Tie the sidecar's lifecycle to the hub: remove it when the hub exits so it does
+# not linger as an orphan after the hub stops (and so the next boot recreates it
+# fresh from the current image). Best-effort - skipped on a hard SIGKILL.
+if _gpuinfo_sidecar_up:
+    import atexit
+    atexit.register(stop_gpuinfo_sidecar, JUPYTERHUB_GPUINFO_URL)
 # probe only when the sidecar is actually up; otherwise skip straight to
 # last-known/off so a missing sidecar never stalls boot on DNS/connect
 gpu_enabled, nvidia_detected, gpu_list = resolve_gpu_mode(JUPYTERHUB_GPU_ENABLED, probe_sidecar=_gpuinfo_sidecar_up)

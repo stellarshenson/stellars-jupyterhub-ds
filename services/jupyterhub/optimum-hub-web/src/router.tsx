@@ -1,10 +1,12 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppLayout } from './layout/AppLayout'
 import { RequireAdmin } from './app/RequireAdmin'
+import { useRole } from './app/RoleContext'
 import { portalBasename } from './services/hub/client'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Home from './pages/Home'
+import Profile from './pages/Profile'
 import Starting from './pages/Starting'
 import Servers from './pages/Servers'
 import Users from './pages/Users'
@@ -33,6 +35,16 @@ const basename = portalBasename()
 const usersParent = { label: 'Users', to: '/users' }
 const groupsParent = { label: 'Groups', to: '/groups' }
 
+// Profile is role-aware: an admin gets the full Configure-user screen scoped to
+// themselves (UserConfig falls back to the logged-in username when there is no
+// :name param); a plain user gets the self-service Profile page (own name/email/
+// password only, with a current-password challenge - no admin-only controls and
+// no admin-only /users fetch that would 403 for them).
+function ProfileRoute() {
+  const { role } = useRole()
+  return role === 'admin' ? <UserConfig /> : <Profile />
+}
+
 export const router = createBrowserRouter(
   [
     { path: '/login', element: <Login /> },
@@ -46,9 +58,7 @@ export const router = createBrowserRouter(
         // built-in page, so at the hub root (no /portal segment) the SPA must
         // not reuse that path. Nav label stays "Home".
         { path: 'dashboard', handle: { crumb: 'Home' }, element: <Home /> },
-        // Profile = the Configure-user screen scoped to the current user (no
-        // :name param -> UserConfig falls back to the logged-in username)
-        { path: 'profile', handle: { crumb: 'Profile' }, element: <UserConfig /> },
+        { path: 'profile', handle: { crumb: 'Profile' }, element: <ProfileRoute /> },
         // Spawn progress + live log tail. Not admin-gated: a plain user starts
         // their OWN server here; the backend endpoints enforce admin-or-self.
         { path: 'servers/:name/starting', handle: { crumb: 'Starting server' }, element: <Starting /> },

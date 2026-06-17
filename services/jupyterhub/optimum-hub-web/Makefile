@@ -2,15 +2,18 @@
 # The UI is built with vite; `make assets` stages the build into the Python
 # package and `make wheel` produces the installable wheel the hub image
 # pip-installs (UI bundle included). Use these targets, not npm/python directly.
-.PHONY: install dev build build-live build-hub assets wheel preview lint typecheck clean
+.PHONY: install dev dev-mock build build-live build-hub assets wheel preview lint typecheck clean
 
 install:        ## install JS deps
 	npm install
 
-dev:            ## start the Vite dev server (mock data mode by default)
+dev:            ## start the Vite dev server (live data mode - needs a reachable hub)
 	npm run dev
 
-build:          ## typecheck + production build to dist/ (mock data mode)
+dev-mock:       ## start the dev server in mock data mode - Playwright test harness only (no hub)
+	npm run dev:mock
+
+build:          ## typecheck + production build to dist/ (live data mode)
 	npm run build
 
 build-live:     ## build dist/ for the live hub at /portal (legacy same-origin build)
