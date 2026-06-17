@@ -162,7 +162,7 @@ function AdminHome() {
   return (
     <>
       <PageHeader title="Home" sub="Platform at a glance - what is running and what needs attention" />
-      {hero && <ServerHero hero={hero} resourcesTitle="Server status" />}
+      {hero && <ServerHero hero={hero} resourcesTitle="Server Status" />}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
         {s && (
@@ -208,7 +208,7 @@ function AdminHome() {
           />
         )}
         <Card style={{ gridColumn: 'span 2' }}>
-          <h3 style={{ fontSize: 14, margin: '0 0 12px' }}>Host status</h3>
+          <h3 style={{ fontSize: 14, margin: '0 0 12px' }}>Host Status</h3>
           {total && (
             <ResourceBars
               rows={[
@@ -243,7 +243,7 @@ function UserHome() {
   return (
     <>
       <PageHeader title="Home" sub="Your lab - launch it, watch it, manage it" />
-      {hero && <ServerHero hero={hero} resourcesTitle="Server status" />}
+      {hero && <ServerHero hero={hero} resourcesTitle="Server Status" />}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <Card>
           <h3 style={{ margin: '0 0 12px' }}>Your groups</h3>

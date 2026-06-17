@@ -15,7 +15,7 @@ export default function LabContainer() {
 
   return (
     <>
-      <PageHeader title="Lab Container" sub="The image every lab spawns from, and the volumes mounted into every lab" />
+      <PageHeader title="Lab Setup" sub="The image every lab spawns from, and the volumes mounted into every lab" />
       <Card style={{ marginBottom: 16, maxWidth: 760 }}>
         <div style={{ marginBottom: 8, color: 'var(--color-text-muted)', fontSize: 13 }}>Lab image</div>
         <Tooltip title="Deployment-set; new images apply on the next spawn">
