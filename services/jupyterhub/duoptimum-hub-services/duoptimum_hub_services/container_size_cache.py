@@ -157,13 +157,11 @@ class ContainerSizeRefresher:
         return cls._instance
 
     def __init__(self):
-        import asyncio
         self.periodic_callback = None
         self.interval_seconds = _get_refresh_interval()
         _get_logger().info(f"[ContainerSizeRefresher] Initialized with interval={self.interval_seconds}s")
 
     def start(self):
-        import asyncio
         from tornado.ioloop import PeriodicCallback
         logger = _get_logger()
 

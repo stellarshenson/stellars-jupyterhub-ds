@@ -214,7 +214,7 @@ User containers will access this at `/mnt/shared`.
 | `docker-privileged` | Runs container with `--privileged` flag | Hardware access, kernel modules |
 
 **Implementation**:
-- Runtime hook: `services/jupyterhub/stellars_hub/stellars_hub/hooks.py::pre_spawn_hook` checks membership and sets `spawner.volumes` or `spawner.privileged`
+- Runtime hook: `services/jupyterhub/duoptimum-hub-services/duoptimum_hub_services/hooks.py::pre_spawn_hook` checks membership and sets `spawner.volumes` or `spawner.privileged`
 - Changes require server restart (stop/start cycle)
 
 ## Notification Broadcast System
@@ -292,7 +292,7 @@ Selective volume reset allowing users to delete chosen persistent volumes (home,
 
 **Implementation**:
 - API Endpoint: `DELETE /hub/api/users/{username}/manage-volumes`
-- Handler: `services/jupyterhub/conf/bin/custom_handlers.py::ManageVolumesHandler`
+- Handler: `services/jupyterhub/duoptimum-hub-services/duoptimum_hub_services/handlers/volumes.py::ManageVolumesHandler`
 - Template: `services/jupyterhub/templates/home.html` with dynamic checkbox generation
 - Volume list extracted via `get_user_volume_suffixes(DOCKER_SPAWNER_VOLUMES)`
 - Optional descriptions from `VOLUME_DESCRIPTIONS` dict (config file)
@@ -323,7 +323,7 @@ One-click Docker container restart without recreation. Preserves volumes and con
 
 **Implementation**:
 - API Endpoint: `POST /hub/api/users/{username}/restart-server`
-- Handler: `services/jupyterhub/conf/bin/custom_handlers.py::RestartServerHandler`
+- Handler: `services/jupyterhub/duoptimum-hub-services/duoptimum_hub_services/handlers/server.py::RestartServerHandler`
 - Uses Docker's native `container.restart(timeout=10)` method
 - Does NOT recreate container (unlike JupyterHub's stop/spawn cycle)
 
@@ -340,7 +340,7 @@ Custom logo and favicon via `JUPYTERHUB_BRANDING_LOGO_URI` and `JUPYTERHUB_BRAND
 **Favicon CHP Proxy Route**: Hub pages serve the custom favicon directly, but JupyterLab sessions request favicons from `/user/{username}/static/favicons/favicon.ico` which Configurable HTTP Proxy (CHP) routes to the user container, bypassing the hub entirely. To override this, `pre_spawn_hook` registers a per-user CHP route (`/user/{username}/static/favicons/`) pointing back to the hub. CHP's longest-prefix-match selects this over the generic `/user/{username}/` route. A Tornado `FaviconRedirectHandler` (injected directly into the app, not via `extra_handlers` which auto-prefixes `/hub/`) then 302-redirects to the hub's static favicon.
 
 **Implementation**:
-- Handler: `services/jupyterhub/conf/bin/custom_handlers.py::FaviconRedirectHandler` (extends `tornado.web.RequestHandler`)
+- Handler: `services/jupyterhub/duoptimum-hub-services/duoptimum_hub_services/handlers/favicon.py::FaviconRedirectHandler` (extends `tornado.web.RequestHandler`)
 - Route injection: `config/jupyterhub_config.py::pre_spawn_hook` (conditional on `JUPYTERHUB_BRANDING_FAVICON_URI`)
 - CHP route added per-user before each spawn and registered in `app.proxy.extra_routes` to survive `check_routes()` periodic cleanup
 - Tornado handler injected once into `app.tornado_application` (outside `/hub/` prefix)

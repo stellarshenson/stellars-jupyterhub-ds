@@ -8,7 +8,6 @@ from collections import defaultdict
 
 import jupyterhub
 from jupyterhub.handlers import BaseHandler
-from tornado import web
 
 # Hub start time (module load = hub startup)
 _start_time = time.time()
