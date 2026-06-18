@@ -53,9 +53,10 @@ function RecipientPicker({ users, value, onChange }: { users: string[]; value: s
   )
 }
 
-// preset auto-close durations (value = milliseconds, what the lab Notification API
-// expects); 30s is the default. The user picks one before sending.
+// preset auto-close durations (value = milliseconds the lab Notification API
+// expects); 0 = Never, sent as autoClose:false (no auto-dismiss) and the default.
 const AUTO_CLOSE_OPTIONS = [
+  { label: 'Never', value: 0 },
   { label: '30s', value: 30000 },
   { label: '1min', value: 60000 },
   { label: '10min', value: 600000 },
@@ -70,13 +71,13 @@ export default function Notifications() {
   // to ingest it yet -> selecting it would guarantee a delivery failure)
   const activeUsers = servers.filter((s) => s.status === 'active' || s.status === 'idle').map((s) => s.user)
   const [msg, setMsg] = useState('')
-  const [variant, setVariant] = useState('default')
-  const [autoCloseMs, setAutoCloseMs] = useState(30000) // default 30s, user-changeable
+  const [variant, setVariant] = useState('info')
+  const [autoCloseMs, setAutoCloseMs] = useState(0) // default Never (no auto-close), user-changeable
   const [mode, setMode] = useState<'all' | 'selected'>('all')
   const [recipients, setRecipients] = useState<string[]>([])
   const send = async () => {
     try {
-      await broadcast(msg.trim(), variant, autoCloseMs, mode === 'selected' ? recipients : undefined)
+      await broadcast(msg.trim(), variant, autoCloseMs === 0 ? false : autoCloseMs, mode === 'selected' ? recipients : undefined)
       setMsg('')
     } catch {
       /* ops surfaced the error */
@@ -96,7 +97,7 @@ export default function Notifications() {
               value={variant}
               onChange={setVariant}
               style={{ width: 160 }}
-              options={['default', 'info', 'success', 'warning', 'error', 'in-progress'].map((t) => ({ label: t, value: t }))}
+              options={['info', 'success', 'warning', 'error', 'in-progress'].map((t) => ({ label: t, value: t }))}
             />
           </div>
           <div style={{ marginTop: 12, display: 'flex', gap: 12, alignItems: 'center' }}>

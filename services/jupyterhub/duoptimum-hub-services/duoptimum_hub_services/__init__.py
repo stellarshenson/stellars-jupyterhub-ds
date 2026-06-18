@@ -41,6 +41,7 @@ from .idle_culler import (
     should_cull,
 )
 from .gpu_cache import configure_gpu_cache
+from .sent_notification_log import prepare_sent_notification_log, record_sent_notification
 from .services import get_services_and_roles
 from .volume_cache import configure_volume_cache
 from .volumes import (
@@ -72,6 +73,8 @@ __all__ = [
     "remaining_seconds_for",
     "configure_gpu_cache",
     "configure_volume_cache",
+    "prepare_sent_notification_log",
+    "record_sent_notification",
     "ensure_gpuinfo_sidecar",
     "stop_gpuinfo_sidecar",
     "register_user",

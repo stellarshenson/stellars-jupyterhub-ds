@@ -29,6 +29,7 @@ import type {
   GroupRow,
   LabContainerInfo,
   ResourceSnapshot,
+  SentNotification,
   SettingsGroup,
   SettingsRefCategory,
   UserProfile,
@@ -729,5 +730,10 @@ export const liveSource: DataSource = {
       return [] // honest empty
     }
   },
-  getSentNotifications: async () => [], // no backend sent-history store yet - empty in live
+  // sent-broadcast history from the hub store (self-healing SQLite); newest first,
+  // empty on any failure so the panel degrades to "no broadcasts" rather than erroring
+  getSentNotifications: async () => {
+    const r = await hubGet<{ notifications: SentNotification[] }>('/notifications/sent').catch(() => ({ notifications: [] }))
+    return r.notifications ?? []
+  },
 }

@@ -9,6 +9,11 @@ from tornado.httpclient import AsyncHTTPClient, HTTPRequest
 
 from ..docker_utils import encode_username_for_docker
 
+# The notification types the portal can broadcast - the single source of truth the
+# composer offers and the handler validates against. 'default' was retired (the
+# composer no longer offers it; 'info' is the default), so it is not accepted here.
+NOTIFICATION_TYPES = ('info', 'success', 'warning', 'error', 'in-progress')
+
 
 class ActiveServersHandler(BaseHandler):
     """Handler for listing active servers for notification targeting."""
@@ -72,9 +77,8 @@ class BroadcastNotificationHandler(BaseHandler):
         if len(message) > 140:
             return self.send_error(400, "Message cannot exceed 140 characters")
 
-        valid_variants = ['default', 'info', 'success', 'warning', 'error', 'in-progress']
-        if variant not in valid_variants:
-            return self.send_error(400, f"Variant must be one of: {', '.join(valid_variants)}")
+        if variant not in NOTIFICATION_TYPES:
+            return self.send_error(400, f"Variant must be one of: {', '.join(NOTIFICATION_TYPES)}")
 
         # Get active spawners
         active_spawners = []
@@ -123,6 +127,10 @@ class BroadcastNotificationHandler(BaseHandler):
 
         from ..event_log import record_event
         record_event('broadcast', f'Broadcast sent to <b>{successful}</b> active server{"s" if successful != 1 else ""}')
+
+        # persist to the sent-notification history so the portal "Past Notifications" feed reflects it
+        from ..sent_notification_log import record_sent_notification
+        record_sent_notification(message, variant, successful, total)
 
         self.set_status(200)
         self.finish({"total": total, "successful": successful, "failed": failed, "details": details})
