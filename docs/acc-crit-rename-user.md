@@ -58,11 +58,13 @@ An admin can rename a user from the Configure-user screen via an action attached
   - log: 2026-06-18 server-stopped gate (`serverStopped` from `useServerHero`)
 - [x] **Edge: mock mode** - the demo shows the success toast and does NOT navigate (the renamed mock user does not exist), matching Remove-user mock behaviour
   - log: 2026-06-18 `if (!isMock()) navigate(...)`
+- [x] **Edge: user creation is not a rename** - the `set` listener fires on the INITIAL name-set (user creation) with SQLAlchemy's `NO_VALUE` sentinel as oldvalue (not None); it must early-return so creation records no spurious rename event and never binds the sentinel into the username lookups
+  - log: 2026-06-18 functional run exposed live log spam + a bogus creation event (`type 'LoaderCallableStatus' is not supported`); guard changed to `if not isinstance(oldvalue, str) or oldvalue == value`; covered by `test_create_user_records_no_rename_event`
 
 ## Tests
 
-- [x] **Unit: rename sync orchestration** - renaming an ORM user fires the listener: NativeAuth UserInfo username updated + authorisation preserved, a rename event recorded, the event names the actor when set, and a same-value set records nothing
-  - log: 2026-06-18 `tests/test_rename_sync.py` (3 tests, in-memory JH + NativeAuth orm); `make test`-runnable
+- [x] **Unit: rename sync orchestration** - renaming an ORM user fires the listener: NativeAuth UserInfo username updated + authorisation preserved, a rename event recorded, the event names the actor when set, a same-value set records nothing, and user creation (NO_VALUE oldvalue) records no rename event
+  - log: 2026-06-18 `tests/test_rename_sync.py` (4 tests, in-memory JH + NativeAuth orm); `make test`-runnable
 - [x] **Functional: SPA rename flow** - a Playwright test renames a stopped user from the Configure screen (confirm dialog -> rename), asserts navigation to the new profile and the actor-named rename event in the feed; carries `@pytest.mark.acc_crit("rename-user::...")`
   - log: 2026-06-18 `tests/functional/test_rename_user.py` added; collects + declares acc_crit (runs against a live stack in the harness)
 

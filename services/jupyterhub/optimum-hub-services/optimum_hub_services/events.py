@@ -30,7 +30,13 @@ def register_events():
     @event.listens_for(orm.User.name, 'set')
     def sync_nativeauth_on_rename(target, value, oldvalue, initiator):
         """Sync NativeAuthenticator UserInfo and ActivityMonitor when User.name changes."""
-        if oldvalue == value or oldvalue is None:
+        # oldvalue is the previous username on a real rename, but on the INITIAL
+        # name-set (user creation) SQLAlchemy passes the NO_VALUE sentinel (not
+        # None), and other paths may pass None. Only a string-to-different-string
+        # change is a rename; anything else is skipped - otherwise creation would
+        # spam the log (NO_VALUE can't bind to the username queries) and record a
+        # spurious "renamed <sentinel> to <name>" event.
+        if not isinstance(oldvalue, str) or oldvalue == value:
             return
 
         # Sync NativeAuthenticator

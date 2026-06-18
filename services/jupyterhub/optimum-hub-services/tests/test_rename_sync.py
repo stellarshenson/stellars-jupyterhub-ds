@@ -117,3 +117,19 @@ def test_rename_noop_when_name_unchanged(orm_session):
 
     events = EventLogManager.get_instance().recent()
     assert not any("renamed to" in e["text"] for e in events)
+
+
+def test_create_user_records_no_rename_event(orm_session):
+    """Creating a user fires the name 'set' listener with SQLAlchemy's NO_VALUE
+    sentinel as oldvalue (NOT None). The guard must treat that as a non-rename and
+    early-return, so creation records no rename event and never tries to bind the
+    sentinel into the username lookups (which raised a ProgrammingError live)."""
+    from jupyterhub import orm as jh_orm
+    from optimum_hub_services.event_log import EventLogManager
+
+    EventLogManager.get_instance().clear()
+    orm_session.add(jh_orm.User(name="freshuser"))
+    orm_session.commit()
+
+    events = EventLogManager.get_instance().recent()
+    assert not any("renamed" in e["text"] for e in events), events
