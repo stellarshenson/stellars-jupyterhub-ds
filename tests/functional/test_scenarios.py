@@ -21,10 +21,10 @@ def _row(page, name):
 
 def _create_group_via_ui(admin_portal, name):
     page = admin_portal.goto("/groups")
-    page.get_by_role("button", name="Add group").click()
+    page.get_by_role("button", name="Add Group").click()
     page.wait_for_url(lambda u: "/groups/new" in u)
     page.locator("input[placeholder*='vision-lab']").fill(name)
-    page.get_by_role("button", name="Create group").click()
+    page.get_by_role("button", name="Create Group").click()
     page.wait_for_url(lambda u: u.rstrip("/").endswith("/groups"))
     expect(_row(page, name)).to_be_visible()
     return page
@@ -54,7 +54,7 @@ def test_group_create_badge_delete(admin_portal, base_url, admin_api):
     expect(_row(page, name).locator(".ant-tag").first).to_be_visible()
 
     # Delete through the UI (the icon deletes directly - no confirm modal).
-    _row(page, name).get_by_role("button", name="Delete group").click()
+    _row(page, name).get_by_role("button", name="Delete Group").click()
     expect(_row(page, name)).to_have_count(0)
 
 

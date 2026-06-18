@@ -32,7 +32,7 @@ def test_self_signup_then_admin_authorises(admin_portal, signup_user, admin_api,
     signup_user(PENDING_USER, "pending-secret")
 
     page = admin_portal.goto("/users")
-    expect(page.get_by_text("Pending authorisation", exact=False)).to_be_visible()
+    expect(page.get_by_text("Pending Authorisation", exact=False)).to_be_visible()
     row = page.locator(".oh-pending-table tr").filter(
         has=page.get_by_role("link", name=PENDING_USER, exact=True))
     expect(row).to_be_visible()
