@@ -73,15 +73,15 @@ export function heroCpuTooltip(opts: { cpuPercent: number; cores: number | null 
 }
 
 /** Host Status aggregate CPU bar tooltip. The bar FILL is the % of total host
- * compute; the tooltip reveals cores used across servers and BOTH the % of host
- * compute (the fill) and the % of total assigned compute. */
-export function hostCpuTooltip(opts: { coresUsed: number; hostCores: number; hostPct: number; assignedPct: number | null; servers: string }): string {
-  const { coresUsed, hostCores, hostPct, assignedPct, servers } = opts
+ * compute; the tooltip reveals cores used across servers and the % of host compute.
+ * No "% of assigned" line: the HOST has physical cores, not an assignment (that is a
+ * per-server concept, shown only on the Server Status hero). */
+export function hostCpuTooltip(opts: { coresUsed: number; hostCores: number; hostPct: number; servers: string }): string {
+  const { coresUsed, hostCores, hostPct, servers } = opts
   return [
     `${round1(coresUsed)} of ${hostCores} core${hostCores === 1 ? '' : 's'} used across ${servers}`,
     `${hostPct}% of host compute`,
-    assignedPct != null ? `${assignedPct}% of assigned compute` : '',
-  ].filter(Boolean).join('\n')
+  ].join('\n')
 }
 
 /** Memory cell tooltip - GB used, the assigned ceiling, % of assigned (+ crossing),

@@ -358,7 +358,11 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
   return (
     <div className="oh-ttl">
       <span className={boost ? 'oh-ttl-bar oh-ttl-boost' : 'oh-ttl-bar'} style={{ flex: 1, minWidth: 0, '--oh-ttl-anim': `${ANIMATION.ttlExtendMs}ms` } as CSSProperties} title="Idle session timer - your server is stopped automatically when this runs out">
-        <Progress percent={shownPct} showInfo={false} strokeColor={barTone} trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
+        {/* status="normal" pins the status: antd otherwise auto-switches to "success"
+         * at percent>=100 (progress.js), toggling .ant-progress-status-success exactly
+         * at max - which re-animates/restyles the fill (the flicker + slightly-wider
+         * look at max vs almost-max). Pinned, the bar renders identically at 99 and 100. */}
+        <Progress percent={shownPct} status="normal" showInfo={false} strokeColor={barTone} trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
       </span>
       <span className="oh-ttl-val" style={{ color: barTone, transition: 'color .4s ease' }}>
         <Icon name="clock" size={14} />
