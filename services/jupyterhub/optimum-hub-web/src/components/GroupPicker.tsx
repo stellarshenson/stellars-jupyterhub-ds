@@ -30,7 +30,7 @@ export function GroupPicker({ value, onChange, label = 'Groups' }: { value: stri
       {label && <div style={{ marginBottom: 8, color: 'var(--color-text-muted)', fontSize: 13 }}>{label}</div>}
       <Combo corpus={corpus} value={value} onChange={onChange} placeholder="Add a group by name…" />
 
-      <div className="oh-section-title">Add a group</div>
+      <div className="oh-section-title">Add a Group</div>
       <div className="oh-page-sub" style={{ marginBottom: 12 }}>Browse the catalogue - each group's policies are shown; membership grants them.</div>
       <Input
         allowClear

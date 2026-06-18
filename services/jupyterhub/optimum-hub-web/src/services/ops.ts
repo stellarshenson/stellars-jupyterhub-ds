@@ -98,8 +98,9 @@ export const setAdmin = (name: string, admin: boolean) =>
   run(`${admin ? 'Granted' : 'Revoked'} admin for ${name}`, () => hubSend('PATCH', `/users/${encodeURIComponent(name)}`, { admin }), USER_KEYS(name))
 
 export const renameUser = (name: string, newName: string) =>
-  // + ['groups']: a rename changes the name shown in group member lists
-  run(`Renamed ${name} to ${newName}`, () => hubSend('PATCH', `/users/${encodeURIComponent(name)}`, { name: newName }), [...USER_KEYS(name), ['groups']])
+  // custom endpoint (not the stock PATCH) so the recorded event names the acting
+  // admin (who renamed whom); + ['groups']: a rename changes the name in member lists
+  run(`Renamed ${name} to ${newName}`, () => hubSend('POST', `/users/${encodeURIComponent(name)}/rename`, { name: newName }), [...USER_KEYS(name), ['groups']])
 
 /** Persist a user's display profile (first/last name + email). Admin or self. */
 export const saveUserProfile = (name: string, profile: UserProfile) => {

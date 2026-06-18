@@ -151,7 +151,7 @@ export default function Groups() {
           <>
             <Button onClick={() => setImportOpen(true)}>Import</Button>
             <Link to="/groups/export"><Button icon={<Icon name="download" size={14} />}>Export</Button></Link>
-            <Link to="/groups/new"><Button type="primary" icon={<Icon name="plus" size={14} />}>Add group</Button></Link>
+            <Link to="/groups/new"><Button type="primary" icon={<Icon name="plus" size={14} />}>Add Group</Button></Link>
           </>
         }
       />

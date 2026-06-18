@@ -51,7 +51,7 @@ export default function Events() {
     Modal.confirm({
       title: 'Clear the event log?',
       content: 'This permanently deletes every recorded event. This cannot be undone.',
-      okText: 'Clear log',
+      okText: 'Clear Events',
       okButtonProps: { danger: true },
       onOk: () => clearEvents(),
     })
@@ -133,7 +133,7 @@ export default function Events() {
             onChange={(e) => setQ(e.target.value)}
             style={{ width: 220 }}
           />,
-          <Button key="clear" danger icon={<Icon name="close" size={14} />} disabled={!data.length} onClick={clearLog}>Clear log</Button>,
+          <Button key="clear" danger icon={<Icon name="close" size={14} />} disabled={!data.length} onClick={clearLog}>Clear Events</Button>,
         ]}
       />
     </>

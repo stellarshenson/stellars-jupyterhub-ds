@@ -51,6 +51,7 @@ export const NAV_ADMIN: NavGroup[] = [
         children: [
           { id: 'settings', label: 'Settings', icon: 'settings', path: '/settings' },
           { id: 'tokens', label: 'Tokens', icon: 'key', path: '/tokens' },
+          { id: 'roles', label: 'Roles', icon: 'shield', path: '/roles' },
         ],
       },
     ],
@@ -87,15 +88,15 @@ export type CmdAction =
   | { group: string; icon: IconKey; label: string; kind: 'action'; action: 'open-server' | 'restart-server'; hint?: string }
 
 export const ACTIONS_ADMIN: CmdAction[] = [
-  { group: 'Create', icon: 'user', label: 'Add user', hint: 'U', kind: 'nav', to: '/users/new' },
-  { group: 'Create', icon: 'group', label: 'Create group', hint: 'G', kind: 'nav', to: '/groups/new' },
-  { group: 'Navigate', icon: 'activity', label: 'Events log', kind: 'nav', to: '/events' },
-  { group: 'Navigate', icon: 'megaphone', label: 'Broadcast notification', kind: 'nav', to: '/notifications' },
+  { group: 'Create', icon: 'user', label: 'Add User', hint: 'U', kind: 'nav', to: '/users/new' },
+  { group: 'Create', icon: 'group', label: 'Create Group', hint: 'G', kind: 'nav', to: '/groups/new' },
+  { group: 'Navigate', icon: 'activity', label: 'Events Log', kind: 'nav', to: '/events' },
+  { group: 'Navigate', icon: 'megaphone', label: 'Broadcast Notification', kind: 'nav', to: '/notifications' },
 ]
 
 export const ACTIONS_USER: CmdAction[] = [
-  { group: 'My server', icon: 'play', label: 'Open my server', kind: 'action', action: 'open-server' },
-  { group: 'My server', icon: 'restart', label: 'Restart my server', kind: 'action', action: 'restart-server' },
+  { group: 'My Server', icon: 'play', label: 'Open My Server', kind: 'action', action: 'open-server' },
+  { group: 'My Server', icon: 'restart', label: 'Restart My Server', kind: 'action', action: 'restart-server' },
 ]
 
 export function actionsFor(role: Role): CmdAction[] {

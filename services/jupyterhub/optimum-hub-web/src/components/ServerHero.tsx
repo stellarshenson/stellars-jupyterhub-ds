@@ -40,7 +40,7 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
           {running ? (
             <>
               <Button type="primary" icon={<Icon name="play" size={15} filled />} disabled={!!busy} onClick={() => window.location.assign(userServerUrl(hero.user))}>
-                Open lab
+                Open Lab
               </Button>
               <Button icon={<Icon name="restart" size={16} />} loading={busy === 'restart'} disabled={!!busy} onClick={() => lifecycle.restart(hero.user)}>
                 Restart
@@ -52,11 +52,11 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
           ) : (
             <>
               <Button type="primary" icon={<Icon name="play" size={15} filled />} disabled={!!busy} onClick={() => navigate(`/servers/${hero.user}/starting`, { state: { from: HERO_ORIGIN } })}>
-                Start server
+                Start Server
               </Button>
               {role === 'admin' && (
                 <Button icon={<Icon name="disk" size={15} />} disabled={!!busy} onClick={() => navigate(`/servers/${hero.user}/volumes`, { state: { from: HERO_ORIGIN } })}>
-                  Manage volumes
+                  Manage Volumes
                 </Button>
               )}
             </>

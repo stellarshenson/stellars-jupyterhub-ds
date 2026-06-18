@@ -44,7 +44,7 @@ export default function BulkUsers() {
 
   return (
     <>
-      <PageHeader title="Bulk add users" sub="Paste usernames and configure the batch once - passwords are auto-generated" />
+      <PageHeader title="Bulk Add Users" sub="Paste usernames and configure the batch once - passwords are auto-generated" />
       <Card style={{ maxWidth: 820 }}>
         <Form form={form} layout="vertical" initialValues={{ authorize: true }}>
           <Form.Item label="Usernames" name="usernames" extra="One per line">

@@ -28,7 +28,7 @@ export default function NewGroup() {
   }
   return (
     <>
-      <PageHeader title="New group" sub="Create a group - set its policy after it exists" />
+      <PageHeader title="New Group" sub="Create a group - set its policy after it exists" />
       <Card style={{ maxWidth: 640 }}>
         <Form form={form} layout="vertical">
           <Form.Item
@@ -42,7 +42,7 @@ export default function NewGroup() {
             <Input.TextArea rows={2} placeholder="What this group is for" />
           </Form.Item>
         </Form>
-        <FormFooter onCancel={() => navigate('/groups')} onSave={submit} saveLabel="Create group" />
+        <FormFooter onCancel={() => navigate('/groups')} onSave={submit} saveLabel="Create Group" />
       </Card>
     </>
   )

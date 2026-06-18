@@ -33,14 +33,14 @@ function PendingSection({ users }: { users: UserRow[] }) {
   return (
     <Card style={{ marginBottom: 16, borderColor: 'var(--color-warning)' }} styles={{ body: { padding: 0 } }}>
       <div style={{ padding: '12px 24px', borderBottom: '1px solid var(--color-warning-soft)', fontWeight: 600 }}>
-        Pending authorisation <span className="oh-muted">· {users.length}</span>
+        Pending Authorisation <span className="oh-muted">· {users.length}</span>
       </div>
       <table className="oh-pending-table">
         <thead>
           <tr>
             <th>User</th>
             <th>Groups</th>
-            <th>Signed up</th>
+            <th>Signed Up</th>
             <th aria-label="Actions" />
           </tr>
         </thead>
@@ -134,7 +134,7 @@ export default function Users() {
       render: (_, u) => <span title={exactDate(u.createdISO)}>{timeAgoShort(u.createdISO)}</span>,
     },
     {
-      title: 'Last seen',
+      title: 'Last Seen',
       dataIndex: 'lastSeenISO',
       sorter: (a, b) => (a.lastSeenISO ?? '').localeCompare(b.lastSeenISO ?? ''),
       render: (_, u) =>
@@ -160,8 +160,8 @@ export default function Users() {
         sub="Authorise, configure and watch every account"
         actions={
           <>
-            <Link to="/users/bulk"><Button>Bulk add</Button></Link>
-            <Link to="/users/new"><Button type="primary" icon={<Icon name="plus" size={14} />}>Add user</Button></Link>
+            <Link to="/users/bulk"><Button>Bulk Add</Button></Link>
+            <Link to="/users/new"><Button type="primary" icon={<Icon name="plus" size={14} />}>Add User</Button></Link>
           </>
         }
       />

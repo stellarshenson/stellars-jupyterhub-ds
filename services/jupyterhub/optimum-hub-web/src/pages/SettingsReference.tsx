@@ -27,7 +27,7 @@ export default function SettingsReference() {
   return (
     <>
       <PageHeader
-        title="Settings reference"
+        title="Settings Reference"
         sub="Every platform environment variable, its value and description"
         actions={<Input allowClear prefix={<Icon name="search" size={14} />} placeholder="Filter variables…" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 240 }} />}
       />

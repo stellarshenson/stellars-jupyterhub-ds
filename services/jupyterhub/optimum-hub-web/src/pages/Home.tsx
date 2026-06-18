@@ -70,7 +70,7 @@ function ActiveServersPreview() {
       render: (_, r) => (
         <div className="oh-user-cell">
           <span>
-            <Link to={`/users/${r.user}`} style={{ color: 'var(--color-accent)' }} title={`Configure ${r.user}`}>{r.user}</Link>
+            <Link to={`/users/${r.user}`} state={{ from: HOME_ORIGIN }} style={{ color: 'var(--color-accent)' }} title={`Configure ${r.user}`}>{r.user}</Link>
             {r.admin && <Tag bordered={false} style={accentTag}>admin</Tag>}
           </span>
           {r.name && <span className="oh-name-hint">{r.name}</span>}
@@ -90,7 +90,7 @@ function ActiveServersPreview() {
       render: (_, r) => (r.mem == null ? <span className="oh-muted">-</span> : <span className={r.memOver ? 'oh-cell-warn' : 'oh-num'} title={r.memTip}>{r.mem}%</span>),
     },
     {
-      title: 'Time left',
+      title: 'Time Left',
       align: 'right',
       render: (_, r) => (r.timeLeftMin == null ? <span className="oh-muted">-</span> : <span className={r.timeLeftWarn ? 'oh-cell-amber' : 'oh-num'}>{r.timeLeftLabel}</span>),
     },
@@ -104,7 +104,7 @@ function ActiveServersPreview() {
   ]
   return (
     <Card>
-      <CardHeadLink title="Active servers" to="/servers" suffix="· top 10 by status" />
+      <CardHeadLink title="Active Servers" to="/servers" suffix="· top 10 by status" />
       <ProTable<ServerRow>
         rowKey="user"
         columns={columns}
@@ -122,14 +122,14 @@ function ActiveServersPreview() {
 
 function QuickActions() {
   const items: Array<{ to: string; icon: 'user' | 'group' | 'megaphone' | 'settings'; label: string; sub: string }> = [
-    { to: '/users/new', icon: 'user', label: 'Add user', sub: 'create + authorise' },
-    { to: '/groups/new', icon: 'group', label: 'Create group', sub: 'grant policies' },
+    { to: '/users/new', icon: 'user', label: 'Add User', sub: 'create + authorise' },
+    { to: '/groups/new', icon: 'group', label: 'Create Group', sub: 'grant policies' },
     { to: '/notifications', icon: 'megaphone', label: 'Broadcast', sub: 'notify lab users' },
     { to: '/settings', icon: 'settings', label: 'Settings', sub: 'platform config' },
   ]
   return (
     <Card>
-      <h3 style={{ marginBottom: 12 }}>Quick actions</h3>
+      <h3 style={{ marginBottom: 12 }}>Quick Actions</h3>
       <div className="oh-qa">
         {items.map((it) => (
           <Link key={it.to} to={it.to} className="oh-qa-btn">
@@ -150,7 +150,7 @@ function RecentEvents() {
   return (
     <Card style={{ flex: 1 }} styles={{ body: { padding: 0 } }}>
       <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-subtle)' }}>
-        <CardHeadLink title="Recent events" to="/events" />
+        <CardHeadLink title="Recent Events" to="/events" />
       </div>
       <div className="oh-feed" style={{ padding: '0 16px' }}>
         {data.slice(0, 5).map((e) => (
@@ -269,7 +269,7 @@ function UserHome() {
       {hero && <ServerHero hero={hero} resourcesTitle="Server Status" />}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <Card>
-          <h3 style={{ margin: '0 0 12px' }}>Your groups</h3>
+          <h3 style={{ margin: '0 0 12px' }}>Your Groups</h3>
           <CappedTags items={(me?.groups ?? []).map((g) => ({ key: g, label: g }))} cap={8} />
         </Card>
         <Card>

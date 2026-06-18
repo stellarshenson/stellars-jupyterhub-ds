@@ -25,6 +25,7 @@ import Notifications from './pages/Notifications'
 import Settings from './pages/Settings'
 import SettingsReference from './pages/SettingsReference'
 import Tokens from './pages/Tokens'
+import Roles from './pages/Roles'
 import DesignSystem from './pages/DesignSystem'
 import DesignLanguage from './pages/DesignLanguage'
 
@@ -91,6 +92,7 @@ export const router = createBrowserRouter(
             { path: 'settings', handle: { crumb: 'Settings' }, element: <Settings /> },
             { path: 'settings/reference', handle: { crumb: 'Full reference', parent: { label: 'Settings', to: '/settings' } }, element: <SettingsReference /> },
             { path: 'tokens', handle: { crumb: 'Tokens' }, element: <Tokens /> },
+            { path: 'roles', handle: { crumb: 'Roles' }, element: <Roles /> },
           ],
         },
 

@@ -43,7 +43,7 @@ export function VolumeReset({ name, onClose }: { name: string; onClose?: () => v
 
   const rows: Volume[] = volumes.map((v) => ({ ...v, sizeGB: sizes?.[v.suffix] }))
   const resetBtn = (
-    <Button danger loading={busy} disabled={running || !selected.length} onClick={doReset}>{busy ? 'Resetting…' : 'Reset selected'}</Button>
+    <Button danger loading={busy} disabled={running || !selected.length} onClick={doReset}>{busy ? 'Resetting…' : 'Reset Selected'}</Button>
   )
 
   return (

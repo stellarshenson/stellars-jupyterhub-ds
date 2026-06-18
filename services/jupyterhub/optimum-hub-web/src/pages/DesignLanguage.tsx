@@ -344,6 +344,12 @@ export default function DesignLanguage() {
         <Row label="State = colour">
           <span className="oh-page-sub">status and type always shown as coloured pills on one shared palette</span>
         </Row>
+        <Row label="Label casing (Title Case)">
+          <span className="oh-mono">Add User</span>
+          <span className="oh-mono">Manage Volumes</span>
+          <span className="oh-mono">Clear Events</span>
+          <span className="oh-page-sub">- buttons and headers Title-Case every principal word; minor words (a, of, to, on...) stay lowercase unless first; acronyms (API, GPU) and units (7h) kept as-is</span>
+        </Row>
       </Card>
 
       <Card title="Icon set">
