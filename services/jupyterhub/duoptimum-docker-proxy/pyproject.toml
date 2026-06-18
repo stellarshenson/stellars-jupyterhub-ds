@@ -14,8 +14,5 @@ dependencies = [
 [project.optional-dependencies]
 test = ["pytest", "pytest-asyncio"]
 
-[project.scripts]
-duoptimum-docker-proxy = "duoptimum_docker_proxy.__main__:main"
-
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -188,8 +188,8 @@ Activity Monitor:
     description: Activity sampling interval in seconds (60-86400)
     default: "600"
 
-  - name: JUPYTERHUB_ACTIVITYMON_RESOURCES_UPDATE_INTERVAL
-    description: Resource refresh interval in seconds (status, CPU, memory)
+  - name: JUPYTERHUB_ACTIVITYMON_STATS_INTERVAL
+    description: Live CPU/memory stats refresh interval in seconds for active users
     default: "10"
 
   - name: JUPYTERHUB_ACTIVITYMON_VOLUMES_UPDATE_INTERVAL

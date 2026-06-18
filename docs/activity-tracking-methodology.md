@@ -202,7 +202,7 @@ JUPYTERHUB_ACTIVITYMON_HALF_LIFE=72             # decay half-life in hours
 JUPYTERHUB_ACTIVITYMON_TARGET_HOURS=8           # target hours for 100%
 
 # UI refresh
-JUPYTERHUB_ACTIVITYMON_RESOURCES_UPDATE_INTERVAL=10    # seconds
+JUPYTERHUB_ACTIVITYMON_STATS_INTERVAL=10              # live cpu/mem stats refresh, active users
 JUPYTERHUB_ACTIVITYMON_VOLUMES_UPDATE_INTERVAL=3600    # seconds
 ```
 
