@@ -10,6 +10,10 @@ The idle-session TTL bar (`TtlGadget`, `components/meters.tsx`) reads ~100% when
   - log: 2026-06-17 implemented (meters.tsx ceilingMin branch)
 - [x] **Colour bands** - danger (red) at `timeLeftMin <= 20` (warn/3); warning (amber) at `<= 60`; accent (blue) above
   - log: 2026-06-17 verified (color ternary, warn=60)
+- [x] **Readout matches the bar tone** - the remaining-time text and the clock icon take the SAME colour the bar shows at that moment (accent / warning / danger), driven by one shared `barTone` so the readout and the bar can never disagree
+  - log: 2026-06-18 added (operator: "time and clock icon -> use the same colour that the ttl progressbar has at the same time"); `barTone` set on `.oh-ttl-val` (icon inherits via currentColor) and the time `<b>` (overrides the `.oh-ttl-val b` text-colour rule); colour transitions over .4s
+- [x] **Readout follows the boost** - during an extend boost the bar is forced accent; the readout is too (same `barTone`), so the whole gadget reads accent while the optimistic fill plays
+  - log: 2026-06-18 `barTone = boost ? accent : color`, the exact strokeColor expression
 - [x] **Extend = hours input** - Extend opens a popover with an InputNumber (min 1, max = round(maxAddHours)); apply clamps and calls onExtend
   - log: 2026-06-17 verified (Popover + InputNumber + apply clamp)
 - [x] **At ceiling disables Extend** - `atCeiling = maxAddHours <= 0` -> Extend button disabled
