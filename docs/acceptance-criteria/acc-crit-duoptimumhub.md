@@ -2954,8 +2954,10 @@ CPU is reported the same docker/top way (cores-used; 100% = one core) on the pro
   - log: 2026-06-18 criterion added (operator "the Server Status has progressbar capped at its assigned cores")
 - [ ] **Host Status CPU bar = % of host compute** - the aggregate CPU bar FILL is total cores-used / host cores (0-100% of total host compute)
   - log: 2026-06-18 criterion added
-- [ ] **CPU bar tooltips show both percentages** - both CPU bar tooltips reveal cores used plus BOTH the % of total host compute and the % of total assigned compute (each 0-100)
+- [ ] **Hero CPU tooltip shows both percentages** - the Server Status hero CPU tooltip reveals cores used plus BOTH the % of host compute and the % of assigned compute (the server HAS assigned cores)
   - log: 2026-06-18 criterion added (operator "in the tooltips we must show the % of total too ... 0-100% of total CPU compute and total assigned compute")
+- [ ] **Host CPU tooltip has no "% of assigned"** - the Host Status CPU tooltip shows cores used + the % of host compute ONLY; it does NOT show a "% of assigned" line because the HOST has physical cores, not an assignment (assignment is per-server)
+  - log: 2026-06-18 criterion added (operator "host doesn't have assigned cores - yet tooltip shows assigned")
 - [ ] **Memory bars unchanged** - the change is CPU-only; the hero memory bar stays % of assigned and the Host memory bar stays % of host RAM
   - log: 2026-06-18 criterion added (operator "i mean CPU progressbars")
 - [ ] **Edge: host CPU count approximated** - the host-core denominator is the largest assigned-core count among active servers (an unlimited server's assignment IS the host count); a fully cpu-limited fleet would under-state the host denominator until a real host CPU count is exposed
@@ -3252,6 +3254,8 @@ The idle-session TTL bar (`TtlGadget`, `components/meters.tsx`) reads ~100% when
 
 ### Rules (verified in meters.tsx)
 
+- [x] **No flicker / width change at max** - the bar renders identically at 99% and 100%; reaching max must NOT flicker or read a different length
+  - log: 2026-06-18 BUG (operator: "ttl max has different length than almost max ... flickers and is little wider") - root cause: antd `Progress` auto-sets `status="success"` at `percent>=100` (`progress.js:63-65`), toggling `.ant-progress-status-success` exactly at max which re-animates/restyles the fill; FIXED by pinning `status="normal"` on the `<Progress>` so the auto-success never triggers
 - [x] **Two-phase pct** - below base: `min(100, timeLeft/base)`; extended (timeLeft > base): `timeLeft / ceiling` where `ceiling = timeLeft + maxAddHours*60` (= base + max_extension), so the extended bar drains instead of pinning at 100%
   - log: 2026-06-17 reworked (operator: extended must visibly drain) - was `min(100, timeLeft/base)` capped
 - [x] **Rescale to base at the baseline** - the moment timeLeft falls to base the scale switches to base (full again), then drains normally below; a visible snap-to-full at the baseline crossover (operator-chosen model)

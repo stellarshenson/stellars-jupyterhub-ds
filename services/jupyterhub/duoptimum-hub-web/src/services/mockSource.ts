@@ -375,7 +375,7 @@ export const mockSource: DataSource = {
   getTotalResources() {
     return delay<ResourceSnapshot>({
       cpu: 41, mem: 63, gpu: 62, gpus: [62, 41, 18],
-      cpuTip: hostCpuTooltip({ coresUsed: 3.3, hostCores: 8, hostPct: 41, assignedPct: 41, servers: '3 servers' }),
+      cpuTip: hostCpuTooltip({ coresUsed: 3.3, hostCores: 8, hostPct: 41, servers: '3 servers' }),
       memTip: '63% used\n40.3 of 64 GB across 3 servers',
       gpuDevices: [
         { index: '0', name: 'NVIDIA A100-SXM4-80GB', memoryMb: 81920, utilizationPct: 62, memoryUsedMb: 40000 },

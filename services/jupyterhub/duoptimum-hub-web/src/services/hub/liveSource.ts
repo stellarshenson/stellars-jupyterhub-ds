@@ -517,16 +517,15 @@ export const liveSource: DataSource = {
       // unlimited server's assignment IS the host core count) - the bar denominator
       // so the total reads as a fraction of the host, not an always-maxed sum.
       const hostCores = Math.max(1, ...active.map((u) => u.cpu_cores ?? 0))
-      const totalAssigned = active.reduce((s, u) => s + (u.cpu_cores ?? 0), 0)
-      // the Host CPU bar FILL is the % of total host compute; the CPU tooltip reveals
-      // cores used + BOTH the % of host compute (the fill) and the % of assigned compute
+      // the Host CPU bar FILL is the % of total host compute; the tooltip reveals
+      // cores used + the % of host compute (the host has no "assigned" - that is
+      // per-server, shown only on the Server Status hero)
       const cpuBar = clampPct((coresUsed / hostCores) * 100)
-      const cpuAssignedPctVal = totalAssigned > 0 ? clampPct((coresUsed / totalAssigned) * 100) : null
       const memBar = memError ? 0 : clampPct((memUsed / totalMb) * 100)
       const svrs = `${active.length} server${active.length === 1 ? '' : 's'}`
       return {
         cpu: cpuBar,
-        cpuTip: hostCpuTooltip({ coresUsed, hostCores, hostPct: cpuBar, assignedPct: cpuAssignedPctVal, servers: svrs }),
+        cpuTip: hostCpuTooltip({ coresUsed, hostCores, hostPct: cpuBar, servers: svrs }),
         mem: memBar,
         memError,
         gpu: gpuAgg, // busiest GPU's real load
