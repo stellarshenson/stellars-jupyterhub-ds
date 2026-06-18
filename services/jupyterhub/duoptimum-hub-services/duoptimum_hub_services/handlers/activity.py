@@ -19,7 +19,17 @@ from ..activity.helpers import (
 def _host_total_memory_mb():
     """Total physical host RAM in MB - the denominator for the "% of host" memory
     figure (a mem-limited user's memory_total_mb is their ceiling, not the host).
-    None on any read failure (honest empty, never fabricated)."""
+    Reads /proc/meminfo directly: psutil is NOT in the hub image, so the previous
+    `import psutil` always failed and returned None, which made the frontend fall
+    back to the first active user's cgroup ceiling (e.g. 256 GB) instead of the real
+    host RAM. None on any read failure (honest empty, never fabricated)."""
+    try:
+        with open('/proc/meminfo') as f:
+            for line in f:
+                if line.startswith('MemTotal:'):
+                    return round(int(line.split()[1]) / 1024, 1)  # MemTotal is in kB
+    except Exception:
+        pass
     try:
         import psutil
         return round(psutil.virtual_memory().total / (1024 * 1024), 1)

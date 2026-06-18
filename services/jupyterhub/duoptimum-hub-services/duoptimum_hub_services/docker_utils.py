@@ -53,6 +53,25 @@ def derive_memory_assignment(hostcfg, stats_limit_bytes):
     return stats_limit_bytes, False
 
 
+def mem_usage_excluding_cache(memory_stats):
+    """Real memory usage in bytes - the cgroup ``usage`` minus reclaimable file
+    cache, matching what ``docker stats`` / Docker Desktop display. The raw
+    ``usage`` field counts the page cache a container holds, so an idle container
+    that has merely read/written many files reports tens of GB it is not actually
+    consuming (this over-reported the host memory bar - 143 GB vs the real 41 GB).
+    Same formula the Docker CLI uses: subtract ``total_inactive_file`` (cgroup v1)
+    or ``inactive_file`` (cgroup v2) when it is below ``usage``. Pure - unit-tested
+    independently of Docker.
+    """
+    usage = memory_stats.get('usage', 0)
+    st = memory_stats.get('stats') or {}
+    for key in ('total_inactive_file', 'inactive_file'):
+        inactive = st.get(key)
+        if inactive is not None and inactive < usage:
+            return usage - inactive
+    return usage
+
+
 def stats_from_container(container):
     """CPU/memory/image stats dict for an already-resolved Docker container object
     (blocking, ~2s - `stats(stream=False)` samples twice). Single source of truth
@@ -81,7 +100,7 @@ def stats_from_container(container):
         hostcfg = container.attrs.get('HostConfig') or {}
         cpu_cores, cpu_cores_limited = derive_cpu_assignment(hostcfg, online_cpus)
 
-        memory_usage = stats['memory_stats'].get('usage', 0)
+        memory_usage = mem_usage_excluding_cache(stats['memory_stats'])
         memory_assigned, memory_limited = derive_memory_assignment(
             hostcfg, stats['memory_stats'].get('limit', 1))
         memory_percent = (memory_usage / memory_assigned) * 100 if memory_assigned > 0 else 0

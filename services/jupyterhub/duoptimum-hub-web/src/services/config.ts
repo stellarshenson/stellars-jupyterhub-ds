@@ -14,6 +14,18 @@ export const IDLE_CULLER = {
   maxExtensionH: 12,
 }
 
+// Resource-bar (CPU / memory) fill-colour ramp, in percent. The fill is the calm
+// accent up to `calmMaxPct`, ramps accent -> warning across to `midPct`, then
+// warning -> danger, reaching full saturated red at `dangerPct`. Tune here
+// without touching the component: lower `dangerPct` to make a near-full bar read
+// red sooner. Drives meters.barColor for every CPU/memory bar (host status,
+// server hero, servers table).
+export const BAR_COLOR = {
+  calmMaxPct: 50, // at or below: default accent, no tint
+  midPct: 75, // accent -> warning ramp ends here; warning -> danger begins
+  dangerPct: 85, // at or above: full danger (red)
+}
+
 // UI animation timings (milliseconds) - tunable here without touching the
 // components or CSS. The TTL extend value drives both the JS hold timer and the
 // CSS bar-fill/glow (threaded to global.css via the `--oh-ttl-anim` variable).

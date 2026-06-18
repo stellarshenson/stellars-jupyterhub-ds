@@ -23,10 +23,12 @@ The CPU/Memory/GPU progress bars on the "Server Status" panel (the server card's
   - log: 2026-06-17 added so the tooltip can name "assigned" vs "host (no limit)" - previously the hero tooltip said "of host RAM" unconditionally (the reported bug)
 - [x] **Memory tooltip names the ceiling honestly** - "N GB used of M GB assigned" when `memory_limited`, else "of M GB host (no limit)"; Servers also annotates "(over warning threshold)" on a `memory_max_usage_mb` breach
   - log: 2026-06-17 FIXED - hero was "X GB of host RAM" regardless; both paths now flag-driven (`getServers`, `getServerHero`)
+- [x] **Usage excludes page cache** - `memory_mb`/`memory_percent` use `mem_usage_excluding_cache(memory_stats)` = cgroup `usage` minus `total_inactive_file` (v1) / `inactive_file` (v2), the exact figure `docker stats` and Docker Desktop show; the raw `usage` counts reclaimable file cache, so an idle file-heavy container over-reported tens of GB
+  - log: 2026-06-18 FIXED (regression) - operator caught Host Status reading "143 of 256 GB" while Docker Desktop showed 41 GB; root cause `stats_from_container` used raw `usage` (page cache included); `docker_utils.mem_usage_excluding_cache` added + used, summed host now 41.7 GB matching Docker; `tests/test_docker_resource_assignment.py` +5 cases
 
 ## Granular assigned-resource service design
 
-- [x] **Pure, tested helpers** - `derive_cpu_assignment(hostcfg, online_cpus)` and `derive_memory_assignment(hostcfg, stats_limit_bytes)` in `docker_utils` are pure functions, unit-tested independently of Docker (8 cases), so the assignment logic is granular and verifiable, not inlined in the socket call
+- [x] **Pure, tested helpers** - `derive_cpu_assignment(hostcfg, online_cpus)`, `derive_memory_assignment(hostcfg, stats_limit_bytes)` and `mem_usage_excluding_cache(memory_stats)` in `docker_utils` are pure functions, unit-tested independently of Docker (13 cases), so the assignment + usage logic is granular and verifiable, not inlined in the socket call
   - log: 2026-06-17 operator "make sure the service that calculates it is properly designed and granular" - extracted both; `tests/test_docker_resource_assignment.py`, 600 backend pass
 - [x] **Edge: nano-cpus wins over quota; zero mem limit = unlimited** - explicit `NanoCpus` takes precedence over a cfs quota; `HostConfig.Memory == 0` reads as host fallback, not a 0-byte ceiling
   - log: 2026-06-17 covered by `test_cpu_nano_cpus_wins_over_quota`, `test_memory_zero_limit_is_unlimited`
@@ -58,6 +60,7 @@ The CPU/Memory/GPU progress bars on the "Server Status" panel (the server card's
   - log: 2026-06-17 added - `getTotalResources` now derives `cpuBar`/`memBar` and prefixes both tips; memTip also names the host total GB
 - [x] **Host memory denominator is host RAM** - the Host memory bar + tooltip divide by `activity.memory_host_total_mb` (real host RAM), NOT `active[0].memory_total_mb` (which is the first user's cgroup ceiling when that user is mem-limited, and would over-report the host %)
   - log: 2026-06-17 adversarial-sweep finding - `getTotalResources` was using the first active user's ceiling; fixed to `memory_host_total_mb` (matching getServers/getServerHero)
+  - log: 2026-06-18 FIXED (regression) - backend `_host_total_memory_mb()` returned None because `import psutil` always failed (psutil not in the hub image), so the frontend kept falling back to `active[0].memory_total_mb` (256 GB cap); now reads `/proc/meminfo` MemTotal directly -> 503 GB real host RAM, psutil only a secondary fallback
 - [x] **Mock parity** - the demo (`mockSource`) matches live: `getTotalResources` returns `cpuTip`/`memTip` leading with `N% used`, and the activity meter carries `activityHours` (so the tooltip's "Active on average Nh/day" line shows in demo too)
   - log: 2026-06-17 adversarial-sweep finding - mock lacked both; added to `toServerRow`/`toUserRow`/`getServerHero`/`getTotalResources`
 - [x] **Per-server memory tooltip leads with % used** - the per-server memory tooltip leads with `N% used` (the bar value), matching CPU and the Host tooltips, then the absolute `X of Y GB assigned/host` line and the `% of host` line; previously it led with `X GB used`
