@@ -35,6 +35,7 @@ from duoptimum_hub_services import (
     is_wsl2,                                # host is WSL2 -> per-GPU isolation not enforceable (advisory)
     load_merged_user_volumes,               # loads + merges platform-defaults YAML with operator overrides
     make_pre_spawn_hook,                    # factory returning async hook for group perms, favicon, icons
+    prepare_sent_notification_log,          # boot-time self-heal of the sent-notification history table
     register_events,                        # attaches SQLAlchemy listeners for user rename/delete sync
     resolve_gpu_mode,                       # GPU detection: 0=off, 1=forced, 2=auto-detect via nvidia-smi
     schedule_startup_hydration,             # consolidated startup hydration: warms caches + image-update check + survivor favicon routes/policy, all deferred to the IOLoop
@@ -61,6 +62,7 @@ from duoptimum_hub_services.handlers import (
     SessionInfoHandler,                     # GET  /api/users/{user}/session-info - idle culler status
     SettingsDataHandler,                    # GET  /api/settings - platform settings as JSON (read-only)
     EventsDataHandler,                      # GET  /api/events - recent platform events (audit feed)
+    SentNotificationsDataHandler,           # GET  /api/notifications/sent - portal "Past Notifications" history
     GroupsDataHandler,                      # GET  /api/admin/groups - list groups with config
     GroupsCreateHandler,                    # POST /api/admin/groups/create - create new group
     GroupsDeleteHandler,                    # DELETE /api/admin/groups/{name}/delete - delete group
@@ -273,6 +275,10 @@ user_volumes_for_ui = [
 
 # Attach SQLAlchemy event listeners for user rename/delete sync (activity data, NativeAuthenticator)
 register_events()
+
+# Self-heal the sent-notification history table at boot: create or rebuild it when the
+# /data DB was never initialised or was inherited from an older deploy (logs the heal).
+prepare_sent_notification_log()
 
 
 # ── Admin bootstrap ──────────────────────────────────────────────────────────
@@ -832,6 +838,7 @@ c.JupyterHub.extra_handlers = [
     (r'/api/users/([^/]+)/extend-session', ExtendSessionHandler),    # POST - extend idle timeout
     (r'/api/notifications/active-servers', ActiveServersHandler),     # GET - list running servers
     (r'/api/notifications/broadcast', BroadcastNotificationHandler), # POST - broadcast to all servers
+    (r'/api/notifications/sent', SentNotificationsDataHandler),       # GET - sent-broadcast history ("Past Notifications")
     (r'/api/admin/credentials', GetUserCredentialsHandler),          # GET - cached auto-generated passwords
     (r'/api/activity', ActivityDataHandler),                          # GET - activity data + Docker stats
     (r'/api/activity/reset', ActivityResetHandler),                   # POST - clear activity samples

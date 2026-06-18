@@ -160,7 +160,7 @@ export interface ResourceRow {
   valueLabel?: string
   tip?: string
   gpus?: number[] // per-GPU utilisation % - segmented meter; takes precedence over gpuDevices
-  gpuDevices?: GpuDevice[] // real inventory - rendered as device chips when utilisation is absent
+  gpuDevices?: GpuDevice[] // real inventory - drives the striped per-GPU bars (zero fill when utilisation is absent)
   meter?: ReactNode // override the bar (e.g. an activity meter)
 }
 
@@ -188,7 +188,7 @@ export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
     <div className="oh-res">
       {visible.map((r) => {
         const utils = r.gpus // per-GPU utilisation (when sampled)
-        const devices = r.gpuDevices // real inventory (when utilisation is not sampled)
+        const devices = r.gpuDevices // real inventory (names; fills the bars when utilisation is absent)
         const isGpuRow = utils !== undefined || devices !== undefined
         const n = utils?.length ?? devices?.length ?? 0
         const invOnly = utils === undefined && devices !== undefined && n > 0
@@ -197,7 +197,10 @@ export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
         const bar = r.meter
           ?? (isGpuRow
             ? (n
-              ? (utils ? <GpuMeter gpus={utils} devices={devices} /> : <GpuInventory devices={devices!} />)
+              // always the labelled striped per-GPU bars when devices exist; when
+              // utilisation is not sampled the bars render at zero fill (empty
+              // striped track) rather than collapsing to inventory chips
+              ? <GpuMeter gpus={utils ?? devices!.map((d) => d.utilizationPct ?? 0)} devices={devices} />
               : <span className="oh-res-bar" title={r.tip} />)
             // the detail tooltip rides BOTH the bar and the value, so hovering the
             // progress bar itself (not only the % readout) shows the breakdown

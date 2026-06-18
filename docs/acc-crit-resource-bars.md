@@ -43,7 +43,7 @@ The CPU/Memory/GPU progress bars on the "Server Status" panel (the server card's
   - log: 2026-06-18 functional coverage added - `tests/functional/test_resource_bars.py::test_bar_at_90pct_uses_danger_token` asserts the `/design-language` 90% bar fill uses `var(--color-danger)` (== the Stop-button red); PASSED (default-mode suite)
 - [x] **Smooth recolour** - the fill transitions width + background ~0.4s so a value change eases rather than jumps
   - log: 2026-06-17 inline transition on the bar fill
-- [x] **CPU/memory only** - the ramp rides the standard fill bar; GPU rows (striped meter / inventory chips) and the activity meter keep their own colours
+- [x] **CPU/memory only** - the ramp rides the standard fill bar; GPU rows (labelled striped per-GPU bars) and the activity meter keep their own colours
   - log: 2026-06-17 applied only on the `<i style=width>` branch in `ResourceBars`
 - [x] **Both surfaces** - one helper in `meters.tsx`, used by the "Server status" panel and the "Host status" widget alike
   - log: 2026-06-17
@@ -64,8 +64,10 @@ The CPU/Memory/GPU progress bars on the "Server Status" panel (the server card's
   - log: 2026-06-17 operator "unify memory to lead with % used too" - `getServers` + `getServerHero` (live), `toServerRow` + `getServerHero` (mock), and the `/design-language` example
 - [x] **Total CPU is host-relative** - the aggregate CPU bar = total cores-used / host cores (largest assigned-core count among active servers), not a clamped sum that always pegged ~100%
   - log: 2026-06-17 implemented; tip reads "~N of H cores in use across M servers"
-- [x] **GPU tooltips native** - per-GPU bars/chips carry the standard browser `title` (name/UUID/memory/util/temp/power), not a bespoke antd popup
+- [x] **GPU tooltips native** - per-GPU bars carry the standard browser `title` (name/UUID/memory/util/temp/power), not a bespoke antd popup
   - log: 2026-06-17 verified (gpuTip returns a \n-joined string)
+- [x] **GPU rows always show striped bars** - a GPU row with devices renders one labelled striped bar per device whether or not live utilisation is sampled; absent utilisation the bars render at zero fill (empty striped track), never collapsing to inventory chips
+  - log: 2026-06-18 operator "it must ALWAYS be there" - striped bars were gated on `r.gpus` (utilisation) since 6aee137, falling back to `GpuInventory` chips when the sidecar reported devices but no load; `ResourceBars` now always renders `GpuMeter gpus={utils ?? devices.map(d => d.utilizationPct ?? 0)}` (covers server hero, host status, mock in one place); `GpuInventory` now unused
 - [x] **Multiline tooltips** - the Servers memory/volume/system tooltips are `\n`-joined (one fact per line) like the GPU tooltip, not a single long " / "-joined string; the desktop table's native `title` breaks on `\n` and the mobile drawer's inline `detail` uses `white-space: pre-line`
   - log: 2026-06-17 operator (repeat) "tooltips weirdly long, must be multiline broken nicely" - memTip/volTip/sysTip switched to `[...].filter(Boolean).join('\n')`; Metric detail div got `pre-line`
 
