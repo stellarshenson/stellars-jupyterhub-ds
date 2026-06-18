@@ -2946,6 +2946,21 @@ Explanatory tooltips on the CPU/MEM column headers of BOTH the Servers page tabl
 - [ ] **Hero keeps bars at % of assigned** - the Server Status hero widget keeps its CPU/MEM bars showing usage as a % of the server's ASSIGNED quota (`cpuBarPct` / `memory_percent`); it is the ONLY surface showing % of assigned and must not switch to host-relative counters
   - log: 2026-06-18 criterion added (operator "the only place where we see the % of assigned - is the Server Status widget")
 
+### CPU progressbars (Host Status + Server Status widgets)
+
+CPU is reported the same docker/top way (cores-used; 100% = one core) on the progressbar widgets, just expressed as a 0-100 bar fill plus a tooltip that reveals both the % of total host compute and the % of total assigned compute.
+
+- [ ] **Server Status hero CPU bar capped at assigned cores** - the hero CPU bar FILL is the % of the server's ASSIGNED cores (`cpuBarPct`, 0-100) - the one CPU bar capped at its assignment
+  - log: 2026-06-18 criterion added (operator "the Server Status has progressbar capped at its assigned cores")
+- [ ] **Host Status CPU bar = % of host compute** - the aggregate CPU bar FILL is total cores-used / host cores (0-100% of total host compute)
+  - log: 2026-06-18 criterion added
+- [ ] **CPU bar tooltips show both percentages** - both CPU bar tooltips reveal cores used plus BOTH the % of total host compute and the % of total assigned compute (each 0-100)
+  - log: 2026-06-18 criterion added (operator "in the tooltips we must show the % of total too ... 0-100% of total CPU compute and total assigned compute")
+- [ ] **Memory bars unchanged** - the change is CPU-only; the hero memory bar stays % of assigned and the Host memory bar stays % of host RAM
+  - log: 2026-06-18 criterion added (operator "i mean CPU progressbars")
+- [ ] **Edge: host CPU count approximated** - the host-core denominator is the largest assigned-core count among active servers (an unlimited server's assignment IS the host count); a fully cpu-limited fleet would under-state the host denominator until a real host CPU count is exposed
+  - log: 2026-06-18 criterion added - reuses the existing getTotalResources approximation; no backend host-CPU-count was added
+
 ### Edge cases
 
 - [ ] **Edge: unlimited quota** - when a server has no CPU/MEM limit the assigned ceiling is the host capacity, so the colour ramps against host cores / host RAM and the tooltip says "no limit"

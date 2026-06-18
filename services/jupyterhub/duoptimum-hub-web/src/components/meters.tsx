@@ -162,6 +162,7 @@ export interface ResourceRow {
   gpus?: number[] // per-GPU utilisation % - segmented meter; takes precedence over gpuDevices
   gpuDevices?: GpuDevice[] // real inventory - drives the striped per-GPU bars (zero fill when utilisation is absent)
   meter?: ReactNode // override the bar (e.g. an activity meter)
+  error?: boolean // readout unavailable - show an explicit "unavailable", never a fabricated bar
 }
 
 // Resource-bar fill colour: the calm accent up to `calmMaxPct`, then a ramp
@@ -189,6 +190,17 @@ export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
   return (
     <div className="oh-res">
       {visible.map((r) => {
+        // readout unavailable: never fabricate a bar - show an explicit "unavailable"
+        // (operator: better to say "I don't know" than guess a denominator)
+        if (r.error) {
+          return (
+            <div className="oh-res-row" key={r.label}>
+              <span className="oh-res-label">{r.label}</span>
+              <span className="oh-res-bar" title={r.tip || 'Reading unavailable'} />
+              <span className="oh-res-val oh-muted" title={r.tip || 'Reading unavailable'}>unavailable</span>
+            </div>
+          )
+        }
         const utils = r.gpus // per-GPU utilisation (when sampled)
         const devices = r.gpuDevices // real inventory (names; fills the bars when utilisation is absent)
         const isGpuRow = utils !== undefined || devices !== undefined

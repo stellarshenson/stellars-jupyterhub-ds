@@ -4,6 +4,7 @@
  * hundred so search / scope / sort / pagination are exercised for real. */
 import type { DataSource } from './datasource'
 import { IDLE_CULLER, PLATFORM, THRESHOLDS } from './config'
+import { cpuCounterPct, cpuQuotaPct, memQuotaPct, cpuTooltip, memTooltip, cpuAssignedPct, heroCpuTooltip, hostCpuTooltip } from './hub/serverMetrics'
 import type {
   EffectiveGrant,
   EventRow,
@@ -219,7 +220,6 @@ function toServerRow(p: Person): ServerRow {
       timeLeftMin: null,
     }
   }
-  const memOver = s.memPct > THRESHOLDS.memPerUserPct
   const sysOver = s.systemGB > THRESHOLDS.containerExtraSpaceGB
   const volOver = s.volumesGB > THRESHOLDS.volumeTotalGB
   const warn = s.status !== 'spawning' && s.timeLeftMin > 0 && s.timeLeftMin < THRESHOLDS.timeLeftWarnMin
@@ -232,11 +232,14 @@ function toServerRow(p: Person): ServerRow {
     statusLabel: s.status === 'active' ? `Active ${s.since}` : s.status === 'idle' ? `Idle ${s.since}` : 'Spawning',
     lastActivityISO: spawning ? null : iso(0, parseInt(s.since, 10) || 0),
     ...mockActivity(p),
-    cpu: spawning ? null : s.cpu,
-    cpuTip: spawning ? undefined : `${s.cpu}% used\n8 host cores (no limit)`,
-    mem: spawning ? null : s.memPct,
-    memTip: spawning ? undefined : `${s.memPct}% used${memOver ? ' (over warning threshold)' : ''}\n${s.memGB} GB of host RAM (no limit)`,
-    memOver,
+    // mock: unlimited servers on an 8-core host (matches the hero/total tips); cpu
+    // is cores-used % (docker/top), mem is GB used, colour is % of the assigned quota
+    cpu: spawning ? null : cpuCounterPct(s.cpu),
+    cpuQuotaPct: spawning ? null : cpuQuotaPct(s.cpu, 8),
+    cpuTip: spawning ? undefined : cpuTooltip({ cpuPercent: s.cpu, cores: 8, coresLimited: false }),
+    mem: spawning ? null : s.memGB,
+    memQuotaPct: spawning ? null : memQuotaPct(s.memPct),
+    memTip: spawning ? undefined : memTooltip({ memMb: s.memGB * 1024, memTotalMb: 64 * 1024, memLimited: false, memoryPercent: s.memPct, memHostTotalMb: 64 * 1024 }),
     // per-user GPU usage is not collected live (only host inventory) - keep the
     // mock honest so the demo's Servers GPU column hides exactly as it does live
     gpu: null,
@@ -364,7 +367,7 @@ export const mockSource: DataSource = {
       // per-user GPU is not collected live (only host inventory), so the hero
       // never shows a per-server GPU meter - keep the mock's shape matching live
       resources: s
-        ? { cpu: s.cpu, mem: s.memPct, gpu: 0, cpuTip: `${s.cpu}% used\n8 host cores (no limit)`, memTip: `${s.memPct}% used\n${s.memGB} GB of host RAM (no limit)` }
+        ? { cpu: cpuAssignedPct(s.cpu, 8), mem: s.memPct, gpu: 0, cpuTip: heroCpuTooltip({ cpuPercent: s.cpu, cores: 8, coresLimited: false, assignedPct: cpuAssignedPct(s.cpu, 8), hostPct: cpuAssignedPct(s.cpu, 8) }), memTip: `${s.memPct}% used\n${s.memGB} GB of host RAM (no limit)` }
         : { cpu: 0, mem: 0, gpu: 0 },
     })
   },
@@ -372,7 +375,7 @@ export const mockSource: DataSource = {
   getTotalResources() {
     return delay<ResourceSnapshot>({
       cpu: 41, mem: 63, gpu: 62, gpus: [62, 41, 18],
-      cpuTip: '41% used\n~3.3 of 8 cores in use across 3 servers',
+      cpuTip: hostCpuTooltip({ coresUsed: 3.3, hostCores: 8, hostPct: 41, assignedPct: 41, servers: '3 servers' }),
       memTip: '63% used\n40.3 of 64 GB across 3 servers',
       gpuDevices: [
         { index: '0', name: 'NVIDIA A100-SXM4-80GB', memoryMb: 81920, utilizationPct: 62, memoryUsedMb: 40000 },
