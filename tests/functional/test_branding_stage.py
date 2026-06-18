@@ -1,4 +1,4 @@
-"""Environment-stage header badge (docs/acc-crit-branding-stage.md).
+"""Environment-stage header badge (docs/acceptance-criteria/acc-crit-branding-stage.md).
 
 The badge is driven by JUPYTERHUB_BRANDING_STAGE -> window.jhdata.stage and rendered
 by StageBadge in the portal header. The default (signup) deployment sets no stage, so
