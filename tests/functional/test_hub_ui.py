@@ -49,8 +49,8 @@ def test_admin_reaches_portal(admin_portal):
 @pytest.mark.acc_crit("functional-test-harness::SPA page-render smoke")
 def test_dashboard_renders(admin_portal):
     page = admin_portal.goto("/dashboard")
-    # the admin dashboard always shows the "Active servers" widget card
-    expect(page.get_by_text("Active servers", exact=False).first).to_be_visible()
+    # the admin dashboard always shows the "Active Servers" widget card
+    expect(page.get_by_text("Active Servers", exact=False).first).to_be_visible()
 
 
 @pytest.mark.acc_crit("functional-test-harness::SPA page-render smoke")
@@ -72,13 +72,13 @@ def test_users_page_renders(admin_portal):
 )
 def test_groups_page_renders(admin_portal):
     page = admin_portal.goto("/groups")
-    expect(page.get_by_role("button", name="Add group")).to_be_visible()
+    expect(page.get_by_role("button", name="Add Group")).to_be_visible()
 
 
 @pytest.mark.acc_crit("functional-test-harness::SPA page-render smoke")
 def test_events_page_renders(admin_portal):
     page = admin_portal.goto("/events")
-    expect(page.get_by_role("button", name="Clear log")).to_be_visible()
+    expect(page.get_by_role("button", name="Clear Events")).to_be_visible()
 
 
 @pytest.mark.acc_crit(
@@ -87,7 +87,7 @@ def test_events_page_renders(admin_portal):
 )
 def test_notifications_page_renders(admin_portal):
     page = admin_portal.goto("/notifications")
-    expect(page.get_by_role("button", name="Send broadcast")).to_be_visible()
+    expect(page.get_by_role("button", name="Send Broadcast")).to_be_visible()
 
 
 @pytest.mark.acc_crit(
@@ -96,7 +96,7 @@ def test_notifications_page_renders(admin_portal):
 )
 def test_settings_page_renders(admin_portal):
     page = admin_portal.goto("/settings")
-    expect(page.get_by_text("Full reference", exact=False).first).to_be_visible()
+    expect(page.get_by_text("Full Reference", exact=False).first).to_be_visible()
 
 
 @pytest.mark.acc_crit("functional-test-harness::SPA page-render smoke")
