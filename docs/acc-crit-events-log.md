@@ -35,3 +35,5 @@ The portal's audit feed (Overview "Recent events" + the Events page) is backed b
 
 - [x] **Store unit tests** - record/recent/prune/clear covered in `tests/test_event_log.py`
   - log: 2026-06-18 added `test_clear_empties_the_log` + `test_clear_empty_log_is_noop` (6 passing)
+- [x] **Functional SPA test** - the harness drives the Events page end-to-end: an admin action records an event, the feed shows it, Clear log + confirm empties the feed and disables the button
+  - log: 2026-06-18 `tests/functional/test_events.py::test_events_render_and_clear` (green in the signup setup)

@@ -1,87 +1,89 @@
-"""Multi-step functional scenarios over the group / policy model - beyond single
-UI actions, these drive realistic operator flows end-to-end through the running
-hub: configure several policies on a group and verify the resolved badges and
-hover tooltip, and reorder group priority. This is the layer that grows as the
-platform evolves; add new scenarios here.
+"""Multi-step SPA operator scenarios over the group / policy model. These drive
+the React portal end-to-end: create a group through the UI, see its
+server-rendered policy badges after a config change, reorder priority, and delete
+through the UI. Deep policy->container assertions live in test_container_policy.py
+(API + docker inspect). Add new UI scenarios here.
 """
 
 from playwright.sync_api import expect
 
-BASE = "/hub/groups"
+
+def _xsrf(s):
+    return s.cookies.get("_xsrf")
 
 
-def _create_group(page, base_url, name):
-    page.goto(f"{base_url}{BASE}")
-    page.get_by_role("button", name="Add Group").click()
-    expect(page.locator("#add-group-modal")).to_be_visible()
-    page.fill("#new-group-name", name)
-    page.click("#create-group-btn")
-    expect(page.locator(f"#groups-table-body tr[data-name='{name}']")).to_be_visible()
+def _row(page, name):
+    """The Groups table row whose name-link is exactly `name`."""
+    return page.locator("tr.ant-table-row").filter(
+        has=page.get_by_role("link", name=name, exact=True))
 
 
-def _open_config(page, name):
-    page.locator(f"#groups-table-body a.btn-config[data-name='{name}']").click()
-    expect(page.locator("#config-group-modal")).to_be_visible()
+def _create_group_via_ui(admin_portal, name):
+    page = admin_portal.goto("/groups")
+    page.get_by_role("button", name="Add group").click()
+    page.wait_for_url(lambda u: "/groups/new" in u)
+    page.locator("input[placeholder*='vision-lab']").fill(name)
+    page.get_by_role("button", name="Create group").click()
+    page.wait_for_url(lambda u: u.rstrip("/").endswith("/groups"))
+    expect(_row(page, name)).to_be_visible()
+    return page
 
 
-def _delete_group(page, name):
-    page.once("dialog", lambda d: d.accept())
-    page.locator(f"#groups-table-body tr[data-name='{name}'] .btn-delete").click()
-    page.wait_for_timeout(1000)
-    page.reload()
-    page.wait_for_load_state("networkidle")
-    expect(page.locator(f"#groups-table-body tr[data-name='{name}']")).to_have_count(0, timeout=10000)
+def test_group_create_badge_delete(admin_portal, base_url, admin_api):
+    name = "scen-grp"
+    page = _create_group_via_ui(admin_portal, name)
+
+    # No policy yet -> the Policies cell shows the empty marker, no tags.
+    expect(_row(page, name).locator(".ant-tag")).to_have_count(0)
+
+    # Configure a memory cap via the admin API; the SPA must then render a policy
+    # badge for it (server policy_summary -> CappedTags).
+    r = admin_api.put(f"{base_url}/hub/api/admin/groups/{name}/config",
+                      json={"mem_limit_enabled": True, "mem_limit_gb": 4},
+                      headers={"X-XSRFToken": _xsrf(admin_api)}, timeout=30)
+    assert r.status_code < 400, f"config save failed: {r.status_code} {r.text}"
+
+    page = admin_portal.goto("/groups")
+    expect(_row(page, name).locator(".ant-tag").first).to_be_visible()
+
+    # Delete through the UI (the icon deletes directly - no confirm modal).
+    _row(page, name).get_by_role("button", name="Delete group").click()
+    expect(_row(page, name)).to_have_count(0)
 
 
-def test_multi_policy_badges_and_tooltip(admin_page, base_url):
+def test_multi_policy_badges(admin_portal, base_url, admin_api):
     name = "scen-multi"
-    page = admin_page
-    _create_group(page, base_url, name)
-    _open_config(page, name)
+    _create_group_via_ui(admin_portal, name)
 
-    # Sudo on but disabled for members; downloads configured to block; memory cap 8G.
-    page.check("#config-sudo-active")
-    page.uncheck("#config-sudo-enable")
-    page.check("#config-downloads-active")
-    page.uncheck("#config-downloads-allow")
-    page.check("#config-mem-limit-enabled")
-    page.fill("#config-mem-limit-gb", "8")
-    page.click("#save-config-btn")
-    expect(page.locator("#config-group-modal")).to_be_hidden()
+    cfg = {
+        "sudo_active": True, "sudo_enable": False,
+        "downloads_active": True, "downloads_allow": False,
+        "mem_limit_enabled": True, "mem_limit_gb": 8,
+    }
+    r = admin_api.put(f"{base_url}/hub/api/admin/groups/{name}/config", json=cfg,
+                      headers={"X-XSRFToken": _xsrf(admin_api)}, timeout=30)
+    assert r.status_code < 400, f"config save failed: {r.status_code} {r.text}"
 
-    row = page.locator(f"#groups-table-body tr[data-name='{name}']")
-    expect(row).to_contain_text("Sudo off")
-    expect(row).to_contain_text("Downloads off")
-    expect(row).to_contain_text("Mem")
-
-    # The hover tooltip (native title attr) is server-rendered from policy_summary.
-    title = page.locator(f"#groups-table-body a.btn-config[data-name='{name}']").get_attribute("title")
-    assert "Sudo: off" in title
-    assert "Downloads: blocked" in title
-    assert "Memory: 8" in title
-
-    _delete_group(page, name)
+    page = admin_portal.goto("/groups")
+    # three active policies -> at least three inline tags (cap=4, so no +N rollup)
+    expect(_row(page, name).locator(".ant-tag").nth(2)).to_be_visible()
 
 
-def test_priority_reorder(admin_page, base_url):
-    page = admin_page
+def test_priority_reorder(admin_portal):
     a, b = "scen-prio-a", "scen-prio-b"
-    _create_group(page, base_url, a)
-    _create_group(page, base_url, b)
+    _create_group_via_ui(admin_portal, a)
+    page = _create_group_via_ui(admin_portal, b)
 
-    # Record the row order of the two test groups, then move the lower one up.
     def order():
-        names = page.locator("#groups-table-body tr").evaluate_all(
-            "rows => rows.map(r => r.getAttribute('data-name'))")
+        names = page.locator("tr.ant-table-row td:nth-child(2) a").evaluate_all(
+            "els => els.map(e => e.textContent)")
         return [n for n in names if n in (a, b)]
 
     before = order()
+    assert len(before) == 2, f"expected both test groups in the list; got {before}"
     lower = before[-1]
-    page.locator(f"#groups-table-body tr[data-name='{lower}'] .btn-move-up").click()
-    expect(page.locator(f"#groups-table-body tr[data-name='{lower}']")).to_be_visible()
 
-    after = order()
-    assert after[0] == lower, f"expected {lower} to move up; before={before} after={after}"
-
-    _delete_group(page, a)
-    _delete_group(page, b)
+    # Move the lower row up; the list reorders optimistically.
+    _row(page, lower).get_by_role("button", name="Move up").click()
+    expect(page.locator("tr.ant-table-row td:nth-child(2) a").first).to_have_text(lower)
+    assert order()[0] == lower

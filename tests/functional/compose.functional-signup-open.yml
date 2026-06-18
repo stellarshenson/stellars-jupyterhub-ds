@@ -1,0 +1,16 @@
+# Override for the signup-open regime: open self-service signup.
+#
+# Signup is ENABLED so a non-admin can self-sign-up into the pending queue, which
+# the admin then authorises through the SPA. With signup enabled the admin
+# bootstrap window is CLOSED (it only opens when signup is off), so the admin can
+# no longer self-authorise on signup - instead it is provisioned from the env
+# password (is_authorized=1), exactly like the env regime, via the target's
+# restart-to-provision on the fresh DB.
+services:
+  jupyterhub:
+    environment:
+      - JUPYTERHUB_SIGNUP_ENABLED=1
+      - JUPYTERHUB_ADMIN_PASSWORD=functest-secret
+  tests:
+    environment:
+      - FUNCTEST_AUTH_MODE=signupopen

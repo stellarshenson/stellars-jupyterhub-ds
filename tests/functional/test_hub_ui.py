@@ -1,7 +1,10 @@
-"""Hub-side UI tests - exercise the JupyterHub admin pages we own, foremost the
-group / policy management page. These need no successful lab spawn, so they run
-against the minimal singleuser image without depending on it.
+"""Portal page-render smoke - every major SPA screen mounts and shows its
+signature control. These need no successful lab spawn, so they run against the
+minimal singleuser image. Selectors use visible text / antd roles / placeholders
+(there are no data-testid attributes in the SPA).
 """
+
+import re
 
 import requests
 from playwright.sync_api import expect
@@ -14,80 +17,70 @@ def test_health_endpoint(base_url):
     assert r.status_code == 200
 
 
-def test_login_page_renders(page, base_url):
-    page.goto(f"{base_url}/hub/login")
-    expect(page.locator("input[name='username']")).to_be_visible()
-    expect(page.locator("input[name='password']")).to_be_visible()
+def test_login_shell_served(base_url):
+    # The hub serves the SPA auth shell at /hub/login (window.jhdata.authPage =
+    # "login" makes the SPA render the antd sign-in screen); assert the shell + its
+    # bundle are served, not the deep JS-rendered form (which is covered by login
+    # working end-to-end in the admin_api fixture).
+    r = requests.get(f"{base_url}/hub/login", timeout=10)
+    assert r.status_code == 200
+    assert re.search(r'authPage:\s*"login"', r.text), "login auth shell not served"
 
 
-# ── authenticated admin pages ──────────────────────────────────────────────────
+# ── authenticated: portal lands on the dashboard ─────────────────────────────────
 
-def test_admin_login_reaches_hub(admin_page, base_url):
-    assert "/hub/login" not in admin_page.url
-
-
-def test_groups_page_renders(admin_page, base_url):
-    admin_page.goto(f"{base_url}/hub/groups")
-    expect(admin_page.locator("h1")).to_contain_text("Groups")
-    expect(admin_page.get_by_role("button", name="Add Group")).to_be_visible()
+def test_admin_reaches_portal(admin_portal):
+    # The injected session cookies authenticate the browser; the SPA app shell
+    # (not the auth shell) mounts, proving the admin session is valid.
+    page = admin_portal.goto("/dashboard")
+    assert "/hub/login" not in page.url
+    expect(page.locator(".ant-layout")).to_be_visible()
 
 
-def test_settings_page_renders(admin_page, base_url):
-    resp = admin_page.goto(f"{base_url}/hub/settings")
-    assert resp.status < 400
+# ── per-page render smoke (signature control proves the page mounted) ────────────
+
+def test_dashboard_renders(admin_portal):
+    page = admin_portal.goto("/dashboard")
+    # the admin dashboard always shows the "Active servers" widget card
+    expect(page.get_by_text("Active servers", exact=False).first).to_be_visible()
 
 
-def test_activity_page_renders(admin_page, base_url):
-    resp = admin_page.goto(f"{base_url}/hub/activity")
-    assert resp.status < 400
+def test_servers_page_renders(admin_portal):
+    page = admin_portal.goto("/servers")
+    expect(page.locator("input[placeholder*='Filter by user']")).to_be_visible()
 
 
-def test_notifications_page_renders(admin_page, base_url):
-    resp = admin_page.goto(f"{base_url}/hub/notifications")
-    assert resp.status < 400
+def test_users_page_renders(admin_portal):
+    page = admin_portal.goto("/users")
+    # the "Inactive" scope pill is unique to the Users screen
+    expect(page.get_by_text("Inactive", exact=False).first).to_be_visible()
 
 
-# ── group / policy lifecycle (the feature under test) ──────────────────────────
+def test_groups_page_renders(admin_portal):
+    page = admin_portal.goto("/groups")
+    expect(page.get_by_role("button", name="Add group")).to_be_visible()
 
-def test_group_policy_lifecycle(admin_page, base_url):
-    name = "functestgrp"
-    page = admin_page
-    page.goto(f"{base_url}/hub/groups")
 
-    # Create a group via the Add Group modal.
-    page.get_by_role("button", name="Add Group").click()
-    expect(page.locator("#add-group-modal")).to_be_visible()
-    page.fill("#new-group-name", name)
-    page.click("#create-group-btn")
-    row = page.locator(f"#groups-table-body tr[data-name='{name}']")
-    expect(row).to_be_visible()
+def test_events_page_renders(admin_portal):
+    page = admin_portal.goto("/events")
+    expect(page.get_by_role("button", name="Clear log")).to_be_visible()
 
-    # Clicking the group name opens its configuration (the cog button was dropped).
-    page.locator(f"#groups-table-body a.btn-config[data-name='{name}']").click()
-    expect(page.locator("#config-group-modal")).to_be_visible()
-    expect(page.locator("#config-group-name-badge")).to_contain_text(name)
 
-    # Enable the Sudo Access policy section and save.
-    page.check("#config-sudo-active")
-    page.click("#save-config-btn")
-    expect(page.locator("#config-group-modal")).to_be_hidden()
+def test_notifications_page_renders(admin_portal):
+    page = admin_portal.goto("/notifications")
+    expect(page.get_by_role("button", name="Send broadcast")).to_be_visible()
 
-    # The group row now shows a Sudo badge (rendered from server policy_summary).
-    expect(row).to_contain_text("Sudo")
 
-    # Reopen the config - the Sudo switch persisted as on.
-    page.locator(f"#groups-table-body a.btn-config[data-name='{name}']").click()
-    expect(page.locator("#config-group-modal")).to_be_visible()
-    expect(page.locator("#config-sudo-active")).to_be_checked()
-    # close the modal via its dismiss control
-    page.locator("#config-group-modal [data-bs-dismiss='modal']").first.click()
-    expect(page.locator("#config-group-modal")).to_be_hidden()
+def test_settings_page_renders(admin_portal):
+    page = admin_portal.goto("/settings")
+    expect(page.get_by_text("Full reference", exact=False).first).to_be_visible()
 
-    # Delete the group (JS confirm() dialog -> accept; AJAX DELETE). Reload to
-    # assert the UI reflects the server-side delete (the in-place re-render lags).
-    page.once("dialog", lambda d: d.accept())
-    page.locator(f"#groups-table-body tr[data-name='{name}'] .btn-delete").click()
-    page.wait_for_timeout(1000)
-    page.reload()
-    page.wait_for_load_state("networkidle")
-    expect(page.locator(f"#groups-table-body tr[data-name='{name}']")).to_have_count(0, timeout=10000)
+
+def test_lab_setup_page_renders(admin_portal):
+    page = admin_portal.goto("/lab-container")
+    expect(page.get_by_text("Lab image", exact=False).first).to_be_visible()
+
+
+def test_design_language_page_renders(admin_portal):
+    page = admin_portal.goto("/design-language")
+    expect(page.get_by_text("Design language", exact=False).first).to_be_visible()
