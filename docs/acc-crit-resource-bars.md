@@ -37,8 +37,9 @@ The CPU/Memory/GPU progress bars on the "Server Status" panel (the server card's
 
 - [x] **Calm to 50%** - the CPU/memory fill keeps the default accent up to and including 50% (`meters.barColor` returns undefined)
   - log: 2026-06-17 operator "only past 50% mark start slowly changing colours"
-- [x] **Gradual ramp past 50%** - 50-75% blends accent -> warning, 75-100% blends warning -> danger via `color-mix` (smooth, design-token based, no hardcoded RGB)
+- [x] **Gradual ramp past 50%** - 50-75% blends accent -> warning, 75-90% blends warning -> danger, and >=90% saturates to full danger via `color-mix` (smooth, design-token based, no hardcoded RGB) so a near-full bar reads strong red, not pale orange
   - log: 2026-06-17 `meters.barColor`
+  - log: 2026-06-18 operator "~95% must be much more red, not pale red" - was linear 75-100% so 93% gave only 72% danger; now full `--color-danger` at >=90%, ramp steepened across 75-90
 - [x] **Smooth recolour** - the fill transitions width + background ~0.4s so a value change eases rather than jumps
   - log: 2026-06-17 inline transition on the bar fill
 - [x] **CPU/memory only** - the ramp rides the standard fill bar; GPU rows (striped meter / inventory chips) and the activity meter keep their own colours
