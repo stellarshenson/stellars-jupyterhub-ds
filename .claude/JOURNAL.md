@@ -4,16 +4,16 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 ---
 
-1. **Task - Add Docker badges**: added Docker pulls and GitHub stars badges to README.md<br>
+1. **Task [Short] - Add Docker badges**: added Docker pulls and GitHub stars badges to README.md<br>
     **Result**: README now displays Docker pulls badge (stellars/stellars-jupyterhub-ds), Docker image size badge, and GitHub stars badge
 
-2. **Task - Project initialization and documentation**: Analyzed codebase and created comprehensive project documentation<br>
+2. **Task [Short] - Project initialization and documentation**: Analyzed codebase and created comprehensive project documentation<br>
     **Result**: Created `.claude/CLAUDE.md` with detailed architecture overview, configuration patterns, common commands, GPU auto-detection logic, volume management, authentication setup, and troubleshooting guide for future Claude Code instances
 
-3. **Task - Feature planning for user controls**: Designed two self-service features for JupyterHub user control panel<br>
+3. **Task [Short] - Feature planning for user controls**: Designed two self-service features for JupyterHub user control panel<br>
     **Result**: Created `FEATURE_PLAN.md` documenting Reset Home Volume and Restart Server features with implementation details, API handlers, UI templates, JavaScript integration, security considerations, edge cases, testing plans, and rollout strategy
 
-4. **Task - Version management implementation**: Added version tracking and tagging system matching stellars-jupyterlab-ds pattern<br>
+4. **Task [Short] - Version management implementation**: Added version tracking and tagging system matching stellars-jupyterlab-ds pattern<br>
     **Result**: Created `project.env` with project metadata and version 1.0.0_jh-4.x, updated `Makefile` with increment_version and tag targets, auto-increment on build, dual-tag push (latest and versioned), leveraging existing Docker socket access for both planned features
 
 5. **Task - Implement user self-service features**: Implemented Reset Home Volume and Restart Server features from FEATURE_PLAN.md<br>
@@ -45,31 +45,31 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 14. **Task - Configuration flow and UI workflow diagrams**: created mermaid diagrams illustrating settings interaction and user self-service workflows<br>
     **Result**: added Configuration Flow section to README after Architecture, three-layer mermaid graph (amber/green/blue, stroke-only) showing env vars in `compose.yml` flowing through `jupyterhub_config.py` to spawned user containers, with `ENABLE_SERVICE_*` as horizontal subgraph illustrating MLflow/Glances/TensorBoard passthrough to Lab env. Expanded CONFIG layer with `DOCKER_SPAWNER_VOLUMES`, `VOLUME_DESCRIPTIONS`, `BUILTIN_GROUPS`, `pre_spawn_hook`, `extra_handlers`, `template_paths`. Separate GPU Auto-Detection flowchart documenting `ENABLE_GPU_SUPPORT` 0/1/2 decision logic, temporary `nvidia/cuda` probe container, `NVIDIA_DETECTED` flag, cleanup of `jupyterhub_nvidia_autodetect`, final `device_requests` application. User Self-Service Workflow diagram covers home page states, custom buttons, modal checkboxes, `RestartServerHandler`/`ManageVolumesHandler` with `@admin_or_self`, AJAX flow, `MutationObserver` refresh. Volume Architecture diagram positions `MSHARED` between HOST and CONTAINER subgraphs (solid arrow from `VOLSHARED`, dashed to containers) clarifying that per-user volumes are user-resettable but `jupyterhub_shared` is protected. Converted two HTML alert divs to GitHub-style WARNING blocks.
-15. **Task - Update watchtower image**: Replaced deprecated watchtower image with maintained fork<br>
+15. **Task [Short] - Update watchtower image**: Replaced deprecated watchtower image with maintained fork<br>
     **Result**: Changed watchtower image from containrrr/watchtower:latest to nickfedor/watchtower:latest in compose.yml, new image is actively maintained and compatible with latest Docker versions, bumped version to 3.3.1
 
-16. **Task - Cleanup startup scripts**: Removed obsolete nvidia-smi script and renumbered ensure_groups<br>
+16. **Task [Short] - Cleanup startup scripts**: Removed obsolete nvidia-smi script and renumbered ensure_groups<br>
     **Result**: Deleted 01_nvidia-smi.sh (GPU detection now uses separate nvidia/cuda container spawned by jupyterhub_config.py), renamed 02_ensure_groups.py to 01_ensure_groups.py for sequential ordering, bumped version to 3.3.2
 
-17. **Task - Fix Watchtower refresh frequency**: Investigated and fixed Watchtower scheduling issues<br>
+17. **Task [Short] - Fix Watchtower refresh frequency**: Investigated and fixed Watchtower scheduling issues<br>
     **Result**: Removed unsupported `--no-startup` flag (caused crash), fixed cron expression from 5-field `0 0 * * *` to 6-field `0 0 0 * * *` (watchtower uses seconds) - was running hourly instead of daily at midnight UTC
 
-18. **Task - Refactor Docker access control groups**: Split into two groups with distinct purposes<br>
+18. **Task [Short] - Refactor Docker access control groups**: Split into two groups with distinct purposes<br>
     **Result**: Renamed `docker-privileged` to `docker-sock` (mounts docker.sock), created new `docker-privileged` (runs with --privileged flag). Updated pre_spawn_hook to check both groups and set spawner.volumes or spawner.privileged accordingly. Updated README.md, doc/docker-socket-permissions.md, .claude/CLAUDE.md with new group documentation
 
-19. **Task - Fix privileged container mode**: DockerSpawner privileged flag not working<br>
+19. **Task [Short] - Fix privileged container mode**: DockerSpawner privileged flag not working<br>
     **Result**: Changed from `spawner.privileged = True` to `spawner.extra_host_config['privileged'] = True` - DockerSpawner requires extra_host_config dict for host configuration options. Bumped version to 3.4.1
 
-20. **Task - Exclude watchtower from self-updates**: Prevent watchtower from updating itself<br>
+20. **Task [Short] - Exclude watchtower from self-updates**: Prevent watchtower from updating itself<br>
     **Result**: Added `com.centurylinklabs.watchtower.enable=false` label to watchtower service in compose.yml - legacy namespace kept by forks for backward compatibility
 
 21. **Task - Traefik host-based routing template**: Created deployment template for local Traefik with self-signed certificates<br>
     **Result**: Added `extra/traefik-host-based-routing/` template for creating `<name>_stellars_jupyterhub_ds` deployments with local Traefik reverse proxy (ports 80/443), self-signed wildcard certificates, and HTTP->HTTPS redirect. Includes compose_override.yml with YOURDOMAIN placeholder, Makefile (start/stop/pull/logs/status), start.sh (clone/pull + start), stop.sh, generate-certs.sh (creates wildcard cert and tls.yml for given domain), .gitignore (excludes certs and cloned repo). Updated extra/README.md with template listing
 
-22. **Task - Fix root path base URL redirect**: Fixed double-slash issue when JUPYTERHUB_BASE_URL=/<br>
+22. **Task [Short] - Fix root path base URL redirect**: Fixed double-slash issue when JUPYTERHUB_BASE_URL=/<br>
     **Result**: Added `JUPYTERHUB_BASE_URL_PREFIX` normalization in `config/jupyterhub_config.py`. When `JUPYTERHUB_BASE_URL` is `/`, `''`, or `None`, prefix becomes empty string. Updated three URL concatenations (default_url, hub_connect_url, base_url) to use prefix instead of raw BASE_URL. Prevents browser interpreting `//hub/home` as protocol-relative URL pointing to host `hub`
 
-23. **Task - Update traefik-host-based-routing template**: Refactored deployment template for root path routing<br>
+23. **Task [Short] - Update traefik-host-based-routing template**: Refactored deployment template for root path routing<br>
     **Result**: Removed Makefile from `extra/traefik-host-based-routing/`. Updated `compose_override.yml` with `JUPYTERHUB_BASE_URL=/` and root path Traefik routing. Updated `start.sh` to pull images and use `--no-build`. Updated README to reflect simplified workflow without Makefile
 
 24. **Task - User rename with authorization preservation**: Implemented admin API to rename users while preserving NativeAuthenticator authorization<br>
@@ -78,7 +78,7 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 25. **Task - Fix NativeAuthenticator sync on rename**: Replaced broken handler approach with SQLAlchemy event listener<br>
     **Result**: Discovered `extra_handlers` appends to default handlers (doesn't override), so `SyncedUserAPIHandler` was never called. Implemented SQLAlchemy `@event.listens_for(orm.User.name, 'set')` in `jupyterhub_config.py` to intercept ALL User.name changes at ORM level. Removed `SyncedUserAPIHandler` and `RenameUserHandler` classes from `custom_handlers.py`. Removed corresponding routes from `extra_handlers`. Updated `.claude/CLAUDE.md` replacing "Admin Features > Rename User" with simpler "NativeAuthenticator Sync" note. New approach catches renames from admin panel, API, and any other source automatically
 
-26. **Task - Version display in browser console**: Added version badge to browser JavaScript console<br>
+26. **Task [Short] - Version display in browser console**: Added version badge to browser JavaScript console<br>
     **Result**: Added `ARG VERSION=dev` and `ENV STELLARS_JUPYTERHUB_VERSION=${VERSION}` to Dockerfile. Updated `compose.yml` build args to pass `VERSION=${VERSION:-dev}`. Updated `scripts/build.sh` and `scripts/build_verbose.sh` to source `project.env` and export VERSION. Added `stellars_version` template variable in `jupyterhub_config.py`. Added styled console.log in `home.html` displaying blue "Stellars JupyterHub DS" + green version badge in browser console
 
 27. **Task - Admin user creation with credentials modal**: Implemented auto-generation of passwords when admin creates users via admin panel<br>
@@ -87,34 +87,34 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 28. **Task - Fix admin template URL handling**: Fixed fetch interceptor and nav links in templates_enhanced<br>
     **Result**: Fixed `isUserCreation` check in admin.html to strip query params (`?_xsrf=...`) before checking if URL ends with `api/users` - React admin adds XSRF token as query param which broke the endpoint detection. Fixed double "hub" prefix in page.html nav links - changed `{{ base_url }}hub/authorize` to `{{ base_url }}authorize` and `{{ base_url }}hub/change-password` to `{{ base_url }}change-password` since base_url already includes `/hub/`
 
-29. **Task - Fix credentials API route conflict**: Changed credentials endpoint from `/api/users/credentials` to `/api/admin/credentials`<br>
+29. **Task [Short] - Fix credentials API route conflict**: Changed credentials endpoint from `/api/users/credentials` to `/api/admin/credentials`<br>
     **Result**: JupyterHub's built-in `/api/users/*` handler was catching requests before custom handler, returning "Invalid JSON keys" error. Changed route in jupyterhub_config.py, admin.html, and custom_handlers.py docstring
 
-30. **Task - Credentials modal UX improvements**: Enhanced modal layout, scrolling, and loading feedback<br>
+30. **Task [Short] - Credentials modal UX improvements**: Enhanced modal layout, scrolling, and loading feedback<br>
     **Result**: Moved Copy/Download buttons to top of modal body. Added scrollable container (max-height 300px) for long user lists. Removed `<code>` styling for plain text display. Added loading spinner modal shown between user creation and credentials display. Improved Makefile version output format to show "Current version" and "New version" lines
 
 31. **Task - Fix password storage and enable bake**: Fixed NativeAuthenticator password storage format and Docker build configuration<br>
     **Result**: Changed password storage from decoded string to bytes - bcrypt.hashpw() returns bytes which NativeAuthenticator ORM expects as LargeBinary. Previous string storage caused "argument 'salt': 'str' object cannot be converted to 'PyBytes'" error on login. Enabled COMPOSE_BAKE=true in build.sh, build_verbose.sh, and .claude/commands/build.md to use Docker's bake builder (removes deprecation warning). Tagged STABLE_3.5.10
 
-32. **Task - Per-row copy icon in credentials modal**: Added individual copy functionality for each credential row<br>
+32. **Task [Short] - Per-row copy icon in credentials modal**: Added individual copy functionality for each credential row<br>
     **Result**: Added third column with subtle copy icon (40% opacity) for each row in credentials table. Click handler copies "Username: xxx\nPassword: yyy" to clipboard. Icon changes to checkmark briefly (1.5s) after successful copy, then returns to copy icon
 
-33. **Task - Comment out console logs**: Removed debug console output from admin template<br>
+33. **Task [Short] - Comment out console logs**: Removed debug console output from admin template<br>
     **Result**: Commented out all console.log and console.error statements in admin.html (11 total) - fetch interceptor logs, user creation detection, credentials fetch/receive, error handlers. Version display in home.html remains active as only console output
 
 34. **Task - Comprehensive UI styling enhancements**: Extended custom.css with consistent styling across all JupyterHub pages<br>
     **Result**: Added notifications page styling (form container, textarea, character counter, results section with banded table, status badges), removed obtrusive hover highlight on admin user rows (replaced with subtle 0.003 alpha effect), set collapsed user card padding to 0 to override inline styles, unified button font sizes to 0.8rem across all pages (authorization buttons, token revoke, admin actions, collapse buttons, toggle details), added Add Users form panel styling (labels, textarea, submit button, dark mode support), disabled hover on expanded card tables via box-shadow override, added groups page styling (list items, card footer, badges), styled collapse/expand buttons (0.2rem 0.3rem padding), added username label spacing, dark mode Add Users button with explicit colors (#f8f9fa bg, #6c757d border)
 
-35. **Task - Traefik template start.sh --refresh flag**: Added optional refresh flag to start.sh for pulling latest upstream<br>
+35. **Task [Short] - Traefik template start.sh --refresh flag**: Added optional refresh flag to start.sh for pulling latest upstream<br>
     **Result**: Modified extra/traefik-host-based-routing/start.sh to clone repo only once on first run, skip git operations if repo exists (just uses existing), added --refresh flag to pull latest from origin/main when explicitly requested
 
-36. **Task - Volume renamer script**: Created extra/volume-renamer with script for renaming Docker volumes between users<br>
+36. **Task [Short] - Volume renamer script**: Created extra/volume-renamer with script for renaming Docker volumes between users<br>
     **Result**: Created rename-user-volumes.sh - renames all jupyterlab-* volumes from source pattern to target username, handles Docker's dot-to-hex encoding (. becomes -2e), supports --dry-run (show mappings without changes) and --keep-orig (preserve source volumes), compact help with generic examples (oldnick -> first.last)
 
-37. **Task - UI refinements and icon cleanup**: Admin panel styling and password toggle icon improvements<br>
+37. **Task [Short] - UI refinements and icon cleanup**: Admin panel styling and password toggle icon improvements<br>
     **Result**: Aligned admin action buttons to right (td.actions text-align), added transparent background for dark mode .server-dashboard-container, made table hover nearly invisible (--bs-table-hover-bg: rgba 0.003), replaced eye emoji with Font Awesome icons (fa-eye/fa-eye-slash) in all 4 password templates (signup, login, change-password, change-password-admin) - both button HTML and JavaScript toggle
 
-38. **Task - Table hover and README update**: Fixed Bootstrap table-hover styling and documented mnemonic passwords feature<br>
+38. **Task [Short] - Table hover and README update**: Fixed Bootstrap table-hover styling and documented mnemonic passwords feature<br>
     **Result**: Added --bs-table-accent-bg override for Bootstrap 5 table-hover (two-step variable process), reduced Shutdown Hub button margin from 30px to 5px, removed color override from dark mode .server-dashboard-container, updated README Features with admin user creation and mnemonic passwords (e.g., storm-apple-ocean)
 
 39. **Task - Authorization page improvements**: Protected users with accounts from accidental discard<br>
@@ -123,49 +123,49 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 40. **Task - Fix table hover color override**: Admin panel table hover color not being overridden despite CSS<br>
     **Result**: Discovered Bootstrap 5 table-hover targets td/th cells specifically while our CSS used universal `> *` selector. Fixed by changing selectors to explicitly target `> td, > th` and using `transparent` instead of CSS variables. Updated three rule sets: table-hover override (lines 1055-1061), user-row hover (lines 1086-1092), and dark mode user-row hover (lines 1364-1370)
 
-41. **Task - Server-side authorization discard fix**: Replaced clunky JavaScript API call with server-side Jinja2 logic<br>
+41. **Task [Short] - Server-side authorization discard fix**: Replaced clunky JavaScript API call with server-side Jinja2 logic<br>
     **Result**: Created StellarsNativeAuthenticator subclass that overrides get_handlers() to inject CustomAuthorizationAreaHandler, which passes hub_usernames set to template. Updated authorization-area.html to use `{% if user.username not in hub_usernames %}` instead of JavaScript fetch. Removes API call, XSRF token handling, and flash of Discard buttons before hiding
 
-42. **Task - Custom logo support**: Added JUPYTERHUB_LOGO_FILE configuration for custom branding<br>
+42. **Task [Short] - Custom logo support**: Added JUPYTERHUB_LOGO_FILE configuration for custom branding<br>
     **Result**: Added logo_file config that checks for file at /srv/jupyterhub/logo.svg (or JUPYTERHUB_LOGO_FILE env var), JupyterHub serves it at {{ base_url }}logo automatically. Fixed CustomAuthorizationAreaHandler 403 by adding @needs_scope('admin:users') decorator and importing orm inside get() method. Simplified page.html logo block to always use base_url/logo
 
-43. **Task - Enhance certs-installer scripts**: Added optional folder parameter and help option<br>
+43. **Task [Short] - Enhance certs-installer scripts**: Added optional folder parameter and help option<br>
     **Result**: Updated install_cert.sh and install_cert.bat to accept optional directory argument (default: current directory), added -h/--help/? flags showing usage, supported file types, and examples. Both scripts now display which directory is being scanned
 
-44. **Task - Fix volume reset encoding**: Fixed Docker volume/container name encoding for special characters<br>
+44. **Task [Short] - Fix volume reset encoding**: Fixed Docker volume/container name encoding for special characters<br>
     **Result**: Added encode_username_for_docker() function using escapism library (same as DockerSpawner) to ensure compatibility with JupyterHub's naming scheme. Updated ManageVolumesHandler (line 152), RestartServerHandler (line 227), and BroadcastNotificationHandler (line 454) to use encoded usernames. Handles special characters like `.` -> `-2e`, `@` -> `-40` matching JupyterHub's default encoding
 
 45. **Task - Selective notification recipients**: Enhanced notification broadcast to allow targeting specific servers<br>
     **Result**: Added ActiveServersHandler (`GET /api/notifications/active-servers`) to list active servers. Modified BroadcastNotificationHandler to accept optional `recipients` array - filters to selected users if provided, sends to all if omitted (backward compatible). Updated notifications.html with "Send to all active servers" checkbox, server selection list with Select All/Deselect All buttons, dynamic button text showing recipient count. Validation prevents sending with no recipients selected
 
-46. **Task - Idle server culler**: Implemented automatic shutdown of inactive servers<br>
+46. **Task [Short] - Idle server culler**: Implemented automatic shutdown of inactive servers<br>
     **Result**: Added jupyterhub-idle-culler package to Dockerfile. Added configuration with environment variables: IDLE_CULLER_ENABLED (default 0), IDLE_CULLER_TIMEOUT (default 86400s/24h), IDLE_CULLER_CULL_EVERY (default 600s/10min), IDLE_CULLER_MAX_AGE (default 0/unlimited). Service runs as managed JupyterHub service with role-based scopes. Disabled by default, opt-in via IDLE_CULLER_ENABLED=1. Bumped version to 3.6.0
 
-47. **Task - Standardize env vars with JUPYTERHUB_ prefix**: Renamed all environment variables to use consistent JUPYTERHUB_ prefix and added admin Settings page<br>
+47. **Task [Short] - Standardize env vars with JUPYTERHUB_ prefix**: Renamed all environment variables to use consistent JUPYTERHUB_ prefix and added admin Settings page<br>
     **Result**: Renamed 13 environment variables (ENABLE_GPU_SUPPORT->JUPYTERHUB_GPU_ENABLED, ENABLE_JUPYTERHUB_SSL->JUPYTERHUB_SSL_ENABLED, ENABLE_SERVICE_*->JUPYTERHUB_SERVICE_*, ENABLE_SIGNUP->JUPYTERHUB_SIGNUP_ENABLED, DOCKER_NOTEBOOK_IMAGE->JUPYTERHUB_NOTEBOOK_IMAGE, DOCKER_NETWORK_NAME->JUPYTERHUB_NETWORK_NAME, NVIDIA_AUTODETECT_IMAGE->JUPYTERHUB_NVIDIA_IMAGE, IDLE_CULLER_*->JUPYTERHUB_IDLE_CULLER_*). Created SettingsPageHandler with admin-only access at /settings showing read-only banded table of all configuration values. Updated compose.yml, jupyterhub_config.py, custom_handlers.py, README.md, CLAUDE.md. Added Settings link to admin navbar. No backward compatibility for old names. Bumped version to 3.6.1
 
 48. **Task - Settings dictionary YAML**: Externalized settings metadata to config/settings_dictionary.yml<br>
     **Result**: Created settings_dictionary.yml with categories as top-level keys (JupyterHub Core, Docker Spawner, GPU, Services, Idle Culler, Branding), each containing list of settings with name, description, default, and optional empty_display. Updated SettingsPageHandler to load from YAML instead of hardcoded values. Added pyyaml to Dockerfile pip install. Dockerfile now copies settings_dictionary.yml to /srv/jupyterhub/
 
-49. **Task - xkcdpass password generation**: Replaced custom word list with xkcdpass library for auto-generated passwords<br>
+49. **Task [Short] - xkcdpass password generation**: Replaced custom word list with xkcdpass library for auto-generated passwords<br>
     **Result**: Moved settings_dictionary.yml to services/jupyterhub/conf/ for proper image baking. Replaced hardcoded word list with xkcdpass library for memorable password generation. Added configurable env vars: JUPYTERHUB_AUTOGENERATED_PASSWORD_WORDS (default 4) and JUPYTERHUB_AUTOGENERATED_PASSWORD_DELIMITER (default "-"). Added xkcdpass to Dockerfile pip install. Fixed ENABLE_SIGNUP to JUPYTERHUB_SIGNUP_ENABLED in Dockerfile defaults
 
-50. **Task - Cleanup templates directory structure**: Removed redundant HTML files and renamed directory for clarity<br>
+50. **Task [Short] - Cleanup templates directory structure**: Removed redundant HTML files and renamed directory for clarity<br>
     **Result**: Removed unused *.html files from services/jupyterhub/templates/ (only certs/ subdirectory needed). Renamed templates_enhanced to html_templates_enhanced for clearer naming. Updated Dockerfile COPY paths accordingly
 
-51. **Task - Version footer on home page**: Added version status bar to home page matching admin page style<br>
+51. **Task [Short] - Version footer on home page**: Added version status bar to home page matching admin page style<br>
     **Result**: Added `{% block footer %}` to home.html displaying "Stellars JupyterHub DS X.Y.Z | JupyterHub X.Y.Z". Uses `stellars_version.split('_')[0]` to show only major.minor.patch (strips _jh-x.x suffix). Added `<div class="mt-5 pt-5"></div>` spacer before footer for visual separation from content. Uses `server_version` template variable for JupyterHub version
 
-52. **Task - Fix server_version not populated**: Investigated and fixed missing JupyterHub version in home page footer<br>
+52. **Task [Short] - Fix server_version not populated**: Investigated and fixed missing JupyterHub version in home page footer<br>
     **Result**: Discovered `AdminHandler` explicitly passes `server_version` to admin.html but `HomeHandler` does not pass it to home.html - it's handler-specific, not global. Added `jupyterhub.__version__` to `c.JupyterHub.template_vars` in jupyterhub_config.py making `server_version` available globally to all templates
 
-53. **Task - Create stop.sh script**: Added stop.sh to complement start.sh for platform shutdown<br>
+53. **Task [Short] - Create stop.sh script**: Added stop.sh to complement start.sh for platform shutdown<br>
     **Result**: Created stop.sh mirroring start.sh pattern - resolves script location via readlink/dirname, respects compose_override.yml if present, runs docker compose down --remove-orphans
 
 54. **Task - Enhance traefik-host-based-routing template**: Major improvements to deployment template with CIFS support and certificate installers<br>
     **Result**: Added optional CIFS mount support via compose_cifs.yml and .env.example (ENABLE_CIFS=1), created install_cert.sh for Linux (multi-distro: Debian/Ubuntu, RHEL/CentOS, Arch, Alpine, macOS) and enhanced install_cert.bat for Windows with folder argument and help flags, fixed compose_override.yml stray quote and added JUPYTERHUB_IDLE_CULLER_ENABLED/JUPYTERHUB_SIGNUP_ENABLED defaults, enhanced generate-certs.sh with generic CN for browser compatibility and verification output, updated start.sh/stop.sh to load .env and conditionally include compose_cifs.yml, updated README with CIFS instructions and certificate installation commands, added .env to .gitignore
 
-55. **Task - Rename GLANCES to RESOURCES_MONITOR**: Renamed environment variable for clarity<br>
+55. **Task [Short] - Rename GLANCES to RESOURCES_MONITOR**: Renamed environment variable for clarity<br>
     **Result**: Renamed JUPYTERHUB_SERVICE_GLANCES to JUPYTERHUB_SERVICE_RESOURCES_MONITOR across compose.yml, jupyterhub_config.py, settings_dictionary.yml, README.md, and CLAUDE.md
 
 56. **Task - Idle culler session extension feature**: Implemented user session extension capability for idle culler<br>
@@ -174,7 +174,7 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 57. **Task - Harmonize env settings across files**: Ensured all env settings are consistent in compose.yml, Dockerfile, and config<br>
     **Result**: Added all missing ENV defaults to Dockerfile (ADMIN, BASE_URL, SSL_ENABLED, NOTEBOOK_IMAGE, NETWORK_NAME, GPU_ENABLED, NVIDIA_IMAGE, SERVICE_MLFLOW/RESOURCES_MONITOR/TENSORBOARD, all IDLE_CULLER settings, TF_CPP_MIN_LOG_LEVEL), added AUTOGENERATED_PASSWORD_WORDS/DELIMITER to compose.yml, standardized logo setting as JUPYTERHUB_LOGO_URI with file:// prefix (supports external http/https URIs), updated NVIDIA_IMAGE to nvidia/cuda:13.0.2-base-ubuntu24.04 across all files (compose.yml, jupyterhub_config.py, Dockerfile, settings_dictionary.yml, README.md, CLAUDE.md), config now strips file:// prefix for local files while allowing external URI support in templates
 
-58. **Task - Improve session extension UI**: Changed extension input from dropdown to numeric and added explanatory note<br>
+58. **Task [Short] - Improve session extension UI**: Changed extension input from dropdown to numeric and added explanatory note<br>
     **Result**: Replaced dropdown with numeric input (min=1, max set dynamically to available hours), renamed card title to "Idle Session Timeout", added explanatory note "Your server will be stopped after a period of inactivity to free up resources", added input validation for minimum 1 hour, button text shortened to "Extend"
 
 59. **Task - Session extension truncation and cumulative logic**: Fixed extension behavior to be cumulative and truncate excess requests<br>
@@ -220,16 +220,16 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 73. **Task - Background Activity Sampler implementation**: Automatic periodic activity sampling using Tornado PeriodicCallback<br>
     **Result**: **Problem**: Activity progress bars were empty because no background process was sampling activity - only on-demand API calls. **Solution**: Created `ActivitySampler` singleton class using Tornado's `PeriodicCallback` for non-blocking periodic execution. Uses JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL (default 600s/10min). Initially attempted `c.JupyterHub.post_init_hook` but this config option doesn't exist. Changed to lazy initialization - sampler starts when admin first accesses Activity page. Sampler accepts `db` and `find_user` directly from handler (not app object). Runs first sample immediately on startup, then at configured interval. Logs tick statistics with `flush=True` for immediate output. **Files Modified**: custom_handlers.py (ActivitySampler class with db/find_user params, lazy start in ActivityDataHandler), jupyterhub_config.py (removed broken post_init_hook)
 
-74. **Task - Activity bar color thresholds**: Changed color scheme to 1=red, 2-3=yellow, 4-5=green<br>
+74. **Task [Short] - Activity bar color thresholds**: Changed color scheme to 1=red, 2-3=yellow, 4-5=green<br>
     **Result**: Updated `formatActivityBar()` in activity.html. Previous logic had 0-1 segments as red. New logic: 1 segment red (low activity), 2-3 segments yellow (medium), 4-5 segments green (high). Score 0 shows empty bar with no lit segments
 
-75. **Task - Makefile BUILD_OPTS for skipping version increment**: Added build options configuration matching stellars-jupyterlab-ds pattern<br>
+75. **Task [Short] - Makefile BUILD_OPTS for skipping version increment**: Added build options configuration matching stellars-jupyterlab-ds pattern<br>
     **Result**: Added `BUILD_OPTS` variable, `NO_VERSION_INCREMENT` check using findstring, `DOCKER_BUILD_OPTS` filtering out --no-version-increment, `maybe_increment_version` conditional target. Updated `build` and `build_verbose` targets to use `maybe_increment_version` and pass `DOCKER_BUILD_OPTS` to scripts. Usage: `make build BUILD_OPTS='--no-version-increment'` or combine with `--no-cache`
 
-76. **Task - Refactor print to logging module**: Replaced print statements with proper Python logging<br>
+76. **Task [Short] - Refactor print to logging module**: Replaced print statements with proper Python logging<br>
     **Result**: Added `import logging` and module-level `log = logging.getLogger('jupyterhub.custom_handlers')` to custom_handlers.py. Replaced all `print()` calls with `log.info()` or `log.error()` for ActivityMonitor, ActivitySampler, and Volume Sizes functions. Removed `flush=True` parameters (not needed with logging). Logs now appear properly in JupyterHub's log output
 
-77. **Task - VolumeSizeRefresher for independent background refresh**: Added periodic background refresh for volume sizes<br>
+77. **Task [Short] - VolumeSizeRefresher for independent background refresh**: Added periodic background refresh for volume sizes<br>
     **Result**: Created `VolumeSizeRefresher` class using Tornado's PeriodicCallback, similar to ActivitySampler. Refreshes volume sizes every hour (JUPYTERHUB_ACTIVITYMON_VOLUMES_UPDATE_INTERVAL). Lazy starts on first Activity page access. Runs first refresh immediately, then at configured interval. Volume sizes now refresh independently of page views once started
 
 78. **Task - Activity sampler as independent JupyterHub service**: Converted from lazy-start to boot-time service<br>
@@ -238,13 +238,13 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 79. **Task - Activity tracking methodology research**: Documented industry approaches for activity scoring<br>
     **Result**: Created `docs/activity-tracking-methodology.md` covering: (1) Exponential Moving Average with decay - our current approach using half-life parameterization, (2) Time-Window Percentage (Hubstaff) - active seconds per 10-min window with 60-80% typical for development, (3) Daily Target (8h=100%) - maps to work expectations, (4) GitHub Contribution Graph - threshold-based intensity levels. Research confirms our EMA approach is industry-standard. Key insight from Hubstaff: 100% activity is unrealistic, typical ranges 30-80% depending on role
 
-80. **Task - Activity monitor half-life to 48h**: Changed decay half-life default from 24h to 48h<br>
+80. **Task [Short] - Activity monitor half-life to 48h**: Changed decay half-life default from 24h to 48h<br>
     **Result**: Updated JUPYTERHUB_ACTIVITYMON_HALF_LIFE default across Dockerfile, custom_handlers.py (DEFAULT_HALF_LIFE constant), activity_sampler.py (code and docstring), settings_dictionary.yml, and README.md. With 48h half-life, a sample from 48 hours ago has 50% weight, providing smoother decay for activity scoring
 
 81. **Task - Volume size tooltip with breakdown**: Added hover tooltip showing per-volume sizes<br>
     **Result**: Modified `_fetch_volume_sizes()` to return `{encoded_username: {"total": float, "volumes": {suffix: float}}}` structure with per-volume breakdown (home, workspace, cache). Updated `ActivityDataHandler` to pass `volume_breakdown` dict to frontend. Enhanced `formatVolumeSize()` in activity.html to display tooltip on hover showing individual volume sizes (e.g., "cache: 500 MB\nhome: 1.2 GB\nworkspace: 3.5 GB"). Volume size displays dotted underline to indicate tooltip availability. Volume names are dynamically extracted from Docker - any extra user volumes are automatically included
 
-82. **Task - Simplify Activity column header**: Removed retention period from column title<br>
+82. **Task [Short] - Simplify Activity column header**: Removed retention period from column title<br>
     **Result**: Changed Activity column header from "Activity (7 days)" to just "Activity" in activity.html
 
 83. **Task - Activity monitor half-life to 72h (3 days)**: Extended decay half-life for smoother scoring<br>
@@ -265,7 +265,7 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 88. **Task - Column tooltips and Auth column**: Added explanatory tooltips to all column headers and authorization status column<br>
     **Result**: **Column Tooltips**: Added title attributes to all 9 column headers in activity.html explaining each column's purpose (User="JupyterHub username", Status="Server status: green=active, yellow=idle, red=offline", CPU="Current CPU usage of user container", etc.). **Auth Column**: Added new sortable column after User showing NativeAuthenticator authorization status. Backend queries `users_info` table for `is_authorized` field via SQLAlchemy text query with exception handling for non-NativeAuthenticator setups. Frontend displays green checkmark (fa-check) for authorized users, red X (fa-times) for unauthorized. Added `formatAuth()` function and `getSortValue()` handling for `is_authorized` sorting (authorized=1 > not authorized=0). Added `.col-auth` CSS class with 4em width. Updated docs/activity-tracking-methodology.md with Auth column in table columns section, added `is_authorized` to API response schema, noted that all column headers have tooltips
 
-89. **Task - Activity table column fixes**: Fixed Auth column width and Volumes tooltip<br>
+89. **Task [Short] - Activity table column fixes**: Fixed Auth column width and Volumes tooltip<br>
     **Result**: Increased `.col-auth` width from 4em to 5em to prevent "Au..." truncation (now matches Status column width). Changed Volumes column tooltip from "Total size of user volumes (home, workspace, cache)" to "Total size of user volumes (hover for breakdown)" since volume names are autodiscovered and shown in cell tooltip
 
 90. **Task - Admin UX improvements**: Added deletion spinner and activity initialization for new users<br>
@@ -311,7 +311,7 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 104. **Task - Extension hours recycle and ceiling fix** (v3.9.4): Fixed extend logic with dual-limit check and ceiling snap<br>
     **Result**: Investigated via curl against live hub API: `extensions_available_hours: 0` despite 67h remaining. Root cause: `available = max_extension - extensions_used` never recycled. Iterated three fixes. First attempt `min(time_based, allocation_based)` still locked button once allocations exhausted (`max(0, 48-48)=0`) despite elapsed hours freeing capacity. Removed allocation limit entirely - `available = int((ceiling - remaining) / 3600)`; ceiling (base + max_extension) is sole constraint, `extensions_used` only inflates `effective_timeout`. Ceiling snap formula `desired_effective = ceiling + elapsed` overshot to 82h (above 72h ceiling); fixed by setting `extensions_used = max_extension_hours` on max extend. Progress bar uses effective timeout as 100% (not ceiling) so fresh 24h server shows 100% not 33%. Extracted 5 pure functions into `session.py` (`calc_effective_timeout`, `calc_ceiling`, `calc_time_remaining`, `calc_available_hours`, `calc_new_extensions`) for testability; `tests/test_session.py` covers 27 cases. Fixed Makefile `rebuild` reading stale version - `TAG := $(subst)` evaluates at parse time before `increment_version`; switched to `$(eval)` + `$(shell)` re-reading `project.env` at execution time.
-105. **Task - Watchtower monitor-only mode** (v3.9.4): Changed Watchtower to pull images without restarting containers<br>
+105. **Task [Short] - Watchtower monitor-only mode** (v3.9.4): Changed Watchtower to pull images without restarting containers<br>
     **Result**: Added `--monitor-only` flag to Watchtower command in compose.yml. Watchtower now pulls new images daily at midnight UTC and logs available updates but does not stop or restart running containers. Admin controls restart timing manually
 
 106. **Task - Medium article about the ecosystem**: Created technical Medium article covering the full stellars-jupyterhub-ds + stellars-jupyterlab-ds ecosystem with 12 SVG infographics<br>
