@@ -33,7 +33,7 @@ TAG             := $(VERSION)
 # The GPU-info sidecar ships as stellars/stellars-gpuinfo-nvidia (CUDA base
 # pinned in its Dockerfile). `make build` builds it via compose (it has a build
 # section); rebuild/push/pull handle it explicitly alongside the hub below.
-HUB_IMAGE          := stellars/optimumhub
+HUB_IMAGE          := stellars/duoptimumhub
 GPUINFO_IMAGE      := stellars/stellars-gpuinfo-nvidia
 GPUINFO_DOCKERFILE := services/jupyterhub/gpuinfo-nvidia/Dockerfile
 
@@ -42,13 +42,13 @@ GPUINFO_DOCKERFILE := services/jupyterhub/gpuinfo-nvidia/Dockerfile
 # increment_version sets them all to the bumped root version in lockstep so the
 # wheels + npm package never drift from the release tag. The gpuinfo-nvidia
 # sidecar is a SEPARATE image with its own version and is intentionally excluded.
-OPTIMUM_PYPROJECT       := services/jupyterhub/optimum-hub-web/pyproject.toml
-OPTIMUM_PACKAGE_JSON    := services/jupyterhub/optimum-hub-web/package.json
-OPTIMUM_PACKAGE_LOCK    := services/jupyterhub/optimum-hub-web/package-lock.json
-HUB_SERVICES_PYPROJECT  := services/jupyterhub/optimum-hub-services/pyproject.toml
+DUOPTIMUM_PYPROJECT       := services/jupyterhub/duoptimum-hub-web/pyproject.toml
+DUOPTIMUM_PACKAGE_JSON    := services/jupyterhub/duoptimum-hub-web/package.json
+DUOPTIMUM_PACKAGE_LOCK    := services/jupyterhub/duoptimum-hub-web/package-lock.json
+HUB_SERVICES_PYPROJECT  := services/jupyterhub/duoptimum-hub-services/pyproject.toml
 DOCKER_PROXY_PYPROJECT  := services/jupyterhub/stellars-docker-proxy/pyproject.toml
 # [project] version lines set in lockstep (root + the three packages in the image)
-VERSIONED_PYPROJECTS    := pyproject.toml $(OPTIMUM_PYPROJECT) $(HUB_SERVICES_PYPROJECT) $(DOCKER_PROXY_PYPROJECT)
+VERSIONED_PYPROJECTS    := pyproject.toml $(DUOPTIMUM_PYPROJECT) $(HUB_SERVICES_PYPROJECT) $(DOCKER_PROXY_PYPROJECT)
 
 ## verify tools, python tomllib, docker compose, docker daemon, and key project files
 preflight:
@@ -109,8 +109,8 @@ RUNTIME_TAG_PYTHON_CMD := python3 -c 'import tomllib;d=tomllib.load(open("pyproj
 
 # Reusable green/bold success banners. Trailing blank line separates the
 # banner from any subsequent shell output for visual breathing room.
-PRINT_BUILD_SUCCESS = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sBuild successful: stellars/optimumhub:%s%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
-PRINT_PUSH_SUCCESS  = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sPush successful:  stellars/optimumhub:%s (also :latest)%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
+PRINT_BUILD_SUCCESS = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sBuild successful: stellars/duoptimumhub:%s%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
+PRINT_PUSH_SUCCESS  = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sPush successful:  stellars/duoptimumhub:%s (also :latest)%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
 
 # Build options (e.g., BUILD_OPTS='--no-cache' or BUILD_OPTS='--no-version-increment')
 BUILD_OPTS ?=
@@ -139,12 +139,12 @@ endif
 increment_version: preflight
 	@CURRENT='$(PROJECT_VERSION)'; \
 	NEW=$$(echo "$$CURRENT" | awk 'BEGIN{FS=OFS="."} {$$NF += 1; print}'); \
-	printf '%s%sVersion bumped: %s -> %s (hub + optimum-hub-web + hub-services + docker-proxy)%s\n' "$(CYAN)" "$(BOLD)" "$$CURRENT" "$$NEW" "$(RESET)"; \
+	printf '%s%sVersion bumped: %s -> %s (hub + duoptimum-hub-web + hub-services + docker-proxy)%s\n' "$(CYAN)" "$(BOLD)" "$$CURRENT" "$$NEW" "$(RESET)"; \
 	for f in $(VERSIONED_PYPROJECTS); do \
 		sed -i 's/^version = "[^"]*"$$/version = "'"$$NEW"'"/' "$$f"; \
 	done; \
-	sed -i 's/"version": "[^"]*"/"version": "'"$$NEW"'"/' $(OPTIMUM_PACKAGE_JSON); \
-	awk -v v="$$NEW" 'BEGIN{n=0} /"version":/ && n<2 {sub(/"version": "[^"]*"/, "\"version\": \"" v "\""); n++} {print}' $(OPTIMUM_PACKAGE_LOCK) > $(OPTIMUM_PACKAGE_LOCK).tmp && mv $(OPTIMUM_PACKAGE_LOCK).tmp $(OPTIMUM_PACKAGE_LOCK)
+	sed -i 's/"version": "[^"]*"/"version": "'"$$NEW"'"/' $(DUOPTIMUM_PACKAGE_JSON); \
+	awk -v v="$$NEW" 'BEGIN{n=0} /"version":/ && n<2 {sub(/"version": "[^"]*"/, "\"version\": \"" v "\""); n++} {print}' $(DUOPTIMUM_PACKAGE_LOCK) > $(DUOPTIMUM_PACKAGE_LOCK).tmp && mv $(DUOPTIMUM_PACKAGE_LOCK).tmp $(DUOPTIMUM_PACKAGE_LOCK)
 
 ## build docker containers (BUILD_OPTS='--no-version-increment --no-cache')
 build: preflight maybe_increment_version
@@ -175,7 +175,7 @@ _rebuild_impl:
 		--build-arg VERSION=$(CURRENT_VERSION) \
 		--build-arg CACHEBUST=$$(date +%s) \
 		$(DOCKER_BUILD_OPTS) \
-		--tag stellars/optimumhub:latest \
+		--tag stellars/duoptimumhub:latest \
 		-f services/jupyterhub/Dockerfile.jupyterhub \
 		.
 	@echo "Rebuilding GPU-info sidecar ($(GPUINFO_IMAGE):latest)..."
@@ -209,7 +209,7 @@ tag: preflight
 		git tag $(TAG); \
 	fi
 	@echo "Creating docker tag: $(TAG)"
-	@docker tag stellars/optimumhub:latest stellars/optimumhub:$(TAG)
+	@docker tag stellars/duoptimumhub:latest stellars/duoptimumhub:$(TAG)
 
 ## start jupyterhub (fg)
 start: preflight
@@ -240,9 +240,9 @@ FUNCTEST_ENV_COMPOSE := tests/functional/compose.functional-env.yml
 FUNCTEST_SIGNUPOPEN_COMPOSE := tests/functional/compose.functional-signup-open.yml
 FUNCTEST_IMAGES  := quay.io/jupyterhub/singleuser:latest mcr.microsoft.com/playwright/python:v1.49.0-noble
 
-## run the python unit test suites locally (optimum-hub-services + stellars-docker-proxy)
+## run the python unit test suites locally (duoptimum-hub-services + stellars-docker-proxy)
 test:
-	@cd services/jupyterhub/optimum-hub-services && python3 -m pytest tests/ -q
+	@cd services/jupyterhub/duoptimum-hub-services && python3 -m pytest tests/ -q
 	@cd services/jupyterhub/stellars-docker-proxy && python3 -m pytest tests/ -q
 
 ## run the functional UI/scenario harness in an isolated throwaway deployment, then clean containers/network/volumes (LOCAL ONLY; pulled images kept to avoid re-pull - REMOVE_IMAGES=1 to also remove them)
@@ -260,10 +260,10 @@ test-functional:
 ## run the functional harness in auth mode 2 (signup disabled + env-password admin; restart-to-provision on a fresh DB), then clean up
 test-functional-env:
 	@echo "[functional/env] booting hub (first boot creates the DB + tables)..."
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) up -d --wait optimumhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) up -d --wait duoptimumhub
 	@echo "[functional/env] restarting hub to provision the env-password admin..."
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) restart optimumhub
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) up -d --wait optimumhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) restart duoptimumhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) up -d --wait duoptimumhub
 	@start=$$(date +%s); \
 	docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) run --rm tests; \
 	rc=$$?; \
@@ -275,10 +275,10 @@ test-functional-env:
 ## run the functional harness in signup-open mode (signup enabled; env-provisioned admin authorises a self-signed-up user via the SPA), then clean up
 test-functional-signup-open:
 	@echo "[functional/signup-open] booting hub (first boot creates the DB + tables)..."
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) up -d --wait optimumhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) up -d --wait duoptimumhub
 	@echo "[functional/signup-open] restarting hub to provision the env-password admin..."
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) restart optimumhub
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) up -d --wait optimumhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) restart duoptimumhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) up -d --wait duoptimumhub
 	@start=$$(date +%s); \
 	docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) run --rm tests; \
 	rc=$$?; \

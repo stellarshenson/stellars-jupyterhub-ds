@@ -1,6 +1,6 @@
 # Configuration file for JupyterHub
 #
-# All data (env vars, volumes, groups) is defined here. The optimum_hub_services
+# All data (env vars, volumes, groups) is defined here. The duoptimum_hub_services
 # package provides pure logic functions only - zero hardcoded data, zero
 # env var reads at module level. Every parameter is passed explicitly.
 #
@@ -16,10 +16,10 @@ import os                       # env var reads
 import jupyterhub               # __version__, __file__ for template paths
 import nativeauthenticator      # __file__ for template path resolution
 
-# optimum_hub_services core functions - pure logic, no side effects on import
-from optimum_hub_services import (
-    OptimumHubAuthenticator,                # platform authenticator: NativeAuth logic + antd login/signup presentation
-    OptimumSignUpHandler,                   # antd-rendering signup handler (base for the bootstrap signup handler)
+# duoptimum_hub_services core functions - pure logic, no side effects on import
+from duoptimum_hub_services import (
+    DuoptimumHubAuthenticator,                # platform authenticator: NativeAuth logic + antd login/signup presentation
+    DuoptimumSignUpHandler,                   # antd-rendering signup handler (base for the bootstrap signup handler)
     apply_abuse_protection,                 # abuse protection: maps env -> spawn/active caps + login lockout onto c.*
     configure_gpu_cache,                    # one-time init: sets the CUDA image the background GPU-utilisation sampler uses
     configure_volume_cache,                 # one-time init: feeds canonical volume-name templates to the activity-monitor sizes cache
@@ -40,10 +40,10 @@ from optimum_hub_services import (
     schedule_startup_hydration,             # consolidated startup hydration: warms caches + image-update check + survivor favicon routes/policy, all deferred to the IOLoop
     setup_branding,                         # processes logo/favicon/icon URIs, copies file:// to static dir
 )
-from optimum_hub_services.api_keys_pool import PoolManager  # singleton arbiter of api-key slot assignments (post-stop release)
+from duoptimum_hub_services.api_keys_pool import PoolManager  # singleton arbiter of api-key slot assignments (post-stop release)
 
 # Tornado request handlers - registered via c.JupyterHub.extra_handlers
-from optimum_hub_services.handlers import (
+from duoptimum_hub_services.handlers import (
     ActivityDataHandler,                    # GET  /api/activity - user activity data with Docker stats
     ActivityResetHandler,                   # POST /api/activity/reset - clear all activity samples
     ActivitySampleHandler,                  # POST /api/activity/sample - trigger manual activity sampling
@@ -73,12 +73,12 @@ from optimum_hub_services.handlers import (
     EffectiveGrantsHandler,                 # GET  /api/users/{user}/effective-grants - resolved group policy grants
 )
 
-# Optimum Hub web portal - hub-served React SPA that replaces the stock home/admin UI.
+# Duoptimum Hub web portal - hub-served React SPA that replaces the stock home/admin UI.
 # Ships its own static bundle + shell template; portal_handlers() returns the
 # catch-all route (auto-prefixed with /hub -> the SPA serves at the hub root,
 # no /portal segment); template_dir() holds the shell + home/admin redirect stubs.
-import optimum_hub_web
-from optimum_hub_web import portal_handlers, PORTAL_URL
+import duoptimum_hub_web
+from duoptimum_hub_web import portal_handlers, PORTAL_URL
 
 c = get_config()  # noqa: F821  - JupyterHub injects get_config() into config file namespace
 
@@ -296,7 +296,7 @@ register_events()
 #      on the Settings page.
 #
 # c.Authenticator.admin_users is intentionally NOT set: setting it makes JupyterHub
-# eagerly insert a User row at startup, which fires optimum_hub_services.events' after_insert
+# eagerly insert a User row at startup, which fires duoptimum_hub_services.events' after_insert
 # listener and creates a UserInfo with a random xkcd password the operator cannot
 # retrieve. Admin role is granted purely at login time via post_auth_hook below.
 
@@ -386,14 +386,14 @@ if _ADMIN_PROVISIONING_REQUESTED:
     _provision_admin_userinfo(JUPYTERHUB_ADMIN, JUPYTERHUB_ADMIN_PASSWORD)
 
 
-class BootstrapAdminSignUpHandler(OptimumSignUpHandler):
+class BootstrapAdminSignUpHandler(DuoptimumSignUpHandler):
     """Replace NativeAuth's misleading post-signup messages during the bootstrap window.
 
     Two upstream branches need correcting:
 
       * Success branch keys off `username in admin_users`, which we deliberately
         leave empty (populating admin_users triggers the eager User insert and
-        the random-password trap in optimum_hub_services.events). With our create_user
+        the random-password trap in duoptimum_hub_services.events). With our create_user
         override flagging is_authorized=True, the row is correct but the message
         still drops to "Your information has been sent to the admin." Treat
         is_authorized as the success signal here.
@@ -429,12 +429,12 @@ class BootstrapAdminSignUpHandler(OptimumSignUpHandler):
         return alert, message
 
 
-class BootstrapAdminAuthenticator(OptimumHubAuthenticator):
+class BootstrapAdminAuthenticator(DuoptimumHubAuthenticator):
     """During the bootstrap window, only the admin username is allowed to self-sign-up
     and that signup is auto-authorised on the spot.
 
     Outside the bootstrap window this class is a transparent passthrough to
-    OptimumHubAuthenticator (NativeAuth credential logic + antd login/signup
+    DuoptimumHubAuthenticator (NativeAuth credential logic + antd login/signup
     presentation). The window state is captured once at startup so the class
     behaves stably for the lifetime of the hub process.
 
@@ -575,7 +575,7 @@ if JUPYTERHUB_SSL_ENABLED == 1:
 # diagnosing where time goes during stop/restart (Docker side vs hub
 # polling lag). Drop back to stock dockerspawner.DockerSpawner if you
 # want to silence the timing probes.
-c.JupyterHub.spawner_class = "optimum_hub_services.timing_spawner.TimingDockerSpawner"
+c.JupyterHub.spawner_class = "duoptimum_hub_services.timing_spawner.TimingDockerSpawner"
 
 # Environment variables injected into every spawned JupyterLab container
 c.DockerSpawner.environment = {
@@ -614,7 +614,7 @@ RESERVED_ENV_VAR_NAMES = set(c.DockerSpawner.environment.keys()) | {
 c.DockerSpawner.image = JUPYTERHUB_LAB_IMAGE           # JupyterLab Docker image to spawn
 c.DockerSpawner.use_internal_ip = True                       # use container IP on Docker network (not host)
 c.DockerSpawner.network_name = JUPYTERHUB_NETWORK_NAME       # Docker network connecting hub and user containers
-c.JupyterHub.default_url = JUPYTERHUB_BASE_URL_PREFIX + PORTAL_URL  # land everyone on the Optimum Hub portal after login
+c.JupyterHub.default_url = JUPYTERHUB_BASE_URL_PREFIX + PORTAL_URL  # land everyone on the Duoptimum Hub portal after login
 # c.DockerSpawner.notebook_dir = DOCKER_NOTEBOOK_DIR         # redundant - stellars-jupyterlab-ds image defaults to /home/lab/workspace
 c.DockerSpawner.name_template = "jupyterlab-{username}"  # literal - compose project label (set in pre_spawn_hook) provides the grouping namespace
 c.DockerSpawner.volumes = DOCKER_SPAWNER_VOLUMES             # per-user persistent volumes + shared storage
@@ -642,11 +642,11 @@ c.JupyterHub.template_vars = {
     'memory_max_usage_mb': JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning (0 GB -> 30% of host RAM)
     'favicon_uri': branding['favicon_uri'],                  # external favicon URL (empty = static_url default)
     'branding_stage': branding['stage'],                     # environment-stage badge text for the portal header (window.jhdata.stage); empty = no badge
-    # Optimum Hub SPA entry chunk (hashed) so the overridden login/signup
+    # Duoptimum Hub SPA entry chunk (hashed) so the overridden login/signup
     # templates can load the same bundle as the portal shell; resolved from the
     # vite manifest in the installed wheel ('' if unreadable -> stock-ish fallback).
-    'optimum_entry_js': optimum_hub_web.entry_assets()[0],
-    'optimum_entry_css': optimum_hub_web.entry_assets()[1],
+    'duoptimum_entry_js': duoptimum_hub_web.entry_assets()[0],
+    'duoptimum_entry_css': duoptimum_hub_web.entry_assets()[1],
     # Authoritative "this platform has GPU" flag for the portal shell -> window.jhdata.
     # The SPA gates every GPU widget on this instead of inferring from a (lazy) device list.
     'gpu_enabled': bool(gpu_enabled),
@@ -750,7 +750,7 @@ async def _post_stop_cleanup(spawner):
     # Record a server-stop event for the portal events feed (best-effort).
     try:
         import html as _html
-        from optimum_hub_services.event_log import record_event
+        from duoptimum_hub_services.event_log import record_event
         record_event('server', f'<b>{_html.escape(str(spawner.user.name))}</b> server stopped')
     except Exception:
         pass
@@ -766,10 +766,10 @@ c.DockerSpawner.args = [
 ]
 
 # ── Networking ──
-c.JupyterHub.hub_connect_url = 'http://optimumhub:8080' + JUPYTERHUB_BASE_URL_PREFIX + '/hub'  # URL spawned containers use to reach hub (compose service name)
+c.JupyterHub.hub_connect_url = 'http://duoptimumhub:8080' + JUPYTERHUB_BASE_URL_PREFIX + '/hub'  # URL spawned containers use to reach hub (compose service name)
 c.DockerSpawner.remove = True                                # auto-remove containers after stop (volumes persist)
 c.DockerSpawner.debug = False                                # DockerSpawner debug logging
-c.JupyterHub.hub_ip = "optimumhub"                           # bind hub to container hostname (compose service name)
+c.JupyterHub.hub_ip = "duoptimumhub"                           # bind hub to container hostname (compose service name)
 c.JupyterHub.hub_port = 8080                                 # internal hub port (not exposed externally)
 c.JupyterHub.base_url = JUPYTERHUB_BASE_URL_PREFIX + '/' if JUPYTERHUB_BASE_URL_PREFIX else '/'  # URL prefix for all hub routes
 
@@ -785,7 +785,7 @@ c.JupyterHub.db_url = "sqlite:////data/jupyterhub.sqlite"           # user datab
 # ── Authentication ──
 c.JupyterHub.authenticator_class = BootstrapAdminAuthenticator       # bootstrap-window admin-only signup + admin rename sync
 c.JupyterHub.template_paths = [
-    optimum_hub_web.template_dir(),                                  # Optimum Hub portal shell + home/admin redirect stubs (highest priority)
+    duoptimum_hub_web.template_dir(),                                  # Duoptimum Hub portal shell + home/admin redirect stubs (highest priority)
     "/srv/jupyterhub/templates/",                                    # custom Stellars templates (override priority)
     f"{os.path.dirname(nativeauthenticator.__file__)}/templates/",   # NativeAuthenticator signup/authorize templates
     f"{os.path.dirname(jupyterhub.__file__)}/templates",             # JupyterHub default templates (fallback)
@@ -846,7 +846,7 @@ c.JupyterHub.extra_handlers = [
     # routes without the old pages shadowing them. See docs/acc-crit-drop-portal-path.md.
     (r'/health', HealthCheckHandler),                                 # GET - unauthenticated monitoring endpoint
 ]
-# Optimum Hub portal: catch-all serving the SPA shell + bundled assets at the hub root.
+# Duoptimum Hub portal: catch-all serving the SPA shell + bundled assets at the hub root.
 # Appended last; its route only matches /portal* so it does not shadow the API/page routes above.
 c.JupyterHub.extra_handlers += portal_handlers()
 

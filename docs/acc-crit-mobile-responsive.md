@@ -1,6 +1,6 @@
 # Acceptance Criteria - Mobile Responsive Portal
 
-Below a mobile breakpoint the Optimum Hub portal switches to a JupyterHub-style minimal home: status plus the few controls that make sense on a phone. The lab itself (JupyterLab) is not mobile-friendly, so the portal never navigates into the user server on mobile.
+Below a mobile breakpoint the Duoptimum Hub portal switches to a JupyterHub-style minimal home: status plus the few controls that make sense on a phone. The lab itself (JupyterLab) is not mobile-friendly, so the portal never navigates into the user server on mobile.
 
 - [x] **Breakpoint** - below a mobile width (target < 768px) the portal renders the mobile layout; the desktop layout is unchanged at/above it
   - log: 2026-06-17 implemented + code-verified (useIsMobile `(max-width: 767px)`; Home returns MobileHome when mobile, else desktop unchanged)

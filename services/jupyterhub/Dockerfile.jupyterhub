@@ -34,11 +34,11 @@ RUN uv venv /build-venv
 ENV VIRTUAL_ENV=/build-venv
 ENV PATH="/build-venv/bin:$PATH"
 
-# ---- platform wheels (optimum_hub_services + stellars-docker-proxy) -------
-# Build and test optimum_hub_services; its tests gate the image build.
-COPY services/jupyterhub/optimum-hub-services /src/optimum-hub-services
-RUN uv pip install pip build && python -m build /src/optimum-hub-services --outdir /dist
-RUN uv pip install /dist/optimum_hub_services-*.whl pytest && pytest /src/optimum-hub-services/tests/ -v
+# ---- platform wheels (duoptimum_hub_services + stellars-docker-proxy) -------
+# Build and test duoptimum_hub_services; its tests gate the image build.
+COPY services/jupyterhub/duoptimum-hub-services /src/duoptimum-hub-services
+RUN uv pip install pip build && python -m build /src/duoptimum-hub-services --outdir /dist
+RUN uv pip install /dist/duoptimum_hub_services-*.whl pytest && pytest /src/duoptimum-hub-services/tests/ -v
 
 # Build and test stellars-docker-proxy (per-user ownership-filtering Docker socket
 # proxy for limited-docker groups). Its tests gate the image build too.
@@ -48,14 +48,14 @@ RUN uv pip install /dist/stellars_docker_proxy-*.whl pytest pytest-asyncio \
     && pytest /src/stellars-docker-proxy/tests/ -v
 
 # ---- SPA bundle ------------------------------------------------------------
-# Build the Optimum Hub SPA (React/vite); hashed assets + manifest land in
+# Build the Duoptimum Hub SPA (React/vite); hashed assets + manifest land in
 # /web/dist and get bundled into the portal wheel below. node_modules + prior
 # builds are excluded via .dockerignore, so npm ci installs the pinned deps fresh
 # and vite emits a clean bundle. Placed after the wheel builds so a frontend-only
 # change does not bust their cached layers.
-COPY services/jupyterhub/optimum-hub-web/ /web/
+COPY services/jupyterhub/duoptimum-hub-web/ /web/
 RUN <<-EOF
-    echo "building Optimum Hub SPA bundle (npm ci + vite build:hub)"
+    echo "building Duoptimum Hub SPA bundle (npm ci + vite build:hub)"
     set -e
     cd /web
     npm ci
@@ -63,26 +63,26 @@ RUN <<-EOF
 EOF
 
 # ---- portal wheel ----------------------------------------------------------
-# Build the Optimum Hub portal wheel: the Python integration package plus the SPA
+# Build the Duoptimum Hub portal wheel: the Python integration package plus the SPA
 # bundle built above, packaged together (UI shipped inside the wheel).
-COPY services/jupyterhub/optimum-hub-web/pyproject.toml services/jupyterhub/optimum-hub-web/README.md /src/optimum-hub-web/
-COPY services/jupyterhub/optimum-hub-web/optimum_hub_web /src/optimum-hub-web/optimum_hub_web
+COPY services/jupyterhub/duoptimum-hub-web/pyproject.toml services/jupyterhub/duoptimum-hub-web/README.md /src/duoptimum-hub-web/
+COPY services/jupyterhub/duoptimum-hub-web/duoptimum_hub_web /src/duoptimum-hub-web/duoptimum_hub_web
 RUN <<-EOF
-    echo "building Optimum Hub portal wheel"
+    echo "building Duoptimum Hub portal wheel"
     set -e
     # graft the freshly built SPA into the wheel's package data (rm guards against
     # a stale static/ leaking in and nesting under cp)
-    rm -rf /src/optimum-hub-web/optimum_hub_web/static
-    cp -r /web/dist /src/optimum-hub-web/optimum_hub_web/static
+    rm -rf /src/duoptimum-hub-web/duoptimum_hub_web/static
+    cp -r /web/dist /src/duoptimum-hub-web/duoptimum_hub_web/static
     # the shell is rendered dynamically by PortalHandler, not served as a file
-    rm -f /src/optimum-hub-web/optimum_hub_web/static/index.html
-    python -m build --wheel /src/optimum-hub-web --outdir /dist
+    rm -f /src/duoptimum-hub-web/duoptimum_hub_web/static/index.html
+    python -m build --wheel /src/duoptimum-hub-web --outdir /dist
     # smoke-test the INSTALLED wheel (jupyterhub present via nativeauthenticator
     # dep above): assert handlers register AND the vite manifest + entry JS are in
     # the wheel - a manifest-less wheel renders a blank portal, so fail the build
     # here rather than ship it silently.
-    uv pip install /dist/optimum_hub_web-*.whl
-    python -c "import optimum_hub_web as p; from optimum_hub_web.handlers import _entry_assets; js, css = _entry_assets(); assert p.portal_handlers(); assert js, 'no entry JS - vite manifest missing from wheel'; print('optimum_hub_web', p.__version__, 'ok; entry', js)"
+    uv pip install /dist/duoptimum_hub_web-*.whl
+    python -c "import duoptimum_hub_web as p; from duoptimum_hub_web.handlers import _entry_assets; js, css = _entry_assets(); assert p.portal_handlers(); assert js, 'no entry JS - vite manifest missing from wheel'; print('duoptimum_hub_web', p.__version__, 'ok; entry', js)"
 EOF
 
 ##############################################################################################
@@ -166,14 +166,14 @@ RUN <<-EOF
 EOF
 
 
-## install optimum_hub_services + stellars-docker-proxy + optimum-hub-web packages (carry all pip dependencies)
+## install duoptimum_hub_services + stellars-docker-proxy + duoptimum-hub-web packages (carry all pip dependencies)
 COPY --from=builder /dist/*.whl /tmp/
 RUN <<-EOF
     echo "installing platform packages"
     pip install -U --no-cache-dir \
-	/tmp/optimum_hub_services-*.whl \
+	/tmp/duoptimum_hub_services-*.whl \
 	/tmp/stellars_docker_proxy-*.whl \
-	/tmp/optimum_hub_web-*.whl \
+	/tmp/duoptimum_hub_web-*.whl \
     && rm -f /tmp/*.whl
 EOF
 
@@ -201,7 +201,7 @@ RUN <<-EOF
     cp /tmp/custom.css /srv/venv/share/jupyterhub/static/css/custom.css
     cp /tmp/session-timer.js /srv/venv/share/jupyterhub/static/js/session-timer.js
     cp /tmp/mobile.js /srv/venv/share/jupyterhub/static/js/mobile.js
-    # remove the original JupyterHub admin React app - the Optimum Hub SPA fully
+    # remove the original JupyterHub admin React app - the Duoptimum Hub SPA fully
     # replaces it (/hub/admin, /hub/home, /hub/token all redirect to /hub/portal).
     # Assert the expected path first: a silent no-op would ship the stock admin
     # bundle while we claim a full replacement.
@@ -212,7 +212,7 @@ RUN <<-EOF
     fi
     rm -f "$ADMIN_JS" "$ADMIN_JS.map"
     # The enhanced admin.html (stock-style, still references the removed
-    # admin-react.js) is permanently shadowed by the optimum-hub-web wheel's
+    # admin-react.js) is permanently shadowed by the duoptimum-hub-web wheel's
     # admin.html redirect stub (its template dir is first in template_paths).
     # Drop the dead copy so no image template references the removed bundle.
     rm -f /srv/jupyterhub/templates/admin.html

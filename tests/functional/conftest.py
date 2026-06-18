@@ -21,8 +21,8 @@ from urllib.parse import urlparse
 import pytest
 import requests
 
-BASE_URL = os.environ.get("BASE_URL", "http://optimumhub:8000/jupyterhub").rstrip("/")
-HUB_HOST = urlparse(BASE_URL).hostname or "optimumhub"
+BASE_URL = os.environ.get("BASE_URL", "http://duoptimumhub:8000/jupyterhub").rstrip("/")
+HUB_HOST = urlparse(BASE_URL).hostname or "duoptimumhub"
 ADMIN_USER = os.environ.get("ADMIN_USER", "functestadmin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "functest-secret")
 # Auth regime for this run (one initial-condition "setup" per value):

@@ -34,7 +34,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro # docker socket to use services labels
       - jupyterhub_certs:/certs # certificates (generated in jupyterhub image)
     depends_on:
-      optimumhub:
+      duoptimumhub:
         condition: service_healthy
     networks:
       - jupyterhub_network
@@ -43,15 +43,15 @@ services:
   # service for management of a series of users and their jupyterlab
   # environments. it is internally managed via a proxy that redirects 
   # users to their dedicated environments
-  optimumhub:
+  duoptimumhub:
     build:
       context: .
       dockerfile: services/jupyterhub/Dockerfile.jupyterhub
       args:
         - VERSION=${VERSION:-dev}
-    image: stellars/optimumhub:latest
+    image: stellars/duoptimumhub:latest
     pull_policy: build
-    container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-optimumhub
+    container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-duoptimumhub
     volumes:
       - jupyterhub_certs:/certs # runtime cert dir Traefik watches
       - ./certs:/user-certs:ro # operator cert overlay (host folder; missing/empty -> auto-generate; populate ./certs to override)
@@ -139,22 +139,31 @@ services:
       # Enable proxy support from Traefik
       - "traefik.enable=true"
 
-      # ⚙  Jupyterhub Service (8000)
-      - "traefik.http.routers.optimumhub-rtr.rule=Path(`/jupyterhub`) || PathPrefix(`/jupyterhub/`)"
-      - "traefik.http.routers.optimumhub-rtr.entrypoints=websecure"
-      - "traefik.http.routers.optimumhub-rtr.service=optimumhub-svc"
-      - "traefik.http.routers.optimumhub-rtr.tls=true"
-      - "traefik.http.services.optimumhub-svc.loadbalancer.server.scheme=http"
-      - "traefik.http.services.optimumhub-svc.loadbalancer.server.port=8000"
+      # ⚙  Jupyterhub Service (8000) - canonical base_url is /jupyterhub; /hub,
+      # /optimumhub and /duoptimumhub are accepted as transition aliases and
+      # redirected to the canonical path by the hub-alias-redirect middleware below.
+      - "traefik.http.routers.duoptimumhub-rtr.rule=Path(`/jupyterhub`) || PathPrefix(`/jupyterhub/`) || Path(`/hub`) || PathPrefix(`/hub/`) || Path(`/optimumhub`) || PathPrefix(`/optimumhub/`) || Path(`/duoptimumhub`) || PathPrefix(`/duoptimumhub/`)"
+      - "traefik.http.routers.duoptimumhub-rtr.entrypoints=websecure"
+      - "traefik.http.routers.duoptimumhub-rtr.service=duoptimumhub-svc"
+      - "traefik.http.routers.duoptimumhub-rtr.tls=true"
+      - "traefik.http.services.duoptimumhub-svc.loadbalancer.server.scheme=http"
+      - "traefik.http.services.duoptimumhub-svc.loadbalancer.server.port=8000"
+
+      # 🔁 Transition aliases - /hub, /optimumhub and /duoptimumhub all 302 to the
+      # canonical base_url (/jupyterhub) so old and short URLs keep working until the
+      # canonical path is switched. JupyterHub serves only its base_url; subpath kept.
+      - "traefik.http.middlewares.hub-alias-redirect.redirectregex.regex=^(https?://[^/]+)/(hub|optimumhub|duoptimumhub)(/.*)?$$"
+      - "traefik.http.middlewares.hub-alias-redirect.redirectregex.replacement=$${1}/jupyterhub$${3}"
+      - "traefik.http.middlewares.hub-alias-redirect.redirectregex.permanent=false"
 
       # 🛡 Abuse protection - per-IP request rate limiting for hub AND all labs
       # (everything ingresses through CHP on :8000 behind this router). WebSocket-safe:
       # a kernel/terminal upgrade counts once at open; held connections are not re-counted.
-      - "traefik.http.middlewares.optimumhub-ratelimit.ratelimit.average=${JUPYTERHUB_RATELIMIT_AVERAGE:-100}"
-      - "traefik.http.middlewares.optimumhub-ratelimit.ratelimit.burst=${JUPYTERHUB_RATELIMIT_BURST:-200}"
-      - "traefik.http.middlewares.optimumhub-ratelimit.ratelimit.period=${JUPYTERHUB_RATELIMIT_PERIOD:-1s}"
-      - "traefik.http.middlewares.optimumhub-ratelimit.ratelimit.sourcecriterion.ipstrategy.depth=${JUPYTERHUB_RATELIMIT_XFF_DEPTH:-1}"
-      - "traefik.http.routers.optimumhub-rtr.middlewares=optimumhub-ratelimit"
+      - "traefik.http.middlewares.duoptimumhub-ratelimit.ratelimit.average=${JUPYTERHUB_RATELIMIT_AVERAGE:-100}"
+      - "traefik.http.middlewares.duoptimumhub-ratelimit.ratelimit.burst=${JUPYTERHUB_RATELIMIT_BURST:-200}"
+      - "traefik.http.middlewares.duoptimumhub-ratelimit.ratelimit.period=${JUPYTERHUB_RATELIMIT_PERIOD:-1s}"
+      - "traefik.http.middlewares.duoptimumhub-ratelimit.ratelimit.sourcecriterion.ipstrategy.depth=${JUPYTERHUB_RATELIMIT_XFF_DEPTH:-1}"
+      - "traefik.http.routers.duoptimumhub-rtr.middlewares=hub-alias-redirect,duoptimumhub-ratelimit"
     networks:
       - jupyterhub_network
       # jupyterhub_gpuinfo is NOT joined here: ensure_gpuinfo_sidecar creates that
@@ -190,7 +199,7 @@ services:
     security_opt:
       - seccomp:unconfined #optional
     depends_on:
-      optimumhub:
+      duoptimumhub:
         condition: service_healthy
       traefik:
         condition: service_started

@@ -17,7 +17,7 @@ Consequence: the SPA can serve at `/hub/<route>` for every route EXCEPT the rese
 - [ ] **Landing-route rename** - move the SPA's home view off the reserved `/home` path (recommended `/dashboard`, keep the nav LABEL "Home"); this is the one user-facing choice and the only thing blocking a clean drop
   - log: 2026-06-17 criterion added; alternatives: (b) accept stock hub home on a hard-refresh of the home view (poor), (c) override JupyterHub's RootHandler/HomeHandler (invasive, version-fragile, fights the framework - not recommended)
 
-## Backend (optimum_hub_web)
+## Backend (duoptimum_hub_web)
 
 - [ ] **Routes drop `/portal`** - `ASSETS_ROUTE` `/portal/assets/(.*)` -> `/assets/(.*)`, `BRAND_ROUTE` `/portal/brand/(.*)` -> `/brand/(.*)`, `PORTAL_ROUTE` `/portal/?(.*)` -> `/(.*)` (the SPA shell catch-all, still after built-ins so reserved paths win)
   - log: 2026-06-17 criterion added
@@ -31,7 +31,7 @@ Consequence: the SPA can serve at `/hub/<route>` for every route EXCEPT the rese
   - log: 2026-06-17 implemented (`handlers.py::PortalRedirectHandler`, `LEGACY_PORTAL_ROUTE` before `PORTAL_ROUTE` in `portal_handlers`)
   - log: 2026-06-17 criterion added
 
-## Frontend (optimum-hub-web)
+## Frontend (duoptimum-hub-web)
 
 - [ ] **Vite base** - `VITE_BASE` `/hub/portal/` -> `/hub/` (`.env.hub`); drives asset URLs + router base
   - log: 2026-06-17 criterion added

@@ -1,6 +1,6 @@
 # Acceptance Criteria - dedicated Start-server page with live container-log feed
 
-Starting your OWN server leaves the lightweight modal behind and navigates to a dedicated page that shows a spawn progress bar plus a rolling 10-15 line tail of the freshly-started container's logs, then redirects into the lab when it is ready. Restart/stop keep the small popup (they settle in seconds). Supersedes the start-page items under "Live QA - round 3" in `optimum-hub-web/acc-crit-portal-fixes.md`.
+Starting your OWN server leaves the lightweight modal behind and navigates to a dedicated page that shows a spawn progress bar plus a rolling 10-15 line tail of the freshly-started container's logs, then redirects into the lab when it is ready. Restart/stop keep the small popup (they settle in seconds). Supersedes the start-page items under "Live QA - round 3" in `duoptimum-hub-web/acc-crit-portal-fixes.md`.
 
 Two data sources: the **progress bar** rides the hub spawn-progress SSE (`GET /hub/api/users/{name}/server/progress`, no backend change); the **log feed** is the actual container stdout/stderr via a new backend tail endpoint (the SSE `message` field is spawn-progress text, not container logs).
 
@@ -41,7 +41,7 @@ Code-complete; backend `make test` 566+63 green, portal `tsc -b` + `build:hub` c
 
 ## Look and feel (must look polished)
 
-- [ ] **Centered, branded** - a single centered card with the Optimum Hub mark and the server name as a clear title ("Starting konrad.jelen's lab"), generous standard panel padding, no raw full-width sprawl
+- [ ] **Centered, branded** - a single centered card with the Duoptimum Hub mark and the server name as a clear title ("Starting konrad.jelen's lab"), generous standard panel padding, no raw full-width sprawl
   - log: 2026-06-17 criterion added
 - [x] **Terminal-styled log panel** - the log feed reads like a real terminal: monospaced, dark subdued panel, soft rounded corners, dim line text, fixed height (~10-15 rows) that scrolls, not a plain bulleted list
   - log: 2026-06-17 implemented (`.oh-termlog` in global.css)

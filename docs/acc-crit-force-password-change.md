@@ -1,8 +1,8 @@
 # Acceptance Criteria - force password change on next login (#232 / #233)
 
-An admin can require a user to change their password before they can use the platform. Enforcement is "no escape" at the spawner: a flagged user cannot start a lab by any route until the password is changed. All backend logic lives in the `optimum-hub-services` package.
+An admin can require a user to change their password before they can use the platform. Enforcement is "no escape" at the spawner: a flagged user cannot start a lab by any route until the password is changed. All backend logic lives in the `duoptimum-hub-services` package.
 
-## Storage (optimum_hub_services.user_profiles)
+## Storage (duoptimum_hub_services.user_profiles)
 
 - [x] **must_change_password flag** - a Boolean column on the `user_profiles` table, default False
   - log: 2026-06-17 added; `get_must_change_password` / `set_must_change_password`
@@ -24,7 +24,7 @@ An admin can require a user to change their password before they can use the pla
   - log: 2026-06-17 `hooks.py`; the message tells the user to change their password then start
 - [x] **Fail-open on a store error** - if the flag cannot be read (profiles DB momentarily unreadable) the spawn is ALLOWED, never blocked - blocking-on-error would lock the whole platform out
   - log: 2026-06-17 try/except around the check; 605 backend tests pass (favicon/hook tests green)
-- [x] **Clears on a successful change** - `OptimumHubAuthenticator.change_password` clears the flag on NativeAuth's success return, so a self-service change lets the user spawn again
+- [x] **Clears on a successful change** - `DuoptimumHubAuthenticator.change_password` clears the flag on NativeAuth's success return, so a self-service change lets the user spawn again
   - log: 2026-06-17 success-gated override
 - [ ] **Login auto-redirect (deferred)** - a flagged user is NOT yet auto-redirected to the change-password page on login; the spawn-block + the clear message enforce no-escape, but the funnel is manual. Intercepting the live login redirect was deliberately deferred (too risky to ship without a runtime auth round-trip test)
   - log: 2026-06-17 deferred - documented; revisit with an operator runtime test

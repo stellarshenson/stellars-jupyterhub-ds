@@ -1,6 +1,6 @@
 # Acceptance Criteria - Platform event log (persistence + clear)
 
-The portal's audit feed (Overview "Recent events" + the Events page) is backed by a persistent SQLite store, so events survive a hub restart; an admin can clear the whole log from the Events panel. Store: `optimum_hub_services/event_log.py` (`/data/event_log.sqlite`); handler: `handlers/events_data.py`; UI: `pages/Events.tsx`.
+The portal's audit feed (Overview "Recent events" + the Events page) is backed by a persistent SQLite store, so events survive a hub restart; an admin can clear the whole log from the Events panel. Store: `duoptimum_hub_services/event_log.py` (`/data/event_log.sqlite`); handler: `handlers/events_data.py`; UI: `pages/Events.tsx`.
 
 ## Persistence
 

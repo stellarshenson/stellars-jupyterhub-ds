@@ -6,7 +6,7 @@
 # after the config runs on the first boot, so the first provision is a no-op and
 # the second boot seeds the admin) - driven by `make test-functional-env`.
 services:
-  optimumhub:
+  duoptimumhub:
     environment:
       - JUPYTERHUB_ADMIN_PASSWORD=functest-secret
       - JUPYTERHUB_BRANDING_STAGE=TST   # exercise the environment-stage header badge (TST -> blue)

@@ -52,7 +52,7 @@ c.JupyterHub.extra_handlers = [
 
 **Build Process**:
 ```bash
-docker compose build --no-cache optimumhub
-docker stop stellars-jupyterhub-ds-optimumhub && docker rm stellars-jupyterhub-ds-optimumhub
-docker compose up -d optimumhub
+docker compose build --no-cache duoptimumhub
+docker stop stellars-jupyterhub-ds-duoptimumhub && docker rm stellars-jupyterhub-ds-duoptimumhub
+docker compose up -d duoptimumhub
 ```

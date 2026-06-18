@@ -1,6 +1,6 @@
 # Acceptance Criteria - Servers list layout
 
-The Servers page table column structure, ordering, alignment, widths, and the user-name + time-left columns. Distinct from the Server widget (which intentionally clubs status + last-activity); the LIST keeps them as separate columns. `optimum-hub-web/src/pages/Servers.tsx`.
+The Servers page table column structure, ordering, alignment, widths, and the user-name + time-left columns. Distinct from the Server widget (which intentionally clubs status + last-activity); the LIST keeps them as separate columns. `duoptimum-hub-web/src/pages/Servers.tsx`.
 
 ## Columns and order
 

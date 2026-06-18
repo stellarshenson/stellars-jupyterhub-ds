@@ -1,7 +1,7 @@
-# Old portal vs Optimum Hub - functional comparison
+# Old portal vs Duoptimum Hub - functional comparison
 
 Checked 2026-06-17 by logging into the hidden stock container (`127.0.0.1:9444`,
-dummy admin) and enumerating its pages, then mapping each against the Optimum Hub
+dummy admin) and enumerating its pages, then mapping each against the Duoptimum Hub
 portal. The stock JupyterHub UI exposes exactly five surfaces; the portal covers
 all of them and adds substantially more.
 
@@ -16,7 +16,7 @@ all of them and adds substantially more.
 
 ## Parity (stock feature -> portal equivalent)
 
-| Stock | Optimum Hub | Notes |
+| Stock | Duoptimum Hub | Notes |
 |-------|-------------|-------|
 | Home: start/stop my server | Home (server hero) | Portal adds status pill, resources, TTL bar + extend, groups, grants |
 | Admin: user list | Users | Portal adds activity, last-seen, scope pills, authorise toggle, search |

@@ -1,6 +1,6 @@
 # Acceptance Criteria - old portal cleanup
 
-Remove the dead remnants of the pre-React portal now that `optimum-hub-web` serves the portal via `PortalHandler` and the React SPA owns the former server-rendered routes. Surgical, not blanket: many `html_templates_enhanced/*.html` are still rendered by stock JupyterHub and MUST stay.
+Remove the dead remnants of the pre-React portal now that `duoptimum-hub-web` serves the portal via `PortalHandler` and the React SPA owns the former server-rendered routes. Surgical, not blanket: many `html_templates_enhanced/*.html` are still rendered by stock JupyterHub and MUST stay.
 
 ## Removed (confirmed dead)
 
@@ -28,7 +28,7 @@ Remove the dead remnants of the pre-React portal now that `optimum-hub-web` serv
 
 ## Held for a rebuild-verified pass (confirmed dead, not removed blind)
 
-- [ ] **Shadowed auth/redirect templates** - enhanced `login.html`, `signup.html`, `native-login.html`, `home.html`, `token.html`, `admin.html` are shadowed by the optimum-hub-web wheel / remapped in `auth.py`; deleting them is auth-critical and wants an image rebuild to verify before removal
+- [ ] **Shadowed auth/redirect templates** - enhanced `login.html`, `signup.html`, `native-login.html`, `home.html`, `token.html`, `admin.html` are shadowed by the duoptimum-hub-web wheel / remapped in `auth.py`; deleting them is auth-critical and wants an image rebuild to verify before removal
   - log: 2026-06-17 left in place pending a rebuild-verified sweep; flagged to the operator
-- [x] **package-lock name** - `optimum-hub-web/package-lock.json` already carries the correct name (no longer `mock-antd`)
+- [x] **package-lock name** - `duoptimum-hub-web/package-lock.json` already carries the correct name (no longer `mock-antd`)
   - log: 2026-06-17 verified after `make install`

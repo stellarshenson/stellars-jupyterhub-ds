@@ -1,8 +1,8 @@
-# Stock JupyterHub UI, for side-by-side comparison with the Optimum Hub portal.
+# Stock JupyterHub UI, for side-by-side comparison with the Duoptimum Hub portal.
 #
 # Dummy auth (any username, no password) so the stock home / admin pages render
 # without real spawning - the point is to eyeball the STOCK design + functionality
-# the optimum-hub portal replaced, not to run real labs. Log in as 'admin' to see
+# the duoptimum-hub portal replaced, not to run real labs. Log in as 'admin' to see
 # the stock admin React app (the screen our Servers / Users portal replaced).
 
 c.JupyterHub.authenticator_class = "dummy"
