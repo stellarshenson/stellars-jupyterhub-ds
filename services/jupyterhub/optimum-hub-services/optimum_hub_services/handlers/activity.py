@@ -1,6 +1,5 @@
 """Handlers for activity monitoring page and API."""
 
-import asyncio
 from datetime import datetime, timezone
 
 from jupyterhub.handlers import BaseHandler
@@ -26,8 +25,9 @@ def _host_total_memory_mb():
         return round(psutil.virtual_memory().total / (1024 * 1024), 1)
     except Exception:
         return None
-from ..docker_utils import encode_username_for_docker, get_container_stats_async, newer_lab_image_available
+from ..docker_utils import encode_username_for_docker, newer_lab_image_available
 from ..container_size_cache import get_container_sizes_with_refresh, ContainerSizeRefresher
+from ..container_stats_cache import get_container_stats_with_refresh
 from ..gpu_cache import GpuUtilizationRefresher, get_gpu_utilization_with_refresh
 from ..idle_culler import calc_ceiling, remaining_seconds_for
 from ..volume_cache import VolumeSizeRefresher, get_volume_sizes_with_refresh
@@ -161,15 +161,24 @@ class ActivityDataHandler(BaseHandler):
             if server_active or sample_count > 0 or user_data["last_activity"]:
                 users_data.append(user_data)
 
-        # Fetch Docker stats in parallel
+        # Per-user CPU/memory from the warm, activity-gated snapshot - no
+        # synchronous docker-stats gather on the request path (that was the 5-6s
+        # lag). The refresh samples ONLY recently-active users (the kernel's
+        # last_activity signal); idle-but-running containers keep their last value
+        # and are never polled, and an all-idle deployment makes no docker calls.
         if active_users:
             # configured lab image the upgrade check compares each container against
             _lab_image = stellars_config.get('lab_image', '')
-            stats_tasks = [get_container_stats_async(u.name) for u, s, d in active_users]
-            stats_results = await asyncio.gather(*stats_tasks, return_exceptions=True)
+            active_encoded = {
+                encode_username_for_docker(u.name)
+                for u, s, d in active_users
+                if d.get("recently_active")
+            }
+            stats_by_user = get_container_stats_with_refresh(active_encoded)
 
-            for (user, spawner, user_data), stats in zip(active_users, stats_results):
-                if stats and not isinstance(stats, Exception):
+            for (user, spawner, user_data) in active_users:
+                stats = stats_by_user.get(encode_username_for_docker(user.name))
+                if stats:
                     user_data["cpu_percent"] = stats["cpu_percent"]
                     user_data["cpu_cores"] = stats.get("cpu_cores")
                     user_data["cpu_cores_limited"] = stats.get("cpu_cores_limited", False)

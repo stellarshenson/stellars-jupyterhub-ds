@@ -59,9 +59,15 @@ def test_password_cache():
 
 
 def test_docker_utils():
-    from optimum_hub_services.docker_utils import encode_username_for_docker
+    from optimum_hub_services.docker_utils import encode_username_for_docker, stats_from_container
     assert encode_username_for_docker("test.user") == "test-2euser"
     assert encode_username_for_docker("simple") == "simple"
+    assert callable(stats_from_container)
+
+
+def test_container_stats_cache():
+    from optimum_hub_services.container_stats_cache import get_container_stats_with_refresh
+    assert callable(get_container_stats_with_refresh)
 
 
 def test_persisted_cache(tmp_path, monkeypatch):
