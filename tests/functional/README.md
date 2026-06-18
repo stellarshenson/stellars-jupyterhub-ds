@@ -72,6 +72,16 @@ pytest regime; `make test-functional-all` runs them in turn, cleaning between ea
 - `test_signup_open.py` - signup-open self-signup + admin authorise (regime-gated)
 - `test_gpu_detection.py` / `test_auth_env_mode.py` - conditional GPU and env-auth tests
 
+## Acceptance-criteria coverage
+
+Every functional test declares the acceptance criteria it covers with
+`@pytest.mark.acc_crit("<doc-slug>::<label>", ...)`, referencing labelled items in
+`docs/acc-crit-<doc-slug>.md`. The declaration is mandatory - a collected test with
+no `acc_crit` marker aborts the run. At the end of each run the suite prints an
+`acceptance criteria coverage` report listing every declared criterion as `MET`
+(every covering test that ran passed) or `UNMET` (a covering test failed), so a run
+states which criteria it actually met.
+
 ## How the SPA is driven
 
 The portal is a React single-page app with no data-testids; tests use visible

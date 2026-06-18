@@ -5,6 +5,7 @@ through the UI. Deep policy->container assertions live in test_container_policy.
 (API + docker inspect). Add new UI scenarios here.
 """
 
+import pytest
 from playwright.sync_api import expect
 
 
@@ -29,6 +30,12 @@ def _create_group_via_ui(admin_portal, name):
     return page
 
 
+@pytest.mark.acc_crit(
+    "functional-test-harness::Create group",
+    "functional-test-harness::Delete group",
+    "functional-test-harness::Badges from policy_summary",
+    "functional-test-harness::No badges when inactive",
+)
 def test_group_create_badge_delete(admin_portal, base_url, admin_api):
     name = "scen-grp"
     page = _create_group_via_ui(admin_portal, name)
@@ -51,6 +58,7 @@ def test_group_create_badge_delete(admin_portal, base_url, admin_api):
     expect(_row(page, name)).to_have_count(0)
 
 
+@pytest.mark.acc_crit("functional-test-harness::Multiple badges")
 def test_multi_policy_badges(admin_portal, base_url, admin_api):
     name = "scen-multi"
     _create_group_via_ui(admin_portal, name)
@@ -69,6 +77,7 @@ def test_multi_policy_badges(admin_portal, base_url, admin_api):
     expect(_row(page, name).locator(".ant-tag").nth(2)).to_be_visible()
 
 
+@pytest.mark.acc_crit("functional-test-harness::Reorder priority")
 def test_priority_reorder(admin_portal):
     a, b = "scen-prio-a", "scen-prio-b"
     _create_group_via_ui(admin_portal, a)

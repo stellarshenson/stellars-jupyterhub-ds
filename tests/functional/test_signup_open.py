@@ -14,6 +14,7 @@ PENDING_USER = "functestpending"
 
 
 @pytest.mark.signupopen
+@pytest.mark.acc_crit("functional-test-harness::Signup enabled/disabled")
 def test_signup_form_served(base_url):
     # signup enabled -> the NativeAuth signup form is served to anyone.
     r = requests.get(f"{base_url}/hub/signup", timeout=10)
@@ -21,6 +22,10 @@ def test_signup_form_served(base_url):
 
 
 @pytest.mark.signupopen
+@pytest.mark.acc_crit(
+    "functional-test-harness::Non-admin needs authorization",
+    "functional-test-harness::Admin authorizes user",
+)
 def test_self_signup_then_admin_authorises(admin_portal, signup_user, admin_api, base_url):
     # A non-admin self-signs-up; not matching the admin self-approval, they land in
     # the pending queue (authorised=False).

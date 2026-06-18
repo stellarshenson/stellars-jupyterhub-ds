@@ -12,6 +12,7 @@ from playwright.sync_api import expect
 
 
 @pytest.mark.envauth
+@pytest.mark.acc_crit("functional-test-harness::Admin env-password login (mode 2)")
 def test_env_password_admin_authenticates(admin_portal):
     # The browser is authenticated from the API session that logged in with the env
     # password; the SPA app shell mounting (not bounced to /login) proves the
@@ -22,6 +23,7 @@ def test_env_password_admin_authenticates(admin_portal):
 
 
 @pytest.mark.envauth
+@pytest.mark.acc_crit("functional-test-harness::Signup enabled/disabled")
 def test_signup_is_disabled(base_url):
     # Signup is off and the bootstrap window is closed (an admin already exists),
     # so the signup form must not be served.

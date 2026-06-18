@@ -9,6 +9,8 @@ admin is added to it and spawned; every effect is checked on the one container.
 
 import time
 
+import pytest
+
 CONTAINER = "jupyterlab-functestadmin"
 GROUP = "ctr-policy"
 
@@ -41,6 +43,19 @@ def _stop_server(admin_api, base):
         pass
 
 
+@pytest.mark.acc_crit(
+    "functional-test-harness::Spawn creates the container",
+    "functional-test-harness::Container created",
+    "functional-test-harness::Env: sudo",
+    "functional-test-harness::Env: group vars",
+    "functional-test-harness::Mounts: group volume",
+    "functional-test-harness::Limit: memory",
+    "functional-test-harness::Labels: compose project",
+    "functional-test-harness::sudo off",
+    "functional-test-harness::mem 4G",
+    "functional-test-harness::env FOO=bar",
+    "functional-test-harness::volume vol->/mnt/x",
+)
 def test_policies_applied_to_container(admin_api, docker_client, base_url):
     base = base_url
     # 1. Create the group and configure several policies.
