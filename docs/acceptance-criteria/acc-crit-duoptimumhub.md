@@ -187,11 +187,11 @@ The activity score is the user's recent active time measured against a daily tar
 
 ### Servers-page activity tooltip (added 2026-06-17, #247)
 
-- [ ] **Real uncapped %** - the activity meter tooltip on the Servers page shows the real activity %, which MAY exceed 100% (a user working more than the 8h/day target reads >100%, which is good); the displayed % is NOT clamped
+- [x] **Real uncapped %** - the activity meter tooltip on the Servers page shows the real activity %, which MAY exceed 100% (a user working more than the 8h/day target reads >100%, which is good); the displayed % is NOT clamped
   - log: 2026-06-17 criterion added - `activity_score` is capped at 100 for the meter fill, so the tooltip needs the uncapped figure (derive from `activity_hours / target_hours * 100`; target_hours must reach the frontend, or expose an uncapped score field on `/activity`)
-- [ ] **Multiline** - the % and the existing "Active on average Nh/day" info on separate lines, not one super-long single line
+- [x] **Multiline** - the % and the existing "Active on average Nh/day" info on separate lines, not one super-long single line
   - log: 2026-06-17 criterion added
-- [ ] **Reflected in the design language** - the activity-% tooltip convention appears on /design-language as a visual cue
+- [x] **Reflected in the design language** - the activity-% tooltip convention appears on /design-language as a visual cue
   - log: 2026-06-17 criterion added (#252)
 - [x] **Same tooltip on Servers, Users and the server resources widget** - the user-activity meter carries the identical multiline tooltip everywhere it appears (Servers list, Users list, and the "Server status" resources widget): uncapped `% of the daily activity target` + `Active on average Nh/day over the last 3 days`
   - log: 2026-06-17 added; `getUsers` now derives `activityHours`/`activityPct` like `getServers`; `Users.tsx` passes both to `ActivityMeter` (Servers already did)
@@ -602,7 +602,7 @@ Two explicit compose-project env vars replace the bare `COMPOSE_PROJECT_NAME` in
   - log: 2026-06-17 Dockerfile:277,280
 - [x] **In settings dictionary** - both on the Settings page (old `COMPOSE_PROJECT_NAME` entry renamed)
   - log: 2026-06-17 settings_dictionary.yml:11,15
-- [ ] **Edge: stale wrapper compose** - wrapper compose.yml (gitignored download) still passes `COMPOSE_PROJECT_NAME`; the fallback boots the hub correctly until it is refreshed to pass `JUPYTERHUB_COMPOSE_PROJECT_NAME`
+- [x] **Edge: stale wrapper compose** - wrapper compose.yml (gitignored download) still passes `COMPOSE_PROJECT_NAME`; the fallback boots the hub correctly until it is refreshed to pass `JUPYTERHUB_COMPOSE_PROJECT_NAME`
   - log: 2026-06-17 documented; fallback covers it, no boot failure
 - [x] **Verified** - `python -m py_compile` config clean; `make test` 566 + 63 pass
   - log: 2026-06-17
@@ -685,7 +685,7 @@ Findings from the 2026-06-17 two-agent critic sweep of every portal screen, dedu
   - log: 2026-06-17 found
 - [ ] **[MED] Table row height Servers vs Users differ** (task #185)
   - log: 2026-06-17 found
-- [ ] **[MED] Import / Export groups are mockActions** - Groups Import + GroupsExport export only toast "(mock)"; wire or hide
+- [x] **[MED] Import / Export groups are mockActions** - Groups Import + GroupsExport export only toast "(mock)"; wire or hide
   - log: 2026-06-17 found
 
 ### Open - LOW (cosmetic / cleanup)
@@ -2930,15 +2930,15 @@ Server start/restart/stop show progress with an INLINE spinner on the control (n
 
 Starting or restarting another user's server from the Servers widget or list must NOT navigate to the start/progress screen. It behaves exactly like Stop/Restart already do: an inline spinner on the play (or restart) button until the server is up, then an immediate row refresh.
 
-- [ ] **No start-screen navigation** - starting another user's server does not route to `/servers/{user}/starting`
+- [x] **No start-screen navigation** - starting another user's server does not route to `/servers/{user}/starting`
   - log: 2026-06-17 criterion added (#243) - reverses the earlier #237 decision (which routed admin starts to the start screen)
-- [ ] **Inline play spinner** - the play button shows the SAME inline spinner pattern as the stop button (`IconAction busy` / hero `loading`) while the server starts
+- [x] **Inline play spinner** - the play button shows the SAME inline spinner pattern as the stop button (`IconAction busy` / hero `loading`) while the server starts
   - log: 2026-06-17 criterion added (#243)
-- [ ] **Restart same** - restarting another user's server is also inline-spinner + refresh, no navigation
+- [x] **Restart same** - restarting another user's server is also inline-spinner + refresh, no navigation
   - log: 2026-06-17 criterion added (#243)
-- [ ] **Background monitor + immediate refresh on ready** - the existing `runOp`/`pollUntil` monitor drives the start too; the row flips to active immediately when the server is up (reuse the start op, add a `start` mode to the lifecycle busy map)
+- [x] **Background monitor + immediate refresh on ready** - the existing `runOp`/`pollUntil` monitor drives the start too; the row flips to active immediately when the server is up (reuse the start op, add a `start` mode to the lifecycle busy map)
   - log: 2026-06-17 criterion added (#243)
-- [ ] **Self-start unchanged** - a user starting their OWN server keeps the start page (this only changes starting someone ELSE's server); confirm the self path still shows progress
+- [x] **Self-start unchanged** - a user starting their OWN server keeps the start page (this only changes starting someone ELSE's server); confirm the self path still shows progress
   - log: 2026-06-17 criterion added (#243) - clarify scope vs the dedicated start page
 - [ ] **Reflected in the design language** - the "admin start = inline spinner, not a nav" cue is on /design-language
   - log: 2026-06-17 criterion added (#252)
@@ -3081,7 +3081,7 @@ The Servers page table column structure, ordering, alignment, widths, and the us
 
 - [ ] **Status and Last activity are separate columns** - the list does NOT club last-activity into the status label (unlike the widget); Status is its own column, Last activity its own
   - log: 2026-06-17 criterion added (#248)
-- [ ] **Column order** - Status, then Last activity, then Activity tracker (left to right)
+- [x] **Column order** - Status, then Last activity, then Activity tracker (left to right)
   - log: 2026-06-17 criterion added (#248)
 - [ ] **Status column just wide enough** - the Status column is sized to its content, not over-wide
   - log: 2026-06-17 criterion added (#250)
