@@ -208,6 +208,20 @@ function activityByName(a: RawActivity): Map<string, RawActivityUser> {
   return m
 }
 
+// Activity is a 7-DAY engagement metric (capped score + avg active hours vs the
+// daily target), NOT a live reading - it is meaningful whether or not the server
+// is running right now. Server-list rows and user-list rows derive it from this
+// ONE helper so the meter reads identically on every surface (Home widget,
+// Servers, Users). A `running ?` gate on the server rows was the regression that
+// made an offline-but-active user show e.g. 30% on Users and "none" on Servers.
+function activityFields(a: RawActivityUser | undefined, target: number) {
+  return {
+    activity: clampPct(a?.activity_score ?? 0),
+    activityHours: a?.activity_hours ?? null,
+    activityPct: a?.activity_hours != null && target > 0 ? Math.round((a.activity_hours / target) * 100) : null,
+  }
+}
+
 function statusOf(srv: RawServer | undefined, a: RawActivityUser | undefined): ServerStatus {
   // The JupyterHub spawner state is authoritative on presence so start/stop
   // reflect IMMEDIATELY: a ready server is up the instant the hub marks it, and a
@@ -294,9 +308,8 @@ export const liveSource: DataSource = {
         // spawning has no last_activity so it stays a bare "Spawning"
         statusLabel: `${cap(status)}${a?.last_activity ? ` ${timeAgoShort(a.last_activity)}` : ''}`,
         lastActivityISO: a?.last_activity ?? null,
-        activity: running ? clampPct(a?.activity_score ?? 0) : null,
-        activityHours: a?.activity_hours ?? null,
-        activityPct: running && a?.activity_hours != null && target > 0 ? Math.round((a.activity_hours / target) * 100) : null,
+        // 7-day engagement meter - NOT gated on `running` (see activityFields)
+        ...activityFields(a, target),
         cpu: cpuPct,
         cpuTip,
         mem: running && memPct != null ? Math.round(memPct) : null,
@@ -332,11 +345,9 @@ export const liveSource: DataSource = {
         // NativeAuth is_authorized is authoritative; fall back to activity, then true.
         authorized: authByName.get(u.name) ?? a?.is_authorized ?? true,
         pending: false,
-        activity: clampPct(a?.activity_score ?? 0),
-        // same engagement tooltip as the server resources widget: real avg hours
-        // and the uncapped % behind the capped meter score
-        activityHours: a?.activity_hours ?? null,
-        activityPct: a?.activity_hours != null && target > 0 ? Math.round((a.activity_hours / target) * 100) : null,
+        // identical 7-day engagement meter as the server rows (see activityFields):
+        // real avg hours + the uncapped % behind the capped score
+        ...activityFields(a, target),
         createdISO: u.created ?? new Date().toISOString(),
         lastSeenISO: u.last_activity ?? undefined,
         groups: u.groups ?? [],
