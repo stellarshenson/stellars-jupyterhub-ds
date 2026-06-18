@@ -207,7 +207,8 @@ function toServerRow(p: Person): ServerRow {
       admin: !!p.admin,
       status: 'offline',
       statusLabel: p.offlineSince ? `Offline ${p.offlineSince}` : 'Offline',
-      activity: null,
+      // 7-day engagement is independent of run state - shown even when offline
+      ...mockActivity(p),
       cpu: null,
       mem: null,
       gpu: null,
@@ -230,9 +231,7 @@ function toServerRow(p: Person): ServerRow {
     status: s.status,
     statusLabel: s.status === 'active' ? `Active ${s.since}` : s.status === 'idle' ? `Idle ${s.since}` : 'Spawning',
     lastActivityISO: spawning ? null : iso(0, parseInt(s.since, 10) || 0),
-    activity: spawning ? null : p.activity,
-    activityPct: spawning ? null : p.activity,
-    activityHours: spawning ? null : Math.round((p.activity / 100) * 8 * 10) / 10,
+    ...mockActivity(p),
     cpu: spawning ? null : s.cpu,
     cpuTip: spawning ? undefined : `${s.cpu}% used\n8 host cores (no limit)`,
     mem: spawning ? null : s.memPct,
@@ -254,6 +253,16 @@ function toServerRow(p: Person): ServerRow {
   }
 }
 
+// 7-day engagement meter - same value on every surface (Servers, Home, Users)
+// regardless of the current server state. Mirrors liveSource's activityFields.
+function mockActivity(p: Person) {
+  return {
+    activity: p.activity,
+    activityPct: p.activity,
+    activityHours: Math.round((p.activity / 100) * 8 * 10) / 10,
+  }
+}
+
 function toUserRow(p: Person): UserRow {
   return {
     name: p.name,
@@ -261,9 +270,7 @@ function toUserRow(p: Person): UserRow {
     admin: !!p.admin,
     authorized: p.authorized,
     pending: !!p.pending,
-    activity: p.activity,
-    activityPct: p.activity,
-    activityHours: Math.round((p.activity / 100) * 8 * 10) / 10,
+    ...mockActivity(p),
     createdISO: iso(p.createdDaysAgo),
     lastSeenISO: p.lastSeenMinAgo != null ? iso(0, p.lastSeenMinAgo) : undefined,
     groups: p.groups,
