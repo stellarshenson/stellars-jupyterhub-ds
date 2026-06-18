@@ -1,4 +1,4 @@
-"""Resource-bar colour ramp (docs/acc-crit-resource-bars.md).
+"""Resource-bar colour ramp (docs/acceptance-criteria/acc-crit-resource-bars.md).
 
 A near-full CPU/memory bar must read as the strong danger red - the same
 --color-danger token as the server-controls Stop button (antd colorError) - not a

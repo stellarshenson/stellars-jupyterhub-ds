@@ -41,7 +41,7 @@ SPA_TIMEOUT = 30000
 #
 # Every functional test MUST declare the acceptance criteria it covers via
 #   @pytest.mark.acc_crit("<doc-slug>::<Criterion label>", ...)
-# where <doc-slug> is the docs/acc-crit-<doc-slug>.md file and the label is the
+# where <doc-slug> is the docs/acceptance-criteria/acc-crit-<doc-slug>.md file and the label is the
 # bold criterion label in that doc. A collected test with no acc_crit marker aborts
 # the run (the declaration is mandatory). At session end the suite prints a coverage
 # report grouping each declared criterion as MET (every covering test that ran

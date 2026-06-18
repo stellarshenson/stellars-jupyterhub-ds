@@ -61,7 +61,7 @@ BRAND_ROUTE = r"/brand/(.*)"
 # rendered the SPA HTML instead of the PNG, and an unknown /hub/api/* returned the
 # shell instead of a JSON 404. Excluding `logo` and `api/` lets them fall through
 # to those late built-ins (the custom /api/* data handlers register earlier in
-# extra_handlers, so they still win). Full rationale: docs/acc-crit-drop-portal-path.md.
+# extra_handlers, so they still win). Full rationale: docs/acceptance-criteria/acc-crit-drop-portal-path.md.
 PORTAL_ROUTE = r"/(?!logo(?:/|$)|api/)(.*)"
 # Legacy path: 302 stale /hub/portal[/...] links to the hub-root SPA. Matched
 # before the catch-all so the browser never loads the shell at /portal and then

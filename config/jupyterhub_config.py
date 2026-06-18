@@ -854,7 +854,7 @@ c.JupyterHub.extra_handlers = [
     # /groups) were removed - the React portal owns these features as client
     # routes. Their /api/* data handlers above stay. Unregistering them frees the
     # bare paths so the hub-root portal (no /portal segment) can serve those SPA
-    # routes without the old pages shadowing them. See docs/acc-crit-drop-portal-path.md.
+    # routes without the old pages shadowing them. See docs/acceptance-criteria/acc-crit-drop-portal-path.md.
     (r'/health', HealthCheckHandler),                                 # GET - unauthenticated monitoring endpoint
 ]
 # Duoptimum Hub portal: catch-all serving the SPA shell + bundled assets at the hub root.
