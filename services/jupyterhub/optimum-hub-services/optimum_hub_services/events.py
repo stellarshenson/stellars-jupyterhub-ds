@@ -1,7 +1,25 @@
 """SQLAlchemy event listeners for user lifecycle synchronization."""
 
+import contextvars
 import html
 import os
+
+
+# The acting admin for an in-flight rename, set by the rename API handler so the
+# recorded event can name WHO renamed whom. None when a rename happens outside a
+# request context (then the event falls back to the actor-less form).
+_rename_actor = contextvars.ContextVar("rename_actor", default=None)
+
+
+def set_rename_actor(name):
+    """Tag the current context with the admin performing a rename; the listener
+    reads this to attribute the recorded event. Returns a reset token."""
+    return _rename_actor.set(name)
+
+
+def reset_rename_actor(token):
+    """Clear the rename actor set by set_rename_actor (pass its token)."""
+    _rename_actor.reset(token)
 
 
 def register_events():
@@ -46,7 +64,14 @@ def register_events():
             print(f"[UserProfile Sync] Error renaming: {e}")
 
         from .event_log import record_event
-        record_event('user', f'<b>{html.escape(str(oldvalue))}</b> renamed to <b>{html.escape(str(value))}</b>')
+        old_b = f'<b>{html.escape(str(oldvalue))}</b>'
+        new_b = f'<b>{html.escape(str(value))}</b>'
+        actor = _rename_actor.get()
+        if actor:
+            # who renamed whom - the admin who triggered the rename API call
+            record_event('user', f'<b>{html.escape(str(actor))}</b> renamed {old_b} to {new_b}')
+        else:
+            record_event('user', f'{old_b} renamed to {new_b}')
 
     @event.listens_for(orm.User, 'after_insert')
     def create_nativeauth_on_user_insert(mapper, connection, target):

@@ -170,6 +170,7 @@ def test_handlers():
         UserProfileHandler,
         UserProfilesListHandler,
         UserForcePasswordChangeHandler,
+        UserRenameHandler,
         EffectiveGrantsHandler,
         ServerLogsHandler,
         EventsDataHandler,
@@ -177,7 +178,7 @@ def test_handlers():
     # Verify handler count matches expected (legacy server-rendered page handlers
     # removed - the React portal owns those routes)
     from optimum_hub_services import handlers
-    assert len(handlers.__all__) == 27
+    assert len(handlers.__all__) == 28
 
 
 def test_auth():
