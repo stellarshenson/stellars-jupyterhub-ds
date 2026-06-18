@@ -8,6 +8,9 @@ import { Icon } from './Icon'
 import { fmtMinutes } from '../lib/format'
 import { THRESHOLDS, ANIMATION, BAR_COLOR } from '../services/config'
 import { gpuSupported } from '../app/capabilities'
+import { useTheme } from '../theme/ThemeProvider'
+import { PALETTES } from '../theme/tokens'
+import { gpuStripeColor } from '../lib/gpuStripes'
 import type { GpuDevice } from '../services/types'
 
 // Multiline tooltip for the engagement meter: the activity % (uncapped - may
@@ -65,19 +68,16 @@ export function Spark({ segments, height = 6, title, style }: { segments: SparkS
   )
 }
 
-// the bar fill is the standard accent on every device; only the diagonal stripe
-// tint shifts per device, so one GPU reads just a tad different from the next
-const GPU_STRIPES = [
-  'rgba(255, 255, 255, .38)',
-  'rgba(86, 222, 110, .6)',
-  'rgba(184, 132, 255, .62)',
-  'rgba(255, 190, 84, .62)',
-]
-
 // per-GPU bars: one labelled horizontal bar per device, fill width = its load.
 // The index labels make it read unmistakably as N separate GPUs. When device
 // metadata is supplied the tooltip names the GPU and quotes its live load.
+// The bar fill is the standard accent on every device; only the diagonal stripe
+// tint shifts per device. Each stripe colour is computed (`gpuStripeColor`) to
+// CONTRAST with the theme accent (the fill), with the hue rotated per device so
+// the GPUs read distinct while every stripe stays inside the contrast budget.
 export function GpuMeter({ gpus, devices }: { gpus: number[]; devices?: GpuDevice[] }) {
+  const { resolved } = useTheme()
+  const accent = PALETTES[resolved].accent // the bar-fill base the stripes contrast against
   return (
     <span className="oh-gpurows">
       {gpus.map((g, i) => {
@@ -89,7 +89,7 @@ export function GpuMeter({ gpus, devices }: { gpus: number[]; devices?: GpuDevic
               <i
                 style={{
                   width: `${Math.max(3, g)}%`,
-                  backgroundImage: `repeating-linear-gradient(45deg, ${GPU_STRIPES[i % GPU_STRIPES.length]} 0 3px, transparent 3px 7px)`,
+                  backgroundImage: `repeating-linear-gradient(45deg, ${gpuStripeColor(accent, i, gpus.length)} 0 3px, transparent 3px 7px)`,
                 }}
               />
             </span>

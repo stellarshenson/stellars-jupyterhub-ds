@@ -137,7 +137,7 @@ function VersionFooter() {
   ]
   const tag = { background: 'var(--color-surface-active)', color: 'var(--color-text-muted)', borderRadius: 4, marginInline: 4 }
   // click the version to copy the full version + build id to the clipboard
-  const fullVersion = `Duoptimum Hub v${__APP_VERSION__} (build ${__BUILD_ID__})`
+  const fullVersion = `Duoptimum Hub v${__APP_VERSION__} build ${__BUILD_ID__}`
   const copyVersion = () => {
     if (!navigator.clipboard) { notify.error('Clipboard unavailable'); return }
     navigator.clipboard.writeText(fullVersion).then(() => notify.success('Version copied'), () => notify.error('Copy failed'))

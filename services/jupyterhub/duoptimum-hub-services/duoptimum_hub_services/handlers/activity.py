@@ -30,6 +30,25 @@ def _host_total_memory_mb():
     except Exception:
         pass
     return None
+
+
+def _host_cpu_count():
+    """Total logical CPU cores on the host - the denominator for the "% of host"
+    CPU figure. A CPU-limited user's cpu_cores is their assigned ceiling, NOT the
+    host's core count, so the Host Status bar must divide by THIS, not by the
+    largest per-server assignment. That old approximation only equalled the host
+    count when an unlimited server happened to be active; with every active server
+    CPU-capped it read ~2x high (the host bar exceeding the user's own). Counts
+    `processor` entries in /proc/cpuinfo directly (host-transparent inside a
+    container). NO fallback: returns None on any read failure so the frontend shows
+    an explicit "unavailable" rather than fabricating a denominator."""
+    try:
+        with open('/proc/cpuinfo') as f:
+            count = sum(1 for line in f if line.startswith('processor'))
+        return count or None
+    except Exception:
+        pass
+    return None
 from ..docker_utils import encode_username_for_docker, newer_lab_image_available
 from ..container_size_cache import get_container_sizes_with_refresh
 from ..container_stats_cache import get_container_stats_with_refresh
@@ -229,6 +248,7 @@ class ActivityDataHandler(BaseHandler):
             "volume_max_total_size_mb": volume_max,
             "memory_max_usage_mb": memory_max,
             "memory_host_total_mb": _host_total_memory_mb(),
+            "cpu_host_total": _host_cpu_count(),
             "activity_target_hours": get_activity_target_hours(),
             "gpus": gpus,
             "lab_image": lab_image,

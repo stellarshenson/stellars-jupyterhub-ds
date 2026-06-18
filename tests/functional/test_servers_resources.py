@@ -12,6 +12,7 @@ The header-tooltip checks need no running server (the columns render regardless)
 the cell checks launch a lab and wait for the stats sample to land.
 """
 
+import os
 import time
 
 import pytest
@@ -46,6 +47,24 @@ def _wait(pred, timeout=120, interval=2):
 
 
 @pytest.mark.acc_crit(
+    "servers-host-relative-resources::Host CPU denominator is the real host core count",
+)
+def test_activity_reports_real_host_cpu_count(base_url, admin_api):
+    """/api/activity exposes cpu_host_total - the REAL host logical-core count, the
+    Host Status CPU bar denominator. NOT a per-server assignment: the old frontend
+    approximation (largest assigned-core count among active servers) read ~2x high
+    when every active server was CPU-capped, so the Host CPU bar could exceed a
+    single user's % of their own assignment. The hub container reads the host's
+    /proc/cpuinfo, so it must equal the test runner's host core count - proving it
+    is the host total, not an assignment."""
+    r = admin_api.get(f"{base_url}/hub/api/activity", timeout=30)
+    assert r.status_code < 400, r.status_code
+    host_cpu = (r.json() or {}).get("cpu_host_total")
+    assert isinstance(host_cpu, int) and host_cpu >= 1, f"cpu_host_total missing/invalid: {host_cpu!r}"
+    assert host_cpu == os.cpu_count(), f"cpu_host_total {host_cpu} != host cores {os.cpu_count()}"
+
+
+@pytest.mark.acc_crit(
     "servers-host-relative-resources::CPU header tooltip",
     "servers-host-relative-resources::MEM header tooltip",
 )
@@ -67,6 +86,7 @@ def test_cpu_mem_column_header_tooltips(admin_portal):
     "servers-host-relative-resources::CPU counter = cores-used %",
     "servers-host-relative-resources::MEM counter = absolute GB",
     "servers-host-relative-resources::Tooltips reveal all",
+    'servers-host-relative-resources::CPU tooltip "cores used" line carries the compute %',
 )
 def test_cpu_mem_cells_report_cores_and_gb(admin_portal, base_url, admin_api):
     """A running server's CPU cell ends in "%" (cores-used, docker/top) and its MEM
@@ -98,7 +118,8 @@ def test_cpu_mem_cells_report_cores_and_gb(admin_portal, base_url, admin_api):
         # CPU = cores-used %, ends in "%"; tooltip reveals cores used + % of assigned
         assert (cpu_cell.first.inner_text()).strip().endswith("%")
         cpu_tip = cpu_cell.first.get_attribute("title") or ""
-        assert "cores used" in cpu_tip and "of assigned" in cpu_tip, cpu_tip
+        # "{N} cores used ({M}% compute)" + the assigned breakdown
+        assert "cores used" in cpu_tip and "% compute" in cpu_tip and "of assigned" in cpu_tip, cpu_tip
         # MEM = absolute GB, ends in "GB"; tooltip reveals GB used + % of assigned
         assert (mem_cell.first.inner_text()).strip().endswith("GB")
         mem_tip = mem_cell.first.get_attribute("title") or ""

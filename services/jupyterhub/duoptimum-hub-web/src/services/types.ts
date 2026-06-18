@@ -191,6 +191,7 @@ export interface GpuDevice {
 export interface ResourceSnapshot {
   cpu: number // % host
   cpuTip?: string // "4 cores assigned" / "8 host cores (no limit)"
+  cpuError?: boolean // host CPU core count unavailable - render "unavailable", not a fabricated bar
   mem: number // % host
   memError?: boolean // host RAM total unavailable - render "unavailable", not a fabricated bar
   gpu: number // % host (aggregate)

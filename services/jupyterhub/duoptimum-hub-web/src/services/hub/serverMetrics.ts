@@ -53,7 +53,9 @@ export function cpuTooltip(opts: { cpuPercent: number; cores: number | null | un
   const { cpuPercent, cores, coresLimited } = opts
   const qp = cpuQuotaPct(cpuPercent, cores)
   return [
-    `${round1(cpuPercent / 100)} cores used`,
+    // "13 cores used (1300% compute)" - the compute % is the docker/top reading
+    // (100% = one core), the same convention as the cell value
+    `${round1(cpuPercent / 100)} cores used (${Math.round(cpuPercent)}% compute)`,
     cores != null ? `${cores} core${cores === 1 ? '' : 's'} ${coresLimited ? 'assigned' : 'host (no limit)'}` : '',
     qp != null ? `${qp}% of assigned${quotaCrossing(qp)}` : '',
   ].filter(Boolean).join('\n')
