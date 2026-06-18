@@ -10,11 +10,12 @@ import { GroupPicker } from '../components/GroupPicker'
 import { Icon } from '../components/Icon'
 import { Notice } from '../components/Notice'
 import { VolumeReset } from '../components/VolumeReset'
+import { RemoveUserModal } from '../components/RemoveUserModal'
 import { useRole } from '../app/RoleContext'
 import { useEffectiveGrants, useServerHero, useUser, useUserProfile } from '../hooks/queries'
 import { mockSuccess } from '../services/actions'
 import { isMock } from '../services/dataMode'
-import { addMember, setUserAuthorization, deleteUser, removeMember, renameUser, saveUserProfile, setAdmin, setForcePasswordChange, setUserPassword } from '../services/ops'
+import { addMember, setUserAuthorization, removeMember, renameUser, saveUserProfile, setAdmin, setForcePasswordChange, setUserPassword } from '../services/ops'
 import { PLATFORM } from '../services/config'
 import { adminUser, isAdminUser } from '../app/capabilities'
 import { genPassword } from '../lib/password'
@@ -39,6 +40,7 @@ export default function UserConfig() {
   const [form] = Form.useForm()
   const [groups, setGroups] = useState<string[]>([])
   const [tab, setTab] = useState('profile')
+  const [removeOpen, setRemoveOpen] = useState(false)
   const [pw, setPw] = useState('')
   const [renameTo, setRenameTo] = useState(name)
   // keep the rename field in sync when the target changes (incl. after a rename
@@ -52,6 +54,7 @@ export default function UserConfig() {
   // server is stopped (offline) - renaming a running container would orphan it
   const canRename = role === 'admin' && !isBuiltinAdmin
   const serverStopped = hero?.status === 'offline'
+  const serverRunning = hero?.status === 'active' || hero?.status === 'idle' || hero?.status === 'spawning'
   // effective admin includes the hook-promoted admin whose persistent row is False
   const userIsAdmin = isAdminUser(name, !!user?.admin)
   // dependent controls react to the LIVE admin toggle, not the saved state, so
@@ -100,11 +103,6 @@ export default function UserConfig() {
     } catch {
       /* ops surfaced the error - stay on the form */
     }
-  }
-
-  const remove = async () => {
-    await deleteUser(name)
-    if (!isMock()) navigate(backTo)
   }
 
   // Rename: confirm first (it is collateral-heavy), then go to the renamed
@@ -220,11 +218,18 @@ export default function UserConfig() {
           ]}
         />
         <FormFooter
-          destructive={isBuiltinAdmin ? undefined : <Button danger icon={<Icon name="close" size={14} />} onClick={remove}>Remove User</Button>}
+          destructive={isBuiltinAdmin ? undefined : <Button danger icon={<Icon name="close" size={14} />} onClick={() => setRemoveOpen(true)}>Remove User</Button>}
           onCancel={() => navigate(backTo)}
           onSave={save}
         />
       </Card>
+      <RemoveUserModal
+        name={name}
+        open={removeOpen}
+        serverRunning={serverRunning}
+        onClose={() => setRemoveOpen(false)}
+        onRemoved={() => navigate(backTo)}
+      />
     </>
   )
 }

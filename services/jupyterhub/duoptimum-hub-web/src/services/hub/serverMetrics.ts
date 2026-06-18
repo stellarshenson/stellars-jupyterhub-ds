@@ -20,6 +20,11 @@ export const cpuAssignedPct = (cpuPercent: number | null | undefined, cores: num
 export const cpuCounterPct = (cpuPercent: number | null | undefined): number | null =>
   cpuPercent == null ? null : Math.round(cpuPercent)
 
+/** docker/top aggregate CPU label - "1300%" (cores-used x 100, 100% = one core).
+ * The string shown by the 'cores' display mode; null when not sampled. */
+export const cpuAggregateLabel = (cpuPercent: number | null | undefined): string | null =>
+  cpuPercent == null ? null : `${Math.round(cpuPercent)}%`
+
 /** Memory used in GB (absolute), one decimal. null when not sampled. */
 export const memCounterGb = (memMb: number | null | undefined): number | null =>
   memMb == null ? null : round1(memMb / 1024)

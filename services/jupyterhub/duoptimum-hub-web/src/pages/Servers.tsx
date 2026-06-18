@@ -20,6 +20,7 @@ import { useServers } from '../hooks/queries'
 import { invalidate, notify } from '../services/actions'
 import { resetActivity, startAllServers, stopAllServers } from '../services/ops'
 import { useRole } from '../app/RoleContext'
+import { usePref } from '../app/PrefsContext'
 import { gpuSupported } from '../app/capabilities'
 import { useIsMobile } from '../lib/useIsMobile'
 import { useServerLifecycle } from '../app/ServerLifecycle'
@@ -72,6 +73,7 @@ const dash = <span className="oh-muted">-</span>
 // the table keeps in tooltips, expanded inline
 function ServerDetail({ row }: { row: ServerRow }) {
   const running = row.status === 'active' || row.status === 'idle'
+  const listCpuMode = usePref('cpuModeServersList')
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -79,7 +81,7 @@ function ServerDetail({ row }: { row: ServerRow }) {
         {row.admin && <Tag bordered={false} style={accentTag}>admin</Tag>}
       </div>
       <Metric label="Activity (7d)" value={<ActivityMeter value={row.activity} hours={row.activityHours} pct={row.activityPct} />} />
-      <Metric label="CPU" value={row.cpu == null ? dash : `${row.cpu}%`} detail={row.cpuTip} valueColor={quotaColor(row.cpuQuotaPct)} />
+      <Metric label="CPU" value={row.cpu == null ? dash : `${listCpuMode === 'cores' ? row.cpu : (row.cpuAssignedPct ?? row.cpu)}%`} detail={row.cpuTip} valueColor={quotaColor(row.cpuQuotaPct)} />
       <Metric label="Memory" value={row.mem == null ? dash : `${row.mem} GB`} detail={row.memTip} valueColor={quotaColor(row.memQuotaPct)} />
       {gpuSupported() && <Metric label="GPU" value={row.gpu ?? <span className="oh-muted">not tracked per-server</span>} />}
       <Metric label="Volumes" value={row.volumesGB == null ? dash : `${row.volumesGB} GB`} detail={row.volumesTip} over={row.volumesOver} />
@@ -122,6 +124,7 @@ export default function Servers() {
   const { username: me } = useRole()
   const isMobile = useIsMobile()
   const [scope, setScope] = useState('all')
+  const listCpuMode = usePref('cpuModeServersList') // 'cores' = docker/top %, 'normalized' = % of assigned
   const [q, setQ] = useState('')
   const [detail, setDetail] = useState<ServerRow | null>(null)
 
@@ -195,7 +198,7 @@ export default function Servers() {
     },
     {
       title: <Tooltip title={SERVERS_COL_HELP.cpu}><span>CPU</span></Tooltip>, dataIndex: 'cpu', align: 'right', sorter: (a, b) => (a.cpu ?? -1) - (b.cpu ?? -1),
-      render: (_, r) => (r.cpu == null ? <span className="oh-muted">-</span> : <span className="oh-num" title={r.cpuTip} style={{ color: quotaColor(r.cpuQuotaPct) }}>{r.cpu}%</span>),
+      render: (_, r) => (r.cpu == null ? <span className="oh-muted">-</span> : <span className="oh-num" title={r.cpuTip} style={{ color: quotaColor(r.cpuQuotaPct) }}>{listCpuMode === 'cores' ? r.cpu : (r.cpuAssignedPct ?? r.cpu)}%</span>),
     },
     {
       title: <Tooltip title={SERVERS_COL_HELP.mem}><span>Mem</span></Tooltip>,

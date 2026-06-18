@@ -69,6 +69,13 @@ def register_events():
         except Exception as e:
             print(f"[UserProfile Sync] Error renaming: {e}")
 
+        # Sync the per-user display preferences to the new username
+        try:
+            from .user_display_preferences import UserDisplayPreferencesManager
+            UserDisplayPreferencesManager.get_instance().rename_user(oldvalue, value)
+        except Exception as e:
+            print(f"[DisplayPrefs Sync] Error renaming: {e}")
+
         from .event_log import record_event
         old_b = f'<b>{html.escape(str(oldvalue))}</b>'
         new_b = f'<b>{html.escape(str(value))}</b>'
@@ -162,6 +169,12 @@ def register_events():
             UserProfileManager.get_instance().delete_profile(username)
         except Exception as e:
             print(f"[UserProfile Cleanup] Error removing profile for {username}: {e}")
+
+        try:
+            from .user_display_preferences import UserDisplayPreferencesManager
+            UserDisplayPreferencesManager.get_instance().delete_prefs(username)
+        except Exception as e:
+            print(f"[DisplayPrefs Cleanup] Error removing preferences for {username}: {e}")
 
         from .event_log import record_event
         record_event('user', f'<b>{html.escape(str(username))}</b> was deleted')

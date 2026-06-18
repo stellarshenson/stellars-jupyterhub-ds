@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider, keepPreviousData } from '@tanstack/re
 import { RouterProvider } from 'react-router-dom'
 import { ThemeProvider } from './theme/ThemeProvider'
 import { RoleProvider } from './app/RoleContext'
+import { PrefsProvider } from './app/PrefsContext'
 import { ServerLifecycleProvider } from './app/ServerLifecycle'
 import { hydrateQueryCache, persistQueryCache } from './app/persistCache'
 import { getDataSource } from './services/datasource'
@@ -56,9 +57,11 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <RoleProvider>
-          <ServerLifecycleProvider>
-            <RouterProvider router={router} />
-          </ServerLifecycleProvider>
+          <PrefsProvider>
+            <ServerLifecycleProvider>
+              <RouterProvider router={router} />
+            </ServerLifecycleProvider>
+          </PrefsProvider>
         </RoleProvider>
       </ThemeProvider>
     </QueryClientProvider>

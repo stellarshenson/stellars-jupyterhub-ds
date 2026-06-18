@@ -2637,6 +2637,90 @@ An admin can rename a user from the Configure-user screen via an action attached
 
 - `POST /hub/api/users/{name}/rename` body `{ "name": "<newName>" }` (admin) -> renames via the orm + records the actor event; returns `{ "name": "<newName>" }`; 400 blank/unchanged, 404 no such user, 409 name clash
 
+## Remove user (confirmation + optional volume removal)
+
+The Configure-user "Remove User" action opens a confirmation modal instead of deleting immediately. A checkbox opts into ALSO deleting the user's Docker volumes (home/workspace/cache); when ticked the removal runs behind a spinner popup with rotating docker-flavour text and ends on a done report. Ordering matters: the volumes are deleted BEFORE the account, because the manage-volumes endpoint resolves the user (404 once the account is gone). `duoptimum-hub-web/src/components/RemoveUserModal.tsx`.
+
+- [ ] **Confirmation modal** - "Remove User" opens a modal titled "Remove {name}"; nothing is deleted until the user confirms
+  - log: 2026-06-18 implemented (operator "the remove user - it brings now confirmation screen yes? there must be checkbox")
+- [ ] **Warning** - the modal states removal deletes the account, group memberships and authorisation and cannot be undone
+  - log: 2026-06-18 implemented
+- [ ] **Volume checkbox** - when the user has volumes on disk, an unchecked-by-default checkbox "Also delete this user's volumes ({suffixes}) - permanent" is shown
+  - log: 2026-06-18 implemented
+- [ ] **Keep volumes by default** - unticked confirm removes only the account (`DELETE /users/{name}`); the volumes are kept
+  - log: 2026-06-18 implemented (operator "otherwise just remove user but keep volumes")
+- [ ] **Remove volumes when ticked** - ticked confirm removes every existing volume (`DELETE /users/{name}/manage-volumes`) THEN the account; volumes-first because manage-volumes resolves the user and 404s once it is gone
+  - log: 2026-06-18 implemented
+- [ ] **Spinner popup with docker text** - while removing WITH volumes a spinner with rotating docker-flavour messages shows; the modal is not closable or cancellable during this phase
+  - log: 2026-06-18 implemented (operator "we need a 'spinner' popup with docker random texts (like when we stop server)")
+- [ ] **Done report** - on success the modal shows "{name} removed" and, when volumes were removed, "Deleted N volume(s): ..."; Close returns to the originating list
+  - log: 2026-06-18 implemented (operator "information when user was removed and their volumes removed")
+- [ ] **Edge: no volumes** - when the user has no volumes on disk the checkbox is replaced by a terse info stripe "No active volumes for this user." and the confirm is the plain account delete
+  - log: 2026-06-18 implemented (operator "if user has no volumes - just display info stripe that user has no active volumes; terse message; then no need for checkbox")
+- [ ] **Edge: server running** - the volume checkbox is disabled with the hint "Stop the server to also remove its volumes" (the manage-volumes endpoint rejects a running server)
+  - log: 2026-06-18 implemented
+- [ ] **Edge: removal fails** - on error the modal shows the failure message with Back (to the confirm) and Close; with volumes-first, a failed account delete after a successful volume delete leaves the volumes gone and the account present (admin retries)
+  - log: 2026-06-18 implemented
+- [ ] **Built-in admin not removable** - the platform admin account shows no Remove action
+  - log: 2026-06-18 implemented (pre-existing guard, retained)
+- [ ] **Navigation parity** - on completion the flow returns to the originating list in BOTH mock and live (no mock-only "stay on the form" - matches Save)
+  - log: 2026-06-18 implemented (operator "is mock? wtf - mock survived?" - dropped the `if (!isMock())` navigation skip)
+
+### Tests
+
+- [ ] **Functional: remove-user flow** - a Playwright test creates a stopped user, opens the Configure screen, removes it via the modal (ticking the volume checkbox), and asserts the user is gone from `/api/users`; carries `@pytest.mark.acc_crit("remove-user::...")`
+  - log: 2026-06-18 `tests/functional/test_remove_user.py` added; runs against a live stack on rebuild
+
+### API
+
+- `DELETE /hub/api/users/{name}` (admin) -> remove the account (stock JupyterHub); requires the server stopped
+- `DELETE /hub/api/users/{name}/manage-volumes` body `{ "volumes": ["home","workspace","cache"] }` (admin or self) -> remove the listed volumes; 404 if the user is gone, 400 if the server is running
+
+## Display options (per-user settings harness)
+
+A generic, registry-driven options harness on the Settings page: accordion panels (antd Collapse), each a table of feature -> control. The first panel, Display Options (collapsed by default), lets the user choose how CPU is shown on three surfaces. Choices persist PER USER (server-side `GET/PUT /api/users/{name}/display-preferences`; localStorage in mock) and apply immediately (PrefsContext re-render, no refetch). Registry: `services/displayOptions.ts`; context: `app/PrefsContext.tsx`; control: `components/OptionControl.tsx`.
+
+- [ ] **Registry-driven** - panels + options come from `SETTINGS_PANELS`; a new option or panel is one registry entry, no new UI code
+  - log: 2026-06-19 implemented
+- [ ] **Accordion** - the Settings page renders the panels as an antd Collapse; Display Options is collapsed by default
+  - log: 2026-06-19 implemented (operator "accordion panels ... first accordion (collapsed unless opened) will be Display Options")
+- [ ] **Control types** - the harness renders Segmented (exclusive options), Switch (boolean), Select, or InputNumber per the option's `control.kind`; the three CPU options use Segmented
+  - log: 2026-06-19 implemented
+- [ ] **Three CPU options** - Server Status CPU, Host Status CPU, Servers list & widget CPU; each exclusive: "Total normalized (0-100%)" vs "Core aggregate (0-N x 100%)"
+  - log: 2026-06-19 implemented
+- [ ] **Per-user persistence** - the choice is stored per user server-side and returned on next load, so it follows the user across browsers; mock mode persists to localStorage (`oh-user-prefs-{mode}-{user}`)
+  - log: 2026-06-19 implemented (operator "preserved for this user as their settings")
+- [ ] **Immediate apply** - changing an option updates the matching surface at once, no manual refresh: the data source emits BOTH CPU representations and the component picks by the pref (PrefsContext re-render, no refetch)
+  - log: 2026-06-19 implemented (operator "screens / features need to be refreshed / pulled etc - so that change is immediate")
+- [ ] **CPU mode - bars** - on Server Status and Host Status the bar FILL is unchanged across modes (always the normalised fraction); only the label swaps ("47%" <-> "800%"/"1300%")
+  - log: 2026-06-19 implemented
+- [ ] **CPU mode - cells** - on the Servers list & Home widget the cell NUMBER swaps: 'cores' shows docker/top % (`cpu`), 'normalized' shows % of assigned (`cpuAssignedPct`); the colour (`quotaColor`) is unchanged
+  - log: 2026-06-19 implemented
+- [ ] **Defaults = current behaviour** - Server/Host Status default to 'normalized', Servers list defaults to 'cores', so nothing changes until the user opts in
+  - log: 2026-06-19 implemented
+- [ ] **Tooltips unchanged** - the per-surface CPU tooltips still show the full breakdown regardless of mode (the mode only changes the headline figure)
+  - log: 2026-06-19 implemented
+- [ ] **Self-or-admin** - GET/PUT display-preferences authorises the user themselves or an admin; the prefs value is an opaque client-owned JSON blob so new options need no backend change
+  - log: 2026-06-19 implemented
+- [ ] **Edge: write fails** - a failed live PUT reverts the optimistic change and toasts an error
+  - log: 2026-06-19 implemented
+- [ ] **Edge: unknown/corrupt value** - a missing key falls back to its registry default; a corrupt stored blob reads as no prefs (tolerant backend parse)
+  - log: 2026-06-19 implemented
+- [ ] **Limitation: Settings is admin-only** - the panel lives on the admin-gated Settings route (`RequireAdmin`); the per-user API is self-or-admin but a non-admin has no UI entry point yet (follow-up: surface the panel on a non-gated route)
+  - log: 2026-06-19 noted
+
+### Tests
+
+- [x] **Backend: prefs store** - `tests/test_user_display_preferences.py` (read-missing, roundtrip, partial merge, non-dict/oversize reject, rename, delete, corrupt-blob tolerance) - 10 cases, green
+  - log: 2026-06-19 added
+- [ ] **Functional: display-options flow** - a Playwright test opens the Display Options accordion, flips a CPU mode, and asserts it persists across a reload; `@pytest.mark.acc_crit("display-options::...")`
+  - log: 2026-06-19 `tests/functional/test_display_options.py` added; runs live on rebuild
+
+## API
+
+- `GET /hub/api/users/{name}/display-preferences` (self-or-admin) -> `{prefs: {...}}` (opaque client-owned JSON; `{}` when unset)
+- `PUT /hub/api/users/{name}/display-preferences` body `{prefs: {...}}` (self-or-admin) -> merges the keys, returns `{prefs: merged}`; 400 on a non-object or an over-8KB payload
+
 ## resource bars (limits + tooltips)
 
 The CPU/Memory/GPU progress bars on the "Server Status" panel (the server card's right half), the Servers table, and the Home "Host Status" widget (renamed from "Total resources usage"; the server card's status+controls half is titled "Server Control"). Each bar must read 0-100% against the right reference (a quota-limited user's bar measures against THEIR ceiling, not the host) and every bar must carry a hover tooltip with the precise breakdown. Backend `docker_utils.get_container_stats`; frontend `liveSource` (`getServerHero`/`getServers`/`getTotalResources`) + `components/meters.tsx` (`ResourceBars`).
