@@ -31,13 +31,13 @@ _manager = None
 def get_manager(socket_dir=DEFAULT_SOCKET_DIR):
     """Process-singleton Manager. Lazy-init on first call.
 
-    Import is deferred so module import doesn't require stellars_docker_proxy
+    Import is deferred so module import doesn't require duoptimum_docker_proxy
     to be on path (it always is in the production image; in local dev test
     suites for duoptimum_hub_services it doesn't need to be).
     """
     global _manager
     if _manager is None:
-        from stellars_docker_proxy.manager import Manager
+        from duoptimum_docker_proxy.manager import Manager
         _manager = Manager(socket_dir=socket_dir)
     return _manager
 

@@ -8,11 +8,16 @@ host. To exercise auto-detection, run on a GPU host with:
     FUNCTEST_GPU_ENABLED=2 make test-functional
 """
 
+import os
 import re
+from urllib.parse import urlparse
 
 import pytest
 
-HUB_CONTAINER = "stellars-functest-jupyterhub"
+# Derive the hub container name from the same BASE_URL host the rest of the
+# harness uses (compose names it stellars-functest-<service>), so a service
+# rename can't strand a hardcoded name here again.
+HUB_CONTAINER = f"stellars-functest-{urlparse(os.environ.get('BASE_URL', 'http://duoptimumhub:8000/jupyterhub')).hostname or 'duoptimumhub'}"
 
 
 @pytest.mark.gpu

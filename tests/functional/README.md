@@ -11,7 +11,7 @@ deep rebuild, `make test-functional` confirms the platform still works.
 
 GitHub-hosted runners cannot run this DockerSpawner container deployment, so the
 harness is never wired into CI. The fast pytest unit suites
-(`duoptimum-hub-services`, `stellars-docker-proxy`) cover CI; this covers the
+(`duoptimum-hub-services`, `duoptimum-docker-proxy`) cover CI; this covers the
 running system locally.
 
 ## Isolation

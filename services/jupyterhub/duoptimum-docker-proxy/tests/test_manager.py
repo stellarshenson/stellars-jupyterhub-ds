@@ -11,7 +11,7 @@ import stat
 
 import pytest
 
-from stellars_docker_proxy.manager import Manager
+from duoptimum_docker_proxy.manager import Manager
 
 
 @pytest.fixture

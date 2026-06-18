@@ -34,18 +34,18 @@ RUN uv venv /build-venv
 ENV VIRTUAL_ENV=/build-venv
 ENV PATH="/build-venv/bin:$PATH"
 
-# ---- platform wheels (duoptimum_hub_services + stellars-docker-proxy) -------
+# ---- platform wheels (duoptimum_hub_services + duoptimum-docker-proxy) -------
 # Build and test duoptimum_hub_services; its tests gate the image build.
 COPY services/jupyterhub/duoptimum-hub-services /src/duoptimum-hub-services
 RUN uv pip install pip build && python -m build /src/duoptimum-hub-services --outdir /dist
 RUN uv pip install /dist/duoptimum_hub_services-*.whl pytest && pytest /src/duoptimum-hub-services/tests/ -v
 
-# Build and test stellars-docker-proxy (per-user ownership-filtering Docker socket
+# Build and test duoptimum-docker-proxy (per-user ownership-filtering Docker socket
 # proxy for limited-docker groups). Its tests gate the image build too.
-COPY services/jupyterhub/stellars-docker-proxy /src/stellars-docker-proxy
-RUN python -m build /src/stellars-docker-proxy --outdir /dist
-RUN uv pip install /dist/stellars_docker_proxy-*.whl pytest pytest-asyncio \
-    && pytest /src/stellars-docker-proxy/tests/ -v
+COPY services/jupyterhub/duoptimum-docker-proxy /src/duoptimum-docker-proxy
+RUN python -m build /src/duoptimum-docker-proxy --outdir /dist
+RUN uv pip install /dist/duoptimum_docker_proxy-*.whl pytest pytest-asyncio \
+    && pytest /src/duoptimum-docker-proxy/tests/ -v
 
 # ---- SPA bundle ------------------------------------------------------------
 # Build the Duoptimum Hub SPA (React/vite); hashed assets + manifest land in
@@ -166,13 +166,13 @@ RUN <<-EOF
 EOF
 
 
-## install duoptimum_hub_services + stellars-docker-proxy + duoptimum-hub-web packages (carry all pip dependencies)
+## install duoptimum_hub_services + duoptimum-docker-proxy + duoptimum-hub-web packages (carry all pip dependencies)
 COPY --from=builder /dist/*.whl /tmp/
 RUN <<-EOF
     echo "installing platform packages"
     pip install -U --no-cache-dir \
 	/tmp/duoptimum_hub_services-*.whl \
-	/tmp/stellars_docker_proxy-*.whl \
+	/tmp/duoptimum_docker_proxy-*.whl \
 	/tmp/duoptimum_hub_web-*.whl \
     && rm -f /tmp/*.whl
 EOF

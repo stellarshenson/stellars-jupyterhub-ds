@@ -14,14 +14,14 @@ import tempfile
 from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
-from stellars_docker_proxy.config import (
+from duoptimum_docker_proxy.config import (
     BYTES_PER_GB,
     MANAGED_LABEL,
     NANO_PER_CORE,
     OWNER_LABEL,
 )
-from stellars_docker_proxy.filters import COMPOSE_PROJECT_LABEL
-from stellars_docker_proxy.server import create_app
+from duoptimum_docker_proxy.filters import COMPOSE_PROJECT_LABEL
+from duoptimum_docker_proxy.server import create_app
 
 
 class MockDaemon:
@@ -69,7 +69,7 @@ class MockDaemon:
 
 @contextlib.asynccontextmanager
 async def running_proxy(owner="alice", **cfg_kwargs):
-    from stellars_docker_proxy.config import ProxyConfig
+    from duoptimum_docker_proxy.config import ProxyConfig
 
     daemon = MockDaemon()
     await daemon.start()

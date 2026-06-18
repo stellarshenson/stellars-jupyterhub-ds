@@ -1,7 +1,7 @@
 """Unit tests for quota accounting helpers."""
 
-from stellars_docker_proxy import quota as Q
-from stellars_docker_proxy.config import BYTES_PER_GB, OWNER_LABEL
+from duoptimum_docker_proxy import quota as Q
+from duoptimum_docker_proxy.config import BYTES_PER_GB, OWNER_LABEL
 
 
 def test_list_count():

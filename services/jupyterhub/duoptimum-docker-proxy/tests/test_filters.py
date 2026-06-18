@@ -2,8 +2,8 @@
 
 import json
 
-from stellars_docker_proxy import filters as F
-from stellars_docker_proxy.config import (
+from duoptimum_docker_proxy import filters as F
+from duoptimum_docker_proxy.config import (
     BYTES_PER_GB,
     MANAGED_LABEL,
     NANO_PER_CORE,
