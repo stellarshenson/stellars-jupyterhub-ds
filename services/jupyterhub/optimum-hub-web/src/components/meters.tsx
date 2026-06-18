@@ -227,25 +227,33 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
   // out. The instant it falls to the standard baseline it rescales to base and
   // reads full again (against the standard baseline, not the extended one).
   const ceilingMin = timeLeftMin + maxAddHours * 60
-  const pct =
-    timeLeftMin > baseMin && ceilingMin > 0
-      ? Math.round((timeLeftMin / ceilingMin) * 100)
+  // two-phase scale: below base, against base (fresh ~100%, drains); banked above
+  // base, against the extension ceiling (so banked time visibly drains). The
+  // ceiling is invariant across an extend (timeLeft+maxAdd*60 = base+max_extension),
+  // so this same function gives the correct optimistic target for the extend boost.
+  const pctFor = (min: number) =>
+    min > baseMin && ceilingMin > 0
+      ? Math.round((min / ceilingMin) * 100)
       : baseMin
-        ? Math.min(100, Math.round((timeLeftMin / baseMin) * 100))
+        ? Math.min(100, Math.round((min / baseMin) * 100))
         : 0
+  const pct = pctFor(timeLeftMin)
   const warn = THRESHOLDS.timeLeftWarnMin
   const color = timeLeftMin <= warn / 3 ? 'var(--color-danger)' : timeLeftMin <= warn ? 'var(--color-warning)' : 'var(--color-accent)'
   const maxH = Math.max(1, Math.round(maxAddHours))
   const [open, setOpen] = useState(false)
   const [hours, setHours] = useState(maxH)
   const atCeiling = maxAddHours <= 0
-  // Extend animation: on click the bar fills to 100% immediately (slow CSS fill)
-  // while the time text holds its old value. The boost holds - bar pinned full -
-  // until the refetched timeLeftMin actually lands (a changed value), with a
-  // minimum fill window so the growth is always seen and a safety cap so the boost
-  // can never stick if the value never changes. Settling reveals the new time and
-  // lets the bar fall to its true %. displayMin freezes the shown time during fill.
+  // Extend animation: on click the bar animates (slow CSS fill) to the COMPUTED
+  // post-extend target % - boostPct, captured at click from the optimistic
+  // remaining against the invariant ceiling - while the time text holds its old
+  // value. The boost holds until the refetched timeLeftMin actually lands (a
+  // changed value), with a minimum fill window so the growth is always seen and a
+  // safety cap so the boost can never stick. Because the ceiling is invariant the
+  // landed % equals boostPct, so the settle is seamless (no overshoot-to-100%
+  // then snap-back). displayMin freezes the shown time during the fill.
   const [boost, setBoost] = useState(false)
+  const [boostPct, setBoostPct] = useState(0)
   const [displayMin, setDisplayMin] = useState(timeLeftMin)
   const baselineMin = useRef(timeLeftMin) // time-left captured at extend click
   const minFillDone = useRef(false)       // minimum fill window elapsed
@@ -261,19 +269,23 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
       if (minFillDone.current) setBoost(false)
     }
   }, [boost, timeLeftMin])
-  const shownPct = boost ? 100 : pct
+  const shownPct = boost ? boostPct : pct
   const apply = () => {
     setOpen(false)
+    const add = Math.max(1, Math.min(maxH, hours))
+    // optimistic post-extend target: the new remaining clamped to the ceiling,
+    // through the same two-phase formula (never a blanket 100%)
+    setBoostPct(pctFor(Math.min(ceilingMin, timeLeftMin + add * 60)))
     baselineMin.current = timeLeftMin
     minFillDone.current = false
     valueLanded.current = false
     setBoost(true)
-    // keep the bar pinned full for at least one fill duration so the growth is seen
+    // keep the bar at the target for at least one fill duration so the growth is seen
     window.setTimeout(() => { minFillDone.current = true; if (valueLanded.current) setBoost(false) }, ANIMATION.ttlExtendMs)
     // safety: never let the boost hang if the refetch never changes the value
     window.setTimeout(() => setBoost(false), ANIMATION.ttlExtendMs + 6000)
     // optimistic fill; if the extend request rejects, drop the boost immediately
-    Promise.resolve(onExtend?.(Math.max(1, Math.min(maxH, hours)))).catch(() => setBoost(false))
+    Promise.resolve(onExtend?.(add)).catch(() => setBoost(false))
   }
   // slider marks: first hour and the last tick labelled "max" (tops to ceiling)
   const marks: Record<number, ReactNode> = { 1: '1h', [maxH]: 'max' }
