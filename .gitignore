@@ -129,3 +129,7 @@ dmypy.json
 # uv lockfile - the root pyproject.toml is purely a project descriptor (no
 # dependencies, no build-system), so a uv.lock here is never needed
 /uv.lock
+
+# Runtime log artifacts (job output, adversarial-sweep traces); keep the index README
+/logs/*
+!/logs/README.md
