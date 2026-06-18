@@ -18,6 +18,8 @@ Legend: `[x]` implemented, `[ ]` planned (the test/scenario backlog). Each item 
   - log: 2026-06-18 2 passed (`FUNCTEST_AUTH_MODE=signupopen`)
 - [x] **Regime gating** - a conftest collection hook deselects (never skips) tests outside the run's regime, keyed off `FUNCTEST_AUTH_MODE` + GPU presence
   - log: 2026-06-18 signup / env / signupopen / gpu markers
+- [x] **Coverage declaration + report** - every functional test declares the acc-crit it covers via `@pytest.mark.acc_crit("<doc-slug>::<label>", ...)`; a collected test with no declaration aborts the run, and the suite prints a `MET`/`UNMET` coverage report per criterion at conclusion
+  - log: 2026-06-18 implemented (conftest `pytest_collection_modifyitems` enforcement + `pytest_terminal_summary` report; verified by collect-only across all three regimes)
 
 ## Harness infrastructure
 

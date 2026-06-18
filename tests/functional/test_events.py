@@ -3,6 +3,7 @@ action records an event; the Events page shows it; the danger-toned Clear-log
 button (behind a confirm modal) empties the persistent store and the feed.
 """
 
+import pytest
 from playwright.sync_api import expect
 
 
@@ -10,6 +11,12 @@ def _xsrf(s):
     return s.cookies.get("_xsrf")
 
 
+@pytest.mark.acc_crit(
+    "events-log::Functional SPA test",
+    "events-log::Clear button in the Events panel",
+    "events-log::Confirm before clearing",
+    "events-log::Wipes the store",
+)
 def test_events_render_and_clear(admin_portal, base_url, admin_api):
     # Guarantee at least one event exists: creating a group records a 'group' event.
     r = admin_api.post(f"{base_url}/hub/api/admin/groups/create",

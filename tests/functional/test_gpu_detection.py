@@ -16,6 +16,7 @@ HUB_CONTAINER = "stellars-functest-jupyterhub"
 
 
 @pytest.mark.gpu
+@pytest.mark.acc_crit("functional-test-harness::Auto-detect enables on GPU host")
 def test_gpu_autodetection(docker_client):
     logs = docker_client.containers.get(HUB_CONTAINER).logs().decode("utf-8", "replace")
     m = re.search(r"\[GPU debug\] enabled=(\d) detected=(\d).*?gpus=(\[.*?\])", logs, re.S)

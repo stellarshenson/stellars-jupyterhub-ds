@@ -37,6 +37,26 @@ AUTH_MODE = os.environ.get("FUNCTEST_AUTH_MODE", "signup")
 SPA_TIMEOUT = 30000
 
 
+# ── acceptance-criteria coverage declaration + report ────────────────────────────
+#
+# Every functional test MUST declare the acceptance criteria it covers via
+#   @pytest.mark.acc_crit("<doc-slug>::<Criterion label>", ...)
+# where <doc-slug> is the docs/acc-crit-<doc-slug>.md file and the label is the
+# bold criterion label in that doc. A collected test with no acc_crit marker aborts
+# the run (the declaration is mandatory). At session end the suite prints a coverage
+# report grouping each declared criterion as MET (every covering test that ran
+# passed) or UNMET (a covering test failed) - so a run states which criteria it met.
+_ACC_DECL = {}      # nodeid -> [criterion refs]
+_ACC_OUTCOMES = {}  # nodeid -> "passed" | "failed" | "skipped"
+
+
+def _acc_refs(item):
+    refs = []
+    for m in item.iter_markers(name="acc_crit"):
+        refs.extend(m.args)
+    return refs
+
+
 def pytest_collection_modifyitems(config, items):
     """Deselect (not skip) tests that do not apply to this run's regime, so the
     suite never reports noise skips. Each regime runs only the tests it owns plus
@@ -45,16 +65,72 @@ def pytest_collection_modifyitems(config, items):
     gpu_on = os.environ.get("FUNCTEST_GPU_ENABLED", "0") == "2"
     if AUTH_MODE == "env":
         items[:] = [i for i in items if "envauth" in i.keywords]
-        return
-    if AUTH_MODE == "signupopen":
+    elif AUTH_MODE == "signupopen":
         items[:] = [i for i in items if "signupopen" in i.keywords]
+    else:
+        items[:] = [
+            i for i in items
+            if "envauth" not in i.keywords
+            and "signupopen" not in i.keywords
+            and ("gpu" not in i.keywords or gpu_on)
+        ]
+
+    # Mandatory declaration: every collected test must name the acc-crit it covers.
+    missing = [i.nodeid for i in items if not _acc_refs(i)]
+    if missing:
+        raise pytest.UsageError(
+            "functional tests must declare the acceptance criteria they cover via "
+            "@pytest.mark.acc_crit('<doc-slug>::<label>', ...); missing on:\n  "
+            + "\n  ".join(missing))
+    for i in items:
+        _ACC_DECL[i.nodeid] = _acc_refs(i)
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    rep = outcome.get_result()
+    nid = item.nodeid
+    if rep.when == "call":
+        _ACC_OUTCOMES[nid] = rep.outcome
+    elif rep.failed and nid not in _ACC_OUTCOMES:
+        _ACC_OUTCOMES[nid] = "failed"  # setup error -> the test's covered criteria are unmet
+    elif rep.skipped and nid not in _ACC_OUTCOMES:
+        _ACC_OUTCOMES[nid] = "skipped"
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    """Print which acceptance criteria this run met / left unmet, derived from the
+    per-test acc_crit declarations and their outcomes."""
+    crit = {}
+    for nid, refs in _ACC_DECL.items():
+        outcome = _ACC_OUTCOMES.get(nid, "skipped")
+        short = nid.split("::")[-1]
+        for ref in refs:
+            e = crit.setdefault(ref, {"passed": [], "failed": [], "other": []})
+            bucket = "passed" if outcome == "passed" else "failed" if outcome == "failed" else "other"
+            e[bucket].append(short)
+    if not crit:
         return
-    items[:] = [
-        i for i in items
-        if "envauth" not in i.keywords
-        and "signupopen" not in i.keywords
-        and ("gpu" not in i.keywords or gpu_on)
-    ]
+    tr = terminalreporter
+    tr.write_sep("=", "acceptance criteria coverage")
+    met = unmet = other = 0
+    for ref in sorted(crit):
+        e = crit[ref]
+        if e["failed"]:
+            status, tests = "UNMET  ", e["failed"]
+            unmet += 1
+        elif e["passed"]:
+            status, tests = "MET    ", e["passed"]
+            met += 1
+        else:
+            status, tests = "NOT RUN", e["other"]
+            other += 1
+        tr.write_line(f"  [{status}] {ref}  ({', '.join(sorted(set(tests)))})")
+    tail = f"  -> {met} met, {unmet} unmet"
+    if other:
+        tail += f", {other} not run"
+    tr.write_line(tail + f" of {len(crit)} criteria declared this run")
 
 
 @pytest.fixture(scope="session")
