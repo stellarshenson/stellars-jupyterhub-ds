@@ -31,7 +31,7 @@ Top nav, gated by auth and role; mobile collapses to a reduced inline set.
 
 ### Branding system
 
-- **Env vars** - `JUPYTERHUB_LOGO_URI`, `JUPYTERHUB_FAVICON_URI`, `JUPYTERHUB_FAVICON_BUSY_URI`, `JUPYTERHUB_LAB_MAIN_ICON_URI`, `JUPYTERHUB_LAB_SPLASH_ICON_URI`, `JUPYTERHUB_BASE_URL`
+- **Env vars** - `JUPYTERHUB_BRANDING_STAGE`, `JUPYTERHUB_BRANDING_LOGO_URI`, `JUPYTERHUB_BRANDING_FAVICON_URI`, `JUPYTERHUB_BRANDING_FAVICON_BUSY_URI`, `JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI`, `JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI`, `JUPYTERHUB_BASE_URL`
 - **Resolution** - startup branding setup processes each URI: `file://` copied into the static dir, `http(s)://` passed through, empty falls back to stock JupyterHub assets
 - **Lab icons** - main/splash icon URIs passed into spawner env (`JUPYTERLAB_LAB_MAIN_ICON_URI`, `JUPYTERLAB_LAB_SPLASH_ICON_URI`) for the lab to consume
 - **Favicon CHP proxy** - when favicon URI set, hub registers per-user CHP routes so lab sessions also serve the custom favicon; registered at startup for surviving servers and in `pre_spawn_hook` for new spawns; busy-state favicon proxied separately when `FAVICON_BUSY_URI` set

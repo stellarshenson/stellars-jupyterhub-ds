@@ -185,11 +185,12 @@ JUPYTERHUB_GPUINFO_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_IMAG
 JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")                                          # admin username (auto-authorized on first signup)
 
 # Branding URIs - file:// copies to static dir, http(s):// passed to templates, empty = stock assets
-JUPYTERHUB_LOGO_URI = os.environ.get("JUPYTERHUB_LOGO_URI", "")                                # hub logo (login page, nav bar)
-JUPYTERHUB_FAVICON_URI = os.environ.get("JUPYTERHUB_FAVICON_URI", "")                          # browser tab icon (hub + JupyterLab via CHP route)
-JUPYTERHUB_FAVICON_BUSY_URI = os.environ.get("JUPYTERHUB_FAVICON_BUSY_URI", "")                # kernel-busy tab icon for JupyterLab; empty = JupyterLab default busy frames
-JUPYTERHUB_LAB_MAIN_ICON_URI = os.environ.get("JUPYTERHUB_LAB_MAIN_ICON_URI", "")             # JupyterLab main area icon
-JUPYTERHUB_LAB_SPLASH_ICON_URI = os.environ.get("JUPYTERHUB_LAB_SPLASH_ICON_URI", "")         # JupyterLab splash screen icon
+JUPYTERHUB_BRANDING_LOGO_URI = os.environ.get("JUPYTERHUB_BRANDING_LOGO_URI", "")                          # hub logo (login page, nav bar)
+JUPYTERHUB_BRANDING_FAVICON_URI = os.environ.get("JUPYTERHUB_BRANDING_FAVICON_URI", "")                    # browser tab icon (hub + JupyterLab via CHP route)
+JUPYTERHUB_BRANDING_FAVICON_BUSY_URI = os.environ.get("JUPYTERHUB_BRANDING_FAVICON_BUSY_URI", "")          # kernel-busy tab icon for JupyterLab; empty = JupyterLab default busy frames
+JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI = os.environ.get("JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI", "")        # JupyterLab main area icon
+JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI = os.environ.get("JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI", "")    # JupyterLab splash screen icon
+JUPYTERHUB_BRANDING_STAGE = os.environ.get("JUPYTERHUB_BRANDING_STAGE", "")                                # environment-stage header badge (DEV/STG/TST/PRD or custom); empty = no badge
 
 # User environment customization - paths passed through to spawned containers
 JUPYTERLAB_AUX_SCRIPTS_PATH = os.environ.get("JUPYTERLAB_AUX_SCRIPTS_PATH", "")             # admin startup scripts executed on container launch
@@ -549,11 +550,12 @@ if _gpuinfo_sidecar_up:
 # Process branding URIs: file:// copies to JupyterHub static dir, URLs pass through
 # Returns dict with resolved paths/URLs for logo_file, favicon_uri, lab icons
 branding = setup_branding(
-    logo_uri=JUPYTERHUB_LOGO_URI,
-    favicon_uri=JUPYTERHUB_FAVICON_URI,
-    favicon_busy_uri=JUPYTERHUB_FAVICON_BUSY_URI,
-    lab_main_icon_uri=JUPYTERHUB_LAB_MAIN_ICON_URI,
-    lab_splash_icon_uri=JUPYTERHUB_LAB_SPLASH_ICON_URI,
+    logo_uri=JUPYTERHUB_BRANDING_LOGO_URI,
+    favicon_uri=JUPYTERHUB_BRANDING_FAVICON_URI,
+    favicon_busy_uri=JUPYTERHUB_BRANDING_FAVICON_BUSY_URI,
+    lab_main_icon_uri=JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI,
+    lab_splash_icon_uri=JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI,
+    stage=JUPYTERHUB_BRANDING_STAGE,
 )
 
 
@@ -639,6 +641,7 @@ c.JupyterHub.template_vars = {
     'volume_max_total_size_mb': JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB * 1024,        # threshold in MB for volume size warning
     'memory_max_usage_mb': JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning (0 GB -> 30% of host RAM)
     'favicon_uri': branding['favicon_uri'],                  # external favicon URL (empty = static_url default)
+    'branding_stage': branding['stage'],                     # environment-stage badge text for the portal header (window.jhdata.stage); empty = no badge
     # Optimum Hub SPA entry chunk (hashed) so the overridden login/signup
     # templates can load the same bundle as the portal shell; resolved from the
     # vite manifest in the installed wheel ('' if unreadable -> stock-ish fallback).
@@ -709,7 +712,7 @@ JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE = os.environ.get(
 
 c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     branding,                                                # icon static names and URLs from setup_branding()
-    favicon_uri=JUPYTERHUB_FAVICON_URI,                      # non-empty activates the favicon.ico CHP route
+    favicon_uri=JUPYTERHUB_BRANDING_FAVICON_URI,             # non-empty activates the favicon.ico CHP route
     favicon_busy_target=branding['favicon_busy_target'],    # non-empty activates the favicon-busy CHP route; empty = JupyterLab default busy frames
     gpu_available=bool(gpu_enabled),                         # hardware present - required for per-group GPU grant
     gpu_uuid_by_index=GPU_UUID_BY_INDEX,                     # index->UUID for CUDA_VISIBLE_DEVICES
@@ -763,10 +766,10 @@ c.DockerSpawner.args = [
 ]
 
 # ── Networking ──
-c.JupyterHub.hub_connect_url = 'http://jupyterhub:8080' + JUPYTERHUB_BASE_URL_PREFIX + '/hub'  # URL spawned containers use to reach hub
+c.JupyterHub.hub_connect_url = 'http://optimumhub:8080' + JUPYTERHUB_BASE_URL_PREFIX + '/hub'  # URL spawned containers use to reach hub (compose service name)
 c.DockerSpawner.remove = True                                # auto-remove containers after stop (volumes persist)
 c.DockerSpawner.debug = False                                # DockerSpawner debug logging
-c.JupyterHub.hub_ip = "jupyterhub"                           # bind hub to container hostname
+c.JupyterHub.hub_ip = "optimumhub"                           # bind hub to container hostname (compose service name)
 c.JupyterHub.hub_port = 8080                                 # internal hub port (not exposed externally)
 c.JupyterHub.base_url = JUPYTERHUB_BASE_URL_PREFIX + '/' if JUPYTERHUB_BASE_URL_PREFIX else '/'  # URL prefix for all hub routes
 
@@ -881,7 +884,7 @@ if JUPYTERHUB_IDLE_CULLER_ENABLED == 1:
 print(f"[Config] File-download policy: {'BLOCK (per-group downloads_active grants)' if JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS else 'ALLOW (dormant)'}")
 schedule_startup_hydration(
     stellars_config=c.JupyterHub.tornado_settings['stellars_config'],
-    favicon_uri=JUPYTERHUB_FAVICON_URI,
+    favicon_uri=JUPYTERHUB_BRANDING_FAVICON_URI,
     favicon_busy_target=branding['favicon_busy_target'],
     policy_actx=c.DockerSpawner.pre_spawn_hook._stellars_apply_context,
 )

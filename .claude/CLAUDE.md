@@ -95,10 +95,11 @@ This Python configuration file controls all JupyterHub behavior:
 - `JUPYTERHUB_GPUINFO_NVIDIA_IMAGE`: GPU-info sidecar image - detection, utilisation and per-GPU processes (default: `stellars/stellars-gpuinfo-nvidia:latest`; CUDA base pinned in its Dockerfile)
 - `JUPYTERHUB_GPUINFO_URL`: GPU-info sidecar base URL (default: `http://gpuinfo-nvidia:8000`)
 - `JUPYTERHUB_GPUINFO_NETWORK_NAME`: dedicated hub-to-sidecar network (default: `jupyterhub-gpuinfo-network`)
-- `JUPYTERHUB_LOGO_URI`: Custom logo - `file://` for local files, URL for external (default: empty)
-- `JUPYTERHUB_FAVICON_URI`: Custom favicon - `file://` copies to static dir and enables CHP proxy routes for JupyterLab sessions (default: empty)
-- `JUPYTERHUB_LAB_MAIN_ICON_URI`: JupyterLab main icon - `file://` copies to static dir as `lab-main-icon{ext}`, URL passed to template (default: empty)
-- `JUPYTERHUB_LAB_SPLASH_ICON_URI`: JupyterLab splash icon - `file://` copies to static dir as `lab-splash-icon{ext}`, URL passed to template (default: empty)
+- `JUPYTERHUB_BRANDING_STAGE`: Environment-stage header badge - DEV/STG/TST/PRD or custom text; empty = no badge (default: empty)
+- `JUPYTERHUB_BRANDING_LOGO_URI`: Custom logo - `file://` for local files, URL for external (default: empty)
+- `JUPYTERHUB_BRANDING_FAVICON_URI`: Custom favicon - `file://` copies to static dir and enables CHP proxy routes for JupyterLab sessions (default: empty)
+- `JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI`: JupyterLab main icon - `file://` copies to static dir as `lab-main-icon{ext}`, URL passed to template (default: empty)
+- `JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI`: JupyterLab splash icon - `file://` copies to static dir as `lab-splash-icon{ext}`, URL passed to template (default: empty)
 - `JUPYTERLAB_AUX_SCRIPTS_PATH`: Admin-managed startup scripts executed in user containers on launch, typically pointing to shared volume (default: empty)
 - `JUPYTERLAB_AUX_MENU_PATH`: Admin-managed custom menu definitions for JupyterLab UI, typically pointing to shared volume (default: empty)
 - `JUPYTERHUB_TIMEZONE`: IANA timezone (e.g. `Europe/Warsaw`), empty = UTC. Hub TZ set via `02_set_timezone.sh` startup script, spawned containers receive `JUPYTERLAB_TIMEZONE`
@@ -334,13 +335,13 @@ User renames via JupyterHub admin panel automatically sync to NativeAuthenticato
 
 ## Custom Branding
 
-Custom logo and favicon via `JUPYTERHUB_LOGO_URI` and `JUPYTERHUB_FAVICON_URI` environment variables. Both support `file://` (local path) and `http(s)://` (external URL). Empty value = stock JupyterHub assets.
+Custom logo and favicon via `JUPYTERHUB_BRANDING_LOGO_URI` and `JUPYTERHUB_BRANDING_FAVICON_URI` environment variables. Both support `file://` (local path) and `http(s)://` (external URL). Empty value = stock JupyterHub assets.
 
 **Favicon CHP Proxy Route**: Hub pages serve the custom favicon directly, but JupyterLab sessions request favicons from `/user/{username}/static/favicons/favicon.ico` which Configurable HTTP Proxy (CHP) routes to the user container, bypassing the hub entirely. To override this, `pre_spawn_hook` registers a per-user CHP route (`/user/{username}/static/favicons/`) pointing back to the hub. CHP's longest-prefix-match selects this over the generic `/user/{username}/` route. A Tornado `FaviconRedirectHandler` (injected directly into the app, not via `extra_handlers` which auto-prefixes `/hub/`) then 302-redirects to the hub's static favicon.
 
 **Implementation**:
 - Handler: `services/jupyterhub/conf/bin/custom_handlers.py::FaviconRedirectHandler` (extends `tornado.web.RequestHandler`)
-- Route injection: `config/jupyterhub_config.py::pre_spawn_hook` (conditional on `JUPYTERHUB_FAVICON_URI`)
+- Route injection: `config/jupyterhub_config.py::pre_spawn_hook` (conditional on `JUPYTERHUB_BRANDING_FAVICON_URI`)
 - CHP route added per-user before each spawn and registered in `app.proxy.extra_routes` to survive `check_routes()` periodic cleanup
 - Tornado handler injected once into `app.tornado_application` (outside `/hub/` prefix)
 

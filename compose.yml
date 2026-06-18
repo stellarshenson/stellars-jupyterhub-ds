@@ -34,7 +34,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro # docker socket to use services labels
       - jupyterhub_certs:/certs # certificates (generated in jupyterhub image)
     depends_on:
-      jupyterhub:
+      optimumhub:
         condition: service_healthy
     networks:
       - jupyterhub_network
@@ -43,15 +43,15 @@ services:
   # service for management of a series of users and their jupyterlab
   # environments. it is internally managed via a proxy that redirects 
   # users to their dedicated environments
-  jupyterhub:
+  optimumhub:
     build:
       context: .
       dockerfile: services/jupyterhub/Dockerfile.jupyterhub
       args:
         - VERSION=${VERSION:-dev}
-    image: stellars/stellars-jupyterhub-ds:latest
+    image: stellars/optimumhub:latest
     pull_policy: build
-    container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-jupyterhub
+    container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-optimumhub
     volumes:
       - jupyterhub_certs:/certs # runtime cert dir Traefik watches
       - ./certs:/user-certs:ro # operator cert overlay (host folder; missing/empty -> auto-generate; populate ./certs to override)
@@ -75,9 +75,10 @@ services:
       - JUPYTERHUB_TIMEZONE= # IANA timezone (e.g. Europe/Warsaw), empty = UTC
       - JUPYTERHUB_USER_CONFIG_FILE=jupyterhub_config.py # name of the root config file under /mnt/user_config (default jupyterhub_config.py); siblings copied alongside as importable helpers
       - JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE= # optional path inside the container to an operator user-volume descriptions overlay YAML; merges with /srv/jupyterhub/volumes_dictionary.yml (operator wins per-field). Mount the overlay via compose_override.yml volumes:
-      # Hub branding (hub login/home pages)
-      - JUPYTERHUB_LOGO_URI= # custom logo URI (file:// or http(s)://)
-      - JUPYTERHUB_FAVICON_URI= # custom favicon URI (file:// or http(s)://)
+      # Hub branding (hub login/home pages + portal)
+      - JUPYTERHUB_BRANDING_STAGE= # environment-stage header badge: DEV/STG/TST/PRD or custom text; empty = no badge
+      - JUPYTERHUB_BRANDING_LOGO_URI= # custom logo URI (file:// or http(s)://)
+      - JUPYTERHUB_BRANDING_FAVICON_URI= # custom favicon URI (file:// or http(s)://)
       # Idle culler (disabled by default)
       - JUPYTERHUB_IDLE_CULLER_ENABLED=0 # 0=disabled, 1=enabled
       - JUPYTERHUB_IDLE_CULLER_TIMEOUT_MINUTES=1440 # minutes of inactivity before culling (default 24h)
@@ -114,9 +115,9 @@ services:
       - JUPYTERHUB_LAB_SUDO_ENABLE=1 # default only - member sudo (0/1); injected as JUPYTERLAB_SUDO_ENABLE
       - JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS=0 # default only - member file-download policy (0=allow, 1=block)
       # Lab branding / icons
-      - JUPYTERHUB_FAVICON_BUSY_URI= # custom kernel-busy favicon for JupyterLab (file:// or URL); empty = JupyterLab default busy frames
-      - JUPYTERHUB_LAB_MAIN_ICON_URI= # JupyterLab main icon (file:// or URL)
-      - JUPYTERHUB_LAB_SPLASH_ICON_URI= # JupyterLab splash icon (file:// or URL)
+      - JUPYTERHUB_BRANDING_FAVICON_BUSY_URI= # custom kernel-busy favicon for JupyterLab (file:// or URL); empty = JupyterLab default busy frames
+      - JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI= # JupyterLab main icon (file:// or URL)
+      - JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI= # JupyterLab splash icon (file:// or URL)
       # Admin-managed lab startup / menu (shared volume)
       - JUPYTERLAB_AUX_SCRIPTS_PATH=/mnt/shared/start-platform.d # admin-managed startup scripts for user environments
       - JUPYTERLAB_AUX_MENU_PATH=/mnt/shared/lab-utils.d # admin-managed custom menu definitions for JupyterLab
@@ -139,21 +140,21 @@ services:
       - "traefik.enable=true"
 
       # ⚙  Jupyterhub Service (8000)
-      - "traefik.http.routers.jupyterhub-rtr.rule=Path(`/jupyterhub`) || PathPrefix(`/jupyterhub/`)"
-      - "traefik.http.routers.jupyterhub-rtr.entrypoints=websecure"
-      - "traefik.http.routers.jupyterhub-rtr.service=jupyterhub-svc"
-      - "traefik.http.routers.jupyterhub-rtr.tls=true"
-      - "traefik.http.services.jupyterhub-svc.loadbalancer.server.scheme=http"
-      - "traefik.http.services.jupyterhub-svc.loadbalancer.server.port=8000"
+      - "traefik.http.routers.optimumhub-rtr.rule=Path(`/jupyterhub`) || PathPrefix(`/jupyterhub/`)"
+      - "traefik.http.routers.optimumhub-rtr.entrypoints=websecure"
+      - "traefik.http.routers.optimumhub-rtr.service=optimumhub-svc"
+      - "traefik.http.routers.optimumhub-rtr.tls=true"
+      - "traefik.http.services.optimumhub-svc.loadbalancer.server.scheme=http"
+      - "traefik.http.services.optimumhub-svc.loadbalancer.server.port=8000"
 
       # 🛡 Abuse protection - per-IP request rate limiting for hub AND all labs
       # (everything ingresses through CHP on :8000 behind this router). WebSocket-safe:
       # a kernel/terminal upgrade counts once at open; held connections are not re-counted.
-      - "traefik.http.middlewares.jupyterhub-ratelimit.ratelimit.average=${JUPYTERHUB_RATELIMIT_AVERAGE:-100}"
-      - "traefik.http.middlewares.jupyterhub-ratelimit.ratelimit.burst=${JUPYTERHUB_RATELIMIT_BURST:-200}"
-      - "traefik.http.middlewares.jupyterhub-ratelimit.ratelimit.period=${JUPYTERHUB_RATELIMIT_PERIOD:-1s}"
-      - "traefik.http.middlewares.jupyterhub-ratelimit.ratelimit.sourcecriterion.ipstrategy.depth=${JUPYTERHUB_RATELIMIT_XFF_DEPTH:-1}"
-      - "traefik.http.routers.jupyterhub-rtr.middlewares=jupyterhub-ratelimit"
+      - "traefik.http.middlewares.optimumhub-ratelimit.ratelimit.average=${JUPYTERHUB_RATELIMIT_AVERAGE:-100}"
+      - "traefik.http.middlewares.optimumhub-ratelimit.ratelimit.burst=${JUPYTERHUB_RATELIMIT_BURST:-200}"
+      - "traefik.http.middlewares.optimumhub-ratelimit.ratelimit.period=${JUPYTERHUB_RATELIMIT_PERIOD:-1s}"
+      - "traefik.http.middlewares.optimumhub-ratelimit.ratelimit.sourcecriterion.ipstrategy.depth=${JUPYTERHUB_RATELIMIT_XFF_DEPTH:-1}"
+      - "traefik.http.routers.optimumhub-rtr.middlewares=optimumhub-ratelimit"
     networks:
       - jupyterhub_network
       # jupyterhub_gpuinfo is NOT joined here: ensure_gpuinfo_sidecar creates that
@@ -189,8 +190,8 @@ services:
     security_opt:
       - seccomp:unconfined #optional
     depends_on:
-      jupyterhub:
-        condition: service_healthy 
+      optimumhub:
+        condition: service_healthy
       traefik:
         condition: service_started
     ports:

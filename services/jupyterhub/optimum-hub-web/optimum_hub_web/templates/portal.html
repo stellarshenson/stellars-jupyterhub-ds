@@ -30,6 +30,7 @@
         admin_access: {% if admin_access %}true{% else %}false{% endif %},
         gpu_enabled: {% if gpu_enabled %}true{% else %}false{% endif %},
         admin_user: "{{ admin_user }}",
+        stage: "{{ branding_stage }}",
         xsrf_token: "{{ xsrf_token }}"
       };
     </script>

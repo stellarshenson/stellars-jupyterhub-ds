@@ -4,7 +4,7 @@ A local-only regression harness that boots the built hub image in a throwaway, f
 
 ## Construction
 
-- **Two services** in `tests/functional/compose.functional.yml` - the real `stellars/stellars-jupyterhub-ds:latest` hub and a Playwright runner (`mcr.microsoft.com/playwright/python`), both on a test-only network
+- **Two services** in `tests/functional/compose.functional.yml` - the real `stellars/optimumhub:latest` hub and a Playwright runner (`mcr.microsoft.com/playwright/python`), both on a test-only network
 - **Isolated** - own compose project `stellars-functest`, own network `stellars-functest_network`, project-namespaced volumes, dedicated admin `functestadmin`, no published host port
 - **Runner reaches the hub by service name** (`http://jupyterhub:8000/jupyterhub`) and holds the docker socket, so it can `inspect`/`exec` spawned labs
 - **No host deps** - browser, deps and the whole flow run in containers

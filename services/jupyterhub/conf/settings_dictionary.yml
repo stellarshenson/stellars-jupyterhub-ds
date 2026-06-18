@@ -234,23 +234,27 @@ Branding:
     description: CSS color for the toolbar header badge text; empty = --jp-ui-font-color2
     default: ""
 
-  - name: JUPYTERHUB_LOGO_URI
+  - name: JUPYTERHUB_BRANDING_STAGE
+    description: Environment-stage header badge (DEV/STG/TST/PRD or custom text); empty = no badge
+    default: ""
+
+  - name: JUPYTERHUB_BRANDING_LOGO_URI
     description: Custom logo URI (file:// or URL)
     default: ""
 
-  - name: JUPYTERHUB_FAVICON_URI
+  - name: JUPYTERHUB_BRANDING_FAVICON_URI
     description: Custom favicon URI (file:// or URL)
     default: ""
 
-  - name: JUPYTERHUB_FAVICON_BUSY_URI
+  - name: JUPYTERHUB_BRANDING_FAVICON_BUSY_URI
     description: Custom kernel-busy favicon for JupyterLab (file:// or URL); empty = JupyterLab default busy frames
     default: ""
 
-  - name: JUPYTERHUB_LAB_MAIN_ICON_URI
+  - name: JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI
     description: JupyterLab main icon (file:// or URL)
     default: ""
 
-  - name: JUPYTERHUB_LAB_SPLASH_ICON_URI
+  - name: JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI
     description: JupyterLab splash icon (file:// or URL)
     default: ""
 

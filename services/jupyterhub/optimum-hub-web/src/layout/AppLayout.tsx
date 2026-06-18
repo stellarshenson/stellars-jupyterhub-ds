@@ -25,6 +25,7 @@ import { MockSwitch } from './MockSwitch'
 import { CommandPalette } from './CommandPalette'
 import { MessageBinder } from './MessageBinder'
 import { ReadonlyBanner } from './ReadonlyBanner'
+import { StageBadge } from '../components/StageBadge'
 
 const THEME_MODES: Array<{ mode: ThemeMode; icon: IconKey; label: string }> = [
   { mode: 'light', icon: 'sun', label: 'Light' },
@@ -190,7 +191,7 @@ export function AppLayout() {
         </Link>
       )}
       menuFooterRender={(props) => (props?.collapsed ? null : <SiderFoot />)}
-      actionsRender={() => [<LanguageControl key="lang" />, <ThemeControl key="theme" />]}
+      actionsRender={() => [<StageBadge key="stage" />, <LanguageControl key="lang" />, <ThemeControl key="theme" />]}
       collapsedButtonRender={false}
       footerRender={() => <VersionFooter />}
       token={{

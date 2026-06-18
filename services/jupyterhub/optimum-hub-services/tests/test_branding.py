@@ -12,7 +12,7 @@ class TestDefaults:
         assert isinstance(result, dict)
         expected_keys = {'logo_file', 'favicon_uri', 'favicon_busy_target',
                          'lab_main_icon_static', 'lab_main_icon_url',
-                         'lab_splash_icon_static', 'lab_splash_icon_url'}
+                         'lab_splash_icon_static', 'lab_splash_icon_url', 'stage'}
         assert set(result.keys()) == expected_keys
         assert result['logo_file'] is None
         assert result['favicon_uri'] == ''
@@ -21,6 +21,7 @@ class TestDefaults:
         assert result['lab_main_icon_url'] == ''
         assert result['lab_splash_icon_static'] == ''
         assert result['lab_splash_icon_url'] == ''
+        assert result['stage'] == ''
 
 
 class TestLogo:
@@ -129,3 +130,26 @@ class TestLabIcons:
         assert result['lab_main_icon_static'] == ''
         assert result['lab_splash_icon_url'] == "https://example.com/splash.svg"
         assert result['lab_splash_icon_static'] == ''
+
+
+class TestStage:
+    def test_default_empty(self):
+        """No stage -> empty string (no badge)."""
+        from optimum_hub_services.branding import setup_branding
+        assert setup_branding()['stage'] == ''
+
+    def test_value_passthrough(self):
+        """A stage value is returned as-is."""
+        from optimum_hub_services.branding import setup_branding
+        assert setup_branding(stage='PRD')['stage'] == 'PRD'
+
+    def test_whitespace_stripped(self):
+        """Leading/trailing whitespace trimmed; whitespace-only -> empty."""
+        from optimum_hub_services.branding import setup_branding
+        assert setup_branding(stage='  DEV  ')['stage'] == 'DEV'
+        assert setup_branding(stage='   ')['stage'] == ''
+
+    def test_custom_text_passthrough(self):
+        """Unrecognised text is preserved (the frontend greys it)."""
+        from optimum_hub_services.branding import setup_branding
+        assert setup_branding(stage='STAGING')['stage'] == 'STAGING'
