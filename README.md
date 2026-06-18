@@ -346,6 +346,32 @@ This project spawns user environments using docker image: [stellars/stellars-jup
 
 Visit the project page for stellars-jupyterlab-ds: https://github.com/stellarshenson/stellars-jupyterlab-ds
 
+## Documentation
+
+Operator and developer guides under `docs/` - each covers one area.
+
+| Document | What it explains |
+|----------|------------------|
+| [Configuration](docs/configuration.md) | Overriding the built-in `jupyterhub_config.py` and env settings |
+| [TLS certificates](docs/certificates.md) | Certificate provisioning - operator-supplied, persisted, or auto self-signed |
+| [Custom branding](docs/custom-branding.md) | Logo, favicon and stage-badge branding via env |
+| [Per-user volumes](docs/user-volumes.md) | Home/workspace/cache volumes and self-service reset |
+| [Notification broadcast](docs/notifications.md) | Admin broadcast of notifications to active labs |
+| [Limited Docker access](docs/limited-docker-access.md) | The per-user filtered Docker-socket proxy and its quotas |
+| [Docker access control](docs/docker-socket-permissions.md) | Docker socket access requirements and the access modes |
+| [JupyterHub with Docker](docs/jupyterhub-working-with-docker.md) | How the hub spawns and manages user containers |
+| [GPU detection](docs/gpu-detection-and-configuration.md) | GPU auto-detection and enabling GPU for labs |
+| [GPU selection](docs/gpu-selection-jupyterlab-containers.md) | Pinning specific GPUs to user containers |
+| [GPU-info sidecar API](docs/gpuinfo-api.md) | The gpuinfo-nvidia sidecar endpoints (utilisation, temp, power) |
+| [Activity monitoring](docs/activity-tracking-methodology.md) | The activity-scoring and decay methodology |
+| [Container runtime size](docs/container-runtime-size.md) | Writable-layer and volume size monitoring |
+| [Hub services package](docs/duoptimum-hub-package.md) | The `duoptimum-hub-services` backend package |
+| [Portal UI catalogue](docs/portal-ui-catalogue.md) | The portal's pages and UI components |
+| [UI template customization](docs/ui-template-customization.md) | Customising the hub HTML templates |
+| [Functional test system](docs/functional-test-system.md) | The Playwright functional-test harness |
+| [Group policy model (design)](docs/design-group-policy-model.md) | Design of the unified group-policy model |
+| [Frontend mock (design)](docs/design-research-frontend-mock.md) | Frontend research and portal-mock design |
+
 ## Requirements
 
 **Docker Socket Access Required**: This JupyterHub implementation requires read-write access to the Docker socket (`/var/run/docker.sock`) mounted into the JupyterHub container. This is essential for:
@@ -378,7 +404,7 @@ Two tiers: fast Python unit suites that run in CI and gate the image build, and 
 - **Env-password admin mode** - `make test-functional-env` covers the signup-disabled, pre-provisioned-admin regime (restart-to-provision) with one focused test
 - **GPU** - `make test-functional` auto-detects a host GPU and runs the GPU auto-detection test when one is present
 - **Selective / cleanup** - `PYTEST_ARGS="-k ..."` re-runs part of the suite; `make test-functional-clean` force-removes a leftover harness
-- See [docs/functional-test-system.md](docs/functional-test-system.md) for how it works and [docs/acc-crit-functional-test-harness.md](docs/acc-crit-functional-test-harness.md) for the test catalogue
+- See [docs/functional-test-system.md](docs/functional-test-system.md) for how it works
 
 ## Customisation
 
@@ -638,10 +664,10 @@ Each section in the config modal carries an on/off switch in its header and open
   - **Standard Docker Access**: mounts the raw `/var/run/docker.sock`; no quotas, no filtering, full Docker host control
   - **Limited Docker Access**: per-user filtered socket served by an in-process proxy. Sees only the user's own containers / volumes / networks; quota and cap fields (max containers / volumes / networks / storage GB / CPU cores / memory GB) and four toggles (`allow_dangerous_flags`, `user_compose_project_enabled`, `user_compose_project_allow_override`, `hub_network_access`) are surfaced in the same Docker section of the group config modal. Resources stamped with `jupyterhub.docker.proxy.owner=<user>` / `.managed=true` (prefix configurable via `JUPYTERHUB_DOCKER_PROXY_LABEL_PREFIX`). See [docs/limited-docker-access.md](docs/limited-docker-access.md) for proxy internals, bypass semantics, and the full env-var contract
   - **Privileged Docker (root)**: orthogonal to the access mode. Runs the user's own lab with `--privileged` (kernel-root inside the lab). When combined with limited access, it also lets the user spawn `--privileged` sub-containers through the proxy; it does NOT bypass other dangerous-flag checks (host binds, host net/pid, cap-add, device passthrough remain blocked unless `allow_dangerous_flags` is on)
-- **API Keys Pool**: a finite set of API credentials handed out one per running container so no two members share a key. Choose a credential type - **single api key** (one variable name) or **key-id / key-secret pair** (two variable names) - and add any number of credentials. On spawn the platform assigns a free credential and injects it into the configured env vars; when the container stops the credential returns to the pool. Assignment is recorded as a durable Docker label carrying only the slot id, so the in-use set is rebuilt by inspecting running containers - a container stopped while the hub was down or started by a previous hub version self-heals on the next reconcile (startup + periodic). If the pool runs dry the variables are still set but empty and a warning is logged; assignments are logged with last-4 masking only. The groups page is admin-only, so credentials are shown in full there - only the logs obfuscate them. See [docs/acc-crit-api-keys-pool.md](docs/acc-crit-api-keys-pool.md) for the full acceptance criteria
+- **API Keys Pool**: a finite set of API credentials handed out one per running container so no two members share a key. Choose a credential type - **single api key** (one variable name) or **key-id / key-secret pair** (two variable names) - and add any number of credentials. On spawn the platform assigns a free credential and injects it into the configured env vars; when the container stops the credential returns to the pool. Assignment is recorded as a durable Docker label carrying only the slot id, so the in-use set is rebuilt by inspecting running containers - a container stopped while the hub was down or started by a previous hub version self-heals on the next reconcile (startup + periodic). If the pool runs dry the variables are still set but empty and a warning is logged; assignments are logged with last-4 masking only. The groups page is admin-only, so credentials are shown in full there - only the logs obfuscate them
 - **Volume Mounts**: named Docker volumes mounted into member containers at spawn, each as a volume-name / mountpoint row. The shared volume is **no longer mounted into every container** - grant it per group; the modal offers a one-click "Add standard shared volume (`/mnt/shared`)" button when the platform shared volume exists on the host. Any other admin-created volume can be added by name; missing volumes are auto-created by Docker on first spawn. Mounting onto protected system paths (`/`, `/etc`, `/usr`, `/home`, `/opt`, `/var`, ...) is rejected at save time and re-checked at spawn (defense in depth) - mount under `/mnt` or `/data`
-- **File Downloads**: a section that explicitly sets whether members may download files from their lab via the browser. Section off = the group does not configure it; resolution is priority-wins (highest-priority configuring group decides allow/block); when no group configures it the platform default `JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS` (`0`=allow, `1`=block) applies. When blocked, the hub overlays per-user routes onto the lab's download surfaces (`files/?download`, notebook export, the export-markdown and share-files download endpoints), returns a 403, and the user gets a "blocked by policy" notification; inline viewing, the contents API, kernels, and terminals are untouched. **Best-effort browser-download policy with notification and an audit trail, not full data-loss prevention** - the lab has a root shell with internet egress, so a determined user can still copy data out through a terminal or kernel over an encrypted channel. Takes effect on the member's next server start. See [docs/acc-crit-group-file-downloads.md](docs/acc-crit-group-file-downloads.md)
-- **Sudo Access**: a section that explicitly sets whether members get sudo in their lab, injected as `JUPYTERLAB_SUDO_ENABLE=0|1` at spawn (the lab image consumes it). When the section is off the group does not configure sudo. Resolution is priority-wins: if several of a user's groups configure it, the highest-priority group decides; if none do, the platform default `JUPYTERHUB_LAB_SUDO_ENABLE` (compose, default `1`) applies. Takes effect on the member's next server start. See [docs/acc-crit-group-sudo-access.md](docs/acc-crit-group-sudo-access.md)
+- **File Downloads**: a section that explicitly sets whether members may download files from their lab via the browser. Section off = the group does not configure it; resolution is priority-wins (highest-priority configuring group decides allow/block); when no group configures it the platform default `JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS` (`0`=allow, `1`=block) applies. When blocked, the hub overlays per-user routes onto the lab's download surfaces (`files/?download`, notebook export, the export-markdown and share-files download endpoints), returns a 403, and the user gets a "blocked by policy" notification; inline viewing, the contents API, kernels, and terminals are untouched. **Best-effort browser-download policy with notification and an audit trail, not full data-loss prevention** - the lab has a root shell with internet egress, so a determined user can still copy data out through a terminal or kernel over an encrypted channel. Takes effect on the member's next server start
+- **Sudo Access**: a section that explicitly sets whether members get sudo in their lab, injected as `JUPYTERLAB_SUDO_ENABLE=0|1` at spawn (the lab image consumes it). When the section is off the group does not configure sudo. Resolution is priority-wins: if several of a user's groups configure it, the highest-priority group decides; if none do, the platform default `JUPYTERHUB_LAB_SUDO_ENABLE` (compose, default `1`) applies. Takes effect on the member's next server start
 
 **Resolution rules** (when a user belongs to multiple groups):
 

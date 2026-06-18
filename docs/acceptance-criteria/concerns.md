@@ -1,6 +1,6 @@
 # Acceptance Criteria - Consolidation Concerns
 
-Potential cross-document conflicts found while consolidating the individual `acc-crit-*.md` docs into [README.md](README.md). Each line carries the feature/section, the specific criterion, the claim type (implemented-differently / not-relevant / duplicate / contradictory) and the explanation. Review pending - nothing here has been actioned.
+Potential cross-document conflicts found while consolidating the individual `acc-crit-*.md` docs into [acc-crit-duoptimumhub.md](acc-crit-duoptimumhub.md). Each line carries the feature/section, the specific criterion, the claim type (implemented-differently / not-relevant / duplicate / contradictory) and the explanation. Review pending - nothing here has been actioned.
 
 - **Activity scoring** | criterion: "Real uncapped %" (Servers-page tooltip) | claim: contradictory | acc-crit-activity-consistency requires the activity meter shows the 7-day score consistently on every surface; acc-crit-activity-scoring adds an open criterion that the Servers tooltip shows an UNCAPPED % (which may exceed 100), while acc-crit-activity-consistency only checks for presence/value consistency. The two docs do not contradict the data path but the tooltip-value rule diverges: consistency says "identical meter", scoring says tooltip must be uncapped. Neither resolves which wins when the capped score (0-100 fill) and uncapped % differ in the tooltip text.
 
@@ -71,3 +71,67 @@ Potential cross-document conflicts found while consolidating the individual `acc
 - **"Upgrade Available" Pill** | criterion: "Recency check - docker image ls newest local image for the repo vs the running container's image created time" | claim: contradictory | this criterion is in acc-crit-portal-ui-polish.md (marked [x]), not in this doc, but it describes the detection as a "created time" comparison; acc-crit-upgrade-available-pill.md explicitly states "ID comparison, not Created - the running image's Created is NOT read (it is gone from the store after a rebuild+prune)" and documents that the Created-vs-Created approach "could never fire"; the portal-ui-polish criterion is superseded and factually wrong about the algorithm
 
 - **Version Sync Across Subpackages** | criterion: "Image packages only - the three subpackages are exactly the wheels the hub image installs (Dockerfile lines 174-176); 'duoptimum hub', 'jupyter hub services', and 'the other one' = docker-proxy" | claim: not-relevant | the criterion text leaves one package unnamed ("the other one") and uses informal language that would not survive a rename; Dockerfile line numbers are fragile references; the criterion is functionally correct but the informal phrasing weakens it as a verifiable acceptance criterion
+
+## From acc-crit-portal-fixes.md (merged 2026-06-18)
+
+Conflicts found when merging the portal de-mock + fixes punch-list into the master. Most are `duplicate` - the punch-list items were implemented and re-documented in dedicated sections; the `contradictory` / `implemented-differently` / `not-relevant` ones (lifecycle modals especially) are the ones to action.
+
+- **Server lifecycle popups / Start popup** | criterion: "clicking Start server opens a modal with a progress bar" | claim: contradictory | "Server lifecycle UX (inline spinners, no modal, real log)" removed all lifecycle modals - start navigates to the dedicated Start-server page, not a modal
+
+- **Server lifecycle popups / Restart popup** | criterion: "Restart opens an indeterminate 'Restarting container…' popup" | claim: contradictory | "Server lifecycle UX" states "No modal - the restart/stop progress modal is removed; ServerLifecycle is a context provider with no popup UI"; restart uses an inline spinner
+
+- **Server lifecycle popups / Stop popup** | criterion: "Stop opens a 'Stopping server…' popup; while busy, controls are disabled" | claim: implemented-differently | "Server lifecycle UX" uses an inline spinner on the control, not a popup modal; the busy-disabling is retained but the mechanism differs
+
+- **Server lifecycle popups / Mock parity** | criterion: "in mock mode the start popup animates to done so the demo shows the flow" | claim: contradictory | "Dedicated Start-server Page" specifies mock parity as the start PAGE with a canned log sample, not an animating popup modal
+
+- **Server lifecycle popups / Use functional tests** | criterion: "drive these flows with the existing functional harness, extending the specs" | claim: not-relevant | "Functional Test Harness" (log 2026-06-18) replaced the stock-HTML specs wholesale with antd-SPA specs; there are no old specs to extend
+
+- **TTL gadget / Full = blue** | criterion: "at ample time the bar reads 100% in standard blue" | claim: duplicate | "TTL Progress Bar Behaviour Matrix" has [x] Full -> pct 100, blue
+
+- **TTL gadget / Drain + colour** | criterion: "fill shrinks and shifts blue -> orange -> red as it nears the cull" | claim: duplicate | "TTL Progress Bar Behaviour Matrix" has [x] Colour bands (danger <=20 min, warning <=60, accent above) + the two-phase drain rule
+
+- **TTL gadget / Gray remainder** | criterion: "the used-up portion shows as a gray track behind the fill" | claim: duplicate | "TTL Progress Bar Behaviour Matrix" has [x] Gray leftover (standard gray trail)
+
+- **TTL gadget / Extend works** | criterion: "Extend issues the real POST extend-session and the bar/clock refresh" | claim: duplicate | "TTL Progress Bar Behaviour Matrix" has [x] Extend invalidates hero and [x] Runtime: extend grows the bar
+
+- **TTL gadget / Extend = hours input** | criterion: "Extend lets the admin type hours, validated and capped at max_extension_hours" | claim: duplicate | "TTL Progress Bar Behaviour Matrix" has [x] Extend = hours input (InputNumber popover, min 1, max = round(maxAddHours))
+
+- **TTL gadget / Edge: at extension ceiling** | criterion: "Extend disabled / no-op when max_extension_hours reached" | claim: duplicate | "TTL Progress Bar Behaviour Matrix" has [x] At ceiling disables Extend
+
+- **TTL gadget / Edge: server stopped** | criterion: "TTL gadget hidden or inert when no running server" | claim: duplicate | "TTL Progress Bar Behaviour Matrix" has [x] Hidden when stopped
+
+- **Live QA round 3 / Start -> dedicated page** | criterion: "own-server start navigates to a start page, no modal; restart/stop keep the lightweight popup" | claim: duplicate | "Dedicated Start-server Page" covers this; the popup half of the criterion is itself contradicted by "Server lifecycle UX" (no popups)
+
+- **Live QA round 3 / Progress + spawn-log tail** | criterion: "progress bar bound to the spawn SSE plus a rolling tail of the last ~10 progress messages" | claim: implemented-differently | "Dedicated Start-server Page" clarifies the SSE message field is spawn-progress text, NOT container logs; the log feed comes from a backend tail endpoint
+
+- **Live QA round 3 / Start popup: no Close on success** | criterion: "success auto-resolves; Close shows only on error (interim)" | claim: not-relevant | "Dedicated Start-server Page" was implemented (log 2026-06-17), making this interim modal criterion obsolete
+
+- **Live QA round 3 / TTL bar base-relative** | criterion: "the drain bar measures against the BASE timeout, not the extension ceiling" | claim: duplicate | "TTL Progress Bar Behaviour Matrix" [x] Two-phase pct + "Portal UI Polish" [x] TTL bar base-relative
+
+- **Live QA round 3 / TTL hidden when server stopped** | criterion: "no progress bar rendered when the server is offline" | claim: duplicate | "TTL Progress Bar Behaviour Matrix" [x] Hidden when stopped + "Portal UI Polish" [x] TTL hidden when server stopped
+
+- **Live QA round 3 / Volume reset spinner** | criterion: "the Reset button shows a loading state while the delete is in flight" | claim: duplicate | "Portal UI Polish" has [x] Volume reset spinner
+
+- **Live QA round 3 / Duoptimum Hub version** | criterion: "footer + sidebar badge show the build-stamped package version" | claim: duplicate | "Version Sync Across Subpackages" covers the sync and "Portal UI Polish" covers the footer/badge display
+
+- **Live QA round 3 / JupyterHub version banner** | criterion: "footer reads live from /hub/api/info; hardcoded STACK_CHIPS chip fixed to derive major from live version" | claim: duplicate | "Portal UI Polish" + "Live Data Honesty" cover the live hub-version derivation
+
+- **Live QA round 3 / Preload core lists** | criterion: "servers/users/groups/events/stats prefetched at portal start" | claim: duplicate | "Last-known cache + non-blocking GPU" has [x] Key-page data warmed at start (prefetchCore)
+
+- **Performance + persistent cache / Persistent query cache** | criterion: "the TanStack Query cache is saved to localStorage and rehydrated before first render" | claim: duplicate | "Background refresh + immediate update" / "Startup Hydration" cover persistCache/localStorage hydration
+
+- **Performance + persistent cache / Background revalidate** | criterion: "hydrated queries are stale (past staleTime 30s), refetch on mount, keepPreviousData avoids blanks" | claim: duplicate | "Background refresh + immediate update" has [x] Adaptive poll on live queries + the keepPreviousData pattern
+
+- **Performance + persistent cache / gcTime raised** | criterion: "in-memory cache kept warm 30 min (was 5)" | claim: duplicate | "Portal UI Polish" records the gcTime/keepPreviousData caching; the raise is already captured
+
+- **Performance + persistent cache / Secrets excluded** | criterion: "token queries are never persisted to localStorage" | claim: duplicate | "Startup Hydration" confirms tokens are excluded from the prefetch warm list
+
+- **Functional E2E harness / Port tests to the antd portal** | criterion: "rewrite the specs against the antd portal before it can gate cutover" | claim: not-relevant | "Functional Test Harness" (log 2026-06-18) states the harness was already rewritten to the live SPA, make test-functional-all (22 tests) green
+
+- **Save user / group -> confirm + return to list** | criterion: "saving in Configure-user navigates to the Users list" | claim: implemented-differently | "Edit User Returns to Its Origin" + "Navigation patterns" navigate to backTo (origin: Home/Servers/Users), NOT always /users
+
+- **Real per-GPU utilisation / Sampled via subcontainer** | criterion: "GpuUtilizationRefresher samples nvidia-smi in an ephemeral CUDA container on a periodic tick (30s)" | claim: duplicate | "GPU Utilisation Cache Logging" documents this exact mechanism (gpu_cache._refresh_sync, JUPYTERHUB_GPU_UTIL_UPDATE_INTERVAL 30s)
+
+- **Real per-GPU utilisation / Snapshot field** | criterion: "/activity gpus[] gains utilization (int %) + memory_used_mb per device" | claim: duplicate | "Portal UI Polish" [x] Real utilisation + "gpuinfo-nvidia sidecar" cover these fields
+
+- **BLOCKER: stale nginx mock portal / Single portal URL** | criterion: "after teardown, /portal 404s; the only portal is the hub-served live one" | claim: implemented-differently | "Drop the /portal URL Segment" specifies /hub/portal[/...] 302-redirects server-side (not a 404) per [x] Old-path redirect
