@@ -16,7 +16,7 @@ import { PALETTES } from '../theme/tokens'
 import type { ThemeMode } from '../theme/tokens'
 import { portalAssetBase } from '../services/hub/client'
 import { useHubInfo } from '../hooks/queries'
-import { mockAction } from '../services/actions'
+import { mockAction, notify } from '../services/actions'
 import { hubUrl } from '../services/hub/client'
 import { useIsMobile } from '../lib/useIsMobile'
 import { SiderMenu } from './SiderMenu'
@@ -138,11 +138,17 @@ function VersionFooter() {
     { k: 'Ant Design', v: '6', c: '#4f86d6' },
   ]
   const tag = { background: 'var(--color-surface-active)', color: 'var(--color-text-muted)', borderRadius: 4, marginInline: 4 }
+  // click the version to copy the full version + build id to the clipboard
+  const fullVersion = `Duoptimum Hub v${__APP_VERSION__} (build ${__BUILD_ID__})`
+  const copyVersion = () => {
+    if (!navigator.clipboard) { notify.error('Clipboard unavailable'); return }
+    navigator.clipboard.writeText(fullVersion).then(() => notify.success('Version copied'), () => notify.error('Copy failed'))
+  }
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 12, padding: '14px 0', color: 'var(--color-text-subtle)', fontSize: 12 }}>
       <span>
-        <Tooltip title={`build ${__BUILD_ID__}`}>
-          <span>Duoptimum Hub<Tag bordered={false} style={tag}>v{__APP_VERSION__}</Tag></span>
+        <Tooltip title={`build ${__BUILD_ID__} - click to copy`}>
+          <span onClick={copyVersion} style={{ cursor: 'pointer' }}>Duoptimum Hub<Tag bordered={false} style={tag}>v{__APP_VERSION__}</Tag></span>
         </Tooltip>
         <span style={{ margin: '0 6px' }}>·</span>
         JupyterHub<Tag bordered={false} style={tag}>v{hub?.version ?? '…'}</Tag>
