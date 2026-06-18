@@ -34,7 +34,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro # docker socket to use services labels
       - jupyterhub_certs:/certs # certificates (generated in jupyterhub image)
     depends_on:
-      duoptimumhub:
+      duoptimum-hub:
         condition: service_healthy
     networks:
       - jupyterhub_network
@@ -43,15 +43,16 @@ services:
   # service for management of a series of users and their jupyterlab
   # environments. it is internally managed via a proxy that redirects 
   # users to their dedicated environments
-  duoptimumhub:
+  duoptimum-hub:
     build:
       context: .
       dockerfile: services/jupyterhub/Dockerfile.jupyterhub
       args:
         - VERSION=${VERSION:-dev}
-    image: stellars/duoptimumhub:latest
+    image: stellars/duoptimum-hub:latest
     pull_policy: build
-    container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-duoptimumhub
+    container_name: ${COMPOSE_PROJECT_NAME:-stellars-jupyterhub-ds}-duoptimum-hub
+    hostname: jupyterhub
     volumes:
       - jupyterhub_certs:/certs # runtime cert dir Traefik watches
       - ./certs:/user-certs:ro # operator cert overlay (host folder; missing/empty -> auto-generate; populate ./certs to override)
@@ -199,7 +200,7 @@ services:
     security_opt:
       - seccomp:unconfined #optional
     depends_on:
-      duoptimumhub:
+      duoptimum-hub:
         condition: service_healthy
       traefik:
         condition: service_started

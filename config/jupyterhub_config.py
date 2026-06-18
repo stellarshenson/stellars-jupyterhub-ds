@@ -12,6 +12,7 @@
 #   5. Services & Callbacks    - background services, startup hooks
 
 import os                       # env var reads
+import socket                   # gethostname() -> container short id (rename-proof hub address)
 
 import jupyterhub               # __version__, __file__ for template paths
 import nativeauthenticator      # __file__ for template path resolution
@@ -765,10 +766,14 @@ c.DockerSpawner.args = [
 ]
 
 # ── Networking ──
-c.JupyterHub.hub_connect_url = 'http://duoptimumhub:8080' + JUPYTERHUB_BASE_URL_PREFIX + '/hub'  # URL spawned containers use to reach hub (compose service name)
+# Spawned labs + CHP reach the hub by the container's own short id: Docker sets
+# HOSTNAME to it and registers it in the embedded DNS for peers, so it is
+# rename-proof (independent of the compose service name) and always resolvable.
+_HUB_HOST = socket.gethostname()
+c.JupyterHub.hub_connect_url = f'http://{_HUB_HOST}:8080' + JUPYTERHUB_BASE_URL_PREFIX + '/hub'  # URL spawned containers/CHP use to reach hub
 c.DockerSpawner.remove = True                                # auto-remove containers after stop (volumes persist)
 c.DockerSpawner.debug = False                                # DockerSpawner debug logging
-c.JupyterHub.hub_ip = "duoptimumhub"                           # bind hub to container hostname (compose service name)
+c.JupyterHub.hub_ip = "0.0.0.0"                              # bind/listen on all interfaces (no name resolution -> no DNS race)
 c.JupyterHub.hub_port = 8080                                 # internal hub port (not exposed externally)
 c.JupyterHub.base_url = JUPYTERHUB_BASE_URL_PREFIX + '/' if JUPYTERHUB_BASE_URL_PREFIX else '/'  # URL prefix for all hub routes
 
