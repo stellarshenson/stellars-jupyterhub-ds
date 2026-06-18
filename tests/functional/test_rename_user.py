@@ -35,14 +35,14 @@ def test_rename_user_flow(admin_portal, base_url, admin_api, admin_creds):
 
     try:
         page = admin_portal.goto(f"/users/{old}")
-        # the Username field's attached Rename action - enabled because the user's
-        # server is stopped (never spawned -> offline)
-        rename_btn = page.get_by_role("button", name="Rename")
-        expect(rename_btn).to_be_enabled()
-
         # the input adjacent to Rename lives in the "Username" form item
         field = page.locator(".ant-form-item").filter(has_text="Username").get_by_role("textbox")
+        rename_btn = page.get_by_role("button", name="Rename")
+        # gate: enabled once a DIFFERENT name is typed on a stopped server (the
+        # user never spawned -> offline); disabled while the name is unchanged
+        expect(rename_btn).to_be_disabled()
         field.fill(new)
+        expect(rename_btn).to_be_enabled()
         rename_btn.click()
 
         # confirmation dialog -> its danger OK (also labelled "Rename")
