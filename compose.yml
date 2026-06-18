@@ -32,7 +32,7 @@ services:
       - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro # docker socket to use services labels
-      - jupyterhub_certs:/certs # certificates (generated in jupyterhub image)
+      - jupyterhub_certs:/certs # certificates (provisioned via hub service)
     depends_on:
       duoptimum-hub:
         condition: service_healthy

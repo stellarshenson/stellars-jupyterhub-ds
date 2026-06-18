@@ -31,11 +31,31 @@ def container_name_from_url(url):
     return urlparse(url).hostname or 'gpuinfo-nvidia'
 
 
+def _find_hub_container(client):
+    """Find the hub's own container. Docker normally sets HOSTNAME to the short
+    container id, so containers.get(hostname) resolves it - but an explicit compose
+    `hostname:` (e.g. `jupyterhub`) overrides HOSTNAME, and then get() raises
+    NotFound and the hub silently never joins the sidecar network. Fall back to
+    matching Config.Hostname, which equals socket.gethostname() in both cases."""
+    host = socket.gethostname()
+    try:
+        return client.containers.get(host)
+    except Exception:
+        pass
+    try:
+        for c in client.containers.list():
+            if (c.attrs.get('Config') or {}).get('Hostname') == host:
+                return c
+    except Exception:
+        pass
+    return None
+
+
 def _connect_hub(client, network):
     """Attach the hub's own container to the network (idempotent)."""
-    try:
-        hub = client.containers.get(socket.gethostname())  # Docker sets HOSTNAME to the container id
-    except Exception:
+    hub = _find_hub_container(client)
+    if hub is None:
+        log.warning(f"[GPUInfo] could not identify the hub container; not joined to network {network.name}")
         return
     try:
         network.connect(hub)

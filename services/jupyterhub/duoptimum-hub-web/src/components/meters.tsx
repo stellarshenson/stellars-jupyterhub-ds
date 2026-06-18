@@ -6,7 +6,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { Button, Popover, Progress, Slider } from 'antd'
 import { Icon } from './Icon'
 import { fmtMinutes } from '../lib/format'
-import { THRESHOLDS, ANIMATION } from '../services/config'
+import { THRESHOLDS, ANIMATION, BAR_COLOR } from '../services/config'
 import { gpuSupported } from '../app/capabilities'
 import type { GpuDevice } from '../services/types'
 
@@ -164,19 +164,21 @@ export interface ResourceRow {
   meter?: ReactNode // override the bar (e.g. an activity meter)
 }
 
-// Resource-bar fill colour: the calm accent up to the 50% mark, then a ramp
-// accent -> warning -> danger that reaches full danger by 90% so a near-full bar
-// reads as a strong, saturated red (not a pale orange-red). color-mix keeps the
-// shift smooth and reuses the design tokens (no hardcoded RGB). Returns undefined
-// at <=50% so the CSS default accent applies.
+// Resource-bar fill colour: the calm accent up to `calmMaxPct`, then a ramp
+// accent -> warning -> danger that reaches full danger at `dangerPct` so a
+// near-full bar reads as a strong, saturated red (not a pale orange-red).
+// color-mix keeps the shift smooth and reuses the design tokens (no hardcoded
+// RGB). Thresholds live in `BAR_COLOR` (services/config.ts) so they tune in one
+// place. Returns undefined at or below `calmMaxPct` so the CSS default accent applies.
 export function barColor(pct: number): string | undefined {
-  if (pct <= 50) return undefined
-  if (pct <= 75) {
-    const k = Math.round(((pct - 50) / 25) * 100) // 0 -> 100 across 50..75%
+  const { calmMaxPct, midPct, dangerPct } = BAR_COLOR
+  if (pct <= calmMaxPct) return undefined
+  if (pct <= midPct) {
+    const k = Math.round(((pct - calmMaxPct) / (midPct - calmMaxPct)) * 100) // 0 -> 100 across calm..mid
     return `color-mix(in srgb, var(--color-warning) ${k}%, var(--color-accent))`
   }
-  if (pct >= 90) return 'var(--color-danger)' // saturate to full danger near the top
-  const k = Math.round(((pct - 75) / 15) * 100) // 0 -> 100 across 75..90%
+  if (pct >= dangerPct) return 'var(--color-danger)' // saturate to full danger near the top
+  const k = Math.round(((pct - midPct) / (dangerPct - midPct)) * 100) // 0 -> 100 across mid..danger
   return `color-mix(in srgb, var(--color-danger) ${k}%, var(--color-warning))`
 }
 
