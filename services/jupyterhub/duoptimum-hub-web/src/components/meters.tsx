@@ -221,6 +221,25 @@ export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
   )
 }
 
+// CSS `ease` timing function (cubic-bezier(.25,.1,.25,1)) as a JS easing, so a
+// JS-driven number tween moves in lockstep with a CSS width transition that uses
+// `ease`. Compact Newton-Raphson solve for t given progress x, then sample y.
+function EASE(x: number): number {
+  const p1x = 0.25, p1y = 0.1, p2x = 0.25, p2y = 1
+  const cx = 3 * p1x, bx = 3 * (p2x - p1x) - cx, ax = 1 - cx - bx
+  const cy = 3 * p1y, by = 3 * (p2y - p1y) - cy, ay = 1 - cy - by
+  const sx = (t: number) => ((ax * t + bx) * t + cx) * t
+  const sy = (t: number) => ((ay * t + by) * t + cy) * t
+  const dx = (t: number) => (3 * ax * t + 2 * bx) * t + cx
+  let t = x
+  for (let i = 0; i < 5; i++) {
+    const d = dx(t)
+    if (Math.abs(d) < 1e-6) break
+    t -= (sx(t) - x) / d
+  }
+  return sy(t)
+}
+
 // idle-session timer: a standard progress bar that reads 100% (blue) when time
 // is ample and drains down, shifting blue -> orange -> red as the cull nears; the
 // used-up remainder shows as the gray trail. The whole gadget spans the row
@@ -263,12 +282,33 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
   const [boostPct, setBoostPct] = useState(0)
   const [displayMin, setDisplayMin] = useState(timeLeftMin)
   const baselineMin = useRef(timeLeftMin) // time-left captured at extend click
+  const boostTargetMin = useRef(timeLeftMin) // post-extend time-left captured at click
+  const rafRef = useRef<number | null>(null) // counter count-up animation frame
   const minFillDone = useRef(false)       // minimum fill window elapsed
   const valueLanded = useRef(false)       // refetch delivered a changed value
-  // freeze the shown time during the boost; once it ends, track the live value
+  // while NOT boosting, the shown time tracks the live value; once the boost ends
+  // it lands here (the invariant ceiling makes the landed value equal the target)
   useEffect(() => {
     if (!boost) setDisplayMin(timeLeftMin)
   }, [boost, timeLeftMin])
+  // during the boost, count the shown time UP from the captured baseline to the
+  // post-extend target over the SAME duration and easing as the bar fill, so the
+  // number climbs in lockstep with the bar (CSS `ease` = cubic-bezier(.25,.1,.25,1))
+  useEffect(() => {
+    if (!boost) return
+    const from = baselineMin.current
+    const to = boostTargetMin.current
+    if (to === from) return
+    let startTs: number | null = null
+    const step = (ts: number) => {
+      if (startTs === null) startTs = ts
+      const p = Math.min(1, (ts - startTs) / ANIMATION.ttlExtendMs)
+      setDisplayMin(Math.round(from + (to - from) * EASE(p)))
+      if (p < 1) rafRef.current = requestAnimationFrame(step)
+    }
+    rafRef.current = requestAnimationFrame(step)
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [boost])
   // end the boost only when the new value has landed AND the fill has had time to play
   useEffect(() => {
     if (boost && timeLeftMin !== baselineMin.current) {
@@ -286,8 +326,10 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
     const add = Math.max(1, Math.min(maxH, hours))
     // optimistic post-extend target: the new remaining clamped to the ceiling,
     // through the same two-phase formula (never a blanket 100%)
-    setBoostPct(pctFor(Math.min(ceilingMin, timeLeftMin + add * 60)))
+    const targetMin = Math.min(ceilingMin, timeLeftMin + add * 60)
+    setBoostPct(pctFor(targetMin))
     baselineMin.current = timeLeftMin
+    boostTargetMin.current = targetMin // counter count-up target, in lockstep with the bar
     minFillDone.current = false
     valueLanded.current = false
     setBoost(true)

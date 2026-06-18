@@ -141,7 +141,9 @@ function VersionFooter() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 12, padding: '14px 0', color: 'var(--color-text-subtle)', fontSize: 12 }}>
       <span>
-        Duoptimum Hub<Tag bordered={false} style={tag}>v{__APP_VERSION__}</Tag>
+        <Tooltip title={`build ${__BUILD_ID__}`}>
+          <span>Duoptimum Hub<Tag bordered={false} style={tag}>v{__APP_VERSION__}</Tag></span>
+        </Tooltip>
         <span style={{ margin: '0 6px' }}>·</span>
         JupyterHub<Tag bordered={false} style={tag}>v{hub?.version ?? '…'}</Tag>
       </span>

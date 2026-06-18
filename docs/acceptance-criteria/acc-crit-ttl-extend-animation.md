@@ -1,6 +1,6 @@
 # Acceptance Criteria - TTL extend bar animation
 
-Extending the idle-session TTL must move the progress bar immediately on click and animate smoothly to the **computed post-extend target %**, with no overshoot, no snap-back and no delayed flash. The bar animates on click while the time text holds, then settles when the refetched value lands - landing on the same % it animated to, so there is no jump.
+Extending the idle-session TTL must move the progress bar immediately on click and animate smoothly to the **computed post-extend target %**, with no overshoot, no snap-back and no delayed flash. The bar and the time-left counter animate on click in lockstep, then settle when the refetched value lands - landing on the same % it animated to, so there is no jump.
 
 - [x] **Immediate animate to target** - on Extend the bar starts moving on click (optimistic boost) toward the post-extend target %, not 2-3s later
   - log: 2026-06-17 `TtlGadget.apply` sets boost synchronously; `meters.tsx`
@@ -14,8 +14,9 @@ Extending the idle-session TTL must move the progress bar immediately on click a
   - log: 2026-06-17 `minFillDone` ref
 - [x] **3s duration** - the fill/glow animation runs over 3s
   - log: 2026-06-17 `ANIMATION.ttlExtendMs` 1000 -> 3000 (`services/config.ts`), threaded to CSS via `--oh-ttl-anim`
-- [x] **Time text reveals on settle** - the shown minutes freeze during the boost and reveal the new value once it lands
-  - log: 2026-06-17 `displayMin` frozen while boost
+- [x] **Time counter climbs with the bar** - during the boost the shown minutes count UP from the captured baseline to the post-extend target over the SAME `ttlExtendMs` duration and CSS-`ease` easing as the bar fill, so the number climbs in lockstep with the bar; on settle it lands on the live refetched value
+  - log: 2026-06-17 originally the shown minutes FROZE during the boost and revealed the new value only on settle (`displayMin` held)
+  - log: 2026-06-18 changed to a synchronized count-up (operator "animate the time-left counter to climb alongside the bar"): a `requestAnimationFrame` tween in `TtlGadget` drives `displayMin` from `baselineMin` to `boostTargetMin` via `EASE` (cubic-bezier(.25,.1,.25,1), matching the bar's CSS `ease`); cancels on reject/unmount; `meters.tsx`
 - [x] **Edge: extend rejected** - if `onExtend` rejects, the boost drops immediately (bar returns to the real %)
   - log: 2026-06-17 `.catch(() => setBoost(false))`
 - [x] **Edge: value never changes** - a safety cap (`ttlExtendMs + 6s`) ends the boost so it can never stick
