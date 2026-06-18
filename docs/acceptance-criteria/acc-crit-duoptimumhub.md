@@ -2921,6 +2921,8 @@ On the Servers widget (Home) and the Servers page table the per-server CPU/MEM c
 
 - [ ] **CPU tooltip full breakdown** - the CPU tooltip lists usage in cores, the assigned ceiling, the % of assigned used, and the quota-crossing state
   - log: 2026-06-18 criterion added (operator "tooltip reveals all, incl crossing the quota info")
+- [ ] **CPU tooltip "cores used" line carries the compute %** - the first line reads "{N} cores used ({M}% compute)" where M is the docker/top reading (100% = one core, the same convention as the cell value), e.g. "13 cores used (1300% compute)"; applies to both the Servers page and the Home servers widget (shared `cpuTooltip`)
+  - log: 2026-06-18 criterion added (operator "xx cores used -> xx cores used (yyyy% compute), the yyy is the cpu % use percentage that has 100% as 1 core")
 - [ ] **MEM tooltip full breakdown** - the MEM tooltip lists GB used, the assigned ceiling, the % of assigned used, the % of host total, and the quota-crossing state
   - log: 2026-06-18 criterion added
 - [ ] **Quota-crossing line** - when usage is >= 75% the tooltip states "over warning threshold"; when >= 100% it states the quota is reached/exceeded
@@ -2952,16 +2954,20 @@ CPU is reported the same docker/top way (cores-used; 100% = one core) on the pro
 
 - [ ] **Server Status hero CPU bar capped at assigned cores** - the hero CPU bar FILL is the % of the server's ASSIGNED cores (`cpuBarPct`, 0-100) - the one CPU bar capped at its assignment
   - log: 2026-06-18 criterion added (operator "the Server Status has progressbar capped at its assigned cores")
-- [ ] **Host Status CPU bar = % of host compute** - the aggregate CPU bar FILL is total cores-used / host cores (0-100% of total host compute)
+- [x] **Host Status CPU bar = % of host compute** - the aggregate CPU bar FILL is total cores-used / REAL host cores (`activity.cpu_host_total`), 0-100% of total host compute; never exceeds, and stays below, any single server's % of its own (smaller) assignment
   - log: 2026-06-18 criterion added
+  - log: 2026-06-18 denominator fixed to the real host core count (was the max-assigned approximation, which read ~2x high when every active server was CPU-capped - operator saw Host CPU 85% > Server CPU 77%, "impossible")
 - [ ] **Hero CPU tooltip shows both percentages** - the Server Status hero CPU tooltip reveals cores used plus BOTH the % of host compute and the % of assigned compute (the server HAS assigned cores)
   - log: 2026-06-18 criterion added (operator "in the tooltips we must show the % of total too ... 0-100% of total CPU compute and total assigned compute")
 - [ ] **Host CPU tooltip has no "% of assigned"** - the Host Status CPU tooltip shows cores used + the % of host compute ONLY; it does NOT show a "% of assigned" line because the HOST has physical cores, not an assignment (assignment is per-server)
   - log: 2026-06-18 criterion added (operator "host doesn't have assigned cores - yet tooltip shows assigned")
 - [ ] **Memory bars unchanged** - the change is CPU-only; the hero memory bar stays % of assigned and the Host memory bar stays % of host RAM
   - log: 2026-06-18 criterion added (operator "i mean CPU progressbars")
-- [ ] **Edge: host CPU count approximated** - the host-core denominator is the largest assigned-core count among active servers (an unlimited server's assignment IS the host count); a fully cpu-limited fleet would under-state the host denominator until a real host CPU count is exposed
-  - log: 2026-06-18 criterion added - reuses the existing getTotalResources approximation; no backend host-CPU-count was added
+- [x] **Host CPU denominator is the real host core count** - the host-core denominator is `activity.cpu_host_total` (backend `_host_cpu_count`, counts `processor` lines in /proc/cpuinfo); NOT the largest assigned-core count among active servers - that approximation only equalled the host count when an unlimited server happened to be active, and a fully CPU-capped fleet under-stated it (host bar ~2x high)
+  - log: 2026-06-18 criterion added - reused the getTotalResources max-assigned approximation; no backend host-CPU-count was added
+  - log: 2026-06-18 resolved - backend now exposes `cpu_host_total`; `getTotalResources` + the hero "% of host compute" tooltip line both divide by it
+- [x] **Edge: host CPU count unavailable** - when `cpu_host_total` is null/0 (read failure) the Host Status CPU bar renders an explicit "unavailable" (`ResourceSnapshot.cpuError` -> `ResourceRow.error`), never a fabricated denominator; the hero CPU tooltip omits its "% of host compute" line (same no-fallback rule as host RAM)
+  - log: 2026-06-18 criterion added with the real-host-count fix
 
 ### Edge cases
 
@@ -2981,7 +2987,7 @@ CPU is reported the same docker/top way (cores-used; 100% = one core) on the pro
 - `cpu_percent`, `cpu_cores`, `cpu_cores_limited` - usage (cores x 100), assigned cores, whether limited
 - `memory_mb`, `memory_percent`, `memory_total_mb`, `memory_limited` - GB used, % of assigned, assigned ceiling, whether limited
 - `memory_host_total_mb` - host RAM total (for the MEM tooltip's % of host)
-- NEEDED: host CPU-core count (CPU counter denominator) - to be added to the payload
+- `cpu_host_total` - host logical-core count (the Host Status CPU bar + hero "% of host compute" denominator); null on read failure -> "unavailable"
 
 ## Servers list layout
 

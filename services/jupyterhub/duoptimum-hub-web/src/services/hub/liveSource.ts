@@ -88,6 +88,7 @@ interface RawActivity {
   volume_max_total_size_mb?: number
   memory_max_usage_mb?: number
   memory_host_total_mb?: number | null // real host RAM - the "% of total" denominator
+  cpu_host_total?: number | null // real host logical-core count - the "% of host" CPU denominator
   activity_target_hours?: number // daily active-hours target (uncapped-% denominator)
   gpus?: Array<{ index: string; name: string; uuid?: string; memory_mb?: number; utilization?: number; memory_used_mb?: number; temperature_c?: number; power_w?: number }> // host GPU inventory + live load
   lab_image?: string // spawn image (Lab Container page)
@@ -446,10 +447,12 @@ export const liveSource: DataSource = {
     const memHostTotal = activity.memory_host_total_mb || 0
     const target = activity.activity_target_hours || 0 // real backend value; 0 = unknown
     const cpuPct = a?.server_active ? cpuBarPct(a.cpu_percent, a.cpu_cores) ?? 0 : 0
-    // host cores for the "% of host compute" tooltip line - largest assigned-core
-    // count among active servers (an unlimited server's assignment IS the host count)
-    const heroHostCores = Math.max(1, ...activity.users.filter((u) => u.server_active).map((u) => u.cpu_cores ?? 0))
-    const cpuHostPct = a?.cpu_percent != null ? clampPct(a.cpu_percent / heroHostCores) : null
+    // host cores for the "% of host compute" tooltip line - the REAL host logical-core
+    // count from the backend (cpu_host_total), NOT the largest per-server assignment
+    // (that read high when every active server was CPU-capped). null when unavailable
+    // -> heroCpuTooltip omits the "% of host compute" line rather than guessing.
+    const heroHostCores = activity.cpu_host_total ?? null
+    const cpuHostPct = a?.cpu_percent != null && heroHostCores && heroHostCores > 0 ? clampPct(a.cpu_percent / heroHostCores) : null
     const memPctTotal = a?.memory_mb != null && memHostTotal > 0 ? Math.round((a.memory_mb / memHostTotal) * 100) : null
     const resources: ResourceSnapshot = a?.server_active
       ? {
@@ -513,19 +516,27 @@ export const liveSource: DataSource = {
       const memUsed = active.reduce((s, u) => s + (u.memory_mb ?? 0), 0)
       const cpuSum = active.reduce((s, u) => s + (u.cpu_percent ?? 0), 0) // cores-used x 100, summed
       const coresUsed = cpuSum / 100
-      // host cores: the largest assigned-core count among active servers (an
-      // unlimited server's assignment IS the host core count) - the bar denominator
-      // so the total reads as a fraction of the host, not an always-maxed sum.
-      const hostCores = Math.max(1, ...active.map((u) => u.cpu_cores ?? 0))
+      // host cores: the REAL host logical-core count from the backend (cpu_host_total,
+      // /proc/cpuinfo). NOT the largest per-server assignment - that approximation only
+      // equalled the host count when an UNLIMITED server happened to be active; with
+      // every active server CPU-capped it read ~2x high (the host bar exceeding the
+      // user's own % of assigned, which looks impossible). NO fallback: if the backend
+      // could not read it the bar shows "unavailable" rather than a fabricated
+      // denominator (same rule as host RAM).
+      const hostCores = activity.cpu_host_total ?? null
+      const cpuError = hostCores == null || hostCores <= 0
       // the Host CPU bar FILL is the % of total host compute; the tooltip reveals
       // cores used + the % of host compute (the host has no "assigned" - that is
       // per-server, shown only on the Server Status hero)
-      const cpuBar = clampPct((coresUsed / hostCores) * 100)
+      const cpuBar = hostCores && hostCores > 0 ? clampPct((coresUsed / hostCores) * 100) : 0
       const memBar = memError ? 0 : clampPct((memUsed / totalMb) * 100)
       const svrs = `${active.length} server${active.length === 1 ? '' : 's'}`
       return {
         cpu: cpuBar,
-        cpuTip: hostCpuTooltip({ coresUsed, hostCores, hostPct: cpuBar, servers: svrs }),
+        cpuError,
+        cpuTip: hostCores && hostCores > 0
+          ? hostCpuTooltip({ coresUsed, hostCores, hostPct: cpuBar, servers: svrs })
+          : 'Host CPU core count unavailable',
         mem: memBar,
         memError,
         gpu: gpuAgg, // busiest GPU's real load
