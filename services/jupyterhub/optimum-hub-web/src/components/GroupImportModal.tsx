@@ -86,7 +86,7 @@ export function GroupImportModal({ open, existing, onClose }: { open: boolean; e
   return (
     <Modal
       open={open}
-      title="Import groups"
+      title="Import Groups"
       onCancel={close}
       footer={[
         <Button key="cancel" onClick={close}>Cancel</Button>,
@@ -98,7 +98,7 @@ export function GroupImportModal({ open, existing, onClose }: { open: boolean; e
       <Notice type="info">Select one or more JSON exports. Every group is validated before anything is written - duplicates and malformed entries are rejected with a reason.</Notice>
       <div style={{ marginTop: 12 }}>
         <input ref={fileRef} type="file" multiple accept=".json,application/json" style={{ display: 'none' }} onChange={onFiles} />
-        <Button icon={<Icon name="download" size={14} />} onClick={() => fileRef.current?.click()}>Choose JSON file(s)…</Button>
+        <Button icon={<Icon name="download" size={14} />} onClick={() => fileRef.current?.click()}>Choose JSON File(s)…</Button>
         {fileCount > 0 && <span className="oh-muted" style={{ marginLeft: 8 }}>{fileCount} file{fileCount === 1 ? '' : 's'} selected</span>}
       </div>
 

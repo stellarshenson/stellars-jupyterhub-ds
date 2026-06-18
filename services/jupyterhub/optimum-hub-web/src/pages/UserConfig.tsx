@@ -2,8 +2,8 @@
  * Volumes) with one action footer. The username link on the Users list opens
  * this. All writes mocked. */
 import { useEffect, useState } from 'react'
-import { Button, Card, Form, Input, Space, Switch, Tabs } from 'antd'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Button, Card, Form, Input, Modal, Space, Switch, Tabs } from 'antd'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { FormFooter } from '../components/FormFooter'
 import { GroupPicker } from '../components/GroupPicker'
@@ -11,10 +11,10 @@ import { Icon } from '../components/Icon'
 import { Notice } from '../components/Notice'
 import { VolumeReset } from '../components/VolumeReset'
 import { useRole } from '../app/RoleContext'
-import { useEffectiveGrants, useUser, useUserProfile } from '../hooks/queries'
+import { useEffectiveGrants, useServerHero, useUser, useUserProfile } from '../hooks/queries'
 import { mockSuccess } from '../services/actions'
 import { isMock } from '../services/dataMode'
-import { addMember, setUserAuthorization, deleteUser, removeMember, saveUserProfile, setAdmin, setForcePasswordChange, setUserPassword } from '../services/ops'
+import { addMember, setUserAuthorization, deleteUser, removeMember, renameUser, saveUserProfile, setAdmin, setForcePasswordChange, setUserPassword } from '../services/ops'
 import { PLATFORM } from '../services/config'
 import { adminUser, isAdminUser } from '../app/capabilities'
 import { genPassword } from '../lib/password'
@@ -23,20 +23,35 @@ export default function UserConfig() {
   // /users/:name carries the target; /profile has no param -> fall back to the
   // logged-in user so Profile reuses this exact screen, scoped to self
   const { name: paramName } = useParams()
-  const { username } = useRole()
+  const { username, role } = useRole()
   const name = paramName || username
   const navigate = useNavigate()
+  // Save / Cancel / Remove return to where this was opened from (Home or Servers
+  // widget, per the nav-origin state); the Users list is the canonical fallback
+  // (deep link, or opened from Users itself - same pattern as Manage volumes).
+  const { state } = useLocation()
+  const backTo = (state as { from?: { to: string } } | null)?.from?.to ?? '/users'
   const { data: user } = useUser(name)
   const { data: userProfile } = useUserProfile(name)
   const { data: grants = [] } = useEffectiveGrants(name)
+  // server status for the rename gate (rename only while the lab is stopped)
+  const { data: hero } = useServerHero(name)
   const [form] = Form.useForm()
   const [groups, setGroups] = useState<string[]>([])
   const [tab, setTab] = useState('profile')
   const [pw, setPw] = useState('')
+  const [renameTo, setRenameTo] = useState(name)
+  // keep the rename field in sync when the target changes (incl. after a rename
+  // navigates to /users/{newName})
+  useEffect(() => { setRenameTo(name) }, [name])
 
   // the platform-configured admin (JUPYTERHUB_ADMIN, from the live shell; mock
   // falls back to the fixture): always admin + authorised, never removable.
   const isBuiltinAdmin = name === (adminUser() || PLATFORM.admin)
+  // rename is admin-only, never for the built-in admin, and only while the user's
+  // server is stopped (offline) - renaming a running container would orphan it
+  const canRename = role === 'admin' && !isBuiltinAdmin
+  const serverStopped = hero?.status === 'offline'
   // effective admin includes the hook-promoted admin whose persistent row is False
   const userIsAdmin = isAdminUser(name, !!user?.admin)
   // dependent controls react to the LIVE admin toggle, not the saved state, so
@@ -64,7 +79,7 @@ export default function UserConfig() {
       // "save" invalid data
       if (isMock()) {
         mockSuccess(`Saved ${name}`)
-        navigate('/users')
+        navigate(backTo)
         return
       }
       await saveUserProfile(name, { firstName: v.first ?? '', lastName: v.last ?? '', email: v.email ?? '' })
@@ -81,7 +96,7 @@ export default function UserConfig() {
       for (const g of user?.groups ?? []) if (!after.has(g)) await removeMember(g, name)
       setPw('')
       // ops surfaced per-write success toasts; return to the list on success
-      navigate('/users')
+      navigate(backTo)
     } catch {
       /* ops surfaced the error - stay on the form */
     }
@@ -89,7 +104,27 @@ export default function UserConfig() {
 
   const remove = async () => {
     await deleteUser(name)
-    if (!isMock()) navigate('/users')
+    if (!isMock()) navigate(backTo)
+  }
+
+  // Rename: confirm first (it is collateral-heavy), then go to the renamed
+  // profile. The confirm spells out that the account moves but volumes do NOT.
+  const doRename = () => {
+    const target = renameTo.trim()
+    Modal.confirm({
+      title: `Rename ${name} to ${target}?`,
+      okText: 'Rename',
+      okButtonProps: { danger: true },
+      content:
+        'The account, group memberships, authorisation and password move to the new name - '
+        + 'the user signs in with the new name from now on. Their existing volumes '
+        + '(home, workspace, cache) stay attached to the OLD name and are NOT migrated; '
+        + 'move them across separately.',
+      onOk: async () => {
+        await renameUser(name, target)
+        if (!isMock()) navigate(`/users/${encodeURIComponent(target)}`, { state })
+      },
+    })
   }
 
   const profile = (
@@ -101,7 +136,27 @@ export default function UserConfig() {
           </Notice>
         </div>
       )}
-      <Form.Item label="Username" name="username"><Input disabled /></Form.Item>
+      {/* Username + attached Rename action (design-language input-with-action
+          pattern, like Change password / Generate). Admin-only, and only while the
+          server is stopped; the field itself stays read-only otherwise. */}
+      <Form.Item label="Username" extra={canRename ? "Renaming detaches the user's volumes - migrate them separately" : undefined}>
+        <Space.Compact style={{ width: '100%' }}>
+          <Input value={renameTo} onChange={(e) => setRenameTo(e.target.value)} disabled={!canRename || !serverStopped} />
+          <Button
+            onClick={doRename}
+            disabled={!canRename || !serverStopped || !renameTo.trim() || renameTo.trim() === name}
+            title={
+              !canRename
+                ? (isBuiltinAdmin ? 'The built-in admin account cannot be renamed' : 'Only admins can rename users')
+                : !serverStopped
+                  ? "Stop the user's server before renaming"
+                  : 'Rename this user'
+            }
+          >
+            Rename
+          </Button>
+        </Space.Compact>
+      </Form.Item>
       <Form.Item label="First name" name="first"><Input /></Form.Item>
       <Form.Item label="Last name" name="last"><Input /></Form.Item>
       <Form.Item label="Email" name="email"><Input /></Form.Item>
@@ -132,7 +187,7 @@ export default function UserConfig() {
     <div>
       <GroupPicker value={groups} onChange={setGroups} />
 
-      <div className="oh-section-title">Effective policies</div>
+      <div className="oh-section-title">Effective Policies</div>
       <div className="oh-page-sub" style={{ marginBottom: 12 }}>The policy resolved across this user's groups - each grant cites the group that won.</div>
       {grants.map((g) => (
         <div className="oh-grant" key={g.key}>
@@ -165,8 +220,8 @@ export default function UserConfig() {
           ]}
         />
         <FormFooter
-          destructive={isBuiltinAdmin ? undefined : <Button danger icon={<Icon name="close" size={14} />} onClick={remove}>Remove user</Button>}
-          onCancel={() => navigate('/users')}
+          destructive={isBuiltinAdmin ? undefined : <Button danger icon={<Icon name="close" size={14} />} onClick={remove}>Remove User</Button>}
+          onCancel={() => navigate(backTo)}
           onSave={save}
         />
       </Card>

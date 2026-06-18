@@ -19,7 +19,7 @@ export default function Signup() {
     <div className="oh-auth">
       <div className="oh-auth-card">
         <div className="oh-auth-brand"><img src={logoSrc} alt="Optimum Hub" /></div>
-        <h1 className="oh-auth-title">Create an account</h1>
+        <h1 className="oh-auth-title">Create an Account</h1>
         <p className="oh-auth-sub">Optimum Hub</p>
         {done && (
           <div style={{ marginBottom: 16 }}>
@@ -46,7 +46,7 @@ export default function Signup() {
           >
             <Input.Password placeholder="repeat password" autoComplete="new-password" />
           </Form.Item>
-          <Button type="primary" htmlType="submit" block>Create account</Button>
+          <Button type="primary" htmlType="submit" block>Create Account</Button>
         </Form>
         <div className="oh-auth-foot">Already have an account? <Link to="/login">Sign in</Link></div>
       </div>

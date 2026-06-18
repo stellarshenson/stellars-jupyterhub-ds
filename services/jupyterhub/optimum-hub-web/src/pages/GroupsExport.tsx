@@ -34,7 +34,7 @@ export default function GroupsExport() {
 
   return (
     <>
-      <PageHeader title="Export groups" sub="Pick the groups to include and download them as one JSON bundle" />
+      <PageHeader title="Export Groups" sub="Pick the groups to include and download them as one JSON bundle" />
       <Card style={{ maxWidth: 880 }}>
         <Table<GroupRow>
           rowKey="name"

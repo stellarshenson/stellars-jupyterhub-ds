@@ -40,7 +40,7 @@ export default function NewUser() {
 
   return (
     <>
-      <PageHeader title="New user" sub="Create an account and optionally authorise it now" />
+      <PageHeader title="New User" sub="Create an account and optionally authorise it now" />
       <Card style={{ maxWidth: 760 }}>
         <Form form={form} layout="vertical" initialValues={{ authorize: true }}>
           <Form.Item label="Username" name="username" rules={[{ required: true, message: 'Username is required' }]}>
@@ -59,7 +59,7 @@ export default function NewUser() {
             <Switch />
           </Form.Item>
         </Form>
-        <FormFooter onCancel={() => navigate('/users')} onSave={submit} saveLabel="Add user" />
+        <FormFooter onCancel={() => navigate('/users')} onSave={submit} saveLabel="Add User" />
       </Card>
     </>
   )

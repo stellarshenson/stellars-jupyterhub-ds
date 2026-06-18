@@ -27,7 +27,7 @@ export default function Settings() {
         actions={
           <Link to="/settings/reference">
             <span className="oh-pill accent" style={{ cursor: 'pointer' }}>
-              <Icon name="code" size={14} /> Full reference
+              <Icon name="code" size={14} /> Full Reference
             </span>
           </Link>
         }

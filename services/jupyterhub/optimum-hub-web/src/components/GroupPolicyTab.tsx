@@ -184,7 +184,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
   return (
     <div style={{ border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: '4px 16px' }}>
       {/* Environment variables */}
-      <Section icon="code" title="Environment variables" on={on.env_vars ?? false} onToggle={toggle('env_vars')}>
+      <Section icon="code" title="Environment Variables" on={on.env_vars ?? false} onToggle={toggle('env_vars')}>
         <div className="oh-pol-hint">Set in members' containers. On a name clash across groups, the highest-priority group wins.</div>
         <Table<EnvVar>
           size="small"
@@ -199,12 +199,12 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
             { title: '', width: 40, render: (_, __, i) => <span style={{ cursor: 'pointer', color: 'var(--color-text-subtle)' }} onClick={() => setEnvVars((p) => p.filter((_, j) => j !== i))}><Icon name="close" size={14} /></span> },
           ]}
         />
-        <Button size="small" icon={<Icon name="plus" size={13} />} style={{ marginTop: 8 }} onClick={() => setEnvVars((p) => [...p, { name: '', value: '', desc: '' }])}>Add variable</Button>
+        <Button size="small" icon={<Icon name="plus" size={13} />} style={{ marginTop: 8 }} onClick={() => setEnvVars((p) => [...p, { name: '', value: '', desc: '' }])}>Add Variable</Button>
       </Section>
 
       {/* GPU - only when the platform has GPU */}
       {gpuSupported() && (
-      <Section icon="gpu" title="GPU access" on={on.gpu ?? false} onToggle={toggle('gpu')}>
+      <Section icon="gpu" title="GPU Access" on={on.gpu ?? false} onToggle={toggle('gpu')}>
         <div className="oh-pol-hint">Gives members the selected GPU devices in their containers.</div>
         <Checkbox checked={gpuAll} onChange={(e) => setGpuAll(e.target.checked)}>All GPUs</Checkbox>
         <div className="desc oh-pol-hint" style={{ margin: '2px 0 8px 24px' }}>Deselect to choose specific devices below.</div>
@@ -240,7 +240,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       </Section>
 
       {/* Docker */}
-      <Section icon="box" title="Docker access" on={on.docker ?? false} onToggle={toggle('docker')}>
+      <Section icon="box" title="Docker Access" on={on.docker ?? false} onToggle={toggle('docker')}>
         <div className="oh-pol-hint">Across groups the most permissive wins. Standard supersedes Limited; Privileged is orthogonal.</div>
         <Radio.Group
           value={dStd ? 'std' : 'limited'}
@@ -278,7 +278,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       </Section>
 
       {/* Volume mounts */}
-      <Section icon="disk" title="Volume mounts" on={on.volume_mounts ?? false} onToggle={toggle('volume_mounts')}>
+      <Section icon="disk" title="Volume Mounts" on={on.volume_mounts ?? false} onToggle={toggle('volume_mounts')}>
         <div className="oh-pol-hint">Mount named Docker volumes into members' containers. Mountpoints must be absolute and outside protected paths; a missing volume is created on first spawn.</div>
         <Table<VolMount>
           size="small"
@@ -292,18 +292,18 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
             { title: '', width: 40, render: (_, __, i) => <span style={{ cursor: 'pointer', color: 'var(--color-text-subtle)' }} onClick={() => setVolMounts((p) => p.filter((_, j) => j !== i))}><Icon name="close" size={14} /></span> },
           ]}
         />
-        <Button size="small" icon={<Icon name="plus" size={13} />} style={{ marginTop: 8 }} onClick={() => setVolMounts((p) => [...p, { volume: '', mountpoint: '' }])}>Add mount</Button>
+        <Button size="small" icon={<Icon name="plus" size={13} />} style={{ marginTop: 8 }} onClick={() => setVolMounts((p) => [...p, { volume: '', mountpoint: '' }])}>Add Mount</Button>
       </Section>
 
       {/* API keys pool */}
-      <Section icon="key" title="API keys pool" on={on.api_keys ?? false} onToggle={toggle('api_keys')}>
+      <Section icon="key" title="API Keys Pool" on={on.api_keys ?? false} onToggle={toggle('api_keys')}>
         <div className="oh-pol-hint">Hands out one credential per running container so no two members share a key. Keys return to the pool on stop.</div>
         <div className="oh-pol-field-label">Credential type</div>
         <Select<'' | 'single' | 'pair'>
           value={apiMode}
           onChange={setApiMode}
           style={{ maxWidth: 320 }}
-          options={[{ value: '', label: '- select -' }, { value: 'single', label: 'Single API key' }, { value: 'pair', label: 'Key ID + Key secret pair' }]}
+          options={[{ value: '', label: '- select -' }, { value: 'single', label: 'Single API Key' }, { value: 'pair', label: 'Key ID + Key Secret Pair' }]}
         />
         {apiMode === 'single' && (
           <div style={{ marginTop: 10, maxWidth: 320 }}>
@@ -327,25 +327,25 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
               rowKey={(_, i) => `cred-${i}`}
               rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
               columns={[
-                { title: apiMode === 'pair' ? 'Key ID' : 'API key', render: (_, r, i) => <Input size="small" className="oh-mono" value={r.a} onChange={(e) => setApiCreds((p) => p.map((x, j) => (j === i ? { ...x, a: e.target.value } : x)))} /> },
-                ...(apiMode === 'pair' ? [{ title: 'Key secret', render: (_: unknown, r: ApiCred, i: number) => <Input size="small" className="oh-mono" value={r.b} onChange={(e) => setApiCreds((p) => p.map((x, j) => (j === i ? { ...x, b: e.target.value } : x)))} /> }] : []),
+                { title: apiMode === 'pair' ? 'Key ID' : 'API Key', render: (_, r, i) => <Input size="small" className="oh-mono" value={r.a} onChange={(e) => setApiCreds((p) => p.map((x, j) => (j === i ? { ...x, a: e.target.value } : x)))} /> },
+                ...(apiMode === 'pair' ? [{ title: 'Key Secret', render: (_: unknown, r: ApiCred, i: number) => <Input size="small" className="oh-mono" value={r.b} onChange={(e) => setApiCreds((p) => p.map((x, j) => (j === i ? { ...x, b: e.target.value } : x)))} /> }] : []),
                 { title: 'Description', render: (_, r, i) => <Input size="small" value={r.desc} onChange={(e) => setApiCreds((p) => p.map((x, j) => (j === i ? { ...x, desc: e.target.value } : x)))} /> },
                 { title: '', width: 40, render: (_, __, i) => <span style={{ cursor: 'pointer', color: 'var(--color-text-subtle)' }} onClick={() => setApiCreds((p) => p.filter((_, j) => j !== i))}><Icon name="close" size={14} /></span> },
               ]}
             />
-            <Button size="small" icon={<Icon name="plus" size={13} />} style={{ marginTop: 8 }} onClick={() => setApiCreds((p) => [...p, { a: '', b: '', desc: '' }])}>Add key</Button>
+            <Button size="small" icon={<Icon name="plus" size={13} />} style={{ marginTop: 8 }} onClick={() => setApiCreds((p) => [...p, { a: '', b: '', desc: '' }])}>Add Key</Button>
           </>
         )}
       </Section>
 
       {/* Downloads */}
-      <Section icon="download" title="File downloads" on={on.downloads ?? false} onToggle={toggle('downloads')}>
+      <Section icon="download" title="File Downloads" on={on.downloads ?? false} onToggle={toggle('downloads')}>
         <div className="oh-pol-hint">Allow or block members downloading files out of their lab through the browser. Best-effort - does not stop terminal or kernel transfers.</div>
         <div className="oh-row"><Switch size="small" checked={downloadsAllow} onChange={setDownloadsAllow} /><span>Allow downloads for members</span></div>
       </Section>
 
       {/* Sudo */}
-      <Section icon="shield" title="Sudo access" on={on.sudo ?? false} onToggle={toggle('sudo')}>
+      <Section icon="shield" title="Sudo Access" on={on.sudo ?? false} onToggle={toggle('sudo')}>
         <div className="oh-pol-hint">Grant or deny members root via sudo inside their lab - needed to install system packages.</div>
         <div className="oh-row"><Switch size="small" checked={sudoEnable} onChange={setSudoEnable} /><span>Enable sudo for members</span></div>
       </Section>

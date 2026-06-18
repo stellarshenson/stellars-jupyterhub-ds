@@ -127,9 +127,9 @@ export default function GroupConfig() {
   const policy = (
     <div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        <Button icon={<Icon name="download" size={14} />} onClick={downloadPolicy}>Download policy</Button>
+        <Button icon={<Icon name="download" size={14} />} onClick={downloadPolicy}>Download Policy</Button>
         <label className="ant-btn ant-btn-default" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-          <Icon name="upload" size={14} />Upload policy
+          <Icon name="upload" size={14} />Upload Policy
           <input
             type="file"
             accept="application/json,.json"
@@ -167,7 +167,7 @@ export default function GroupConfig() {
           ]}
         />
         <FormFooter
-          destructive={<Button danger icon={<Icon name="close" size={14} />} onClick={removeGroup}>Delete group</Button>}
+          destructive={<Button danger icon={<Icon name="close" size={14} />} onClick={removeGroup}>Delete Group</Button>}
           onCancel={() => navigate('/groups')}
           onSave={save}
         />

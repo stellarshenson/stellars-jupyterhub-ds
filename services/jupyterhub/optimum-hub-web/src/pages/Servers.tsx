@@ -162,7 +162,7 @@ export default function Servers() {
       render: (_, r) => (
         <div className="oh-user-cell">
           <span>
-            <Link to={`/users/${r.user}`} style={{ color: 'var(--color-accent)' }} title={`Configure ${r.user}`}>{r.user}</Link>
+            <Link to={`/users/${r.user}`} state={{ from: SERVERS_ORIGIN }} style={{ color: 'var(--color-accent)' }} title={`Configure ${r.user}`}>{r.user}</Link>
             {r.admin && <Tag bordered={false} style={accentTag}>admin</Tag>}
           </span>
           {r.name && <span className="oh-name-hint">{r.name}</span>}
@@ -177,7 +177,7 @@ export default function Servers() {
       render: (_, r) => <StatusPill status={r.status} label={statusWord(r.status)} />,
     },
     {
-      title: 'Last activity',
+      title: 'Last Activity',
       dataIndex: 'lastActivityISO',
       width: 128,
       sorter: (a, b) => (a.lastActivityISO ?? '').localeCompare(b.lastActivityISO ?? ''),
@@ -229,7 +229,7 @@ export default function Servers() {
         r.systemGB == null ? <span className="oh-muted">-</span> : <span className={r.systemOver ? 'oh-cell-warn' : 'oh-num'} title={r.systemTip}>+{r.systemGB} GB</span>,
     },
     {
-      title: 'Time left',
+      title: 'Time Left',
       dataIndex: 'timeLeftMin',
       align: 'right',
       sorter: (a, b) => (a.timeLeftMin ?? -1) - (b.timeLeftMin ?? -1),
@@ -264,7 +264,7 @@ export default function Servers() {
     Modal.confirm({
       title: 'Stop all running servers?',
       content: `This stops ${runningUsers.length} running lab(s).`,
-      okText: 'Stop all',
+      okText: 'Stop All',
       okButtonProps: { danger: true },
       onOk: () => stopAllServers(runningUsers),
     })
@@ -278,8 +278,8 @@ export default function Servers() {
         title="Servers"
         actions={
           <>
-            <Button icon={<Icon name="play" size={14} />} disabled={!offlineUsers.length} onClick={() => startAllServers(offlineUsers)}>Start all</Button>
-            <Button danger icon={<Icon name="stop" size={14} filled />} disabled={!runningUsers.length} onClick={stopAll}>Stop all</Button>
+            <Button icon={<Icon name="play" size={14} />} disabled={!offlineUsers.length} onClick={() => startAllServers(offlineUsers)}>Start All</Button>
+            <Button danger icon={<Icon name="stop" size={14} filled />} disabled={!runningUsers.length} onClick={stopAll}>Stop All</Button>
           </>
         }
       />
@@ -303,7 +303,7 @@ export default function Servers() {
           headerTitle={<ScopeFilterPills value={scope} onChange={setScope} scopes={scopes} />}
           toolBarRender={() => [
             search,
-            <Button key="reset" onClick={() => resetActivity()}>Reset samples</Button>,
+            <Button key="reset" onClick={() => resetActivity()}>Reset Samples</Button>,
             <Button key="report" icon={<Icon name="download" size={14} />} disabled={!filtered.length} onClick={downloadReport}>Report</Button>,
             <Button key="refresh" icon={<Icon name="restart" size={14} />} onClick={() => invalidate(['servers'], ['stats'], ['resources'])}>Refresh</Button>,
           ]}

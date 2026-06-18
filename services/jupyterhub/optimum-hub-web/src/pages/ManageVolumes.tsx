@@ -16,7 +16,7 @@ export default function ManageVolumes() {
   const backTo = (state as { from?: { to: string } } | null)?.from?.to ?? '/servers'
   return (
     <>
-      <PageHeader title={`Manage volumes - ${name}`} sub="Reset this user's persistent volumes" />
+      <PageHeader title={`Manage Volumes - ${name}`} sub="Reset this user's persistent volumes" />
       <Card style={{ maxWidth: 880 }}>
         <VolumeReset name={name} onClose={() => navigate(backTo)} />
       </Card>

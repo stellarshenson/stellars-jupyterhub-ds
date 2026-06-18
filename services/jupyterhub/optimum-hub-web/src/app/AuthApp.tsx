@@ -44,7 +44,7 @@ function AuthLogin() {
     <div className="oh-auth">
       <div className="oh-auth-card">
         <Brand />
-        <h1 className="oh-auth-title">Sign in</h1>
+        <h1 className="oh-auth-title">Sign In</h1>
         <p className="oh-auth-sub">Optimum Hub</p>
         {error && <div style={{ marginBottom: 16 }}><Alert type="error" showIcon message={error} /></div>}
         <Form layout="vertical" requiredMark={false} onFinish={submit}>
@@ -54,7 +54,7 @@ function AuthLogin() {
           <Form.Item label="Password" name="password" rules={[{ required: true, message: 'Enter your password' }]}>
             <Input.Password placeholder="password" autoComplete="current-password" />
           </Form.Item>
-          <Button type="primary" htmlType="submit" block>Sign in</Button>
+          <Button type="primary" htmlType="submit" block>Sign In</Button>
         </Form>
         <div className="oh-auth-foot">New here? <a href={hubUrl('/signup')}>Create an account</a></div>
       </div>
@@ -80,7 +80,7 @@ function AuthSignup() {
     <div className="oh-auth">
       <div className="oh-auth-card">
         <Brand />
-        <h1 className="oh-auth-title">Create an account</h1>
+        <h1 className="oh-auth-title">Create an Account</h1>
         <p className="oh-auth-sub">Optimum Hub</p>
         {message && <div style={{ marginBottom: 16 }}><Notice type={tone}>{message}</Notice></div>}
         <Form layout="vertical" requiredMark={false} onFinish={submit}>
@@ -108,7 +108,7 @@ function AuthSignup() {
           >
             <Input.Password placeholder="repeat password" autoComplete="new-password" />
           </Form.Item>
-          <Button type="primary" htmlType="submit" block>Create account</Button>
+          <Button type="primary" htmlType="submit" block>Create Account</Button>
         </Form>
         <div className="oh-auth-foot">Already have an account? <a href={hubUrl('/login')}>Sign in</a></div>
       </div>

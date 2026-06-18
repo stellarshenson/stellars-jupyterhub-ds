@@ -24,7 +24,7 @@ export default function LabContainer() {
       </Card>
 
       <Card styles={{ body: { padding: 0 } }} style={{ marginBottom: 16 }}>
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-subtle)', fontWeight: 600 }}>Standard volumes</div>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-subtle)', fontWeight: 600 }}>Standard Volumes</div>
         <Table<LabMount>
           rowKey="name"
           pagination={false}
@@ -33,7 +33,7 @@ export default function LabContainer() {
           rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
           columns={[
             { title: 'Name', dataIndex: 'name', render: (v) => <span className="oh-mono">{v}</span> },
-            { title: 'Mount point', dataIndex: 'mount', render: (v) => <span className="oh-mono">{v}</span> },
+            { title: 'Mount Point', dataIndex: 'mount', render: (v) => <span className="oh-mono">{v}</span> },
             { title: 'Description', dataIndex: 'description', render: (v) => <span className="oh-muted">{v}</span> },
           ]}
         />

@@ -40,7 +40,7 @@ export function CommandPalette() {
 
   const rows = useMemo<Row[]>(() => {
     const nav: Row[] = navLeaves(role).map((n) => ({
-      group: 'Go to',
+      group: 'Go To',
       icon: n.icon,
       label: n.label,
       run: () => navigate(n.path),

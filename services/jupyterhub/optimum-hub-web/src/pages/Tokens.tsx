@@ -22,7 +22,7 @@ export default function Tokens() {
     const r = await createToken(username, 'portal-token')
     if (r?.token) {
       Modal.success({
-        title: 'New API token',
+        title: 'New API Token',
         content: (
           <>
             <p>Copy it now - it is shown only once.</p>
@@ -37,7 +37,7 @@ export default function Tokens() {
     { title: 'Note', dataIndex: 'note', render: (_, t) => <span className="oh-mono">{t.note}</span> },
     { title: 'Scopes', dataIndex: 'scopes', render: (_, t) => <span className="oh-muted">{t.scopes ?? '-'}</span> },
     { title: 'Created', dataIndex: 'createdISO', render: (_, t) => <span title={exactDate(t.createdISO)}>{timeAgoShort(t.createdISO)}</span> },
-    { title: 'Last used', dataIndex: 'lastUsedISO', render: (_, t) => <span title={t.lastUsedISO ? exactDate(t.lastUsedISO) : 'never'}>{timeAgoShort(t.lastUsedISO)}</span> },
+    { title: 'Last Used', dataIndex: 'lastUsedISO', render: (_, t) => <span title={t.lastUsedISO ? exactDate(t.lastUsedISO) : 'never'}>{timeAgoShort(t.lastUsedISO)}</span> },
     { title: 'Expires', dataIndex: 'expiresISO', render: (_, t) => (t.expiresISO ? exactDate(t.expiresISO) : <span className="oh-muted">never</span>) },
     { title: 'Actions', align: 'right', width: 80, render: (_, t) => <IconAction icon="close" title="Revoke" tone="danger" onClick={() => revokeToken(username, t.id, t.note)} /> },
   ]
@@ -45,7 +45,7 @@ export default function Tokens() {
   const appCols: ProColumns<TokenRow>[] = [
     { title: 'Application', dataIndex: 'note', render: (_, t) => t.note },
     { title: 'Authorised', dataIndex: 'createdISO', render: (_, t) => <span title={exactDate(t.createdISO)}>{timeAgoShort(t.createdISO)}</span> },
-    { title: 'Last used', dataIndex: 'lastUsedISO', render: (_, t) => <span title={t.lastUsedISO ? exactDate(t.lastUsedISO) : 'never'}>{timeAgoShort(t.lastUsedISO)}</span> },
+    { title: 'Last Used', dataIndex: 'lastUsedISO', render: (_, t) => <span title={t.lastUsedISO ? exactDate(t.lastUsedISO) : 'never'}>{timeAgoShort(t.lastUsedISO)}</span> },
     { title: 'Actions', align: 'right', width: 80, render: (_, t) => <IconAction icon="close" title="Revoke access" tone="danger" onClick={() => revokeToken(username, t.id, t.note)} /> },
   ]
 
@@ -54,11 +54,11 @@ export default function Tokens() {
       <PageHeader
         title="Tokens"
         sub="Personal API tokens and the applications authorised against your account"
-        actions={<Button type="primary" icon={<Icon name="key" size={14} />} onClick={requestToken}>Request token</Button>}
+        actions={<Button type="primary" icon={<Icon name="key" size={14} />} onClick={requestToken}>Request Token</Button>}
       />
       <ProTable<TokenRow>
         rowKey="id"
-        headerTitle="API tokens"
+        headerTitle="API Tokens"
         columns={tokenCols}
         dataSource={tokens}
         loading={isLoading}
@@ -71,7 +71,7 @@ export default function Tokens() {
       />
       <ProTable<TokenRow>
         rowKey="id"
-        headerTitle="Authorised applications"
+        headerTitle="Authorised Applications"
         columns={appCols}
         dataSource={apps}
         search={false}

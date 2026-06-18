@@ -46,7 +46,7 @@ export default function BulkResult() {
 
   return (
     <>
-      <PageHeader title="Bulk result" sub="Credentials surface once - download them now" />
+      <PageHeader title="Bulk Result" sub="Credentials surface once - download them now" />
       <Card style={{ maxWidth: 820 }}>
         <Notice type="success">{rows.length} of {requested} users created. Passwords are shown once and cannot be retrieved later.</Notice>
         <Table<Cred>

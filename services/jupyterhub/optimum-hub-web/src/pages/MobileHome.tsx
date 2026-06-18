@@ -44,14 +44,14 @@ function MyServerCard() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 20 }}>
         {running ? (
           <>
-            <Button type="primary" block size="large" icon={<Icon name="play" size={15} filled />} disabled={busy} onClick={() => window.location.assign(userServerUrl(hero.user))}>Open lab</Button>
+            <Button type="primary" block size="large" icon={<Icon name="play" size={15} filled />} disabled={busy} onClick={() => window.location.assign(userServerUrl(hero.user))}>Open Lab</Button>
             <Button block size="large" icon={<Icon name="restart" size={16} />} disabled={busy} onClick={() => lifecycle.restart(hero.user)}>Restart</Button>
             <Button danger block size="large" icon={<Icon name="stop" size={14} filled />} disabled={busy} onClick={() => lifecycle.stop(hero.user)}>Stop</Button>
           </>
         ) : (
           <>
-            <Button type="primary" block size="large" icon={<Icon name="play" size={15} filled />} disabled={busy} onClick={() => navigate(`/servers/${hero.user}/starting`, { state: { from: HOME_ORIGIN } })}>Start server</Button>
-            {role === 'admin' && <Button block size="large" icon={<Icon name="disk" size={15} />} disabled={busy} onClick={() => navigate(`/servers/${hero.user}/volumes`, { state: { from: HOME_ORIGIN } })}>Manage volumes</Button>}
+            <Button type="primary" block size="large" icon={<Icon name="play" size={15} filled />} disabled={busy} onClick={() => navigate(`/servers/${hero.user}/starting`, { state: { from: HOME_ORIGIN } })}>Start Server</Button>
+            {role === 'admin' && <Button block size="large" icon={<Icon name="disk" size={15} />} disabled={busy} onClick={() => navigate(`/servers/${hero.user}/volumes`, { state: { from: HOME_ORIGIN } })}>Manage Volumes</Button>}
           </>
         )}
       </div>
@@ -71,7 +71,7 @@ function MobileServersWidget() {
   const active = servers.filter((s) => s.status !== 'offline')
   return (
     <Card style={{ marginTop: 16 }}>
-      <h3 style={{ fontSize: 14, margin: '0 0 12px' }}>Active servers</h3>
+      <h3 style={{ fontSize: 14, margin: '0 0 12px' }}>Active Servers</h3>
       {active.length === 0 ? (
         <span className="oh-muted">No active servers</span>
       ) : (

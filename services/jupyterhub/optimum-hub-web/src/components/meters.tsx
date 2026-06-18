@@ -270,6 +270,10 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
     }
   }, [boost, timeLeftMin])
   const shownPct = boost ? boostPct : pct
+  // the bar's tone, shared by the readout: the time number + clock icon take the
+  // SAME colour the bar shows at this moment (accent normally, warning/danger as
+  // the cull nears, accent during an extend boost) so the gadget reads as one cue
+  const barTone = boost ? 'var(--color-accent)' : color
   const apply = () => {
     setOpen(false)
     const add = Math.max(1, Math.min(maxH, hours))
@@ -293,11 +297,11 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
   return (
     <div className="oh-ttl">
       <span className={boost ? 'oh-ttl-bar oh-ttl-boost' : 'oh-ttl-bar'} style={{ flex: 1, minWidth: 0, '--oh-ttl-anim': `${ANIMATION.ttlExtendMs}ms` } as CSSProperties} title="Idle session timer - your server is stopped automatically when this runs out">
-        <Progress percent={shownPct} showInfo={false} strokeColor={boost ? 'var(--color-accent)' : color} trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
+        <Progress percent={shownPct} showInfo={false} strokeColor={barTone} trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
       </span>
-      <span className="oh-ttl-val">
+      <span className="oh-ttl-val" style={{ color: barTone, transition: 'color .4s ease' }}>
         <Icon name="clock" size={14} />
-        <b>{fmtMinutes(displayMin)}</b>
+        <b style={{ color: barTone }}>{fmtMinutes(displayMin)}</b>
       </span>
       {uptimeLabel && (
         <span className="oh-muted" title="Server uptime" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
@@ -321,7 +325,7 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
               tooltip={{ formatter: (v) => (v != null && v >= maxH ? 'max' : `+${v}h`) }}
             />
             <Button size="small" type="primary" block onClick={apply} style={{ marginTop: 6 }}>
-              {atMax ? 'Extend to max' : `Extend +${hours}h`}
+              {atMax ? 'Extend to Max' : `Extend +${hours}h`}
             </Button>
           </div>
         }

@@ -122,12 +122,12 @@ export default function Notifications() {
           </div>
           <div style={{ marginTop: 16 }}>
             <Button type="primary" icon={<Icon name="megaphone" size={14} />} disabled={!msg.trim() || (mode === 'selected' && recipients.length === 0)} onClick={send}>
-              Send broadcast
+              Send Broadcast
             </Button>
           </div>
         </Card>
 
-        <Card title="Past notifications" styles={{ body: { padding: 0 } }}>
+        <Card title="Past Notifications" styles={{ body: { padding: 0 } }}>
           <Table<SentNotification>
             rowKey="id"
             pagination={false}
