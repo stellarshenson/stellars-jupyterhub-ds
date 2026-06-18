@@ -11,6 +11,7 @@ import { extendSession } from '../services/ops'
 import { userServerUrl } from '../services/hub/client'
 import { timeAgoShort } from '../lib/format'
 import { useRole } from '../app/RoleContext'
+import { usePref } from '../app/PrefsContext'
 import { useServerLifecycle } from '../app/ServerLifecycle'
 import type { ServerHero as Hero } from '../services/types'
 
@@ -24,6 +25,9 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
   const { role } = useRole()
   const lifecycle = useServerLifecycle()
   const busy = lifecycle.busyOf(hero.user)
+  // CPU display mode for the Server Status bar (label only - the fill is unchanged)
+  const cpuMode = usePref('cpuModeServerStatus')
+  const cpuLabel = cpuMode === 'cores' && hero.resources.cpuAggregateLabel ? hero.resources.cpuAggregateLabel : `${hero.resources.cpu}%`
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
       <Card>
@@ -72,7 +76,7 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
         <h3 style={{ fontSize: 14, margin: '0 0 12px' }}>{resourcesTitle}</h3>
         <ResourceBars
           rows={[
-            { label: 'CPU', value: hero.resources.cpu, tip: hero.resources.cpuTip },
+            { label: 'CPU', value: hero.resources.cpu, valueLabel: cpuLabel, tip: hero.resources.cpuTip },
             { label: 'Memory', value: hero.resources.mem, tip: hero.resources.memTip },
             // per-server GPU usage is not tracked - show the row only when there is
             // GPU data to show (utilisation or inventory), never a fabricated 0%

@@ -17,6 +17,7 @@ export interface ServerRow {
   activityHours?: number | null // real avg active hours/day behind the score
   activityPct?: number | null // uncapped activity % (may exceed 100%), for the tooltip
   cpu: number | null // total CPU used (docker/top: 100% = one core, 1300% = ~13 cores)
+  cpuAssignedPct?: number | null // usage as % of assigned cores, capped 0-100 (the 'normalized' display mode)
   cpuQuotaPct?: number | null // usage as % of the assigned cores - drives the counter colour
   cpuTip?: string // multiline: cores used / assigned ceiling / % of assigned (+ crossing)
   mem: number | null // memory used, in GB (absolute)
@@ -189,8 +190,9 @@ export interface GpuDevice {
 }
 
 export interface ResourceSnapshot {
-  cpu: number // % host
+  cpu: number // % host (the bar fill, identical across display modes)
   cpuTip?: string // "4 cores assigned" / "8 host cores (no limit)"
+  cpuAggregateLabel?: string // docker/top label "1300%" for the 'cores' display mode (bar fill unchanged)
   cpuError?: boolean // host CPU core count unavailable - render "unavailable", not a fabricated bar
   mem: number // % host
   memError?: boolean // host RAM total unavailable - render "unavailable", not a fabricated bar

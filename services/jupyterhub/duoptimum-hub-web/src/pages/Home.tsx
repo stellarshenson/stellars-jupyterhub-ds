@@ -17,6 +17,7 @@ import { CappedTags } from '../components/CappedTags'
 import { rowActions } from '../components/ServerRowActions'
 import { Icon } from '../components/Icon'
 import { useRole } from '../app/RoleContext'
+import { usePref } from '../app/PrefsContext'
 import { useIsMobile } from '../lib/useIsMobile'
 import MobileHome from './MobileHome'
 import { timeAgoShort } from '../lib/format'
@@ -59,6 +60,7 @@ function ActiveServersPreview() {
   const navigate = useNavigate()
   const { username: me } = useRole()
   const lifecycle = useServerLifecycle()
+  const listCpuMode = usePref('cpuModeServersList') // 'cores' shows docker/top %, 'normalized' shows % of assigned
   const top = [...data].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]).slice(0, 10)
   // minimal info on the home preview - the detailed CPU/mem/vol/sys breakdowns
   // live in the Servers screen drawer now
@@ -84,7 +86,7 @@ function ActiveServersPreview() {
     {
       title: <Tooltip title={SERVERS_COL_HELP.cpu}><span>CPU</span></Tooltip>,
       align: 'right',
-      render: (_, r) => (r.cpu == null ? <span className="oh-muted">-</span> : <span className="oh-num" title={r.cpuTip} style={{ color: quotaColor(r.cpuQuotaPct) }}>{r.cpu}%</span>),
+      render: (_, r) => (r.cpu == null ? <span className="oh-muted">-</span> : <span className="oh-num" title={r.cpuTip} style={{ color: quotaColor(r.cpuQuotaPct) }}>{listCpuMode === 'cores' ? r.cpu : (r.cpuAssignedPct ?? r.cpu)}%</span>),
     },
     {
       title: <Tooltip title={SERVERS_COL_HELP.mem}><span>Mem</span></Tooltip>,
@@ -181,6 +183,7 @@ function AdminHome() {
   const { data: stats } = useStats()
   const { data: hero } = useServerHero(username)
   const { data: total } = useTotalResources()
+  const hostCpuMode = usePref('cpuModeHostStatus') // 'cores' = summed cores-used label; bar fill unchanged
   const s = stats?.servers
   const u = stats?.users
 
@@ -237,7 +240,7 @@ function AdminHome() {
           {total && (
             <ResourceBars
               rows={[
-                { label: 'CPU', value: total.cpu, tip: total.cpuTip, error: total.cpuError },
+                { label: 'CPU', value: total.cpu, valueLabel: hostCpuMode === 'cores' && total.cpuAggregateLabel ? total.cpuAggregateLabel : `${total.cpu}%`, tip: total.cpuTip, error: total.cpuError },
                 { label: 'Memory', value: total.mem, tip: total.memTip, error: total.memError },
                 { label: 'GPU', value: total.gpu, gpus: total.gpus, gpuDevices: total.gpuDevices },
               ]}

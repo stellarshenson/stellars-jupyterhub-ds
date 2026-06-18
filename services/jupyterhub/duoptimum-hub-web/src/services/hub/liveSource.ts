@@ -19,7 +19,7 @@
 import type { DataSource } from '../datasource'
 import { THRESHOLDS } from '../config'
 import { hubGet, getCurrentUser } from './client'
-import { cpuCounterPct, memCounterGb, cpuQuotaPct, memQuotaPct, cpuTooltip, memTooltip, heroCpuTooltip, hostCpuTooltip } from './serverMetrics'
+import { cpuCounterPct, memCounterGb, cpuQuotaPct, memQuotaPct, cpuTooltip, memTooltip, heroCpuTooltip, hostCpuTooltip, cpuAggregateLabel } from './serverMetrics'
 import { timeAgoShort } from '../../lib/format'
 import type {
   EventRow,
@@ -271,6 +271,7 @@ export const liveSource: DataSource = {
       const cores = a?.cpu_cores ?? null
       const cpuPercent = a?.cpu_percent ?? null
       const cpuVal = running ? cpuCounterPct(cpuPercent) : null
+      const cpuAssigned = running ? cpuBarPct(cpuPercent, cores) : null // % of assigned (the 'normalized' cell mode)
       const cpuQp = running ? cpuQuotaPct(cpuPercent, cores) : null
       const cpuTip = running && cpuPercent != null
         ? cpuTooltip({ cpuPercent, cores, coresLimited: !!a?.cpu_cores_limited })
@@ -314,6 +315,7 @@ export const liveSource: DataSource = {
         // 7-day engagement meter - NOT gated on `running` (see activityFields)
         ...activityFields(a, target),
         cpu: cpuVal,
+        cpuAssignedPct: cpuAssigned,
         cpuQuotaPct: cpuQp,
         cpuTip,
         mem: memVal,
@@ -457,6 +459,7 @@ export const liveSource: DataSource = {
     const resources: ResourceSnapshot = a?.server_active
       ? {
           cpu: cpuPct, // bar FILL = % of assigned cores (capped) - the one bar capped at assigned
+          cpuAggregateLabel: cpuAggregateLabel(a.cpu_percent) ?? undefined, // 'cores' mode label
           cpuTip: a.cpu_cores != null
             ? heroCpuTooltip({ cpuPercent: a.cpu_percent ?? 0, cores: a.cpu_cores, coresLimited: !!a.cpu_cores_limited, assignedPct: cpuPct, hostPct: cpuHostPct })
             : undefined,
@@ -533,6 +536,7 @@ export const liveSource: DataSource = {
       const svrs = `${active.length} server${active.length === 1 ? '' : 's'}`
       return {
         cpu: cpuBar,
+        cpuAggregateLabel: cpuAggregateLabel(cpuSum) ?? undefined, // 'cores' mode: summed cores-used x 100
         cpuError,
         cpuTip: hostCores && hostCores > 0
           ? hostCpuTooltip({ coresUsed, hostCores, hostPct: cpuBar, servers: svrs })

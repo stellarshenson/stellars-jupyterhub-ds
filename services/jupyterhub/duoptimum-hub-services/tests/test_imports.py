@@ -171,6 +171,7 @@ def test_handlers():
         UserProfilesListHandler,
         UserForcePasswordChangeHandler,
         UserRenameHandler,
+        UserDisplayPreferencesHandler,
         EffectiveGrantsHandler,
         ServerLogsHandler,
         EventsDataHandler,
@@ -179,7 +180,7 @@ def test_handlers():
     # Verify handler count matches expected (legacy server-rendered page handlers
     # removed - the React portal owns those routes)
     from duoptimum_hub_services import handlers
-    assert len(handlers.__all__) == 29
+    assert len(handlers.__all__) == 30
 
 
 def test_auth():
