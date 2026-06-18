@@ -45,15 +45,15 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: optimum-hub-services
-        working-directory: services/jupyterhub/optimum-hub-services
+      - name: duoptimum-hub-services
+        working-directory: services/jupyterhub/duoptimum-hub-services
         run: |
           python -m pip install --upgrade pip
           pip install . pytest pytest-asyncio
           pytest tests/ -v
 
-      - name: stellars-docker-proxy
-        working-directory: services/jupyterhub/stellars-docker-proxy
+      - name: duoptimum-docker-proxy
+        working-directory: services/jupyterhub/duoptimum-docker-proxy
         run: |
           pip install . pytest pytest-asyncio
           pytest tests/ -v

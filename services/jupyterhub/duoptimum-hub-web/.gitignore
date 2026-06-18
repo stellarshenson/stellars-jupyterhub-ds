@@ -12,9 +12,9 @@ dist
 dist-ssr
 *.local
 
-# Python wheel build (optimum_hub_web): built SPA bundle is staged here by
+# Python wheel build (duoptimum_hub_web): built SPA bundle is staged here by
 # `make assets`, the wheel output + build scaffolding land alongside.
-optimum_hub_web/static/
+duoptimum_hub_web/static/
 dist-wheel
 build
 *.egg-info
