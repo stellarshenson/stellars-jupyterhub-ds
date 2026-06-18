@@ -37,8 +37,7 @@ from optimum_hub_services import (
     make_pre_spawn_hook,                    # factory returning async hook for group perms, favicon, icons
     register_events,                        # attaches SQLAlchemy listeners for user rename/delete sync
     resolve_gpu_mode,                       # GPU detection: 0=off, 1=forced, 2=auto-detect via nvidia-smi
-    schedule_policy_startup,                # re-imposes every policy model for servers that survived a hub restart (docker-proxy, downloads, api-keys)
-    schedule_startup_favicon_callback,      # registers CHP favicon routes for already-running servers
+    schedule_startup_hydration,             # consolidated startup hydration: warms caches + image-update check + survivor favicon routes/policy, all deferred to the IOLoop
     setup_branding,                         # processes logo/favicon/icon URIs, copies file:// to static dir
 )
 from optimum_hub_services.api_keys_pool import PoolManager  # singleton arbiter of api-key slot assignments (post-stop release)
@@ -869,20 +868,22 @@ if JUPYTERHUB_IDLE_CULLER_ENABLED == 1:
         max_age_seconds=JUPYTERHUB_IDLE_CULLER_MAX_AGE,     # max server lifetime (0=unlimited)
     )
 
-# Register CHP favicon proxy routes for servers that survived a hub restart
-# (pre_spawn_hook only fires on new spawns, this catches already-running servers)
-schedule_startup_favicon_callback(
+# Consolidated startup hydration (deferred to the IOLoop, after the hub is
+# serving - never blocks boot). One call warms everything that previously only
+# came alive lazily on the first /activity request, so a (re)started hub shows a
+# populated portal immediately, including servers that survived the restart:
+#   - the activity refreshers (volume sizes, container sizes, GPU utilisation) +
+#     live stats for surviving servers
+#   - the image-update snapshot, so "update available" is known up front
+#   - survivor CHP favicon routes (pre_spawn_hook only fires on new spawns)
+#   - every policy model's on_hub_startup (docker-proxy re-bind, download-block
+#     route re-registration, api-keys reconcile + periodic) for survivors
+print(f"[Config] File-download policy: {'BLOCK (per-group downloads_active grants)' if JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS else 'ALLOW (dormant)'}")
+schedule_startup_hydration(
+    stellars_config=c.JupyterHub.tornado_settings['stellars_config'],
     favicon_uri=JUPYTERHUB_FAVICON_URI,
     favicon_busy_target=branding['favicon_busy_target'],
+    policy_actx=c.DockerSpawner.pre_spawn_hook._stellars_apply_context,
 )
-
-# Re-impose every policy model for servers that survived this hub restart -
-# pre_spawn_hook only fires on new spawns. One call drives each model's
-# on_hub_startup: docker-proxy listener re-bind for limited-docker survivors,
-# download-block CHP route re-registration, and api-keys reconcile + periodic
-# (in-use set derived from durable container labels, so it self-heals missed
-# stops). Reuses the exact ApplyContext the spawn hook captured.
-print(f"[Config] File-download policy: {'BLOCK (per-group downloads_active grants)' if JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS else 'ALLOW (dormant)'}")
-schedule_policy_startup(c.DockerSpawner.pre_spawn_hook._stellars_apply_context)
 
 # EOF

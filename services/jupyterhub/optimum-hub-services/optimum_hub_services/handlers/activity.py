@@ -26,11 +26,12 @@ def _host_total_memory_mb():
     except Exception:
         return None
 from ..docker_utils import encode_username_for_docker, newer_lab_image_available
-from ..container_size_cache import get_container_sizes_with_refresh, ContainerSizeRefresher
+from ..container_size_cache import get_container_sizes_with_refresh
 from ..container_stats_cache import get_container_stats_with_refresh
-from ..gpu_cache import GpuUtilizationRefresher, get_gpu_utilization_with_refresh
+from ..gpu_cache import get_gpu_utilization_with_refresh
+from ..hydrate import start_activity_refreshers
 from ..idle_culler import calc_ceiling, remaining_seconds_for
-from ..volume_cache import VolumeSizeRefresher, get_volume_sizes_with_refresh
+from ..volume_cache import get_volume_sizes_with_refresh
 
 
 class ActivityDataHandler(BaseHandler):
@@ -43,20 +44,11 @@ class ActivityDataHandler(BaseHandler):
         if not current_user.admin:
             raise web.HTTPError(403, "Only administrators can access this endpoint")
 
-        # Lazy start background refreshers on first access
-        vol_refresher = VolumeSizeRefresher.get_instance()
-        if vol_refresher.periodic_callback is None:
-            vol_refresher.start()
-        ctr_refresher = ContainerSizeRefresher.get_instance()
-        if ctr_refresher.periodic_callback is None:
-            ctr_refresher.start()
-        # GPU utilisation is only worth sampling when the host actually has GPUs
-        # (enumerated once at startup). The sampler spins a CUDA container, so we
-        # gate it on a non-empty inventory to avoid pointless container churn.
-        if (self.settings.get('stellars_config') or {}).get('gpu_list'):
-            gpu_refresher = GpuUtilizationRefresher.get_instance()
-            if gpu_refresher.periodic_callback is None:
-                gpu_refresher.start()
+        # Ensure the background refreshers are running (idempotent). Startup
+        # hydration normally starts them at boot; this is the fallback so a direct
+        # /activity hit still works if hydration was skipped. GPU utilisation is
+        # gated on a non-empty inventory (enumerated once at startup).
+        start_activity_refreshers((self.settings.get('stellars_config') or {}).get('gpu_list'))
 
         self.log.info(f"[Activity Data] Admin {current_user.name} requested activity data")
 

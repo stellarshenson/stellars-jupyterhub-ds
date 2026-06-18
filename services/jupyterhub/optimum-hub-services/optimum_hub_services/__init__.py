@@ -29,6 +29,7 @@ from .hooks import (
     schedule_policy_startup,
     schedule_startup_favicon_callback,
 )
+from .hydrate import schedule_startup_hydration, start_activity_refreshers
 from .idle_culler import (
     calc_available_hours,
     calc_ceiling,
@@ -89,5 +90,7 @@ __all__ = [
     "register_events",
     "resolve_gpu_mode",
     "schedule_startup_favicon_callback",
+    "schedule_startup_hydration",
     "setup_branding",
+    "start_activity_refreshers",
 ]
