@@ -191,7 +191,6 @@ export function AppLayout() {
         </Link>
       )}
       menuFooterRender={(props) => (props?.collapsed ? null : <SiderFoot />)}
-      actionsRender={() => [<StageBadge key="stage" />, <LanguageControl key="lang" />, <ThemeControl key="theme" />]}
       collapsedButtonRender={false}
       footerRender={() => <VersionFooter />}
       token={{
@@ -207,6 +206,15 @@ export function AppLayout() {
       <div style={{ maxWidth: 1320, margin: '0 auto', width: '100%' }}>
         <div className="oh-topbar">
           <Breadcrumbs />
+          {/* header controls live top-right: side layout renders no ProLayout
+           * header (Header returns null), so actionsRender would drop these in
+           * the sider - keep them in this topbar row instead. Order: language,
+           * theme, then the stage badge rightmost. */}
+          <div className="oh-header-actions" style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <LanguageControl />
+            <ThemeControl />
+            <StageBadge />
+          </div>
         </div>
         <ReadonlyBanner />
         <Outlet />

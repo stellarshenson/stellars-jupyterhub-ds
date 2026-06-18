@@ -260,10 +260,10 @@ test-functional:
 ## run the functional harness in auth mode 2 (signup disabled + env-password admin; restart-to-provision on a fresh DB), then clean up
 test-functional-env:
 	@echo "[functional/env] booting hub (first boot creates the DB + tables)..."
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) up -d --wait duoptimumhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) up -d --wait duoptimum-hub
 	@echo "[functional/env] restarting hub to provision the env-password admin..."
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) restart duoptimumhub
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) up -d --wait duoptimumhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) restart duoptimum-hub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) up -d --wait duoptimum-hub
 	@start=$$(date +%s); \
 	docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) run --rm tests; \
 	rc=$$?; \
@@ -275,10 +275,10 @@ test-functional-env:
 ## run the functional harness in signup-open mode (signup enabled; env-provisioned admin authorises a self-signed-up user via the SPA), then clean up
 test-functional-signup-open:
 	@echo "[functional/signup-open] booting hub (first boot creates the DB + tables)..."
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) up -d --wait duoptimumhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) up -d --wait duoptimum-hub
 	@echo "[functional/signup-open] restarting hub to provision the env-password admin..."
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) restart duoptimumhub
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) up -d --wait duoptimumhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) restart duoptimum-hub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) up -d --wait duoptimum-hub
 	@start=$$(date +%s); \
 	docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) run --rm tests; \
 	rc=$$?; \
