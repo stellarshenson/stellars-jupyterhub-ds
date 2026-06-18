@@ -33,7 +33,7 @@ TAG             := $(VERSION)
 # The GPU-info sidecar ships as stellars/stellars-gpuinfo-nvidia (CUDA base
 # pinned in its Dockerfile). `make build` builds it via compose (it has a build
 # section); rebuild/push/pull handle it explicitly alongside the hub below.
-HUB_IMAGE          := stellars/duoptimumhub
+HUB_IMAGE          := stellars/duoptimum-hub
 GPUINFO_IMAGE      := stellars/stellars-gpuinfo-nvidia
 GPUINFO_DOCKERFILE := services/jupyterhub/gpuinfo-nvidia/Dockerfile
 
@@ -109,8 +109,8 @@ RUNTIME_TAG_PYTHON_CMD := python3 -c 'import tomllib;d=tomllib.load(open("pyproj
 
 # Reusable green/bold success banners. Trailing blank line separates the
 # banner from any subsequent shell output for visual breathing room.
-PRINT_BUILD_SUCCESS = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sBuild successful: stellars/duoptimumhub:%s%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
-PRINT_PUSH_SUCCESS  = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sPush successful:  stellars/duoptimumhub:%s (also :latest)%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
+PRINT_BUILD_SUCCESS = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sBuild successful: stellars/duoptimum-hub:%s%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
+PRINT_PUSH_SUCCESS  = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sPush successful:  stellars/duoptimum-hub:%s (also :latest)%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
 
 # Build options (e.g., BUILD_OPTS='--no-cache' or BUILD_OPTS='--no-version-increment')
 BUILD_OPTS ?=
@@ -175,7 +175,7 @@ _rebuild_impl:
 		--build-arg VERSION=$(CURRENT_VERSION) \
 		--build-arg CACHEBUST=$$(date +%s) \
 		$(DOCKER_BUILD_OPTS) \
-		--tag stellars/duoptimumhub:latest \
+		--tag stellars/duoptimum-hub:latest \
 		-f services/jupyterhub/Dockerfile.jupyterhub \
 		.
 	@echo "Rebuilding GPU-info sidecar ($(GPUINFO_IMAGE):latest)..."
@@ -209,7 +209,7 @@ tag: preflight
 		git tag $(TAG); \
 	fi
 	@echo "Creating docker tag: $(TAG)"
-	@docker tag stellars/duoptimumhub:latest stellars/duoptimumhub:$(TAG)
+	@docker tag stellars/duoptimum-hub:latest stellars/duoptimum-hub:$(TAG)
 
 ## start jupyterhub (fg)
 start: preflight
