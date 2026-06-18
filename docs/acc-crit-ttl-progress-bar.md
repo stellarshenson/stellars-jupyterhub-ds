@@ -71,27 +71,29 @@ The backend already drains banked extension down to base; the BAR now shows it. 
 
 - [x] **Extend invalidates hero** - `extendSession` invalidates `['hero', user]` (plus session, servers) so the bar refetches and grows after a successful extend
   - log: 2026-06-17 FIXED - was `['session', user]` + `['servers']` only; the bar reads from the hero query so an extend updated the backend but only a toast showed, the bar never moved
-- [ ] **Runtime: extend grows the bar** - on a running session below full, Extend visibly refills the bar to the new remaining (pinned at 100% if pushed above base), like the old design
-  - log: 2026-06-17 invalidation fixed; live round-trip pending deploy
+- [x] **Runtime: extend grows the bar** - on a running session, Extend visibly animates the bar to the post-extend remaining; below base it fills toward base, when banked above base it grows against the ceiling (never pinned at a false 100%)
+  - log: 2026-06-17 invalidation fixed; 2026-06-18 boost target corrected from 100% to the computed post-extend %
 
 ## Staged extend animation
 
-On Extend the gadget plays a three-step animation instead of a single jump (`TtlGadget` boost state + `.oh-ttl-boost` in global.css).
+On Extend the gadget plays a three-step animation instead of a single jump (`TtlGadget` boost state + `.oh-ttl-boost` in global.css). The bar animates to the **computed post-extend target %** (against the invariant ceiling), never a blanket 100%.
 
-- [x] **Step 1 - bar fills, time held** - on click the bar animates to 100% immediately (optimistic) while the time text holds its pre-extend value ("keep 24h on")
-  - log: 2026-06-17 implemented - `boost` state forces `shownPct=100`; `displayMin` freezes the shown minutes during the fill
+- [x] **Step 1 - bar moves to target, time held** - on click the bar animates immediately toward `boostPct = pctFor(min(ceiling, timeLeft + addedHours))` (the same two-phase formula) while the time text holds its pre-extend value
+  - log: 2026-06-17 implemented as `shownPct=100`; 2026-06-18 FIXED to the computed target `boostPct` so an extended session animates to its true partial % (operator: 56h +7h overshot to 100% then snapped to 63h); `displayMin` freezes the shown minutes during the fill
 - [x] **Step 2 - grow to new limit over a configured duration** - the bar visibly fills to the new ceiling (not a snap) with a brief accent glow, like the old design
   - log: 2026-06-17 implemented, then (operator: "not properly animated ... make it 1s") forced a visible fill - `.oh-ttl-boost .ant-progress-bg { transition: width var(--oh-ttl-anim) ease }` overrides antd's quick default; boost window + `oh-ttl-pulse` glow share the same duration
 - [x] **Duration is package-config** - the fill duration lives in `optimum-hub-web/src/services/config.ts` (`ANIMATION.ttlExtendMs`, default 1000), NOT a Docker env (too granular); it drives the JS hold timer and, via the `--oh-ttl-anim` CSS var on the bar, the CSS transition + glow from one place
   - log: 2026-06-17 added `ANIMATION` config; `meters.tsx` reads it for the timer + sets `--oh-ttl-anim`; `global.css` uses `var(--oh-ttl-anim, 1s)`
-- [x] **Step 3 - time text updates** - once the refetched `timeLeftMin` lands the bar settles on the real % and the clock text reveals the new remaining time
-  - log: 2026-06-17 implemented - `displayMin` snaps to the new value and `boost` clears after the fill (~900ms) or as soon as new data arrives
+- [x] **Step 3 - time text updates, no snap** - once the refetched `timeLeftMin` lands the bar settles on the real % (which equals the target it already animated to, ceiling being invariant, so no jump) and the clock text reveals the new remaining time
+  - log: 2026-06-17 implemented; 2026-06-18 the settle now lands on the same % as the boost target, eliminating the snap-back flicker
 - [x] **Clock icon before the time** - the clock glyph renders immediately left of the remaining-time text in the gadget
   - log: 2026-06-17 present (`Icon name="clock"` before `<b>` in `.oh-ttl-val`)
-- [ ] **Edge: partial extend below base** - extending only part-way (remaining still < base) fills to 100% then settles back to the real % when data lands; acceptable since Extend normally tops toward the ceiling
-  - log: 2026-06-17 noted; common path (extend exceeds base) ends at 100% with no settle-back
+- [x] **Edge: partial extend below base** - extending only part-way (remaining still < base) animates to the base-scaled target % and settles there; no overshoot to 100%
+  - log: 2026-06-18 fixed by the target-% boost (was: filled to 100% then settled back)
+- [x] **Edge: extend while banked (> base)** - both endpoints above base -> the bar grows monotonically against the ceiling (the operator's reported case: 56h -> 63h), no overshoot/snap
+  - log: 2026-06-18 the regression this fix closes
 - [ ] **Runtime: animation on the live hub** - the three-step sequence is visible end-to-end on a real extend round-trip
-  - log: 2026-06-17 coded; visual confirm pends rebuild
+  - log: 2026-06-17 coded; 2026-06-18 target-% fix coded; visual confirm pends rebuild
 
 ## Test harness
 
