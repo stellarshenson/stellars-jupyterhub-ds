@@ -31,61 +31,80 @@ function AccessPill({ level }: { level: Level }) {
   )
 }
 
-interface Cap { area: string; capability: string; admin: Level; user: Level; note?: string }
+// ── Role definitions (single panel, one row per role) ───────────────────────
+interface RoleDef { role: string; description: string; assigned: string; who: string }
+
+const ROLES: RoleDef[] = [
+  {
+    role: 'Admin',
+    description: 'Full read/write/create/remove across the fleet, users, groups and platform settings',
+    assigned: "Holds JupyterHub's admin flag - JUPYTERHUB_ADMIN at login, or toggled on the Users screen",
+    who: 'Platform operators, maintainers',
+  },
+  {
+    role: 'User',
+    description: 'Own server and profile only; reads own launchpad, no fleet/user/group rights',
+    assigned: 'Authenticated, authorised account without the admin flag',
+    who: 'Data scientists, notebook authors, learners',
+  },
+]
+
+const roleColumns = [
+  { title: 'Role', dataIndex: 'role', width: 90, render: (v: string) => <b>{v}</b> },
+  { title: 'Description', dataIndex: 'description' },
+  { title: 'How assigned', dataIndex: 'assigned', width: 320 },
+  { title: 'Who', dataIndex: 'who', width: 200 },
+]
+
+// ── Access matrix (one row per page + action; CRUD rights in the description) ─
+interface Cap { area: string; capability: string; desc: string; admin: Level; user: Level }
 
 // Sourced from the router's admin gating (RequireAdmin) and the handlers' self-or-
-// admin rules; cells say what each role may do, not merely see.
+// admin rules; the description states the read/write/list/create/remove rights,
+// the cells state the level each role holds.
 const CAPS: Cap[] = [
   // Pages
-  { area: 'Pages', capability: 'Home dashboard', admin: 'full', user: 'full', note: 'admin sees the fleet; user sees their own launchpad' },
-  { area: 'Pages', capability: 'Own profile', admin: 'full', user: 'self', note: 'name, email, own password' },
-  { area: 'Pages', capability: 'Servers (fleet)', admin: 'full', user: 'none' },
-  { area: 'Pages', capability: 'Users', admin: 'full', user: 'none' },
-  { area: 'Pages', capability: 'Groups', admin: 'full', user: 'none' },
-  { area: 'Pages', capability: 'Lab Setup', admin: 'full', user: 'none' },
-  { area: 'Pages', capability: 'Events log', admin: 'full', user: 'none' },
-  { area: 'Pages', capability: 'Notifications', admin: 'full', user: 'none' },
-  { area: 'Pages', capability: 'Settings + reference', admin: 'full', user: 'none' },
-  { area: 'Pages', capability: 'Tokens', admin: 'full', user: 'none' },
-  { area: 'Pages', capability: 'Roles (this page)', admin: 'view', user: 'none' },
+  { area: 'Pages', capability: 'Home dashboard', desc: 'Admin reads the whole fleet; user reads only their own launchpad', admin: 'full', user: 'full' },
+  { area: 'Pages', capability: 'Own profile', desc: 'Read + write own name, email and password', admin: 'full', user: 'self' },
+  { area: 'Pages', capability: 'Servers (fleet)', desc: 'List, read and control every user’s server', admin: 'full', user: 'none' },
+  { area: 'Pages', capability: 'Users', desc: 'List, create, read, write and remove any account', admin: 'full', user: 'none' },
+  { area: 'Pages', capability: 'Groups', desc: 'List, create, read, write and remove any group', admin: 'full', user: 'none' },
+  { area: 'Pages', capability: 'Lab Setup', desc: 'Read + write the spawned-lab image and aux config', admin: 'full', user: 'none' },
+  { area: 'Pages', capability: 'Events log', desc: 'Read + clear the platform event stream', admin: 'full', user: 'none' },
+  { area: 'Pages', capability: 'Notifications', desc: 'Compose + broadcast to all running labs', admin: 'full', user: 'none' },
+  { area: 'Pages', capability: 'Settings + reference', desc: 'Read + write hub-wide settings', admin: 'full', user: 'none' },
+  { area: 'Pages', capability: 'Tokens', desc: 'List, create and remove API tokens', admin: 'full', user: 'none' },
+  { area: 'Pages', capability: 'Roles (this page)', desc: 'Read-only reference; no writes by any role', admin: 'view', user: 'none' },
   // Server actions
-  { area: 'Server', capability: 'Start / stop / restart server', admin: 'full', user: 'self', note: 'user acts on their own server only' },
-  { area: 'Server', capability: 'Open / enter lab', admin: 'full', user: 'self', note: 'admin can enter any lab (with a confirm)' },
-  { area: 'Server', capability: 'Extend session (idle TTL)', admin: 'full', user: 'self' },
-  { area: 'Server', capability: 'Manage / reset volumes', admin: 'full', user: 'self' },
-  { area: 'Server', capability: 'Bulk Start All / Stop All', admin: 'full', user: 'none' },
+  { area: 'Server', capability: 'Start / stop / restart server', desc: 'Create/remove the lab container; user acts on their own server only', admin: 'full', user: 'self' },
+  { area: 'Server', capability: 'Open / enter lab', desc: 'Open a running lab; admin can enter any lab (with a confirm)', admin: 'full', user: 'self' },
+  { area: 'Server', capability: 'Extend session (idle TTL)', desc: 'Write a later idle-cull deadline for a running server', admin: 'full', user: 'self' },
+  { area: 'Server', capability: 'Manage / reset volumes', desc: 'List + remove a user’s persistent volumes (server stopped)', admin: 'full', user: 'self' },
+  { area: 'Server', capability: 'Bulk Start All / Stop All', desc: 'Create/remove every lab in one action', admin: 'full', user: 'none' },
   // User administration
-  { area: 'Users', capability: 'Create / remove user', admin: 'full', user: 'none' },
-  { area: 'Users', capability: 'Rename user', admin: 'full', user: 'none', note: 'stopped server only; see Roles note on collateral' },
-  { area: 'Users', capability: 'Authorise / discard signup', admin: 'full', user: 'none' },
-  { area: 'Users', capability: 'Grant / revoke admin', admin: 'full', user: 'none' },
-  { area: 'Users', capability: 'Set another user password', admin: 'full', user: 'none' },
-  { area: 'Users', capability: 'Force password change', admin: 'full', user: 'none' },
-  { area: 'Users', capability: 'Change own password', admin: 'full', user: 'self' },
+  { area: 'Users', capability: 'Create / remove user', desc: 'Create a new account or delete an existing one', admin: 'full', user: 'none' },
+  { area: 'Users', capability: 'Rename user', desc: 'Write a user’s login name; stopped server only; volumes not migrated', admin: 'full', user: 'none' },
+  { area: 'Users', capability: 'Authorise / discard signup', desc: 'Approve or remove a pending self-signup', admin: 'full', user: 'none' },
+  { area: 'Users', capability: 'Grant / revoke admin', desc: 'Write another account’s admin flag', admin: 'full', user: 'none' },
+  { area: 'Users', capability: 'Set another user password', desc: 'Write any user’s password', admin: 'full', user: 'none' },
+  { area: 'Users', capability: 'Force password change', desc: 'Flag a user to reset their password at next login', admin: 'full', user: 'none' },
+  { area: 'Users', capability: 'Change own password', desc: 'Write own password only', admin: 'full', user: 'self' },
   // Groups + policy
-  { area: 'Groups', capability: 'Create / delete / configure groups', admin: 'full', user: 'none' },
-  { area: 'Groups', capability: 'Group membership + policy', admin: 'full', user: 'none' },
-  { area: 'Groups', capability: 'Effective access (view own)', admin: 'full', user: 'self' },
+  { area: 'Groups', capability: 'Create / delete / configure groups', desc: 'Create, write and remove access-control groups', admin: 'full', user: 'none' },
+  { area: 'Groups', capability: 'Group membership + policy', desc: 'Write a group’s members and spawn policy', admin: 'full', user: 'none' },
+  { area: 'Groups', capability: 'Effective access (view own)', desc: 'Read the access a membership grants; user reads own only', admin: 'full', user: 'self' },
   // Platform
-  { area: 'Platform', capability: 'Broadcast notifications', admin: 'full', user: 'none' },
-  { area: 'Platform', capability: 'Clear events log', admin: 'full', user: 'none' },
-  { area: 'Platform', capability: 'Reset activity samples', admin: 'full', user: 'none' },
-  { area: 'Platform', capability: 'Edit platform settings', admin: 'full', user: 'none' },
+  { area: 'Platform', capability: 'Broadcast notifications', desc: 'Send a message to every running lab', admin: 'full', user: 'none' },
+  { area: 'Platform', capability: 'Clear events log', desc: 'Remove all recorded events', admin: 'full', user: 'none' },
+  { area: 'Platform', capability: 'Reset activity samples', desc: 'Remove the stored activity-monitor history', admin: 'full', user: 'none' },
+  { area: 'Platform', capability: 'Edit platform settings', desc: 'Write hub-wide configuration values', admin: 'full', user: 'none' },
 ]
 
 const columns = [
-  {
-    title: 'Capability',
-    dataIndex: 'capability',
-    render: (v: string, r: Cap) => (
-      <div>
-        <div>{v}</div>
-        {r.note && <div className="oh-muted" style={{ fontSize: 12 }}>{r.note}</div>}
-      </div>
-    ),
-  },
-  { title: 'Admin', dataIndex: 'admin', width: 120, align: 'center' as const, render: (l: Level) => <AccessPill level={l} /> },
-  { title: 'User', dataIndex: 'user', width: 120, align: 'center' as const, render: (l: Level) => <AccessPill level={l} /> },
+  { title: 'Capability', dataIndex: 'capability', width: 220, render: (v: string) => <b>{v}</b> },
+  { title: 'Description', dataIndex: 'desc', render: (v: string) => <span className="oh-muted">{v}</span> },
+  { title: 'Admin', dataIndex: 'admin', width: 110, align: 'center' as const, render: (l: Level) => <AccessPill level={l} /> },
+  { title: 'User', dataIndex: 'user', width: 110, align: 'center' as const, render: (l: Level) => <AccessPill level={l} /> },
 ]
 
 export default function Roles() {
@@ -95,19 +114,15 @@ export default function Roles() {
     <>
       <PageHeader title="Roles" sub="The two platform roles and the access each is granted" />
 
-      <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
-        <Card title="Admin" style={{ flex: 1, minWidth: 280 }}>
-          <p>Holds JupyterHub's <span className="oh-mono">admin</span> flag - granted to the
-            configured <span className="oh-mono">JUPYTERHUB_ADMIN</span> at login, or toggled on the
-            Users screen. Sees the full Administration nav and manages the whole fleet: every user,
-            group, server and platform setting.</p>
-        </Card>
-        <Card title="User" style={{ flex: 1, minWidth: 280 }}>
-          <p>Any authenticated, authorised account without the admin flag. Operates only their own
-            server and profile - start/stop their lab, manage their own volumes, change their own
-            password. No fleet, user or group administration.</p>
-        </Card>
-      </div>
+      <Card title="Role definitions" styles={{ body: { padding: 0 } }} style={{ marginBottom: 16 }}>
+        <Table<RoleDef>
+          rowKey="role"
+          pagination={false}
+          rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+          dataSource={ROLES}
+          columns={roleColumns}
+        />
+      </Card>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {areas.map((area) => (
