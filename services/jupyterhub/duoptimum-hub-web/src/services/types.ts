@@ -16,11 +16,12 @@ export interface ServerRow {
   activity: number | null // 0-100 engagement (capped), null when not running
   activityHours?: number | null // real avg active hours/day behind the score
   activityPct?: number | null // uncapped activity % (may exceed 100%), for the tooltip
-  cpu: number | null // % of host
-  cpuTip?: string // "4 cores assigned" / "8 host cores (no limit)"
-  mem: number | null // % of host RAM
-  memTip?: string // "19.2 GB - 30% of host RAM, over the 25% per-user limit"
-  memOver?: boolean
+  cpu: number | null // total CPU used (docker/top: 100% = one core, 1300% = ~13 cores)
+  cpuQuotaPct?: number | null // usage as % of the assigned cores - drives the counter colour
+  cpuTip?: string // multiline: cores used / assigned ceiling / % of assigned (+ crossing)
+  mem: number | null // memory used, in GB (absolute)
+  memQuotaPct?: number | null // usage as % of the assigned memory limit - drives the colour
+  memTip?: string // multiline: GB used / assigned ceiling / % of assigned / % of host
   gpu: string | null // "0,1" or null
   volumesGB: number | null
   volumesTip?: string // per-mount breakdown
@@ -191,6 +192,7 @@ export interface ResourceSnapshot {
   cpu: number // % host
   cpuTip?: string // "4 cores assigned" / "8 host cores (no limit)"
   mem: number // % host
+  memError?: boolean // host RAM total unavailable - render "unavailable", not a fabricated bar
   gpu: number // % host (aggregate)
   gpus?: number[] // per-GPU utilisation % - segmented GPU meter (only when utilisation is sampled)
   gpuDevices?: GpuDevice[] // real host GPU inventory; drives the device count when utilisation is not sampled

@@ -3,7 +3,7 @@
  * actions, recent events). A plain user sees the launchpad (their server hero,
  * their groups, effective access). */
 import { useEffect } from 'react'
-import { Card, Tag } from 'antd'
+import { Card, Tag, Tooltip } from 'antd'
 import { Link, useNavigate } from 'react-router-dom'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
@@ -24,6 +24,8 @@ import { useEffectiveGrants, useEvents, useServerHero, useServers, useStats, use
 import { invalidate } from '../services/actions'
 import { useServerLifecycle } from '../app/ServerLifecycle'
 import type { ServerRow, ServerStatus } from '../services/types'
+import { quotaColor } from '../services/hub/serverMetrics'
+import { SERVERS_COL_HELP } from '../services/config'
 
 const STATUS_ORDER: Record<ServerStatus, number> = { active: 1, idle: 2, spawning: 3, offline: 4, error: 5 }
 const accentTag = { background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4, marginInlineStart: 6 }
@@ -80,14 +82,14 @@ function ActiveServersPreview() {
     { title: 'Status', width: 92, render: (_, r) => <StatusPill status={r.status} label={r.statusLabel} /> },
     { title: 'Activity', render: (_, r) => <ActivityMeter value={r.activity} hours={r.activityHours} pct={r.activityPct} /> },
     {
-      title: 'CPU',
+      title: <Tooltip title={SERVERS_COL_HELP.cpu}><span>CPU</span></Tooltip>,
       align: 'right',
-      render: (_, r) => (r.cpu == null ? <span className="oh-muted">-</span> : <span className="oh-num" title={r.cpuTip}>{r.cpu}%</span>),
+      render: (_, r) => (r.cpu == null ? <span className="oh-muted">-</span> : <span className="oh-num" title={r.cpuTip} style={{ color: quotaColor(r.cpuQuotaPct) }}>{r.cpu}%</span>),
     },
     {
-      title: 'Mem',
+      title: <Tooltip title={SERVERS_COL_HELP.mem}><span>Mem</span></Tooltip>,
       align: 'right',
-      render: (_, r) => (r.mem == null ? <span className="oh-muted">-</span> : <span className={r.memOver ? 'oh-cell-warn' : 'oh-num'} title={r.memTip}>{r.mem}%</span>),
+      render: (_, r) => (r.mem == null ? <span className="oh-muted">-</span> : <span className="oh-num" title={r.memTip} style={{ color: quotaColor(r.memQuotaPct) }}>{r.mem} GB</span>),
     },
     {
       title: 'Time Left',
@@ -236,7 +238,7 @@ function AdminHome() {
             <ResourceBars
               rows={[
                 { label: 'CPU', value: total.cpu, tip: total.cpuTip },
-                { label: 'Memory', value: total.mem, tip: total.memTip },
+                { label: 'Memory', value: total.mem, tip: total.memTip, error: total.memError },
                 { label: 'GPU', value: total.gpu, gpus: total.gpus, gpuDevices: total.gpuDevices },
               ]}
             />

@@ -26,6 +26,23 @@ export const BAR_COLOR = {
   dangerPct: 85, // at or above: full danger (red)
 }
 
+// Servers-list CPU/MEM counter COLOUR by the server's usage as a % of its ASSIGNED
+// quota. The counter VALUE is host-relative (CPU = total cores-used %, MEM = GB);
+// the COLOUR is quota-relative. Tune the bands here. Drives serverMetrics.quotaColor
+// and serverMetrics.quotaCrossing (the tooltip "(over warning threshold)" clause).
+export const QUOTA_COLOR = {
+  warnPct: 75, // at or above (and below danger): warning (amber)
+  dangerPct: 100, // at or above: danger (red) - the assigned quota is reached/exceeded
+}
+
+// Servers-list column-header explanatory tooltips (CPU/MEM), shared by the Servers
+// page table and the Home servers widget so the host-relative figures are not
+// misread (the cell shows total CPU across cores / absolute GB, not % of assigned).
+export const SERVERS_COL_HELP = {
+  cpu: 'Total CPU used across cores - 100% = one core (e.g. 1300% = ~13 cores)',
+  mem: 'Memory used, in GB',
+}
+
 // UI animation timings (milliseconds) - tunable here without touching the
 // components or CSS. The TTL extend value drives both the JS hold timer and the
 // CSS bar-fill/glow (threaded to global.css via the `--oh-ttl-anim` variable).

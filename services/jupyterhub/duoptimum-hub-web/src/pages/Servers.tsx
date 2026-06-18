@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
-import { Button, Card, Drawer, Input, Modal, Tag } from 'antd'
+import { Button, Card, Drawer, Input, Modal, Tag, Tooltip } from 'antd'
 import { PageHeader } from '../components/PageHeader'
 import { StatusPill } from '../components/StatusPill'
 import { ActivityMeter } from '../components/meters'
@@ -24,6 +24,8 @@ import { gpuSupported } from '../app/capabilities'
 import { useIsMobile } from '../lib/useIsMobile'
 import { useServerLifecycle } from '../app/ServerLifecycle'
 import type { ServerRow, ServerStatus } from '../services/types'
+import { quotaColor } from '../services/hub/serverMetrics'
+import { SERVERS_COL_HELP } from '../services/config'
 
 type Lifecycle = ReturnType<typeof useServerLifecycle>
 
@@ -52,12 +54,12 @@ const SERVERS_ORIGIN = { to: '/servers', label: 'Servers' }
 
 // one labelled metric row in the detail drawer; `detail` is the breakdown line
 // (the data that lives in the table cell's tooltip, surfaced inline here)
-function Metric({ label, value, detail, over }: { label: string; value: ReactNode; detail?: string; over?: boolean }) {
+function Metric({ label, value, detail, over, valueColor }: { label: string; value: ReactNode; detail?: string; over?: boolean; valueColor?: string }) {
   return (
     <div style={{ padding: '10px 0', borderBottom: '1px solid var(--color-border-subtle)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
         <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
-        <span className={over ? 'oh-cell-warn' : ''}>{value}</span>
+        <span className={over ? 'oh-cell-warn' : ''} style={valueColor ? { color: valueColor } : undefined}>{value}</span>
       </div>
       {detail && <div className="oh-muted" style={{ fontSize: 12, marginTop: 3, whiteSpace: 'pre-line' }}>{detail}</div>}
     </div>
@@ -77,8 +79,8 @@ function ServerDetail({ row }: { row: ServerRow }) {
         {row.admin && <Tag bordered={false} style={accentTag}>admin</Tag>}
       </div>
       <Metric label="Activity (7d)" value={<ActivityMeter value={row.activity} hours={row.activityHours} pct={row.activityPct} />} />
-      <Metric label="CPU" value={row.cpu == null ? dash : `${row.cpu}%`} detail={row.cpuTip} />
-      <Metric label="Memory" value={row.mem == null ? dash : `${row.mem}%`} detail={row.memTip} over={row.memOver} />
+      <Metric label="CPU" value={row.cpu == null ? dash : `${row.cpu}%`} detail={row.cpuTip} valueColor={quotaColor(row.cpuQuotaPct)} />
+      <Metric label="Memory" value={row.mem == null ? dash : `${row.mem} GB`} detail={row.memTip} valueColor={quotaColor(row.memQuotaPct)} />
       {gpuSupported() && <Metric label="GPU" value={row.gpu ?? <span className="oh-muted">not tracked per-server</span>} />}
       <Metric label="Volumes" value={row.volumesGB == null ? dash : `${row.volumesGB} GB`} detail={row.volumesTip} over={row.volumesOver} />
       <Metric label="System" value={row.systemGB == null ? dash : `+${row.systemGB} GB`} detail={row.systemTip} over={row.systemOver} />
@@ -192,16 +194,16 @@ export default function Servers() {
       render: (_, r) => <ActivityMeter value={r.activity} hours={r.activityHours} pct={r.activityPct} />,
     },
     {
-      title: 'CPU', dataIndex: 'cpu', align: 'right', sorter: (a, b) => (a.cpu ?? -1) - (b.cpu ?? -1),
-      render: (_, r) => (r.cpu == null ? <span className="oh-muted">-</span> : <span className="oh-num" title={r.cpuTip}>{r.cpu}%</span>),
+      title: <Tooltip title={SERVERS_COL_HELP.cpu}><span>CPU</span></Tooltip>, dataIndex: 'cpu', align: 'right', sorter: (a, b) => (a.cpu ?? -1) - (b.cpu ?? -1),
+      render: (_, r) => (r.cpu == null ? <span className="oh-muted">-</span> : <span className="oh-num" title={r.cpuTip} style={{ color: quotaColor(r.cpuQuotaPct) }}>{r.cpu}%</span>),
     },
     {
-      title: 'Mem',
+      title: <Tooltip title={SERVERS_COL_HELP.mem}><span>Mem</span></Tooltip>,
       dataIndex: 'mem',
       align: 'right',
       sorter: (a, b) => (a.mem ?? -1) - (b.mem ?? -1),
       render: (_, r) =>
-        r.mem == null ? <span className="oh-muted">-</span> : <span className={r.memOver ? 'oh-cell-warn' : 'oh-num'} title={r.memTip}>{r.mem}%</span>,
+        r.mem == null ? <span className="oh-muted">-</span> : <span className="oh-num" title={r.memTip} style={{ color: quotaColor(r.memQuotaPct) }}>{r.mem} GB</span>,
     },
     // GPU column only when the platform has GPU AND some row actually carries a
     // per-server GPU value (live never collects it -> all-null -> column hidden)
