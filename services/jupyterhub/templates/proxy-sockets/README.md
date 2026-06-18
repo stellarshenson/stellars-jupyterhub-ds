@@ -34,5 +34,5 @@ Each `<username>/docker.sock` is an aiohttp `UnixSite` listener bound to a per-u
 
 - [docs/limited-docker-access.md](https://github.com/stellarshenson/stellars-jupyterhub-ds/blob/main/docs/limited-docker-access.md) - architecture, mermaid, quota rules
 - [docs/jupyterhub-working-with-docker.md](https://github.com/stellarshenson/stellars-jupyterhub-ds/blob/main/docs/jupyterhub-working-with-docker.md) - operator-facing overview
-- [services/jupyterhub/stellars-docker-proxy/](https://github.com/stellarshenson/stellars-jupyterhub-ds/tree/main/services/jupyterhub/stellars-docker-proxy) - the proxy library (`Manager`, `create_app`)
+- [services/jupyterhub/duoptimum-docker-proxy/](https://github.com/stellarshenson/stellars-jupyterhub-ds/tree/main/services/jupyterhub/duoptimum-docker-proxy) - the proxy library (`Manager`, `create_app`)
 - [services/jupyterhub/duoptimum-hub-services/duoptimum_hub_services/docker_proxy.py](https://github.com/stellarshenson/stellars-jupyterhub-ds/blob/main/services/jupyterhub/duoptimum-hub-services/duoptimum_hub_services/docker_proxy.py) - hub-side wiring (`register_user`, `unregister_user`)

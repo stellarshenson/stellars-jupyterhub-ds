@@ -1,4 +1,4 @@
-"""stellars-docker-proxy: an owner-scoped reverse proxy for the Docker socket.
+"""duoptimum-docker-proxy: an owner-scoped reverse proxy for the Docker socket.
 
 Pure library, host-agnostic. Consumers (JupyterHub) host it in-process:
 

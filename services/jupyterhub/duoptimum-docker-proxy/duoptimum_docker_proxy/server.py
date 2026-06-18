@@ -17,7 +17,7 @@ from aiohttp import ClientSession, ClientTimeout, UnixConnector, web
 from . import filters as F
 from . import quota as Q
 
-log = logging.getLogger("stellars_docker_proxy")
+log = logging.getLogger("duoptimum_docker_proxy")
 
 # Strip a leading Docker API version prefix (e.g. "/v1.43") for classification;
 # the original path (version included) is still what gets forwarded.
@@ -433,7 +433,7 @@ async def run(config, owner_resolver=None):
     # socket itself is already owner-scoped, so it grants only this owner's view.
     os.chmod(config.listen_socket, getattr(config, "socket_mode", 0o666))
     log.info(
-        "stellars-docker-proxy: owner=%s listen=%s upstream=%s",
+        "duoptimum-docker-proxy: owner=%s listen=%s upstream=%s",
         config.owner, config.listen_socket, config.upstream_socket,
     )
     try:

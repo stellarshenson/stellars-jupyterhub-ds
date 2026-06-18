@@ -65,7 +65,7 @@ Putting a user in BOTH a limited group AND a group that carries `docker_access=T
 - Across-group resolution: `services/jupyterhub/duoptimum-hub-services/duoptimum_hub_services/group_resolver.py` (`resolve_group_config`)
 - Spawn-time application: `services/jupyterhub/duoptimum-hub-services/duoptimum_hub_services/hooks.py` (`pre_spawn_hook` - mounts the right socket, sets `DOCKER_HOST`, applies `--privileged`; `post_stop_hook` unregisters)
 - Hub-side wiring: `services/jupyterhub/duoptimum-hub-services/duoptimum_hub_services/docker_proxy.py` (`register_user`, `unregister_user` - async, direct Manager calls; module singleton)
-- Proxy library: `services/jupyterhub/stellars-docker-proxy/` - `Manager` (per-user listeners), `create_app`/`ProxyApp` (per-owner filtering). Pure library, no `__main__`, no admin API
+- Proxy library: `services/jupyterhub/duoptimum-docker-proxy/` - `Manager` (per-user listeners), `create_app`/`ProxyApp` (per-owner filtering). Pure library, no `__main__`, no admin API
 
 ## Related
 

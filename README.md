@@ -373,7 +373,7 @@ volumes:
 
 Two tiers: fast Python unit suites that run in CI and gate the image build, and a local-only functional harness that boots the real image and drives the running platform.
 
-- **Unit tests** - `make test` runs the `duoptimum-hub-services` and `stellars-docker-proxy` pytest suites; they also gate the Docker build and run as a GitHub `unit_tests` job
+- **Unit tests** - `make test` runs the `duoptimum-hub-services` and `duoptimum-docker-proxy` pytest suites; they also gate the Docker build and run as a GitHub `unit_tests` job
 - **Functional tests** - `make test-functional` boots the built image in an isolated throwaway deployment (own compose project, network and volumes - never touches a real deployment) and drives the hub UI with a containerized Playwright runner, inspecting spawned containers to assert each group policy lands on the lab; local-only, since GitHub runners cannot run the DockerSpawner deployment
 - **Env-password admin mode** - `make test-functional-env` covers the signup-disabled, pre-provisioned-admin regime (restart-to-provision) with one focused test
 - **GPU** - `make test-functional` auto-detects a host GPU and runs the GPU auto-detection test when one is present

@@ -46,7 +46,7 @@ DUOPTIMUM_PYPROJECT       := services/jupyterhub/duoptimum-hub-web/pyproject.tom
 DUOPTIMUM_PACKAGE_JSON    := services/jupyterhub/duoptimum-hub-web/package.json
 DUOPTIMUM_PACKAGE_LOCK    := services/jupyterhub/duoptimum-hub-web/package-lock.json
 HUB_SERVICES_PYPROJECT  := services/jupyterhub/duoptimum-hub-services/pyproject.toml
-DOCKER_PROXY_PYPROJECT  := services/jupyterhub/stellars-docker-proxy/pyproject.toml
+DOCKER_PROXY_PYPROJECT  := services/jupyterhub/duoptimum-docker-proxy/pyproject.toml
 # [project] version lines set in lockstep (root + the three packages in the image)
 VERSIONED_PYPROJECTS    := pyproject.toml $(DUOPTIMUM_PYPROJECT) $(HUB_SERVICES_PYPROJECT) $(DOCKER_PROXY_PYPROJECT)
 
@@ -240,10 +240,10 @@ FUNCTEST_ENV_COMPOSE := tests/functional/compose.functional-env.yml
 FUNCTEST_SIGNUPOPEN_COMPOSE := tests/functional/compose.functional-signup-open.yml
 FUNCTEST_IMAGES  := quay.io/jupyterhub/singleuser:latest mcr.microsoft.com/playwright/python:v1.49.0-noble
 
-## run the python unit test suites locally (duoptimum-hub-services + stellars-docker-proxy)
+## run the python unit test suites locally (duoptimum-hub-services + duoptimum-docker-proxy)
 test:
 	@cd services/jupyterhub/duoptimum-hub-services && python3 -m pytest tests/ -q
-	@cd services/jupyterhub/stellars-docker-proxy && python3 -m pytest tests/ -q
+	@cd services/jupyterhub/duoptimum-docker-proxy && python3 -m pytest tests/ -q
 
 ## run the functional UI/scenario harness in an isolated throwaway deployment, then clean containers/network/volumes (LOCAL ONLY; pulled images kept to avoid re-pull - REMOVE_IMAGES=1 to also remove them)
 test-functional:

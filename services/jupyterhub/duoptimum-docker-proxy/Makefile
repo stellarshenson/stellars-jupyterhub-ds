@@ -20,14 +20,14 @@ test: ## Run pytest test suite
 	$(PYTEST) tests/ -v
 
 clean: ## Remove build artifacts
-	rm -rf dist/ build/ *.egg-info stellars_docker_proxy/*.egg-info $(VENV)
+	rm -rf dist/ build/ *.egg-info duoptimum_docker_proxy/*.egg-info $(VENV)
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
 lint: ## Run basic syntax checks
-	$(PYTHON) -m py_compile stellars_docker_proxy/__init__.py
-	$(PYTHON) -m py_compile stellars_docker_proxy/config.py
-	$(PYTHON) -m py_compile stellars_docker_proxy/filters.py
-	$(PYTHON) -m py_compile stellars_docker_proxy/quota.py
-	$(PYTHON) -m py_compile stellars_docker_proxy/server.py
-	$(PYTHON) -m py_compile stellars_docker_proxy/__main__.py
+	$(PYTHON) -m py_compile duoptimum_docker_proxy/__init__.py
+	$(PYTHON) -m py_compile duoptimum_docker_proxy/config.py
+	$(PYTHON) -m py_compile duoptimum_docker_proxy/filters.py
+	$(PYTHON) -m py_compile duoptimum_docker_proxy/quota.py
+	$(PYTHON) -m py_compile duoptimum_docker_proxy/server.py
+	$(PYTHON) -m py_compile duoptimum_docker_proxy/__main__.py
 	@echo "Syntax check passed"

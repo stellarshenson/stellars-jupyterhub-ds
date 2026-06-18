@@ -93,11 +93,11 @@ flowchart TD
 
 | Module | Role |
 |---|---|
-| `stellars_docker_proxy.config` | `ProxyConfig` + label constants |
-| `stellars_docker_proxy.filters` | pure transforms (label injection, list filter, caps check/apply, dangerous, ownership, compose project) |
-| `stellars_docker_proxy.quota` | pure accounting (counts, `/system/df` storage per owner) |
-| `stellars_docker_proxy.server` | aiohttp reverse proxy: classify -> mutate/guard/quota -> stream; `create_app(ProxyConfig)` returns a per-owner app |
-| `stellars_docker_proxy.manager` | `Manager` holds N per-user listeners in one process; register/unregister lifecycle |
+| `duoptimum_docker_proxy.config` | `ProxyConfig` + label constants |
+| `duoptimum_docker_proxy.filters` | pure transforms (label injection, list filter, caps check/apply, dangerous, ownership, compose project) |
+| `duoptimum_docker_proxy.quota` | pure accounting (counts, `/system/df` storage per owner) |
+| `duoptimum_docker_proxy.server` | aiohttp reverse proxy: classify -> mutate/guard/quota -> stream; `create_app(ProxyConfig)` returns a per-owner app |
+| `duoptimum_docker_proxy.manager` | `Manager` holds N per-user listeners in one process; register/unregister lifecycle |
 | `duoptimum_hub_services.docker_proxy` | module-singleton `Manager` + `register_user`/`unregister_user` (async, direct Manager calls) |
 | `duoptimum_hub_services.group_resolver` | `docker_limited` + quota max-wins + normal-supersedes-limited precedence |
 | `duoptimum_hub_services.groups_config` | default fields + `GroupConfigValidator` (GPU / Docker / CPU / Mem coherence) |
