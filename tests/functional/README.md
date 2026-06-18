@@ -38,7 +38,7 @@ images.
 ## Run
 
 ```bash
-make build               # or reuse the current stellars/duoptimumhub:latest
+make build               # or reuse the current stellars/duoptimum-hub:latest
 make test-functional-all # every setup (signup, env, signup-open) one by one
 make test-functional     # just the signup-bootstrap setup -> run -> full teardown
 ```

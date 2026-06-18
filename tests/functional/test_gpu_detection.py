@@ -17,7 +17,7 @@ import pytest
 # Derive the hub container name from the same BASE_URL host the rest of the
 # harness uses (compose names it stellars-functest-<service>), so a service
 # rename can't strand a hardcoded name here again.
-HUB_CONTAINER = f"stellars-functest-{urlparse(os.environ.get('BASE_URL', 'http://duoptimumhub:8000/jupyterhub')).hostname or 'duoptimumhub'}"
+HUB_CONTAINER = f"stellars-functest-{urlparse(os.environ.get('BASE_URL', 'http://duoptimum-hub:8000/jupyterhub')).hostname or 'duoptimum-hub'}"
 
 
 @pytest.mark.gpu

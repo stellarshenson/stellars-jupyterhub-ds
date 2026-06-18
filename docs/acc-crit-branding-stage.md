@@ -1,6 +1,6 @@
 # Acceptance Criteria - environment-stage badge
 
-A small outlined rectangle in the portal header naming the deployment stage (DEV/STG/TST/PRD), coloured per stage, so operators can tell environments apart at a glance. Driven by `JUPYTERHUB_BRANDING_STAGE` -> `window.jhdata.stage` (frozen at hub start); empty = no badge. Frontend: `components/StageBadge.tsx` in `AppLayout` `actionsRender`. Backend: `branding.py::setup_branding(stage=...)` -> `branding['stage']` -> `template_vars['branding_stage']` -> `portal.html`. Verified against the code 2026-06-18.
+A small outlined rectangle in the portal header naming the deployment stage (DEV/STG/TST/PRD), coloured per stage, so operators can tell environments apart at a glance. Driven by `JUPYTERHUB_BRANDING_STAGE` -> `window.jhdata.stage` (frozen at hub start); empty = no badge. Frontend: `components/StageBadge.tsx`, rendered top-right in the `AppLayout` `oh-topbar` header row. Backend: `branding.py::setup_branding(stage=...)` -> `branding['stage']` -> `template_vars['branding_stage']` -> `portal.html`. Verified against the code 2026-06-18.
 
 ## Behaviour
 
@@ -8,8 +8,9 @@ A small outlined rectangle in the portal header naming the deployment stage (DEV
   - log: 2026-06-18 operator: "environment stage 'logo' ... env JUPYTERHUB_BRANDING_STAGE"; config `JUPYTERHUB_BRANDING_STAGE`, threaded through `setup_branding`
 - [x] **None by default** - empty/unset env renders nothing (no element, no padding gap)
   - log: 2026-06-18 `StageBadge` returns null when `window.jhdata.stage` is falsy
-- [x] **Top-right placement** - badge sits in the header's top-right action cluster (with the language/theme controls), standard padding
-  - log: 2026-06-18 first item in `AppLayout` `actionsRender`
+- [x] **Top-right placement** - badge sits at the top-right of the portal header, to the right of the language + theme controls; all three render in the `oh-topbar` header row
+  - log: 2026-06-18 was first item in `AppLayout` `actionsRender`
+  - log: 2026-06-18 FIXED - `actionsRender` lands in the sider under `layout="side"` (ProLayout `Header` returns null), so it showed by the username at the sider foot; moved language + theme + stage into the `oh-topbar` row (badge rightmost); functional placement assertion added
 - [x] **Outlined rectangle** - 1px border + text both in the stage colour (`currentColor`), transparent fill, square-ish corners (`--radius-sm`)
   - log: 2026-06-18 `.oh-stage-badge` in `global.css`
 - [x] **Colour per stage** - DEV green, TST blue (accent/cyan per the design theme), STG orange, PRD red
@@ -49,10 +50,10 @@ A small outlined rectangle in the portal header naming the deployment stage (DEV
 
 - [x] **Unit: stage normalization** - `setup_branding(stage=...)` returns `branding['stage']` stripped, `''` when unset; default-keys test includes `stage`
   - log: 2026-06-18 `duoptimum-hub-services/tests/test_branding.py::TestStage`; `make test`
-- [ ] **Functional: no badge by default** - default (signup) deployment has no stage env -> the header shows no `.oh-stage-badge`
-  - log: 2026-06-18 `tests/functional/test_branding_stage.py::test_no_stage_badge_by_default`; pends an image rebuild (badge ships in the bundle)
-- [ ] **Functional: badge shows configured stage** - env-mode deployment with `JUPYTERHUB_BRANDING_STAGE=TST` shows a `TST` badge in the blue/accent tone
-  - log: 2026-06-18 `tests/functional/test_branding_stage.py::test_stage_badge_shows_configured_stage` (envauth); `compose.functional-env.yml`; pends an image rebuild
+- [x] **Functional: no badge by default** - default (signup) deployment has no stage env -> the header shows no `.oh-stage-badge`; also asserts the language + theme controls render in the `.oh-topbar` header row (right of the breadcrumb), not the sider
+  - log: 2026-06-18 `tests/functional/test_branding_stage.py::test_no_stage_badge_by_default`; PASSED on the rebuilt image (default-mode suite, 26 passed)
+- [x] **Functional: badge shows configured stage** - env-mode deployment with `JUPYTERHUB_BRANDING_STAGE=TST` shows a `TST` badge in the blue/accent tone, placed top-right (rightmost control: `badge.x > theme.x > lang.x`), not the sider
+  - log: 2026-06-18 `tests/functional/test_branding_stage.py::test_stage_badge_shows_configured_stage` (envauth); `compose.functional-env.yml`; PASSED on the rebuilt image (env-mode suite, 3 passed)
 
 ## Configuration
 

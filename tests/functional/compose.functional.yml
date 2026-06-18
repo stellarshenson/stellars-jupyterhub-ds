@@ -10,10 +10,10 @@
 # It never touches the operator's jupyterhub deployment, volumes, or network.
 
 services:
-  duoptimumhub:
-    image: stellars/duoptimumhub:latest
+  duoptimum-hub:
+    image: stellars/duoptimum-hub:latest
     pull_policy: never                       # use the locally built image, never pull
-    container_name: stellars-functest-duoptimumhub
+    container_name: stellars-functest-duoptimum-hub
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw   # DockerSpawner
       - certs:/certs
@@ -49,10 +49,10 @@ services:
   tests:
     image: mcr.microsoft.com/playwright/python:v1.49.0-noble   # Chromium + deps baked; no host browser deps
     depends_on:
-      duoptimumhub:
+      duoptimum-hub:
         condition: service_healthy
     environment:
-      - BASE_URL=http://duoptimumhub:8000/jupyterhub             # reach the hub by service name on the test network
+      - BASE_URL=http://duoptimum-hub:8000/jupyterhub             # reach the hub by service name on the test network
       - ADMIN_USER=functestadmin
       - ADMIN_PASSWORD=functest-secret
       - PYTEST_ARGS=${PYTEST_ARGS:-}                           # select specific workflows e.g. PYTEST_ARGS="-k priority"
