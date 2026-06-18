@@ -41,6 +41,8 @@ The portal's visual conventions, applied consistently across every screen. `[x]`
   - log: 2026-06-17 implemented (PageHeader renders only actions; ~50px reclaimed on every page)
 - [x] **Named edits are explicit** - editing a user profile / group is reached via an explicit named link (the username / group-name), never a whole-row click; row-click is reserved for read-only detail (Servers drawer)
   - log: 2026-06-17 verified (Users/Groups name-links to config; Servers row-click = report drawer)
+- [x] **Label casing = Title Case** - button labels and header labels (page / card / section titles, table column headers, section tabs) Title-Case every principal word; minor words (a, an, the, and, or, of, to, in, on, at, by, for, with, vs...) stay lowercase unless first/last; acronyms (API, GPU, CPU, TLS, ID) and units (+7h, GB) preserved; sentence copy / form-field input labels / filter data-values stay sentence case. Detail in [acc-crit-label-capitalisation]
+  - log: 2026-06-18 added (operator: "labels (buttons, headers) must have all capitalised parts; sweep"); demoed on /design-language Conventions card
 
 ## Navigation (system-wide)
 
