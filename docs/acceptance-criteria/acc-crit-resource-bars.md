@@ -12,6 +12,7 @@ The CPU/Memory/GPU progress bars on the "Server Status" panel (the server card's
   - log: 2026-06-17 retained
 - [x] **Bar is usage/assignment** - the CPU bar value = `cpu_percent / cpu_cores` clamped 0-100 (`cpuBarPct`), parallel to the memory bar's usage/limit; docker's `cpu_percent` is cores-used x 100, so a multi-core container previously overflowed past 100%
   - log: 2026-06-17 implemented (`liveSource.cpuBarPct`, applied in getServers + getServerHero)
+  - log: 2026-06-18 superseded for the Servers widget+page by [[acc-crit-servers-host-relative-resources]] (those cells are counters not bars - CPU counter now % of host, counter COLOUR = % of assigned); this usage/assignment bar is retained for the Server Status hero only
 - [x] **CPU tooltip names the ceiling** - `cpuTip` = "N cores assigned" (limited) or "N cores host (no limit)"
   - log: 2026-06-17 present; now reads "32 cores assigned" for konrad
 
@@ -19,6 +20,7 @@ The CPU/Memory/GPU progress bars on the "Server Status" panel (the server card's
 
 - [x] **Bar is usage/limit** - `memory_percent` = usage / container memory limit; a 256 GiB-limited user reads against 256 GiB, not host RAM
   - log: 2026-06-17 verified live (konrad memory_total_mb=262144 reflected) - was already correct
+  - log: 2026-06-18 superseded for the Servers widget+page by [[acc-crit-servers-host-relative-resources]] (those cells are counters not bars - MEM counter now shows GB used, counter COLOUR = % of assigned); usage/limit retained for the Server Status hero
 - [x] **memory_limited flag** - the service exposes whether the bar's denominator is an explicit per-user limit or the host fallback, parallel to `cpu_cores_limited`; from `HostConfig.Memory > 0`
   - log: 2026-06-17 added so the tooltip can name "assigned" vs "host (no limit)" - previously the hero tooltip said "of host RAM" unconditionally (the reported bug)
 - [x] **Memory tooltip names the ceiling honestly** - "N GB used of M GB assigned" when `memory_limited`, else "of M GB host (no limit)"; Servers also annotates "(over warning threshold)" on a `memory_max_usage_mb` breach
