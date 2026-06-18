@@ -48,10 +48,11 @@ export const NAV_ADMIN: NavGroup[] = [
         id: 'advanced',
         label: 'Advanced',
         icon: 'dots',
+        // Advanced children ordered alphabetically by label
         children: [
+          { id: 'roles', label: 'Roles', icon: 'shield', path: '/roles' },
           { id: 'settings', label: 'Settings', icon: 'settings', path: '/settings' },
           { id: 'tokens', label: 'Tokens', icon: 'key', path: '/tokens' },
-          { id: 'roles', label: 'Roles', icon: 'shield', path: '/roles' },
         ],
       },
     ],

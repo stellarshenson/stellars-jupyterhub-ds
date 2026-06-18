@@ -2,7 +2,7 @@
 
 Two protection layers exist; this module backs the second:
 
-- Layer A - Traefik ``rateLimit`` middleware on the shared ``jupyterhub-rtr``
+- Layer A - Traefik ``rateLimit`` middleware on the shared ``optimumhub-rtr``
   router (configured via ``${JUPYTERHUB_RATELIMIT_*}`` compose interpolation in
   ``compose.yml``), bounding request velocity per source IP for the hub AND all
   spawned labs, since both ingress through CHP on the hub's :8000. A per-IP

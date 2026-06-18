@@ -119,9 +119,9 @@ Legend: `[x]` implemented, `[ ]` planned (the test/scenario backlog). Each item 
 
 ## Branding - hub
 
-- [ ] **Custom logo** - `JUPYTERHUB_LOGO_URI` logo renders on hub login/home
+- [ ] **Custom logo** - `JUPYTERHUB_BRANDING_LOGO_URI` logo renders on hub login/home
   - log: 2026-06-13 planned
-- [ ] **Custom favicon** - `JUPYTERHUB_FAVICON_URI` favicon served on hub pages
+- [ ] **Custom favicon** - `JUPYTERHUB_BRANDING_FAVICON_URI` favicon served on hub pages
   - log: 2026-06-13 planned
 - [ ] **file:// logo/favicon** - a `file://` URI is copied to the static dir and served
   - log: 2026-06-13 planned
@@ -138,7 +138,7 @@ Legend: `[x]` implemented, `[ ]` planned (the test/scenario backlog). Each item 
   - log: 2026-06-13 planned
 - [ ] **Splash icon injected** - `JUPYTERLAB_SPLASH_ICON_URI` present in the container Env
   - log: 2026-06-13 planned
-- [ ] **Busy favicon injected** - `JUPYTERHUB_FAVICON_BUSY_URI` resolved and reaches the lab
+- [ ] **Busy favicon injected** - `JUPYTERHUB_BRANDING_FAVICON_BUSY_URI` resolved and reaches the lab
   - log: 2026-06-13 planned
 - [ ] **System name rebrand** - `JUPYTERLAB_SYSTEM_NAME` injected into the container Env
   - log: 2026-06-13 planned

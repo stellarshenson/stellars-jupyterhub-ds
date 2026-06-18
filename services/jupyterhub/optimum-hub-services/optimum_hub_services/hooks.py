@@ -260,7 +260,7 @@ def schedule_startup_favicon_callback(favicon_uri='', favicon_busy_target=''):
     restart (non-policy; pre_spawn_hook only fires for new spawns).
 
     Args:
-        favicon_uri: JUPYTERHUB_FAVICON_URI value (non-empty activates the
+        favicon_uri: JUPYTERHUB_BRANDING_FAVICON_URI value (non-empty activates the
             favicon.ico route)
         favicon_busy_target: resolved busy-frame redirect target (non-empty
             activates the favicon-busy route)

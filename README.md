@@ -1,7 +1,7 @@
 # Stellars JupyterHub for Data Science Platform
 ![GitHub Actions](https://github.com/stellarshenson/stellars-jupyterhub-ds/actions/workflows/docker-build.yml/badge.svg)
-![Docker Image](https://img.shields.io/docker/image-size/stellars/stellars-jupyterhub-ds/latest?style=flat)
-![Docker Pulls](https://img.shields.io/docker/pulls/stellars/stellars-jupyterhub-ds?style=flat)
+![Docker Image](https://img.shields.io/docker/image-size/stellars/optimumhub/latest?style=flat)
+![Docker Pulls](https://img.shields.io/docker/pulls/stellars/optimumhub?style=flat)
 ![JupyterLab 4](https://img.shields.io/badge/JupyterLab-%20%20%20%204%20%20%20%20-orange?style=flat)
 [![Brought To You By KOLOMOLO](https://img.shields.io/badge/Brought%20To%20You%20By-KOLOMOLO-00ffff?style=flat)](https://kolomolo.com)
 [![Donate PayPal](https://img.shields.io/badge/Donate-PayPal-blue?style=flat)](https://www.paypal.com/donate/?hosted_button_id=B4KPBJDLLXTSA)
@@ -30,7 +30,7 @@ Multi-user JupyterHub 4 deployment platform with data science stack, GPU support
 - **Health Check Endpoint**: Unauthenticated `GET /hub/health` returning JSON with hub status, uptime, version, and active server count. Rate-limited to 1 req/s per IP. Designed for Zabbix, Prometheus, or other monitoring agents
 - **Abuse Protection**: Env-driven L7 defence covering hub and all labs at the single Traefik ingress - per-IP request rate limiting (WebSocket-safe), concurrent-spawn and active-server caps against spawn-storms, and login brute-force lockout via NativeAuthenticator
 - **Standalone Compose**: `compose.yml` runs without any extra files - the image ships a working built-in config. Drop your own `jupyterhub_config.py` into `./config/` (plus optional helper modules) to override, or your TLS yml + cert/key into `./certs/`; missing or empty folders fall back to the built-in config and an auto-generated self-signed cert. See [docs/configuration.md](docs/configuration.md) and [docs/certificates.md](docs/certificates.md)
-- **Custom Busy Favicon**: Optional `JUPYTERHUB_FAVICON_BUSY_URI` brands the kernel-busy favicon frames in JupyterLab; empty keeps JupyterLab's default busy animation
+- **Custom Busy Favicon**: Optional `JUPYTERHUB_BRANDING_FAVICON_BUSY_URI` brands the kernel-busy favicon frames in JupyterLab; empty keeps JupyterLab's default busy animation
 - **Production Ready**: Traefik reverse proxy with TLS termination, automatic container updates via Watchtower
 
 ## Quickstart
@@ -491,10 +491,10 @@ services:
 
 ```yaml
 services:
-  jupyterhub:
+  optimumhub:
     labels:
-      - "traefik.http.middlewares.jupyterhub-inflight.inflightreq.amount=400"
-      - "traefik.http.routers.jupyterhub-rtr.middlewares=jupyterhub-ratelimit,jupyterhub-inflight"
+      - "traefik.http.middlewares.optimumhub-inflight.inflightreq.amount=400"
+      - "traefik.http.routers.optimumhub-rtr.middlewares=optimumhub-ratelimit,optimumhub-inflight"
 ```
 
 **Caveats**: this is L7 protection only - true volumetric L3/L4 DDoS (SYN floods, amplification) must be absorbed upstream (Cloudflare, ISP scrubbing); a single host cannot defend against it. For behavioural banning (credential stuffing, scanner detection, community blocklists), a CrowdSec sidecar with the Traefik bouncer plugin is the natural next step - it requires Traefik access logs, which are not currently enabled.
@@ -536,22 +536,23 @@ Replace the default JupyterHub logo, favicon, and JupyterLab icons with custom a
 
 | Variable | Purpose |
 |----------|---------|
-| `JUPYTERHUB_LOGO_URI` | Hub login and navigation logo |
-| `JUPYTERHUB_FAVICON_URI` | Browser tab favicon for hub and JupyterLab sessions |
-| `JUPYTERHUB_FAVICON_BUSY_URI` | Kernel-busy favicon frames in JupyterLab; empty = JupyterLab default busy animation |
-| `JUPYTERHUB_LAB_MAIN_ICON_URI` | JupyterLab main toolbar logo |
-| `JUPYTERHUB_LAB_SPLASH_ICON_URI` | JupyterLab splash screen icon |
+| `JUPYTERHUB_BRANDING_STAGE` | Environment-stage header badge (DEV/STG/TST/PRD or custom text); empty = no badge |
+| `JUPYTERHUB_BRANDING_LOGO_URI` | Hub login and navigation logo |
+| `JUPYTERHUB_BRANDING_FAVICON_URI` | Browser tab favicon for hub and JupyterLab sessions |
+| `JUPYTERHUB_BRANDING_FAVICON_BUSY_URI` | Kernel-busy favicon frames in JupyterLab; empty = JupyterLab default busy animation |
+| `JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI` | JupyterLab main toolbar logo |
+| `JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI` | JupyterLab splash screen icon |
 
-Lab icons are resolved to hub static URLs and passed to spawned containers as `JUPYTERLAB_MAIN_ICON_URI` and `JUPYTERLAB_SPLASH_ICON_URI` environment variables for extensions to consume. The favicon variables also work for JupyterLab sessions via CHP proxy routing: the idle frame (`favicon.ico`) redirects to your custom icon, and `JUPYTERHUB_FAVICON_BUSY_URI` (when set) brands the kernel-busy frames - otherwise busy frames fall through to JupyterLab's own defaults.
+Lab icons are resolved to hub static URLs and passed to spawned containers as `JUPYTERLAB_MAIN_ICON_URI` and `JUPYTERLAB_SPLASH_ICON_URI` environment variables for extensions to consume. The favicon variables also work for JupyterLab sessions via CHP proxy routing: the idle frame (`favicon.ico`) redirects to your custom icon, and `JUPYTERHUB_BRANDING_FAVICON_BUSY_URI` (when set) brands the kernel-busy frames - otherwise busy frames fall through to JupyterLab's own defaults.
 
 ```yaml
 services:
   jupyterhub:
     environment:
-      - JUPYTERHUB_LOGO_URI=file:///srv/jupyterhub/logo.svg
-      - JUPYTERHUB_FAVICON_URI=file:///srv/jupyterhub/favicon.ico
-      - JUPYTERHUB_LAB_MAIN_ICON_URI=file:///srv/jupyterhub/lab-icon.svg
-      - JUPYTERHUB_LAB_SPLASH_ICON_URI=file:///srv/jupyterhub/splash-icon.svg
+      - JUPYTERHUB_BRANDING_LOGO_URI=file:///srv/jupyterhub/logo.svg
+      - JUPYTERHUB_BRANDING_FAVICON_URI=file:///srv/jupyterhub/favicon.ico
+      - JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI=file:///srv/jupyterhub/lab-icon.svg
+      - JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI=file:///srv/jupyterhub/splash-icon.svg
     volumes:
       - ./branding/logo.svg:/srv/jupyterhub/logo.svg:ro
       - ./branding/favicon.ico:/srv/jupyterhub/favicon.ico:ro

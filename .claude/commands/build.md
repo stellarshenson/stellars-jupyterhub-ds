@@ -13,7 +13,7 @@ docker compose -f compose.yml build --progress=plain
 ```
 
 This will:
-- Build the `stellars/stellars-jupyterhub-ds:latest` image
+- Build the `stellars/optimumhub:latest` image
 - Show detailed build logs with --progress=plain
 - Use linux/amd64 platform explicitly
 - Build from the compose.yml file

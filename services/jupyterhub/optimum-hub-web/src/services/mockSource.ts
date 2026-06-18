@@ -599,8 +599,9 @@ export const mockSource: DataSource = {
         { name: 'JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB', value: '50', description: 'Total per-user volume quota in GB' },
       ] },
       { category: 'Branding', rows: [
-        { name: 'JUPYTERHUB_LOGO_URI', value: 'file:///srv/branding/logo.svg', description: 'Custom logo (file:// or URL)' },
-        { name: 'JUPYTERHUB_FAVICON_URI', value: 'file:///srv/branding/favicon.ico', description: 'Custom favicon' },
+        { name: 'JUPYTERHUB_BRANDING_STAGE', value: 'DEV', description: 'Environment-stage header badge (DEV/STG/TST/PRD); empty = none' },
+        { name: 'JUPYTERHUB_BRANDING_LOGO_URI', value: 'file:///srv/branding/logo.svg', description: 'Custom logo (file:// or URL)' },
+        { name: 'JUPYTERHUB_BRANDING_FAVICON_URI', value: 'file:///srv/branding/favicon.ico', description: 'Custom favicon' },
       ] },
     ])
   },

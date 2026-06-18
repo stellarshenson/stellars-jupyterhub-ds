@@ -33,7 +33,7 @@ TAG             := $(VERSION)
 # The GPU-info sidecar ships as stellars/stellars-gpuinfo-nvidia (CUDA base
 # pinned in its Dockerfile). `make build` builds it via compose (it has a build
 # section); rebuild/push/pull handle it explicitly alongside the hub below.
-HUB_IMAGE          := stellars/stellars-jupyterhub-ds
+HUB_IMAGE          := stellars/optimumhub
 GPUINFO_IMAGE      := stellars/stellars-gpuinfo-nvidia
 GPUINFO_DOCKERFILE := services/jupyterhub/gpuinfo-nvidia/Dockerfile
 
@@ -109,8 +109,8 @@ RUNTIME_TAG_PYTHON_CMD := python3 -c 'import tomllib;d=tomllib.load(open("pyproj
 
 # Reusable green/bold success banners. Trailing blank line separates the
 # banner from any subsequent shell output for visual breathing room.
-PRINT_BUILD_SUCCESS = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sBuild successful: stellars/stellars-jupyterhub-ds:%s%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
-PRINT_PUSH_SUCCESS  = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sPush successful:  stellars/stellars-jupyterhub-ds:%s (also :latest)%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
+PRINT_BUILD_SUCCESS = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sBuild successful: stellars/optimumhub:%s%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
+PRINT_PUSH_SUCCESS  = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sPush successful:  stellars/optimumhub:%s (also :latest)%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
 
 # Build options (e.g., BUILD_OPTS='--no-cache' or BUILD_OPTS='--no-version-increment')
 BUILD_OPTS ?=
@@ -175,7 +175,7 @@ _rebuild_impl:
 		--build-arg VERSION=$(CURRENT_VERSION) \
 		--build-arg CACHEBUST=$$(date +%s) \
 		$(DOCKER_BUILD_OPTS) \
-		--tag stellars/stellars-jupyterhub-ds:latest \
+		--tag stellars/optimumhub:latest \
 		-f services/jupyterhub/Dockerfile.jupyterhub \
 		.
 	@echo "Rebuilding GPU-info sidecar ($(GPUINFO_IMAGE):latest)..."
@@ -209,7 +209,7 @@ tag: preflight
 		git tag $(TAG); \
 	fi
 	@echo "Creating docker tag: $(TAG)"
-	@docker tag stellars/stellars-jupyterhub-ds:latest stellars/stellars-jupyterhub-ds:$(TAG)
+	@docker tag stellars/optimumhub:latest stellars/optimumhub:$(TAG)
 
 ## start jupyterhub (fg)
 start: preflight
@@ -260,10 +260,10 @@ test-functional:
 ## run the functional harness in auth mode 2 (signup disabled + env-password admin; restart-to-provision on a fresh DB), then clean up
 test-functional-env:
 	@echo "[functional/env] booting hub (first boot creates the DB + tables)..."
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) up -d --wait jupyterhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) up -d --wait optimumhub
 	@echo "[functional/env] restarting hub to provision the env-password admin..."
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) restart jupyterhub
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) up -d --wait jupyterhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) restart optimumhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) up -d --wait optimumhub
 	@start=$$(date +%s); \
 	docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) run --rm tests; \
 	rc=$$?; \
@@ -275,10 +275,10 @@ test-functional-env:
 ## run the functional harness in signup-open mode (signup enabled; env-provisioned admin authorises a self-signed-up user via the SPA), then clean up
 test-functional-signup-open:
 	@echo "[functional/signup-open] booting hub (first boot creates the DB + tables)..."
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) up -d --wait jupyterhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) up -d --wait optimumhub
 	@echo "[functional/signup-open] restarting hub to provision the env-password admin..."
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) restart jupyterhub
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) up -d --wait jupyterhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) restart optimumhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) up -d --wait optimumhub
 	@start=$$(date +%s); \
 	docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) run --rm tests; \
 	rc=$$?; \

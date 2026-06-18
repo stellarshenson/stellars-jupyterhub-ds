@@ -6,17 +6,19 @@ import sys
 
 
 def setup_branding(logo_uri='', favicon_uri='', favicon_busy_uri='',
-                   lab_main_icon_uri='', lab_splash_icon_uri=''):
+                   lab_main_icon_uri='', lab_splash_icon_uri='', stage=''):
     """Process branding URIs. Returns branding state dict.
 
     Args:
-        logo_uri: JUPYTERHUB_LOGO_URI value (file:// or URL or empty)
-        favicon_uri: JUPYTERHUB_FAVICON_URI value (file:// or URL or empty)
-        favicon_busy_uri: JUPYTERHUB_FAVICON_BUSY_URI value (file:// or URL or empty).
+        logo_uri: JUPYTERHUB_BRANDING_LOGO_URI value (file:// or URL or empty)
+        favicon_uri: JUPYTERHUB_BRANDING_FAVICON_URI value (file:// or URL or empty)
+        favicon_busy_uri: JUPYTERHUB_BRANDING_FAVICON_BUSY_URI value (file:// or URL or empty).
             Overrides JupyterLab's kernel-busy favicon frames; empty leaves the
             busy frames served by the user's own JupyterLab server (default).
-        lab_main_icon_uri: JUPYTERHUB_LAB_MAIN_ICON_URI value
-        lab_splash_icon_uri: JUPYTERHUB_LAB_SPLASH_ICON_URI value
+        lab_main_icon_uri: JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI value
+        lab_splash_icon_uri: JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI value
+        stage: JUPYTERHUB_BRANDING_STAGE value - environment label shown as a header
+            badge (DEV/STG/TST/PRD or any text); empty = no badge
 
     Returns dict:
         logo_file: str or None - local path for c.JupyterHub.logo_file
@@ -28,6 +30,7 @@ def setup_branding(logo_uri='', favicon_uri='', favicon_busy_uri='',
         lab_main_icon_url: str - external URL if not file://
         lab_splash_icon_static: str
         lab_splash_icon_url: str
+        stage: str - normalized (stripped) environment-stage label, '' when unset
     """
     static_dir = os.path.join(sys.prefix, 'share', 'jupyterhub', 'static')
 
@@ -39,6 +42,7 @@ def setup_branding(logo_uri='', favicon_uri='', favicon_busy_uri='',
         'lab_main_icon_url': '',
         'lab_splash_icon_static': '',
         'lab_splash_icon_url': '',
+        'stage': (stage or '').strip(),  # environment-stage badge text; empty = no badge
     }
 
     # Logo
