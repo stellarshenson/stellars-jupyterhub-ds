@@ -53,6 +53,57 @@ def derive_memory_assignment(hostcfg, stats_limit_bytes):
     return stats_limit_bytes, False
 
 
+def stats_from_container(container):
+    """CPU/memory/image stats dict for an already-resolved Docker container object
+    (blocking, ~2s - `stats(stream=False)` samples twice). Single source of truth
+    for the stats math, shared by the ad-hoc `get_container_stats` and the
+    background `ContainerStatsRefresher`. Returns the dict, or None on any failure."""
+    try:
+        stats = container.stats(stream=False)
+
+        cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - \
+                    stats['precpu_stats']['cpu_usage']['total_usage']
+        system_delta = stats['cpu_stats']['system_cpu_usage'] - \
+                       stats['precpu_stats']['system_cpu_usage']
+
+        online_cpus = stats['cpu_stats'].get('online_cpus', 1) or 1
+        cpu_percent = 0.0
+        if system_delta > 0 and cpu_delta > 0:
+            cpu_percent = (cpu_delta / system_delta) * online_cpus * 100
+
+        # Assigned cores: the explicit CPU limit when one is set, else the host
+        # cores the container can actually use. A limit comes two ways -
+        # DockerSpawner cpu_limit sets HostConfig.NanoCpus (billionths of a
+        # core); a cgroup cfs quota (the cpu-quota-* groups) sets CpuQuota /
+        # CpuPeriod. Check both so a quota-limited user's bar measures against
+        # their ceiling, not the host. cpu_cores_limited drives the "assigned"
+        # vs "host (no limit)" tooltip.
+        hostcfg = container.attrs.get('HostConfig') or {}
+        cpu_cores, cpu_cores_limited = derive_cpu_assignment(hostcfg, online_cpus)
+
+        memory_usage = stats['memory_stats'].get('usage', 0)
+        memory_assigned, memory_limited = derive_memory_assignment(
+            hostcfg, stats['memory_stats'].get('limit', 1))
+        memory_percent = (memory_usage / memory_assigned) * 100 if memory_assigned > 0 else 0
+
+        return {
+            'cpu_percent': round(cpu_percent, 1),
+            'cpu_cores': cpu_cores,
+            'cpu_cores_limited': cpu_cores_limited,
+            'memory_mb': round(memory_usage / (1024 * 1024), 1),
+            'memory_percent': round(memory_percent, 1),
+            # assigned ceiling when mem-limited, else the host RAM the cgroup
+            # reports; memory_limited tells the UI which, for the bar label
+            'memory_total_mb': round(memory_assigned / (1024 * 1024), 1),
+            'memory_limited': memory_limited,
+            # image id the container is running (from the inspect we already
+            # did) - compared against the local tag for upgrade detection
+            'image_id': container.attrs.get('Image'),
+        }
+    except Exception:
+        return None
+
+
 def get_container_stats(username):
     """Get CPU and memory stats for a user's container (blocking, fast ~2s)."""
     try:
@@ -62,47 +113,7 @@ def get_container_stats(username):
 
         try:
             container = docker_client.containers.get(container_name)
-            stats = container.stats(stream=False)
-
-            cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - \
-                        stats['precpu_stats']['cpu_usage']['total_usage']
-            system_delta = stats['cpu_stats']['system_cpu_usage'] - \
-                           stats['precpu_stats']['system_cpu_usage']
-
-            online_cpus = stats['cpu_stats'].get('online_cpus', 1) or 1
-            cpu_percent = 0.0
-            if system_delta > 0 and cpu_delta > 0:
-                cpu_percent = (cpu_delta / system_delta) * online_cpus * 100
-
-            # Assigned cores: the explicit CPU limit when one is set, else the host
-            # cores the container can actually use. A limit comes two ways -
-            # DockerSpawner cpu_limit sets HostConfig.NanoCpus (billionths of a
-            # core); a cgroup cfs quota (the cpu-quota-* groups) sets CpuQuota /
-            # CpuPeriod. Check both so a quota-limited user's bar measures against
-            # their ceiling, not the host. cpu_cores_limited drives the "assigned"
-            # vs "host (no limit)" tooltip.
-            hostcfg = container.attrs.get('HostConfig') or {}
-            cpu_cores, cpu_cores_limited = derive_cpu_assignment(hostcfg, online_cpus)
-
-            memory_usage = stats['memory_stats'].get('usage', 0)
-            memory_assigned, memory_limited = derive_memory_assignment(
-                hostcfg, stats['memory_stats'].get('limit', 1))
-            memory_percent = (memory_usage / memory_assigned) * 100 if memory_assigned > 0 else 0
-
-            return {
-                'cpu_percent': round(cpu_percent, 1),
-                'cpu_cores': cpu_cores,
-                'cpu_cores_limited': cpu_cores_limited,
-                'memory_mb': round(memory_usage / (1024 * 1024), 1),
-                'memory_percent': round(memory_percent, 1),
-                # assigned ceiling when mem-limited, else the host RAM the cgroup
-                # reports; memory_limited tells the UI which, for the bar label
-                'memory_total_mb': round(memory_assigned / (1024 * 1024), 1),
-                'memory_limited': memory_limited,
-                # image id the container is running (from the inspect we already
-                # did) - compared against the local tag for upgrade detection
-                'image_id': container.attrs.get('Image'),
-            }
+            return stats_from_container(container)
         finally:
             docker_client.close()
     except Exception:
