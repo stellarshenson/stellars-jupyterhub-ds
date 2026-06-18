@@ -6,6 +6,7 @@ The Servers table enriches every resource cell with a full breakdown and its quo
   - log: 2026-06-17 implemented (Servers.tsx column title)
 - [x] **Mem tooltip breakdown** - tooltip shows used vs configured per-user limit vs total host RAM (e.g. "19.2 GB used / 32 GB limit / 64 GB host")
   - log: 2026-06-17 implemented in liveSource.getServers memTip (code+typecheck verified; runtime render pending deploy)
+  - log: 2026-06-18 cell display reworked by [[acc-crit-servers-host-relative-resources]] (counters, not bars: CPU = % of host, MEM = GB used; counter colour = % of assigned; tooltip reveals all incl quota-crossing)
 - [x] **Mem over-quota** - cell flags (warn colour) when used exceeds the configured per-user limit; tooltip states it is over
   - log: 2026-06-17 implemented (memOver + " (over limit)" clause)
 - [ ] **CPU assigned cores** - CPU cell/tooltip also shows how many cores are assigned to the user (per-user limit), not only % of host
