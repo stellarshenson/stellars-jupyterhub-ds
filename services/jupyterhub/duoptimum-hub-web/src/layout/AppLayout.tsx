@@ -50,9 +50,8 @@ function LanguageControl() {
         onClick: ({ key }) => { setLang(key); mockAction(`Language: ${LANGS.find((l) => l.key === key)?.label}`) },
       }}
     >
-      <Tooltip title="Language">
-        <Button type="text" icon={<GlobalOutlined />} aria-label="Language" />
-      </Tooltip>
+      {/* no Tooltip: it overlapped the open dropdown menu (aria-label keeps a11y) */}
+      <Button type="text" icon={<GlobalOutlined />} aria-label="Language" />
     </Dropdown>
   )
 }
@@ -70,9 +69,8 @@ function ThemeControl() {
         onClick: ({ key }) => setMode(key as ThemeMode),
       }}
     >
-      <Tooltip title="Theme">
-        <Button type="text" icon={<Icon name={current.icon} size={16} />} aria-label="Theme" />
-      </Tooltip>
+      {/* no Tooltip: it overlapped the open dropdown menu (aria-label keeps a11y) */}
+      <Button type="text" icon={<Icon name={current.icon} size={16} />} aria-label="Theme" />
     </Dropdown>
   )
 }
@@ -147,7 +145,7 @@ function VersionFooter() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 12, padding: '14px 0', color: 'var(--color-text-subtle)', fontSize: 12 }}>
       <span>
-        <Tooltip title={`build ${__BUILD_ID__} - click to copy`}>
+        <Tooltip title={`build ${__BUILD_ID__}`}>
           <span onClick={copyVersion} style={{ cursor: 'pointer' }}>Duoptimum Hub<Tag bordered={false} style={tag}>v{__APP_VERSION__}</Tag></span>
         </Tooltip>
         <span style={{ margin: '0 6px' }}>·</span>
