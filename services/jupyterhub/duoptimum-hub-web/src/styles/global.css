@@ -133,7 +133,11 @@ body { margin: 0; font-family: var(--font-sans); }
 /* ---- TTL (idle-session timer) gadget ---- */
 .oh-ttl { display: flex; align-items: center; gap: var(--space-4); }
 .oh-ttl > .oh-spark { flex: 1; height: 8px; }
-.oh-ttl-val { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-size: var(--text-sm); color: var(--color-text-muted); }
+/* fixed-width, right-aligned time slot: the bar is flex:1 beside this label, so a
+   varying label ("4h" vs "3h 58m") would otherwise resize the bar as minutes tick
+   (a maxed bar reading wider than an almost-maxed one, and jitter every minute).
+   The min-width holds the bar width stable; tabular-nums keeps digits uniform. */
+.oh-ttl-val { display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; white-space: nowrap; min-width: 84px; font-size: var(--text-sm); color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .oh-ttl-val b { color: var(--color-text); }
 /* extend animation: the bar fills to the new limit over ~1s (override antd's
    quick default bar transition) with a brief accent glow, like the old design */
