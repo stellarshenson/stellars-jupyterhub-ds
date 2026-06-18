@@ -38,25 +38,46 @@ images.
 ## Run
 
 ```bash
-make build            # or reuse the current stellars/stellars-jupyterhub-ds:latest
-make test-functional  # boot -> run -> full teardown
+make build               # or reuse the current stellars/stellars-jupyterhub-ds:latest
+make test-functional-all # every setup (signup, env, signup-open) one by one
+make test-functional     # just the signup-bootstrap setup -> run -> full teardown
 ```
 
-`KEEP_IMAGES=1 make test-functional` skips removing the pulled test images (faster
-re-runs during development).
+`REMOVE_IMAGES=1 make test-functional` also drops the pulled test images
+(`quay.io/jupyterhub/singleuser`, the Playwright runner); by default they are kept
+for faster re-runs.
+
+## Setups (initial conditions)
+
+Each setup is a distinct initial condition with its own compose override and
+pytest regime; `make test-functional-all` runs them in turn, cleaning between each:
+
+- **signup** (`make test-functional`) - fresh DB, signup off; the admin is created
+  through the bootstrap-signup window. Runs the full SPA UI suite + container policy
+- **env** (`make test-functional-env`) - signup off + `JUPYTERHUB_ADMIN_PASSWORD`;
+  restart-to-provision seeds the admin. One focused env-password login test
+- **signup-open** (`make test-functional-signup-open`) - signup enabled; the admin is
+  env-provisioned, then a non-admin self-signs-up and the admin authorises via the SPA
 
 ## Layout
 
-- `compose.functional.yml` - the isolated hub + Playwright runner stack
-- `conftest.py` - fixtures: hub-health wait, `base_url`, `admin_creds`,
-  `admin_page` (logged-in admin). The fresh-DB + bootstrapped admin per run is
-  the baseline initial state; add seed/clean fixtures here as scenarios grow
-- `test_hub_ui.py` - single UI actions (login, branding, the group/policy page,
-  settings/activity/notifications, health)
-- `test_scenarios.py` - multi-step operator scenarios (configure several policies
-  and verify badges + tooltip, reorder priority). Add new scenarios here
-- `test_spawn_smoke.py` - best-effort lab spawn (skipped if the minimal image
-  does not spawn cleanly)
+- `compose.functional.yml` + `compose.functional-env.yml` + `compose.functional-signup-open.yml`
+- `conftest.py` - fixtures: hub-health wait, admin bootstrap, `admin_api`,
+  cookie-injected `admin_page` / `admin_portal` (the SPA driver), `signup_user`,
+  `clean_groups`, `docker_client`, and the regime deselection hook
+- `test_hub_ui.py` - login shell + per-page SPA render smoke
+- `test_scenarios.py` - SPA group lifecycle (create, policy badges, reorder, delete)
+- `test_events.py` - event-log render + clear-log flow
+- `test_container_policy.py` - group config asserted on the spawned container
+- `test_signup_open.py` - signup-open self-signup + admin authorise (regime-gated)
+- `test_gpu_detection.py` / `test_auth_env_mode.py` - conditional GPU and env-auth tests
+
+## How the SPA is driven
+
+The portal is a React single-page app with no data-testids; tests use visible
+text, antd roles (`aria-label`), and placeholders. A direct GET of `/hub/login`
+self-redirects, so the browser is authenticated by injecting the API session's hub
+cookies; readiness waits on the `.ant-layout` shell, never `networkidle`.
 
 ## Coverage boundary
 

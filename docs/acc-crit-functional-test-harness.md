@@ -4,6 +4,21 @@ A standing functional regression harness that boots the built hub image in a ful
 
 Legend: `[x]` implemented, `[ ]` planned (the test/scenario backlog). Each item is one functional test unless noted. Items needing the real `stellars-jupyterlab-ds` lab image (not the minimal singleuser one) are tagged `(real-lab)` and are out of scope for the default minimal run.
 
+> 2026-06-18 SPA rebuild: the old `test_hub_ui` / `test_scenarios` drove the stock JupyterHub HTML (`#groups-table-body`, Bootstrap modals), dead against the React portal. The harness now drives the live SPA (visible text / antd `aria-label` / placeholders - no data-testids), authenticates by injecting the API session's hub cookies (a direct `/hub/login` self-redirects), and waits on the `.ant-layout` shell not `networkidle`. `make test-functional-all` (22 tests) green across all three setups on a GPU host.
+
+## Setups (initial conditions, run one by one)
+
+- [x] **Sequential multi-setup runner** - `make test-functional-all` boots each setup, runs its regime, cleans, moves to the next, and reports which passed (non-zero exit if any failed)
+  - log: 2026-06-18 implemented (Makefile loop over signup / env / signup-open)
+- [x] **Setup: signup-bootstrap** - fresh DB, signup off; admin via the bootstrap-signup window; runs the full SPA UI suite + container policy + GPU (when present)
+  - log: 2026-06-18 18 passed (incl. GPU auto-detect: 3 GPUs)
+- [x] **Setup: env-password admin** - signup off + `JUPYTERHUB_ADMIN_PASSWORD`, restart-to-provision; one focused login test
+  - log: 2026-06-18 2 passed
+- [x] **Setup: signup-open** - signup enabled, admin env-provisioned; a non-admin self-signs-up and the admin authorises via the SPA Users page
+  - log: 2026-06-18 2 passed (`FUNCTEST_AUTH_MODE=signupopen`)
+- [x] **Regime gating** - a conftest collection hook deselects (never skips) tests outside the run's regime, keyed off `FUNCTEST_AUTH_MODE` + GPU presence
+  - log: 2026-06-18 signup / env / signupopen / gpu markers
+
 ## Harness infrastructure
 
 - [x] **Isolated project** - runs under its own compose project `stellars-functest`, never the operator's
@@ -41,12 +56,14 @@ Legend: `[x]` implemented, `[ ]` planned (the test/scenario backlog). Each item 
 
 - [x] **base_url / admin_creds** - session fixtures from env
   - log: 2026-06-13 implemented
-- [x] **admin_page** - logged-in admin page fixture (signup-bootstrap admin)
-  - log: 2026-06-13 implemented
+- [x] **admin_page / admin_portal** - admin page authenticated by injecting the `admin_api` session's hub cookies (no flaky form login); `admin_portal` wraps it with SPA navigation (`goto(route)` + `.ant-layout` ready wait)
+  - log: 2026-06-13 implemented; 2026-06-18 reworked to cookie injection + SPA `Portal` helper
 - [x] **clean_groups** - autouse fixture wiping all groups before/after each test (API), so tests are independent
   - log: 2026-06-13 implemented
 - [x] **admin_api** - logged-in requests session for API-level setup/teardown
   - log: 2026-06-13 implemented
+- [x] **signup_user** - factory that self-signs-up an arbitrary user via the NativeAuth form (the signup-open pending user)
+  - log: 2026-06-18 implemented
 - [ ] **seeded_groups** - fixture pre-creating a known set of groups for scenarios
   - log: 2026-06-13 planned
 - [ ] **seeded_users** - fixture pre-creating non-admin users with set memberships
@@ -56,18 +73,20 @@ Legend: `[x]` implemented, `[ ]` planned (the test/scenario backlog). Each item 
 
 ## Auth & bootstrap
 
-- [x] **Login page renders** - username + password fields visible
-  - log: 2026-06-13 implemented
+- [x] **Login shell served** - `/hub/login` serves the SPA auth shell (`window.jhdata.authPage = "login"`), which renders the antd sign-in screen; the form login itself is exercised end-to-end by the `admin_api` fixture
+  - log: 2026-06-13 implemented; 2026-06-18 reworked - the antd inputs use `id` not `name` and a direct `/hub/login` GET self-redirects, so render is asserted via the served shell
 - [x] **Signup bootstrap window** - on a fresh DB (signup off, no env password) the first admin is created by signing up, then authenticates and reaches the hub
   - log: 2026-06-13 implemented (the harness default; env-password bootstrap cannot seed on a single fresh boot)
-- [x] **Admin env-password login (mode 2)** - signup disabled + JUPYTERHUB_ADMIN_PASSWORD; `make test-functional-env` does the restart-to-provision and runs ONE focused test (`test_auth_env_mode`: env admin authenticates + signup form not served), not a full-suite re-run
-  - log: 2026-06-13 implemented (compose.functional-env.yml + test-functional-env; env mode collects only the envauth tests)
-- [ ] **Signup enabled/disabled** - signup form present iff `JUPYTERHUB_SIGNUP_ENABLED=1`
-  - log: 2026-06-13 planned
-- [ ] **Non-admin needs authorization** - a self-signed user cannot log in until admin authorizes
-  - log: 2026-06-13 planned
-- [ ] **Admin authorizes user** - admin authorizes a pending user via the native-auth panel; user then logs in
-  - log: 2026-06-13 planned
+- [x] **Admin reaches the portal** - the authenticated admin loads the SPA app shell (`.ant-layout`), not bounced to login
+  - log: 2026-06-18 implemented (`test_admin_reaches_portal`, cookie-injected session)
+- [x] **Admin env-password login (mode 2)** - signup disabled + JUPYTERHUB_ADMIN_PASSWORD; `make test-functional-env` does the restart-to-provision and runs ONE focused test (`test_auth_env_mode`: env admin reaches the portal + signup form not served), not a full-suite re-run
+  - log: 2026-06-13 implemented; 2026-06-18 strengthened to load the portal (was a trivial URL check)
+- [x] **Signup enabled/disabled** - signup form present iff `JUPYTERHUB_SIGNUP_ENABLED=1`
+  - log: 2026-06-18 implemented (`test_signup_form_served`, signup-open regime)
+- [x] **Non-admin needs authorization** - a self-signed user lands in the pending queue (`is_authorized=False`), not authorised
+  - log: 2026-06-18 implemented (signup-open: `signup_user` -> pending section)
+- [x] **Admin authorizes user** - admin authorises a pending user through the SPA Users page; the pending queue empties and the backend reports `is_authorized=true`
+  - log: 2026-06-18 implemented (`test_self_signup_then_admin_authorises`)
 - [ ] **Logout** - logout returns to login and clears the session
   - log: 2026-06-13 planned
 - [ ] **Wrong password rejected** - invalid login shows an error, no session
@@ -79,14 +98,14 @@ Legend: `[x]` implemented, `[ ]` planned (the test/scenario backlog). Each item 
 
 ## Hub pages & navigation
 
-- [x] **Groups page renders** - h1 "Groups" + Add Group button
-  - log: 2026-06-13 implemented
-- [x] **Settings page renders** - 200, page loads
-  - log: 2026-06-13 implemented
-- [x] **Activity page renders** - 200, page loads
-  - log: 2026-06-13 implemented
-- [x] **Notifications page renders** - 200, page loads
-  - log: 2026-06-13 implemented
+- [x] **SPA page-render smoke** - every major SPA screen mounts and shows its signature control: dashboard ("Active servers"), servers (user filter), users ("Inactive" pill), groups ("Add group"), events ("Clear log"), notifications ("Send broadcast"), settings ("Full reference"), lab setup ("Lab image"), design language
+  - log: 2026-06-18 implemented (`test_hub_ui.py`, 9 page renders via SPA selectors)
+- [x] **Groups page renders** - "Add group" button visible (SPA)
+  - log: 2026-06-13 implemented; 2026-06-18 reworked to the SPA Groups page
+- [x] **Settings / Notifications render** - signature controls visible (SPA)
+  - log: 2026-06-13 implemented; 2026-06-18 reworked to SPA
+- [ ] **Activity** - activity is folded into the dashboard / servers meters; there is no standalone `/activity` SPA page (the old 200-check is retired)
+  - log: 2026-06-18 retired - covered indirectly by the dashboard/servers renders
 - [ ] **Admin home renders** - admin home lists users + server controls
   - log: 2026-06-13 planned
 - [ ] **Token page renders** - /hub/token page loads, can request a token
@@ -132,14 +151,14 @@ Legend: `[x]` implemented, `[ ]` planned (the test/scenario backlog). Each item 
 
 ## Groups - management
 
-- [x] **Create group** - Add Group modal creates a group; row appears
-  - log: 2026-06-13 implemented
-- [x] **Name opens config** - clicking the group name opens the config modal (cog dropped)
-  - log: 2026-06-13 implemented
-- [x] **Delete group** - confirm dialog -> row removed
-  - log: 2026-06-13 implemented
-- [x] **Reorder priority** - move-up reorders the row above its neighbour
-  - log: 2026-06-13 implemented
+- [x] **Create group** - "Add group" -> the NewGroup form -> Create -> the row appears on /groups
+  - log: 2026-06-13 implemented; 2026-06-18 reworked to the SPA create flow (`test_group_create_badge_delete`)
+- [x] **Name opens config** - the group-name link routes to `/groups/:name` (SPA, no modal)
+  - log: 2026-06-13 implemented; 2026-06-18 SPA link
+- [x] **Delete group** - the danger delete icon removes the row directly (no confirm modal in the SPA)
+  - log: 2026-06-13 implemented; 2026-06-18 reworked to the SPA delete icon
+- [x] **Reorder priority** - the move-up icon reorders the row above its neighbour (optimistic)
+  - log: 2026-06-13 implemented; 2026-06-18 reworked to the SPA move-up action (`test_priority_reorder`)
 - [ ] **Move down** - move-down reorders below its neighbour
   - log: 2026-06-13 planned
 - [ ] **Priority persists** - reordered priority survives a page reload
@@ -236,13 +255,15 @@ Legend: `[x]` implemented, `[ ]` planned (the test/scenario backlog). Each item 
 
 ## Policy display
 
-- [x] **Badges from policy_summary** - active policies render server-sourced badges
-  - log: 2026-06-13 implemented
-- [x] **Hover tooltip** - the group-name title lists active policy detail lines
-  - log: 2026-06-13 implemented
+- [x] **Badges from policy_summary** - after an API config change the SPA row renders the server-sourced policy tag(s) (`CappedTags`)
+  - log: 2026-06-13 implemented; 2026-06-18 SPA assertion (`test_group_create_badge_delete`, `test_multi_policy_badges`)
+- [x] **No badges when inactive** - a group with no active policy shows the empty marker (no `.ant-tag`)
+  - log: 2026-06-18 implemented (asserted before the first policy is set)
+- [x] **Multiple badges** - a group with three active policies renders >= 3 inline tags (cap 4)
+  - log: 2026-06-18 implemented (`test_multi_policy_badges`)
+- [ ] **Hover tooltip** - the tag detail tooltip lists the valued policy line (hover; not asserted)
+  - log: 2026-06-13 implemented (stock UI); 2026-06-18 the SPA tooltip is hover-only, not yet asserted
 - [ ] **Badge per type** - each policy type shows its expected badge text
-  - log: 2026-06-13 planned
-- [ ] **No badges when inactive** - a group with no active policy shows the empty marker
   - log: 2026-06-13 planned
 
 ## Policy resolution scenarios (multi-group)

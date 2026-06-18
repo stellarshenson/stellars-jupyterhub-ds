@@ -4,7 +4,7 @@
 # GLOBALS                                                                       #
 #################################################################################
 .DEFAULT_GOAL := help
-.PHONY: help preflight build build_verbose rebuild rebuild_increment_version _rebuild_impl push pull start stop clean increment_version maybe_increment_version tag logs test test-functional test-functional-env test-functional-clean
+.PHONY: help preflight build build_verbose rebuild rebuild_increment_version _rebuild_impl push pull start stop clean increment_version maybe_increment_version tag logs test test-functional test-functional-env test-functional-signup-open test-functional-all test-functional-clean
 
 # ── Preflight: tools, services, and files required end-to-end ──
 # Covers versioning (python3 + tomllib + awk + sed), build (docker), push (git),
@@ -237,6 +237,7 @@ logs: preflight
 FUNCTEST_PROJECT := stellars-functest
 FUNCTEST_COMPOSE := tests/functional/compose.functional.yml
 FUNCTEST_ENV_COMPOSE := tests/functional/compose.functional-env.yml
+FUNCTEST_SIGNUPOPEN_COMPOSE := tests/functional/compose.functional-signup-open.yml
 FUNCTEST_IMAGES  := quay.io/jupyterhub/singleuser:latest mcr.microsoft.com/playwright/python:v1.49.0-noble
 
 ## run the python unit test suites locally (optimum-hub-services + stellars-docker-proxy)
@@ -270,6 +271,38 @@ test-functional-env:
 	end=$$(date +%s); \
 	echo "[functional/env] total time: $$((end-start))s"; \
 	exit $$rc
+
+## run the functional harness in signup-open mode (signup enabled; env-provisioned admin authorises a self-signed-up user via the SPA), then clean up
+test-functional-signup-open:
+	@echo "[functional/signup-open] booting hub (first boot creates the DB + tables)..."
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) up -d --wait jupyterhub
+	@echo "[functional/signup-open] restarting hub to provision the env-password admin..."
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) restart jupyterhub
+	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) up -d --wait jupyterhub
+	@start=$$(date +%s); \
+	docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) run --rm tests; \
+	rc=$$?; \
+	$(MAKE) --no-print-directory test-functional-clean; \
+	end=$$(date +%s); \
+	echo "[functional/signup-open] total time: $$((end-start))s"; \
+	exit $$rc
+
+## run EVERY functional setup (initial condition) one by one - signup-bootstrap, env-password, signup-open - cleaning between each; reports which setups passed and exits non-zero if any failed
+test-functional-all:
+	@overall=0; failed=""; \
+	for setup in signup env signup-open; do \
+	  echo "==================================================================="; \
+	  echo "[functional/all] setup: $$setup"; \
+	  echo "==================================================================="; \
+	  case $$setup in \
+	    signup)      $(MAKE) --no-print-directory test-functional || { overall=1; failed="$$failed signup"; } ;; \
+	    env)         $(MAKE) --no-print-directory test-functional-env || { overall=1; failed="$$failed env"; } ;; \
+	    signup-open) $(MAKE) --no-print-directory test-functional-signup-open || { overall=1; failed="$$failed signup-open"; } ;; \
+	  esac; \
+	done; \
+	echo "==================================================================="; \
+	if [ $$overall -eq 0 ]; then echo "[functional/all] ALL SETUPS PASSED"; else echo "[functional/all] FAILED SETUPS:$$failed"; fi; \
+	exit $$overall
 
 ## remove the functional-test harness - containers, spawned labs, network, volumes (idempotent; pulled images kept - REMOVE_IMAGES=1 also removes them)
 test-functional-clean:
