@@ -70,6 +70,7 @@ from optimum_hub_services.handlers import (
     UserProfileHandler,                     # GET/PUT /api/users/{user}/profile - first/last name + email
     UserProfilesListHandler,                # GET  /api/user-profiles - all profiles (Users-list sub-names)
     UserForcePasswordChangeHandler,         # POST /api/users/{user}/force-password-change - admin set/clear the gate
+    UserRenameHandler,                      # POST /api/users/{user}/rename - admin rename (records who renamed whom)
     EffectiveGrantsHandler,                 # GET  /api/users/{user}/effective-grants - resolved group policy grants
 )
 
@@ -817,6 +818,7 @@ c.JupyterHub.extra_handlers = [
     (r'/api/users/([^/]+)/session-info', SessionInfoHandler),        # GET - idle culler status
     (r'/api/users/([^/]+)/profile', UserProfileHandler),             # GET/PUT - first/last name + email
     (r'/api/users/([^/]+)/force-password-change', UserForcePasswordChangeHandler), # POST - admin set/clear force-pw gate
+    (r'/api/users/([^/]+)/rename', UserRenameHandler),               # POST - admin rename (records who renamed whom)
     (r'/api/users/([^/]+)/effective-grants', EffectiveGrantsHandler), # GET - resolved group policy grants
     (r'/api/user-profiles', UserProfilesListHandler),                # GET - all profiles (Users-list sub-names)
     (r'/api/settings', SettingsDataHandler),                          # GET - platform settings (read-only JSON)

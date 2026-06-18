@@ -15,7 +15,7 @@ from .groups import (
     GroupsDeleteHandler, GroupsConfigHandler, GroupsReorderHandler,
 )
 from .native_users import NativeUsersHandler, NativeUserAuthorizationHandler
-from .user_profile import UserForcePasswordChangeHandler, UserProfileHandler, UserProfilesListHandler
+from .user_profile import UserForcePasswordChangeHandler, UserProfileHandler, UserProfilesListHandler, UserRenameHandler
 from .effective_grants import EffectiveGrantsHandler
 from .events_data import EventsDataHandler
 
@@ -45,6 +45,7 @@ __all__ = [
     "UserProfileHandler",
     "UserProfilesListHandler",
     "UserForcePasswordChangeHandler",
+    "UserRenameHandler",
     "EffectiveGrantsHandler",
     "EventsDataHandler",
 ]

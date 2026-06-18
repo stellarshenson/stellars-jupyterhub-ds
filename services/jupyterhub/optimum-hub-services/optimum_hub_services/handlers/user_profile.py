@@ -75,3 +75,40 @@ class UserForcePasswordChangeHandler(BaseHandler):
         UserProfileManager.get_instance().set_must_change_password(username, value)
         self.log.info(f"[force-pw] {current_user.name} set force-password-change={value} for '{username}'")
         self.finish({"username": username, "must_change_password": value})
+
+
+class UserRenameHandler(BaseHandler):
+    """POST /api/users/{user}/rename - admin-only. Renames the user through the
+    JupyterHub orm (which fires events.py::sync_nativeauth_on_rename to carry the
+    NativeAuth UserInfo, activity samples and display profile across), and records
+    a rename event that NAMES the acting admin (who renamed whom). The actor is
+    taken from the authenticated session, never the client. Volumes are keyed on
+    the old encoded name and are intentionally NOT moved - the admin migrates them
+    separately (the UI confirm dialog states this)."""
+
+    @web.authenticated
+    async def post(self, username):
+        current_user = self.current_user
+        if current_user is None or not current_user.admin:
+            raise web.HTTPError(403, "Only administrators can rename users")
+        body = json.loads(self.request.body or b'{}')
+        new_name = (body.get('name') or '').strip()
+        if not new_name:
+            raise web.HTTPError(400, "A new username is required")
+        if new_name == username:
+            raise web.HTTPError(400, "The new username is the same as the current one")
+        user = self.find_user(username)
+        if user is None:
+            raise web.HTTPError(404, f"No such user: {username}")
+        if self.find_user(new_name):
+            raise web.HTTPError(409, f"User {new_name} already exists, username must be unique")
+
+        from ..events import set_rename_actor, reset_rename_actor
+        token = set_rename_actor(current_user.name)
+        try:
+            user.name = new_name      # fires the rename sync listener synchronously
+            self.db.commit()
+        finally:
+            reset_rename_actor(token)
+        self.log.info(f"[rename] {current_user.name} renamed '{username}' -> '{new_name}'")
+        self.finish({"name": new_name})
