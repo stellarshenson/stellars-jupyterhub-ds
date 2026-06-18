@@ -7,7 +7,7 @@
 # password (is_authorized=1), exactly like the env regime, via the target's
 # restart-to-provision on the fresh DB.
 services:
-  optimumhub:
+  duoptimumhub:
     environment:
       - JUPYTERHUB_SIGNUP_ENABLED=1
       - JUPYTERHUB_ADMIN_PASSWORD=functest-secret

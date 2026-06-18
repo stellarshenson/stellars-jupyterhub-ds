@@ -1,6 +1,6 @@
 # Acceptance Criteria - Profile route (role-aware self-view)
 
-The Profile nav link (`/profile`) opens the current user's own profile. It is role-aware: an admin gets the full Configure-user screen scoped to themselves; a plain user gets the self-service Profile page. `optimum-hub-web/src/router.tsx::ProfileRoute`, `pages/UserConfig.tsx`, `pages/Profile.tsx`.
+The Profile nav link (`/profile`) opens the current user's own profile. It is role-aware: an admin gets the full Configure-user screen scoped to themselves; a plain user gets the self-service Profile page. `duoptimum-hub-web/src/router.tsx::ProfileRoute`, `pages/UserConfig.tsx`, `pages/Profile.tsx`.
 
 ## Routing
 

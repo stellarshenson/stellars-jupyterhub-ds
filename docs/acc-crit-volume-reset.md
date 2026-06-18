@@ -1,6 +1,6 @@
 # Acceptance Criteria - Volume reset confirmation
 
-After an admin/user resets selected volumes, the panel reports what was done and offers a clean way back. The list paints volume names instantly with sizes filling in (see [acc-crit-resource-bars] for the names/sizes split). `optimum-hub-web/src/components/VolumeReset.tsx`, `pages/ManageVolumes.tsx`.
+After an admin/user resets selected volumes, the panel reports what was done and offers a clean way back. The list paints volume names instantly with sizes filling in (see [acc-crit-resource-bars] for the names/sizes split). `duoptimum-hub-web/src/components/VolumeReset.tsx`, `pages/ManageVolumes.tsx`.
 
 ## After reset (same screen, no separate view)
 

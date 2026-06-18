@@ -5,7 +5,7 @@ cd /d "%~dp0"
 
 REM first pull the jupyterlab and jupyterhub image
 docker.exe pull stellars/stellars-jupyterlab-ds:latest
-docker.exe pull stellars/optimumhub:latest
+docker.exe pull stellars/duoptimumhub:latest
 
 REM start platform
 docker.exe compose --env-file .env -f compose.yml -f compose-gpu.yml up --no-recreate --no-build -d

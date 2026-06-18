@@ -1,6 +1,6 @@
 # Old (stock) JupyterHub portal design - hidden comparison container.
 #
-# Runs the stock JupyterHub UI (the design the Optimum Hub portal replaced) so it
+# Runs the stock JupyterHub UI (the design the Duoptimum Hub portal replaced) so it
 # can be compared side-by-side for functional parity. Hidden: bound to localhost
 # only (no internet exposure, no Traefik router) and joined to the live docker
 # network so it sits "inside" the same network as the real stack.

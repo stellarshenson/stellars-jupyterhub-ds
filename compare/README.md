@@ -1,7 +1,7 @@
 # Old-portal comparison
 
 A hidden, throwaway **stock JupyterHub** container for comparing the original
-portal design and functionality against the Optimum Hub portal. It runs the
+portal design and functionality against the Duoptimum Hub portal. It runs the
 unmodified `jupyterhub/jupyterhub` image (stock home / admin / user-management
 UI) with dummy auth, bound to localhost only and joined to the live docker
 network - never exposed to the internet, never routed through Traefik.

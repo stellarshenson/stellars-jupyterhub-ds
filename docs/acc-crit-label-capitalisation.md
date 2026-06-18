@@ -45,4 +45,4 @@ Button labels and header labels across the portal use Title Case - every princip
 ## Verification
 
 - [x] **Frontend gates** - `npx tsc -b`, `npm run lint`, `npm run build:hub` all clean after the sweep
-  - log: 2026-06-18 run from optimum-hub-web after the sweep
+  - log: 2026-06-18 run from duoptimum-hub-web after the sweep

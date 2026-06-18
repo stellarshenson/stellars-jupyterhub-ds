@@ -30,7 +30,7 @@ Every form / sub screen reached from a list must offer a way back to its parent 
 
 ## Breadcrumb rules
 
-- [x] **Crumb from the route handle** - each page declares `handle.crumb`; the breadcrumb shows "Optimum Hub / [parent] / crumb"
+- [x] **Crumb from the route handle** - each page declares `handle.crumb`; the breadcrumb shows "Duoptimum Hub / [parent] / crumb"
   - log: 2026-06-18 verified (Breadcrumbs reads the deepest matched handle)
 - [x] **Origin beats static parent** - when `state.from` is present it overrides the route's static `parent` so the crumb names where the user actually came from
   - log: 2026-06-17 implemented (Breadcrumbs `origin ?? handle.parent`)

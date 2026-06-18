@@ -5,7 +5,7 @@ The hub container has no GPU access of its own. Instead of spawning a throwaway 
 - Service: `services/jupyterhub/gpuinfo-nvidia` (FastAPI + uvicorn, stdlib `subprocess` to `nvidia-smi`)
 - Image: `stellars/stellars-gpuinfo-nvidia:latest`, run with `--runtime=nvidia`
 - Two read-only, side-effect-free endpoints; always 200 while the process is up, even on a GPU-less host
-- Consumer: the hub (`optimum-hub-services`), never the spawned user labs (sidecar sits on a hub-only network)
+- Consumer: the hub (`duoptimum-hub-services`), never the spawned user labs (sidecar sits on a hub-only network)
 
 ## Endpoints
 

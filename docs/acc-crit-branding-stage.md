@@ -48,7 +48,7 @@ A small outlined rectangle in the portal header naming the deployment stage (DEV
 ## Tests
 
 - [x] **Unit: stage normalization** - `setup_branding(stage=...)` returns `branding['stage']` stripped, `''` when unset; default-keys test includes `stage`
-  - log: 2026-06-18 `optimum-hub-services/tests/test_branding.py::TestStage`; `make test`
+  - log: 2026-06-18 `duoptimum-hub-services/tests/test_branding.py::TestStage`; `make test`
 - [ ] **Functional: no badge by default** - default (signup) deployment has no stage env -> the header shows no `.oh-stage-badge`
   - log: 2026-06-18 `tests/functional/test_branding_stage.py::test_no_stage_badge_by_default`; pends an image rebuild (badge ships in the bundle)
 - [ ] **Functional: badge shows configured stage** - env-mode deployment with `JUPYTERHUB_BRANDING_STAGE=TST` shows a `TST` badge in the blue/accent tone
