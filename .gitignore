@@ -130,6 +130,5 @@ dmypy.json
 # dependencies, no build-system), so a uv.lock here is never needed
 /uv.lock
 
-# Runtime log artifacts (job output, adversarial-sweep traces); keep the index README
-/logs/*
-!/logs/README.md
+# Runtime log artifacts (job output, adversarial-sweep traces) - fully ignored
+/logs/
