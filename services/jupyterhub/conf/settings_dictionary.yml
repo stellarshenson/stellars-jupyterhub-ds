@@ -76,8 +76,8 @@ Docker Spawner:
     default: stellars/stellars-jupyterlab-ds:latest
 
   - name: JUPYTERHUB_NETWORK_NAME
-    description: Docker network for containers
-    default: jupyterhub_network
+    description: Hub<->lab network spawned labs join. Auto-discovered at boot from the compose-declared hub_network carrying the `duoptimum.lab.network` label (among the hub's own attachments); set only to override
+    default: ""
 
   - name: JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE
     description: Lab-container name template ({username} placeholder); spawner names from this and the hub's container lookups read the same var, so the prefix is never hardcoded

@@ -144,7 +144,27 @@ JUPYTERHUB_TIMEZONE = os.environ.get("JUPYTERHUB_TIMEZONE", "Etc/UTC")          
 
 # Docker spawner settings
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")                                     # URL prefix (e.g. /jupyterhub), None or / for root
-JUPYTERHUB_NETWORK_NAME = os.environ.get("JUPYTERHUB_NETWORK_NAME", "").strip()          # Docker network for hub + spawned containers (required; baked image ENV - validated below)
+# The hub<->lab network spawned labs join. It MUST be shared with the hub so labs reach
+# the hub API and the hub/CHP proxy them. DECLARED in compose.yml (hub_network) with a
+# marker label; the hub DISCOVERS its real, compose-namespaced name among its OWN attached
+# networks by that label (the hub now sits on several networks - hub_network + the gpuinfo
+# one), so the name can never drift from the declaration. An explicit env overrides; empty
+# after both is fatal - labs cannot spawn without a hub<->lab network.
+JUPYTERHUB_LAB_NETWORK_LABEL = "duoptimum.lab.network"  # marker label compose stamps on hub_network; MUST match the label in compose.yml
+JUPYTERHUB_NETWORK_NAME = (
+    os.environ.get("JUPYTERHUB_NETWORK_NAME", "").strip()
+    or resolve_self_network_by_label(JUPYTERHUB_LAB_NETWORK_LABEL)
+    or ""
+)
+if not JUPYTERHUB_NETWORK_NAME:
+    raise RuntimeError(
+        "JUPYTERHUB_NETWORK_NAME could not be determined - cannot start. The hub discovers "
+        f"the lab network from the compose-declared hub_network carrying the "
+        f"'{JUPYTERHUB_LAB_NETWORK_LABEL}' label among its own attachments; that was not found "
+        "(network not labelled, hub not attached, or the docker socket is unreachable). "
+        "Spawned labs must share a network with the hub. Run via docker compose with the "
+        "labelled hub_network, or set JUPYTERHUB_NETWORK_NAME explicitly."
+    )
 JUPYTERHUB_LAB_IMAGE = os.environ.get("JUPYTERHUB_LAB_IMAGE", "").strip()                # JupyterLab image to spawn (required; baked image ENV - validated below)
 # Hub's own compose project - drives the volume namespace + hub/sidecar/lab compose
 # labels (every named volume is f"{JUPYTERHUB_COMPOSE_PROJECT_NAME}_..."). DISCOVERED
@@ -232,7 +252,6 @@ def _validate_required_config():
     required = {
         "JUPYTERHUB_ADMIN": JUPYTERHUB_ADMIN,
         "JUPYTERHUB_LAB_IMAGE": JUPYTERHUB_LAB_IMAGE,
-        "JUPYTERHUB_NETWORK_NAME": JUPYTERHUB_NETWORK_NAME,
     }
     missing = [name for name, value in required.items() if not (value or "").strip()]
     if missing:
