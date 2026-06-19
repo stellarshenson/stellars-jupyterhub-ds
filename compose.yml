@@ -97,6 +97,7 @@ services:
       # ============================== LAB-SPECIFIC =============================
       # (configures the spawned user environment)
       - JUPYTERHUB_LAB_IMAGE=stellars/stellars-jupyterlab-ds:latest # user container image
+      - JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE=jupyterlab-{username} # lab-container name template ({username} placeholder); spawner names from this and the hub's lookups read the same var (no hardcoded prefix). Change to rename user containers.
       # GPU passthrough to labs
       - JUPYTERHUB_GPU_ENABLED=2 # 0=disabled, 1=enabled, 2=auto-detect
       - JUPYTERHUB_GPUINFO_NVIDIA_IMAGE=stellars/duoptimum-gpuinfo-nvidia:latest # GPU-info sidecar image (pulled from stellars/ DockerHub, built from base when absent)
@@ -129,7 +130,7 @@ services:
       # Optional overrides (uncomment to set)
       - JUPYTERHUB_ADMIN_PASSWORD= # optional INITIAL admin password; pre-creates admin UserInfo on startup. Once admin changes their password, env is permanently ignored (verified via bcrypt.checkpw). Not listed in settings_dictionary.yml so it stays off the Settings page.
       - JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE={username}_containers # per-user compose-project label template; rendered when a docker-limited group enables enforcement. Placeholders {compose_project} (hub project) and {username} (lab owner). Uncomment to override the Dockerfile default.
-      - JUPYTERHUB_DOCKER_PROXY_LABEL_PREFIX={COMPOSE_PROJECT_NAME:-duoptimum-hub}.docker.proxy # label namespace; proxy stamps <prefix>.owner / <prefix>.managed. Override to dodge clashes with host labels.
+      - JUPYTERHUB_DOCKER_PROXY_LABEL_PREFIX=${COMPOSE_PROJECT_NAME:-duoptimum-hub}.docker.proxy # label namespace; proxy stamps <prefix>.owner / <prefix>.managed. Override to dodge clashes with host labels.
       - JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR=/var/run/docker-proxy-sockets # path inside the hub container where the in-process proxy writes per-user listener sockets. Backed by the hub_docker named volume (below); the hub discovers that volume's real daemon name from its own mounts at runtime - no name is hardcoded. Do not point this at a host bind.
       - JUPYTERLAB_SYSTEM_NAME=Duoptimum Hub # rebrand stellars-jupyterlab-ds in welcome page, MOTD, toolbar header badge; empty = no rebrand
       - JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME=1 # uppercase the toolbar header badge (0/1)
@@ -138,21 +139,21 @@ services:
       # Enable proxy support from Traefik
       - "traefik.enable=true"
 
-      # ⚙  Jupyterhub Service (8000) - canonical base_url is /jupyterhub; /hub,
+      # ⚙  Jupyterhub Service (8000) - canonical base_url is /hub; /jupyterhub
       # and /duoptimum-hub are accepted as transition aliases and
       # redirected to the canonical path by the hub-alias-redirect middleware below.
-      - "traefik.http.routers.duoptimumhub-rtr.rule=Path(`/jupyterhub`) || PathPrefix(`/jupyterhub/`) || Path(`/hub`) || PathPrefix(`/hub/`) || Path(`/duoptimum-hub`) || PathPrefix(`/duoptimum-hub/`)"
+      - "traefik.http.routers.duoptimumhub-rtr.rule=Path(`/hub`) || PathPrefix(`/hub/`) || Path(`/jupyterhub`) || PathPrefix(`/jupyterhub/`) || Path(`/duoptimum-hub`) || PathPrefix(`/duoptimum-hub/`)"
       - "traefik.http.routers.duoptimumhub-rtr.entrypoints=websecure"
       - "traefik.http.routers.duoptimumhub-rtr.service=duoptimumhub-svc"
       - "traefik.http.routers.duoptimumhub-rtr.tls=true"
       - "traefik.http.services.duoptimumhub-svc.loadbalancer.server.scheme=http"
       - "traefik.http.services.duoptimumhub-svc.loadbalancer.server.port=8000"
 
-      # 🔁 Transition aliases - /hub,/duoptimum-hub all 302 to the
-      # canonical base_url (/jupyterhub) so old and short URLs keep working until the
-      # canonical path is switched. JupyterHub serves only its base_url; subpath kept.
-      - "traefik.http.middlewares.hub-alias-redirect.redirectregex.regex=^(https?://[^/]+)/(hub|duoptimum-hub)(/.*)?$$"
-      - "traefik.http.middlewares.hub-alias-redirect.redirectregex.replacement=$${1}/jupyterhub$${3}"
+      # 🔁 Transition aliases - /jupyterhub,/duoptimum-hub all 302 to the
+      # canonical base_url (/hub) so old and long URLs keep working. JupyterHub
+      # serves only its base_url (/hub); subpath kept.
+      - "traefik.http.middlewares.hub-alias-redirect.redirectregex.regex=^(https?://[^/]+)/(jupyterhub|duoptimum-hub)(/.*)?$$"
+      - "traefik.http.middlewares.hub-alias-redirect.redirectregex.replacement=$${1}/hub$${3}"
       - "traefik.http.middlewares.hub-alias-redirect.redirectregex.permanent=false"
 
       # 🛡 Abuse protection - per-IP request rate limiting for hub AND all labs

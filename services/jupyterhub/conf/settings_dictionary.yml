@@ -18,7 +18,7 @@ JupyterHub Core:
 
   - name: JUPYTERHUB_BASE_URL
     description: Base URL path
-    default: /jupyterhub
+    default: /hub
 
   - name: JUPYTERHUB_SIGNUP_ENABLED
     description: User self-registration (0=disabled, 1=enabled)
@@ -78,6 +78,10 @@ Docker Spawner:
   - name: JUPYTERHUB_NETWORK_NAME
     description: Docker network for containers
     default: jupyterhub_network
+
+  - name: JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE
+    description: Lab-container name template ({username} placeholder); spawner names from this and the hub's container lookups read the same var, so the prefix is never hardcoded
+    default: jupyterlab-{username}
 
 GPU:
   - name: JUPYTERHUB_GPU_ENABLED
