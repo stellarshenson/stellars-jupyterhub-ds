@@ -7,6 +7,7 @@ from duoptimum_hub_services.docker_utils import (
     encode_username_for_docker,
     encoded_username_from_lab_container,
     lab_container_name,
+    resolve_network_placeholder,
     resolve_self_network_by_label,
 )
 
@@ -131,3 +132,51 @@ class TestResolveSelfNetworkByLabel:
     def test_none_when_self_container_undeterminable(self, monkeypatch):
         self._install_fake_docker(monkeypatch, get_raises=True)
         assert resolve_self_network_by_label("duoptimum.gpuinfo.network") is None
+
+    def test_role_value_match_selects_the_right_net(self, monkeypatch):
+        # both nets share the key; the value (role) picks the right one
+        self._install_fake_docker(
+            monkeypatch,
+            attached={"lab": {"NetworkID": "id-lab"}, "gpu": {"NetworkID": "id-gpu"}},
+            networks={
+                "id-lab": ("proj_hub_network", {"duoptimum.network.role": "lab"}),
+                "id-gpu": ("proj_hub_gpuinfo_network", {"duoptimum.network.role": "gpuinfo"}),
+            },
+        )
+        assert resolve_self_network_by_label("duoptimum.network.role", "lab") == "proj_hub_network"
+        assert resolve_self_network_by_label("duoptimum.network.role", "gpuinfo") == "proj_hub_gpuinfo_network"
+
+    def test_none_when_role_value_no_match(self, monkeypatch):
+        self._install_fake_docker(
+            monkeypatch,
+            attached={"lab": {"NetworkID": "id-lab"}},
+            networks={"id-lab": ("proj_hub_network", {"duoptimum.network.role": "lab"})},
+        )
+        assert resolve_self_network_by_label("duoptimum.network.role", "gpuinfo") is None
+
+    def test_value_none_keeps_presence_match(self, monkeypatch):
+        # legacy presence behaviour preserved when no value is given
+        self._install_fake_docker(
+            monkeypatch,
+            attached={"lab": {"NetworkID": "id-lab"}},
+            networks={"id-lab": ("proj_hub_network", {"duoptimum.network.role": "lab"})},
+        )
+        assert resolve_self_network_by_label("duoptimum.network.role") == "proj_hub_network"
+
+
+class TestResolveNetworkPlaceholder:
+    """{network} token in an env value -> the resolved net for that context; literal passes through."""
+
+    def test_substitutes_token(self):
+        assert resolve_network_placeholder("{network}", "proj_hub_network") == "proj_hub_network"
+
+    def test_literal_passthrough(self):
+        # operator override: a real name with no token is used verbatim
+        assert resolve_network_placeholder("my_net", "proj_hub_network") == "my_net"
+
+    def test_empty_value_noop(self):
+        assert resolve_network_placeholder("", "proj_hub_network") == ""
+
+    def test_empty_network_blanks_token(self):
+        # unresolved net -> token becomes empty (caller treats as fatal/degrade)
+        assert resolve_network_placeholder("{network}", "") == ""

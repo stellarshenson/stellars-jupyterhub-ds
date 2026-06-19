@@ -19,11 +19,11 @@ from urllib.parse import urlparse
 
 log = logging.getLogger('jupyterhub')
 
-_SIDECAR_ENV = {
-    'NVIDIA_VISIBLE_DEVICES': 'all',
-    'NVIDIA_DRIVER_CAPABILITIES': 'utility',
-    'GPUINFO_PORT': '8000',
-}
+# Sidecar runtime env (NVIDIA_VISIBLE_DEVICES, NVIDIA_DRIVER_CAPABILITIES, GPUINFO_PORT),
+# port + command baked into sidecar IMAGE (services/jupyterhub/gpuinfo-nvidia/Dockerfile).
+# Image = single source of truth for sidecar's own spec; hub does not re-declare here (no
+# env to containers.run). Hub only orchestrates: net, name, labels, conditional runtime,
+# recreate, teardown.
 
 
 def container_name_from_url(url):
@@ -95,7 +95,8 @@ def _connect_hub(client, network):
         pass  # already connected (409) or transient - non-fatal
 
 
-def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', container_name=None):
+def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', container_name=None,
+                           container_role_label_key='', container_role_label_value=''):
     """Ensure the GPU-info sidecar container is running. Never raises.
 
     Returns the sidecar base URL with the ``{hostname}`` placeholder filled in from the
@@ -111,12 +112,13 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', contain
     removes it by); it falls back to the URL host only when not supplied, and the
     sidecar is skipped (GPU off) if neither yields a name - never a hardcoded one.
 
-    The dedicated network is DECLARED in compose.yml (compose owns and creates it; the
-    hub discovers it by label and only joins it - it never creates it here). The
-    container is stamped with the same compose-project labels the spawned user
-    containers get (see hooks.py), so the hub-started sidecar belongs to the compose
-    project (shows in `docker compose ps`) rather than running as a standalone
-    container.
+    Dedicated net DECLARED in compose.yml (compose owns/creates it; hub discovers it by
+    duoptimum.network.role=gpuinfo and only joins - never creates here). Container stamped
+    with the same compose-project labels spawned user containers get (see hooks.py) plus
+    its container-role label (container_role_label_key/_value, e.g.
+    duoptimum.container.role=gpuinfo) - sidecar belongs to the compose project (shows in
+    `docker compose ps`), discoverable by role. Sidecar's own runtime spec (NVIDIA env,
+    port, command) comes from the image, not here.
     """
     import docker
 
@@ -142,6 +144,10 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', contain
             'com.docker.compose.container-number': '1',
             'com.docker.compose.oneoff': 'False',
         })
+    # Container role label (e.g. duoptimum.container.role=gpuinfo), mirrored from the
+    # compose service decl - lets future code discover gpuinfo containers by role.
+    if container_role_label_key and container_role_label_value:
+        container_labels[container_role_label_key] = container_role_label_value
     try:
         client = docker.DockerClient('unix://var/run/docker.sock')
     except Exception as e:
@@ -198,7 +204,6 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', contain
             name=name,
             detach=True,
             restart_policy={'Name': 'unless-stopped'},
-            environment=dict(_SIDECAR_ENV),
             network=network_name,
             labels=container_labels,
             **run_kwargs,

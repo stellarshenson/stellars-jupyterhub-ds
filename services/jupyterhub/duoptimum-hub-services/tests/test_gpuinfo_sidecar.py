@@ -88,6 +88,7 @@ class _FakeContainers:
 
     def __init__(self, run_container):
         self._run_container = run_container
+        self.last_run_kwargs = None
 
     def get(self, name):
         raise _NotFound(name)
@@ -96,6 +97,7 @@ class _FakeContainers:
         return []
 
     def run(self, **kwargs):
+        self.last_run_kwargs = kwargs
         return self._run_container
 
 
@@ -213,3 +215,22 @@ def test_ensure_empty_when_no_network_name():
     # override) -> sidecar skipped, GPU off, before docker is even contacted
     out = ensure_gpuinfo_sidecar("img:latest", "", "http://{hostname}:8000", container_name="gpuinfo-nvidia")
     assert out == ""
+
+
+def test_ensure_stamps_container_role_label_and_passes_no_env(monkeypatch):
+    # the hub stamps the container role label on the sidecar it creates; the sidecar's
+    # own runtime spec (NVIDIA env, port, cmd) is baked in the image, so the hub passes
+    # NO environment= to containers.run (no duplication)
+    container = _Container(name="gpuinfo-nvidia", networks={"gpuinfo-net": {"IPAddress": "172.20.0.7"}})
+    client = _FakeClient(run_container=container)
+    _install_fake_docker(monkeypatch, client=client)
+    out = ensure_gpuinfo_sidecar(
+        "img:latest", "gpuinfo-net", "http://{hostname}:8000",
+        compose_project="proj", container_name="gpuinfo-nvidia",
+        container_role_label_key="duoptimum.container.role",
+        container_role_label_value="gpuinfo",
+    )
+    assert out == "http://172.20.0.7:8000"
+    kw = client.containers.last_run_kwargs
+    assert kw["labels"]["duoptimum.container.role"] == "gpuinfo"
+    assert "environment" not in kw

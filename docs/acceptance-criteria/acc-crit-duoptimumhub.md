@@ -29,6 +29,7 @@ Cross-document conflicts found during consolidation are tracked in [concerns.md]
 - [Functional UI Sweep](#functional-ui-sweep)
 - [GPU Utilisation Cache Logging](#gpu-utilisation-cache-logging)
 - [gpuinfo-nvidia sidecar (logging + graceful no-hardware)](#gpuinfo-nvidia-sidecar-logging-graceful-no-hardware)
+- [GPU-info sidecar wiring - explicit compose, runtime discovery](#gpu-info-sidecar-wiring---explicit-compose-runtime-discovery)
 - [Group-Gated File Downloads](#group-gated-file-downloads)
 - [group policy import/export bundle shape](#group-policy-importexport-bundle-shape)
 - [Unified Group Policy Model](#unified-group-policy-model)
@@ -4017,7 +4018,7 @@ Server-start experience graduates from a modal to a dedicated page with a live s
 
 ## GPU-info sidecar wiring - explicit compose, runtime discovery
 
-The hub<->GPU-info sidecar is fully DECLARED in compose (a labelled network + a profiled service) while every address, network name and compose project is RESOLVED at runtime from the hub's own container - no hardcoded host, name or project, and no hidden runtime-created resources. Compose owns the network and the image; the hub only discovers, joins and runs.
+The hub<->GPU-info sidecar is fully DECLARED in compose (role-labelled networks + a profiled service) while every address, network name and compose project is RESOLVED at runtime from the hub's own container - no hardcoded host, name or project, and no hidden runtime-created resources. Networks carry one role label key (`duoptimum.network.role` = `lab` / `gpuinfo`); network-name env vars are the `{network}` token resolved per-context. The sidecar's own spec lives in its image; the hub orchestrates and applies the nvidia runtime conditionally (portable to non-GPU hosts). Compose owns the network and the image; the hub only discovers, joins and runs.
 
 - [x] **Sidecar URL is a template** - `JUPYTERHUB_GPUINFO_NVIDIA_URL=http://{hostname}:8000`; `{hostname}` is filled at boot by `ensure_gpuinfo_sidecar` with the sidecar's IP read from the live container (its address on the dedicated network) - never a hardcoded host
   - log: 2026-06-19 implemented (v4.0.7)
@@ -4029,10 +4030,12 @@ The hub<->GPU-info sidecar is fully DECLARED in compose (a labelled network + a 
   - log: 2026-06-19 implemented (v4.0.7)
 - [x] **Docker-proxy label prefix is static** - `JUPYTERHUB_DOCKER_PROXY_LABEL_PREFIX=duoptimum.docker.proxy` (from the package name); the proxy package `config.py::LABEL_NAMESPACE` default matches
   - log: 2026-06-19 implemented (v4.0.7)
-- [x] **Network declared in compose** - `hub_gpuinfo_network` declared with name `<project>_hub_gpuinfo_network` and label `duoptimum.gpuinfo.network: "true"`; the hub is attached to it in the hub service `networks:`
+- [x] **Networks declared in compose with role labels** - `hub_network` carries `duoptimum.network.role: "lab"` and `hub_gpuinfo_network` carries `duoptimum.network.role: "gpuinfo"`; the hub is attached to both in the hub service `networks:`
   - log: 2026-06-19 implemented (v4.0.7)
-- [x] **Network discovered by label** - `resolve_self_network_by_label()` finds the network among the hub's OWN attached networks carrying `duoptimum.gpuinfo.network`; no name env (override only); the constant `JUPYTERHUB_GPUINFO_NETWORK_LABEL` matches the compose label
+  - log: 2026-06-19 role model - one key `duoptimum.network.role`, value = role (was per-purpose presence labels `duoptimum.lab.network` / `duoptimum.gpuinfo.network`)
+- [x] **Networks discovered by role** - `resolve_self_network_by_label(key, value)` finds each network among the hub's OWN attachments by `Labels[duoptimum.network.role] == role`; the label key + role values come from env (`JUPYTERHUB_NETWORK_ROLE_LABEL_KEY`, `JUPYTERHUB_LAB_NETWORK_ROLE_LABEL`, `JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL`), baked as Dockerfile defaults; compose literals MUST match
   - log: 2026-06-19 implemented (v4.0.7)
+  - log: 2026-06-19 generalized to (key,value) role match; label key + values moved to env vars
 - [x] **Hub never creates the network** - `ensure_gpuinfo_sidecar` only `networks.get()` + joins; it never calls `networks.create()` (that historically clashed with compose's ownership check)
   - log: 2026-06-19 implemented (v4.0.7); enforced by a test that trips on `create()`
 - [x] **Sidecar declared as a profiled service** - `gpuinfo-nvidia` service under `profiles: [gpuinfo]`, so `docker compose up` never auto-starts it; the hub controls its lifecycle over the docker socket
@@ -4047,8 +4050,23 @@ The hub<->GPU-info sidecar is fully DECLARED in compose (a labelled network + a 
   - log: 2026-06-19 implemented (v4.0.7)
 - [x] **Per-package gpuinfo Makefile removed** - the sidecar's own `Makefile` is deleted; build/test now run from the root (image build) and its README documents the direct `uv`/`pytest` + compose commands
   - log: 2026-06-19 implemented (v4.0.7)
-- [x] **Env + docs aligned** - `JUPYTERHUB_GPUINFO_NETWORK_NAME` removed from `compose.yml`, `Dockerfile.jupyterhub`, `settings_dictionary.yml`; `docs/gpuinfo-api.md` and `.claude/CLAUDE.md` updated to the label-discovery model
+- [x] **Env + docs aligned** - network-name env vars baked as `{network}` in `Dockerfile.jupyterhub` (`JUPYTERHUB_NETWORK_NAME`, `JUPYTERHUB_GPUINFO_NETWORK_NAME`); role-label + container-role env vars baked; `settings_dictionary.yml`, `docs/gpuinfo-api.md` and `.claude/CLAUDE.md` updated to the role + `{network}` model
   - log: 2026-06-19 implemented (v4.0.7)
+  - log: 2026-06-19 superseded label-removal: network names baked as the `{network}` token (resolved by role), not removed
+- [x] **{network} token resolution** - `JUPYTERHUB_NETWORK_NAME` and `JUPYTERHUB_GPUINFO_NETWORK_NAME` default (baked) to `{network}`; `resolve_network_placeholder()` substitutes the role-discovered net for each context (lab / gpuinfo)
+  - log: 2026-06-19 implemented
+- [x] **Literal network override** - a non-`{network}` env value bypasses discovery and is used verbatim (the docker call is skipped)
+  - log: 2026-06-19 implemented
+- [x] **Lab fatal, gpuinfo degrades** - lab `{network}` unresolved -> hub raises and refuses to start; gpuinfo `{network}` unresolved -> sidecar skipped, GPU off, hub still starts
+  - log: 2026-06-19 implemented
+- [x] **gpuinfo container role label** - the hub stamps `duoptimum.container.role=gpuinfo` (key+value from env) on the sidecar it creates; the compose `gpuinfo-nvidia` service mirrors the label
+  - log: 2026-06-19 implemented
+- [x] **Sidecar spec single-sourced in the image** - the sidecar's NVIDIA env, port and command live only in its image (`gpuinfo-nvidia/Dockerfile`); the hub passes no `environment=` and the compose service declares no `environment:` (no duplication)
+  - log: 2026-06-19 implemented
+- [x] **Declarative-yet-portable start** - the hub keeps managing the start (launcher-independent) and applies `runtime=nvidia` only when the host registers it, so a hard compose `runtime: nvidia` never fails `up` on non-GPU hosts
+  - log: 2026-06-19 implemented
+- [x] **MUST-match invariant tested** - a build/config test asserts the compose label literals equal the baked Dockerfile env defaults (role label key + values, container role)
+  - log: 2026-06-19 implemented
 
 ### Edge cases
 
@@ -4068,11 +4086,16 @@ The hub<->GPU-info sidecar is fully DECLARED in compose (a labelled network + a 
   - log: 2026-06-19 criterion added - operator one-time migration step (v4.0.7)
 - [x] **Edge: manual sidecar bring-up for debugging** - `docker compose --profile gpuinfo up` starts the sidecar on a GPU host (runtime nvidia) for debugging; default `up` leaves it down
   - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Edge: hub on 3+ networks** - role-value match still uniquely selects lab vs gpuinfo (keyed on the label, not attachment order)
+  - log: 2026-06-19 implemented
+- [ ] **Functional: live labels via docker socket** - a functional test inspects the running stack over the socket: `hub_network` role=lab, `hub_gpuinfo_network` role=gpuinfo, the gpuinfo container carries `duoptimum.container.role=gpuinfo`, hub attached to both
+  - log: 2026-06-19 criterion added
 
 ### API / functions
 
 - `resolve_self_compose_project()` -> hub project from own `com.docker.compose.project` label, or None
-- `resolve_self_network_by_label(label_key)` -> name of the hub's own attached network carrying `label_key`, or None
+- `resolve_self_network_by_label(label_key, label_value=None)` -> name of the hub's own attached network where `Labels[label_key]==label_value` (role match), or carrying `label_key` (presence, when value None), or None
+- `resolve_network_placeholder(value, network)` -> `value` with the `{network}` token replaced by `network`; passthrough when empty or no token (literal override)
 - `resolve_gpuinfo_url(url, hostname)` -> `url` with `{hostname}` substituted (passthrough if no placeholder / empty hostname)
-- `ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', container_name=None)` -> resolved sidecar URL, or `''` on any degrade path; never creates the network, never raises
+- `ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', container_name=None, container_role_label_key='', container_role_label_value='')` -> resolved sidecar URL, or `''` on any degrade path; stamps the container role label; never creates the network, never raises
 - `stop_gpuinfo_sidecar(url, container_name=None)` -> removes the sidecar at hub exit; never raises
