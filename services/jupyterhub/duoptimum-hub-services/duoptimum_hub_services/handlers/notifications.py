@@ -7,7 +7,7 @@ from jupyterhub.handlers import BaseHandler
 from tornado import web
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest
 
-from ..docker_utils import encode_username_for_docker
+from ..docker_utils import lab_container_name
 
 # The notification types the portal can broadcast - the single source of truth the
 # composer offers and the handler validates against. 'default' was retired (the
@@ -145,7 +145,7 @@ class BroadcastNotificationHandler(BaseHandler):
                 return {"status": "failed", "error": "Server not available"}
 
             base_url = spawner.server.base_url
-            container_url = f"http://jupyterlab-{encode_username_for_docker(username)}:8888"
+            container_url = f"http://{lab_container_name(username)}:8888"
             endpoint = f"{container_url}{base_url}jupyterlab-notifications-extension/ingest"
 
             http_client = AsyncHTTPClient()

@@ -22,7 +22,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
-from .docker_utils import stats_from_container
+from .docker_utils import encoded_username_from_lab_container, stats_from_container
 
 log = logging.getLogger('jupyterhub.custom_handlers')
 
@@ -67,7 +67,7 @@ def _fetch_single_container_stats(container_name, timeout):
             data = stats_from_container(container)
             if data is None:
                 return None
-            encoded_username = container_name[len('jupyterlab-'):]
+            encoded_username = encoded_username_from_lab_container(container_name)
             return encoded_username, data
         finally:
             client.close()
@@ -106,8 +106,8 @@ def _refresh_active_container_stats(active_encoded):
         for ctr in containers:
             for name in ctr.get('Names', []):
                 name = name.lstrip('/')
-                if name.startswith('jupyterlab-'):
-                    encoded = name[len('jupyterlab-'):]
+                encoded = encoded_username_from_lab_container(name)
+                if encoded is not None:
                     running_users.add(encoded)
                     if encoded in active_encoded:
                         names.append(name)

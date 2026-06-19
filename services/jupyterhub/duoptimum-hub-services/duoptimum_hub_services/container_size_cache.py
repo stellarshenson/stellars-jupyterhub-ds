@@ -52,7 +52,8 @@ def _fetch_single_container_size(container_name, timeout):
             ).json()
             size_rw = resp.get('SizeRw', 0) or 0
             size_rootfs = resp.get('SizeRootFs', 0) or 0
-            encoded_username = container_name[len('jupyterlab-'):]
+            from .docker_utils import encoded_username_from_lab_container
+            encoded_username = encoded_username_from_lab_container(container_name)
             return encoded_username, {
                 'size_rw_mb': round(size_rw / (1024 * 1024), 1),
                 'size_rootfs_mb': round(size_rootfs / (1024 * 1024), 1),
@@ -81,14 +82,16 @@ def _refresh_all_container_sizes():
         finally:
             api.close()
 
+        from .docker_utils import encoded_username_from_lab_container
         names = []
         current_users = set()
         for ctr in containers:
             for name in ctr.get('Names', []):
                 name = name.lstrip('/')
-                if name.startswith('jupyterlab-'):
+                encoded = encoded_username_from_lab_container(name)
+                if encoded is not None:
                     names.append(name)
-                    current_users.add(name[len('jupyterlab-'):])
+                    current_users.add(encoded)
 
         # Remove stale entries for stopped containers
         stale = [u for u in _container_sizes_cache['data'] if u not in current_users]
