@@ -161,6 +161,7 @@ export interface ResourceRow {
   tip?: string
   gpus?: number[] // per-GPU utilisation % - segmented meter; takes precedence over gpuDevices
   gpuDevices?: GpuDevice[] // real inventory - drives the striped per-GPU bars (zero fill when utilisation is absent)
+  gpuDisconnected?: boolean // gpuinfo sidecar down - drop this GPU row entirely (no stale inventory / no health)
   meter?: ReactNode // override the bar (e.g. an activity meter)
   error?: boolean // readout unavailable - show an explicit "unavailable", never a fabricated bar
 }
@@ -185,8 +186,11 @@ export function barColor(pct: number): string | undefined {
 
 export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
   // Hide every GPU row when the platform has no GPU (no sidecar / none detected),
-  // rather than rendering a "none"/empty GPU bar.
-  const visible = gpuSupported() ? rows : rows.filter((r) => r.gpus === undefined && r.gpuDevices === undefined)
+  // rather than rendering a "none"/empty GPU bar. Also drop any GPU row flagged
+  // gpuDisconnected - the gpuinfo sidecar is down, so the inventory may be stale and
+  // there is no live health; show NO GPU info rather than devices we know nothing about.
+  const visible = (gpuSupported() ? rows : rows.filter((r) => r.gpus === undefined && r.gpuDevices === undefined))
+    .filter((r) => !r.gpuDisconnected)
   return (
     <div className="oh-res">
       {visible.map((r) => {
