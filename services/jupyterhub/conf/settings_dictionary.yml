@@ -9,12 +9,12 @@ JupyterHub Core:
     default: admin
 
   - name: JUPYTERHUB_COMPOSE_PROJECT_NAME
-    description: Hub's docker compose project - prefixes per-user volume names and labels the hub's own containers; mapped from compose's COMPOSE_PROJECT_NAME
-    default: jupyterhub
+    description: Hub's docker compose project - prefixes per-user volume names and labels the hub's own containers. Auto-discovered at boot from the hub's own `com.docker.compose.project` label; set only to override
+    default: ""
 
   - name: JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME
-    description: Compose project label stamped on spawned lab containers; empty = same project as the hub, set to group user containers under a different `docker compose` project
-    default: ""
+    description: Compose project label stamped on spawned lab containers; `{compose}` = the discovered hub project (e.g. `{compose}_labs`), empty = same project as the hub
+    default: "{compose}_labs"
 
   - name: JUPYTERHUB_BASE_URL
     description: Base URL path
@@ -63,12 +63,12 @@ Docker Proxy (limited-docker users):
     default: /var/run/jupyterhub-docker-proxy-sockets
 
   - name: JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE
-    description: Python str.format template for per-user `com.docker.compose.project` label stamped on ad-hoc `docker run` containers when a docker-limited group enables it. Placeholders - {compose_project} (hub project), {username}. User's own `docker compose -p` is still respected when the group's allow-override is on
+    description: Python str.format template for per-user `com.docker.compose.project` label stamped on ad-hoc `docker run` containers when a docker-limited group enables it. Placeholders - {compose} (hub project), {username}. User's own `docker compose -p` is still respected when the group's allow-override is on
     default: "{username}_containers"
 
   - name: JUPYTERHUB_DOCKER_PROXY_LABEL_PREFIX
-    description: Label namespace; proxy stamps `<prefix>.owner` and `<prefix>.managed` on its resources. All filtering keys off `<prefix>.owner`
-    default: jupyterhub.docker.proxy
+    description: Label namespace (from the duoptimum-docker-proxy package); proxy stamps `<prefix>.owner` and `<prefix>.managed` on its resources. All filtering keys off `<prefix>.owner`
+    default: duoptimum.docker.proxy
 
 Docker Spawner:
   - name: JUPYTERHUB_LAB_IMAGE
@@ -85,20 +85,16 @@ Docker Spawner:
 
 GPU:
   - name: JUPYTERHUB_GPU_ENABLED
-    description: GPU support (0=disabled, 1=enabled, 2=auto-detect)
-    default: "2"
+    description: GPU support (0=off, 1=autodetect - the default; GPU on only when devices are detected)
+    default: "1"
 
   - name: JUPYTERHUB_GPUINFO_NVIDIA_IMAGE
     description: GPU-info sidecar image (pulled from stellars/ DockerHub, built from base when absent)
-    default: stellars/stellars-gpuinfo-nvidia:latest
+    default: stellars/duoptimum-gpuinfo-nvidia:latest
 
   - name: JUPYTERHUB_GPUINFO_NVIDIA_URL
-    description: GPU-info sidecar base URL (detection + utilisation + processes)
-    default: http://gpuinfo-nvidia:8000
-
-  - name: JUPYTERHUB_GPUINFO_NETWORK_NAME
-    description: Dedicated hub to GPU-info sidecar network
-    default: jupyterhub-gpuinfo-network
+    description: GPU-info sidecar base URL TEMPLATE (detection + utilisation + processes); {hostname} is filled at boot with the address the hub discovers for the running sidecar
+    default: http://{hostname}:8000
 
 Services:
   - name: JUPYTERHUB_LAB_SERVICE_MLFLOW

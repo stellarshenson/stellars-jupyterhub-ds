@@ -231,6 +231,65 @@ def resolve_self_mount_volume(destination):
     return None
 
 
+def resolve_self_compose_project():
+    """The docker-compose project THIS (hub) container belongs to, read from its own
+    ``com.docker.compose.project`` label.
+
+    All compose services share one project, so the hub can learn it from its own
+    container instead of being told via an env - and the label compose stamps is the
+    exact same string compose uses to prefix its named volumes, so the discovered
+    value can never drift from the real volume namespace (an env could). The hub
+    stamps the same project on the sidecar and spawned labs so they join it. Returns
+    None when undeterminable (not in a container, docker socket unreachable, or no
+    compose label), letting the caller fall back to an explicit env or hard-fail.
+    """
+    try:
+        import socket
+        import docker
+        client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        try:
+            container = client.containers.get(socket.gethostname())
+            return (container.labels or {}).get('com.docker.compose.project') or None
+        finally:
+            client.close()
+    except Exception:
+        return None
+
+
+def resolve_self_network_by_label(label_key):
+    """The Docker network THIS (hub) container is attached to that carries ``label_key``,
+    discovered at runtime instead of being named via an env.
+
+    The hub<->sidecar network is DECLARED in compose.yml with a marker label
+    (e.g. ``duoptimum.gpuinfo.network``) and the hub is attached to it there; the hub
+    finds it by that label so its real, compose-namespaced name
+    (``<project>_hub_gpuinfo_network``) never has to be repeated in an env that could
+    drift from the declaration. Discovery is scoped to the hub's OWN attached networks
+    (not a host-wide label scan) so a second stack on the same host - e.g. the
+    functional test project carrying the same label - can never be picked by mistake.
+    Compose owns and creates the network; the hub only discovers and joins it. Returns
+    the network's Name, or None when undeterminable (not attached to a labelled network,
+    or the docker socket is unreachable), letting the caller fall back to an explicit env
+    or skip the sidecar.
+    """
+    try:
+        import socket
+        import docker
+        client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        try:
+            container = client.containers.get(socket.gethostname())
+            attached = (container.attrs.get('NetworkSettings') or {}).get('Networks') or {}
+            for net_name, net_info in attached.items():
+                net = client.networks.get((net_info or {}).get('NetworkID') or net_name)
+                if label_key in ((net.attrs.get('Labels') or {})):
+                    return net.name
+            return None
+        finally:
+            client.close()
+    except Exception:
+        return None
+
+
 def get_executor():
     """Return the shared thread pool executor for Docker operations."""
     return _docker_executor

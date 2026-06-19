@@ -78,6 +78,8 @@ The Activity meter is a 7-DAY engagement metric (capped score + average active h
   - log: 2026-06-18 confirmed live: admin `activity_score=31`, server offline -> was 30% on Users, dash on Servers; fixed
 - [x] **Mock matches live** - the demo source applies the same rule (offline + spawning rows show the 7-day meter), so `/design-language` and the mock screens never contradict the rule
   - log: 2026-06-18 `mockSource.ts::mockActivity(p)` spread into `toServerRow` (offline + main) and `toUserRow`; offline branch was `activity: null`, main branch gated on `spawning`
+- [x] **Server Status hero shown when stopped (DEF-2)** - the Server Status / Server Control hero Activity meter reads `hero.activity` / `hero.activityHours` / `hero.activityPct` ungated, so a stopped-but-active server shows the same 7-day meter as the Servers/Users lists
+  - log: 2026-06-19 `ServerHero.tsx` Activity row dropped the `running ? hero.activity : 0` gate - the same regression class as the 2026-06-18 list fix, left behind on the hero ([DEF-2](defects-duoptimumhub.md#def-2-server-status-hero-shows-activity-0-when-the-server-is-stopped))
 
 ### Edge cases
 
@@ -92,6 +94,8 @@ The Activity meter is a 7-DAY engagement metric (capped score + average active h
 
 - [x] **Functional: launch -> stop -> observe** - a Playwright test creates a user, starts their lab, leaves it ~10s, samples activity while active, stops it, then asserts the Activity meter is present (not a dash) and identical across Servers, Users and the Home widget
   - log: 2026-06-18 `tests/functional/test_activity_consistency.py`; carries `@pytest.mark.acc_crit("activity-consistency::...")`; runs against a live stack (needs the rebuilt image to validate the fix)
+- [x] **Functional: hero shown when stopped (DEF-2)** - a Playwright test starts the admin's OWN lab, samples while active, stops it, then asserts the Server Status hero Activity meter has lit bars (the list test covers only table rows, never the hero - the hero renders the logged-in user's own server)
+  - log: 2026-06-19 `tests/functional/test_activity_consistency.py::test_hero_activity_shown_when_stopped`; runtime pending rebuild
 
 ## Activity map freshness (lightweight, activity-gated)
 
@@ -491,6 +495,47 @@ The portal stays responsive across hub restarts: slow server-side aggregates (vo
   - log: 2026-06-17 verified (capabilities.ts `?? true`)
 - [ ] **Runtime: no-GPU host hides every GPU surface** - on a GPU-less deployment no GPU widget appears anywhere
   - log: 2026-06-17 show-path confirmed live (this host has GPU -> gpu_enabled=1 -> window.jhdata.gpu_enabled=true -> widgets render); the HIDE path still needs a GPU-less host to confirm
+
+### GPU live-connectivity gating (DEF-4)
+
+The inventory is enumerated once at startup and seeded from a persisted cache (observed 15h old), so it OUTLIVES the gpuinfo-nvidia sidecar. The MONITORING display must gate on LIVE sidecar reachability, not the static `gpu_enabled` capability alone - otherwise a dead/absent sidecar still lists GPUs with no utilisation/memory/temp/power ("we have GPUs" while knowing nothing about them).
+
+- [x] **Live reachability signal** - `gpu_cache` records `last_attempt`/`last_ok` on every refresh; `gpu_sidecar_connected()` is true only when the latest sample SUCCEEDED and is fresh (staleness `max(2x interval, 90s)`)
+  - log: 2026-06-19 `gpu_cache.py`; an empty sample (sidecar down/absent) sets `last_ok=False` -> disconnected on the next tick
+- [x] **Exposed to the portal** - `/activity` returns `gpu_connected` (false when there is no inventory)
+  - log: 2026-06-19 `handlers/activity.py`
+- [x] **Host Status hides GPUs when disconnected** - `getTotalResources` sets `gpuDisconnected` and strips live-health fields when `gpu_connected` is false; `ResourceBars` drops any GPU row flagged `gpuDisconnected`, so the Host Status shows NO GPU info (not stale devices with no health)
+  - log: 2026-06-19 `liveSource.ts`, `meters.tsx`, `Home.tsx`, `types.ts` ([DEF-4](defects-duoptimumhub.md#def-4-gpus-shown-without-live-health-when-the-gpuinfo-sidecar-is-disconnected))
+- [x] **Group GPU-grant editor reflects live availability** - the device list comes from the same live-gated `gpuDevices`, so the group GPU-grant editor lists the CURRENTLY-available devices (none when the sidecar is down); the stored grant is preserved until edited, and saving reconciles `gpu_device_ids` against the available devices, so editing always re-syncs the grant to reality (new devices, or none)
+  - log: 2026-06-19 `getTotalResources` gates `gpuDevices` on `gpu_connected`; `GroupPolicyTab` emit drops granted ids not currently present once the inventory has loaded
+- [x] **Edge: connected but idle** - GPUs at 0% utilisation (sidecar up, idle) stay VISIBLE; a non-empty sample is "connected", only an empty/failed sample is "disconnected"
+  - log: 2026-06-19 `gpu_sidecar_connected` keys on sample success, not on load level
+- [ ] **Runtime: sidecar down hides GPUs** - stopping the gpuinfo sidecar removes the Host Status GPU row once the next sample comes back empty (`last_ok` False); restarting restores it with live health
+  - log: 2026-06-19 backend unit test for `gpu_sidecar_connected`; functional `test_host_status::test_gpu_hidden_when_sidecar_down` (runs against the mock sidecar - `make test-functional-gpu`); runtime pending a test run
+
+### GPU mode - off or autodetect (two modes only)
+
+`JUPYTERHUB_GPU_ENABLED` has exactly two modes: 0 (off) and 1 (autodetect, the default). No "forced on" - the platform never claims GPUs it cannot back. Self-start is implied by GPU on; there is no separate self-start setting.
+
+- [x] **Two modes, autodetect default** - 0 = deliberately off (never probes the sidecar); 1 = autodetect (probe; on iff devices found); default 1
+  - log: 2026-06-19 `resolve_gpu_mode` collapsed to off|autodetect; default 1 in `config`, `compose.yml`, `Dockerfile`, `settings_dictionary.yml`
+- [x] **No forced-on** - autodetect with an empty inventory resolves to off; a GPU grant is never asserted without detected devices
+  - log: 2026-06-19 removed the mode-1 forced branch; `tests/test_gpu.py` updated (`test_mode_1_autodetect_off_when_no_gpus`)
+- [x] **Legacy 2 still works** - the old explicit-autodetect value 2 is treated as autodetect, so existing deployments keep working
+  - log: 2026-06-19 any non-zero mode autodetects (`test_legacy_mode_2_treated_as_autodetect`)
+- [x] **Self-start implied by on** - GPU on implies the hub self-starts the sidecar; no separate env. The nvidia runtime is requested only when the docker host registers it (so a mock sidecar starts on any host, and asking for an absent runtime never fails self-start)
+  - log: 2026-06-19 self-start gated on `JUPYTERHUB_GPU_ENABLED != 0`; `ensure_gpuinfo_sidecar` runtime-detection; dropped the `JUPYTERHUB_GPUINFO_SELF_START` flag
+
+### Mock gpuinfo for functional tests
+
+A mock gpuinfo sidecar makes the GPU display tests deterministic and host-independent (no real GPU/driver).
+
+- [x] **Mock sidecar image** - `tests/functional/mock_gpuinfo` serves the `/gpus` contract with canned devices; `make test-functional-gpu` builds it and runs the stack with it as the hub's sidecar image (GPU autodetect), added to `test-functional-all`
+  - log: 2026-06-19 `compose.functional-gpu.yml` + Makefile `test-functional-gpu`; cleanup removes the hub-started `gpuinfo-nvidia` container
+- [x] **Runs on any host** - the mock starts even without the nvidia runtime; the GPU display tests then collect (`FUNCTEST_GPU_ENABLED=1`) and assert against the canned data
+  - log: 2026-06-19 `conftest` gpu gate now `!= "0"`; `test_gpu_detection` docstring points at the mock target
+- [ ] **Runtime: enabled shows, disabled hides, sidecar-down hides** - `test_host_status` GPU tests: GPUs visible WITH health under the mock; hidden when GPU off; hidden when the mock is stopped
+  - log: 2026-06-19 functional tests written; runtime pending a `make test-functional-gpu` run
 
 ### Prefetch all key pages
 
@@ -2738,6 +2783,19 @@ The CPU/Memory/GPU progress bars on the "Server Status" panel (the server card's
 - [x] **Usage excludes page cache** - `memory_mb`/`memory_percent` use `mem_usage_excluding_cache(memory_stats)` = cgroup `usage` minus `total_inactive_file` (v1) / `inactive_file` (v2), the exact figure `docker stats` and Docker Desktop show; the raw `usage` counts reclaimable file cache, so an idle file-heavy container over-reported tens of GB
   - log: 2026-06-18 FIXED (regression) - operator caught Host Status reading "143 of 256 GB" while Docker Desktop showed 41 GB; root cause `stats_from_container` used raw `usage` (page cache included); `docker_utils.mem_usage_excluding_cache` added + used, summed host now 41.7 GB matching Docker; `tests/test_docker_resource_assignment.py` +5 cases
 
+### Host Status when no servers are active (DEF-3)
+
+The Host Status CPU/Memory bars aggregate ACTIVE user servers as a % of the host total. With zero active servers the figure is an honest 0% - but it must still read as a deliberate state, never a broken-looking blank.
+
+- [x] **0% still carries a tooltip** - with no active servers the CPU and Memory bars render 0% WITH their tooltip ("0 of N cores used across 0 servers", "0% used ... across 0 servers"), not a bare empty bar
+  - log: 2026-06-19 FIXED - `getTotalResources` early-returned `{cpu:0,mem:0,...}` dropping `cpuTip`/`memTip`; the early return was removed so the general path (which builds the tooltips) runs at 0 servers too ([DEF-3](defects-duoptimumhub.md#def-3-host-status-cpumemory-bars-blank-with-no-tooltip-when-no-servers-are-active))
+- [x] **Error flags preserved at 0 servers** - when `cpu_host_total` / `memory_host_total_mb` are unreadable the bar shows an explicit "unavailable" (`cpuError`/`memError`) with its tooltip, even with no active servers
+  - log: 2026-06-19 the error path is now reached at 0 servers (was skipped by the early return)
+- [x] **Honest 0%, not fabricated** - the 0% is the real aggregate over an empty active set, not a placeholder; a single active-but-idle server reads its true low value with the "across 1 server" tooltip
+  - log: 2026-06-19 aggregation over `active=[]` yields `coresUsed=0`, `memUsed=0`
+- [x] **Functional: idle-platform tooltip** - a Playwright test on the admin Home with no labs running asserts the Host Status CPU and Memory bars expose a non-empty tooltip
+  - log: 2026-06-19 `tests/functional/test_host_status.py::test_host_status_bars_have_tooltips`; runtime pending rebuild
+
 ### Granular assigned-resource service design
 
 - [x] **Pure, tested helpers** - `derive_cpu_assignment(hostcfg, online_cpus)`, `derive_memory_assignment(hostcfg, stats_limit_bytes)` and `mem_usage_excluding_cache(memory_stats)` in `docker_utils` are pure functions, unit-tested independently of Docker (13 cases), so the assignment + usage logic is granular and verifiable, not inlined in the socket call
@@ -3956,3 +4014,65 @@ Server-start experience graduates from a modal to a dedicated page with a live s
 
 - The backend group-policy model (`groups_config.py` + `policy/registry.py`) already supports full read+write for all nine sections; the gap is purely the React data layer
 - A live GPU inventory already exists (`gpu.py::enumerate_gpus` -> `stellars_config['gpu_list']`); it is just never exposed to the portal
+
+## GPU-info sidecar wiring - explicit compose, runtime discovery
+
+The hub<->GPU-info sidecar is fully DECLARED in compose (a labelled network + a profiled service) while every address, network name and compose project is RESOLVED at runtime from the hub's own container - no hardcoded host, name or project, and no hidden runtime-created resources. Compose owns the network and the image; the hub only discovers, joins and runs.
+
+- [x] **Sidecar URL is a template** - `JUPYTERHUB_GPUINFO_NVIDIA_URL=http://{hostname}:8000`; `{hostname}` is filled at boot by `ensure_gpuinfo_sidecar` with the sidecar's IP read from the live container (its address on the dedicated network) - never a hardcoded host
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Sidecar URL host fallback** - when the IP is not yet populated, fall back to the container name (docker DNS resolves it on a user-defined network); `''` (GPU off) only when neither is readable
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Hub compose project discovered** - `resolve_self_compose_project()` reads the hub's own `com.docker.compose.project` label; no `JUPYTERHUB_COMPOSE_PROJECT_NAME` env in compose (explicit env still overrides); empty after both is fatal (volume namespace would be wrong)
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Lab compose project uses {compose}** - `JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME={compose}_labs`; `{compose}` resolves to the discovered hub project; empty = same project as the hub
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Docker-proxy label prefix is static** - `JUPYTERHUB_DOCKER_PROXY_LABEL_PREFIX=duoptimum.docker.proxy` (from the package name); the proxy package `config.py::LABEL_NAMESPACE` default matches
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Network declared in compose** - `hub_gpuinfo_network` declared with name `<project>_hub_gpuinfo_network` and label `duoptimum.gpuinfo.network: "true"`; the hub is attached to it in the hub service `networks:`
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Network discovered by label** - `resolve_self_network_by_label()` finds the network among the hub's OWN attached networks carrying `duoptimum.gpuinfo.network`; no name env (override only); the constant `JUPYTERHUB_GPUINFO_NETWORK_LABEL` matches the compose label
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Hub never creates the network** - `ensure_gpuinfo_sidecar` only `networks.get()` + joins; it never calls `networks.create()` (that historically clashed with compose's ownership check)
+  - log: 2026-06-19 implemented (v4.0.7); enforced by a test that trips on `create()`
+- [x] **Sidecar declared as a profiled service** - `gpuinfo-nvidia` service under `profiles: [gpuinfo]`, so `docker compose up` never auto-starts it; the hub controls its lifecycle over the docker socket
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Service carries build + image** - `build` (context `.`, `services/jupyterhub/gpuinfo-nvidia/Dockerfile`, `target: target`) + `image: stellars/duoptimum-gpuinfo-nvidia:latest`, so a compose build produces the image locally; the hub never pulls it at boot
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Sidecar joins the compose project** - the hub-run container is stamped with the discovered `com.docker.compose.project` so it shows in `docker compose ps` rather than as a standalone container
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Lifecycle tied to the hub** - the hub recreates the sidecar fresh from the current image each boot and removes it at exit (`stop_gpuinfo_sidecar` via `atexit`)
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Build path uses the service name** - `scripts/build.sh`/`build_verbose.sh` add `--profile gpuinfo` so `make build` builds the sidecar via compose; `make rebuild` builds it with `docker compose --profile gpuinfo build gpuinfo-nvidia` (no duplicated Dockerfile path)
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Per-package gpuinfo Makefile removed** - the sidecar's own `Makefile` is deleted; build/test now run from the root (image build) and its README documents the direct `uv`/`pytest` + compose commands
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Env + docs aligned** - `JUPYTERHUB_GPUINFO_NETWORK_NAME` removed from `compose.yml`, `Dockerfile.jupyterhub`, `settings_dictionary.yml`; `docs/gpuinfo-api.md` and `.claude/CLAUDE.md` updated to the label-discovery model
+  - log: 2026-06-19 implemented (v4.0.7)
+
+### Edge cases
+
+- [x] **Edge: network not found at runtime** - `ensure_gpuinfo_sidecar` logs and returns `''` (GPU off); it does NOT recreate a network compose would then reject
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Edge: no network resolved (no label match, no env)** - sidecar skipped (GPU off) before docker is even contacted
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Edge: image absent locally** - hub does not auto-pull at boot; degrades to GPU off until the image is present
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Edge: docker socket unavailable** - all `resolve_self_*` helpers + `ensure_gpuinfo_sidecar` return None/`''` (GPU off), never raise
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Edge: second stack with the same label on the host** - discovery is scoped to the hub's OWN attachments, so the functional test project's identically-labelled network is never picked by the operator hub (and vice versa)
+  - log: 2026-06-19 implemented (v4.0.7)
+- [x] **Edge: functional GPU harness** - `tests/functional/compose.functional-gpu.yml` declares its own labelled `hub_gpuinfo_network` and attaches the hub, so the mock sidecar self-start works in the standalone functional stack
+  - log: 2026-06-19 implemented (v4.0.7)
+- [ ] **Edge: leftover hub-created network from the implicit era** - a `*_gpuinfo_network` created by an older hub before this change blocks `docker compose up` ("network exists, not created by compose"); one-time `docker network rm` after stopping the stack clears it
+  - log: 2026-06-19 criterion added - operator one-time migration step (v4.0.7)
+- [x] **Edge: manual sidecar bring-up for debugging** - `docker compose --profile gpuinfo up` starts the sidecar on a GPU host (runtime nvidia) for debugging; default `up` leaves it down
+  - log: 2026-06-19 implemented (v4.0.7)
+
+### API / functions
+
+- `resolve_self_compose_project()` -> hub project from own `com.docker.compose.project` label, or None
+- `resolve_self_network_by_label(label_key)` -> name of the hub's own attached network carrying `label_key`, or None
+- `resolve_gpuinfo_url(url, hostname)` -> `url` with `{hostname}` substituted (passthrough if no placeholder / empty hostname)
+- `ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', container_name=None)` -> resolved sidecar URL, or `''` on any degrade path; never creates the network, never raises
+- `stop_gpuinfo_sidecar(url, container_name=None)` -> removes the sidecar at hub exit; never raises

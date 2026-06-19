@@ -23,7 +23,7 @@ from .branding import setup_branding
 from .docker_proxy import register_user, unregister_user
 from .events import register_events
 from .gpu import gpu_summary_lines, is_wsl2, resolve_gpu_mode
-from .gpuinfo_sidecar import ensure_gpuinfo_sidecar, stop_gpuinfo_sidecar
+from .gpuinfo_sidecar import ensure_gpuinfo_sidecar, resolve_gpuinfo_url, stop_gpuinfo_sidecar
 from .hooks import (
     make_post_stop_hook,
     make_pre_spawn_hook,
@@ -79,6 +79,7 @@ __all__ = [
     "record_sent_notification",
     "ensure_gpuinfo_sidecar",
     "stop_gpuinfo_sidecar",
+    "resolve_gpuinfo_url",
     "register_user",
     "unregister_user",
     "get_services_and_roles",

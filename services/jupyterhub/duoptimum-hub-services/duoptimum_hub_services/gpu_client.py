@@ -19,7 +19,7 @@ import urllib.request
 
 log = logging.getLogger('jupyterhub')
 
-_GPUINFO_URL = os.environ.get('JUPYTERHUB_GPUINFO_NVIDIA_URL', '').rstrip('/')  # overridden by configure() at hub startup; empty default avoids a hardcoded sidecar host
+_GPUINFO_URL = os.environ.get('JUPYTERHUB_GPUINFO_NVIDIA_URL', '').rstrip('/')  # a {hostname} template until configure() overrides it at startup with the sidecar's runtime-discovered address; empty default avoids a hardcoded sidecar host
 
 
 def configure(url):

@@ -8,4 +8,6 @@ VERSION=$(python3 -c 'import tomllib;d=tomllib.load(open("../pyproject.toml","rb
 [ -n "$VERSION" ] || { echo "ERROR: failed to read VERSION from ../pyproject.toml" >&2; exit 1; }
 export VERSION
 
-docker compose -f ../compose.yml build --progress=plain "$@"
+# --profile gpuinfo so the profiled (never-auto-started) GPU-info sidecar image is built
+# too; build does not start anything, so the profile only widens the build set.
+docker compose -f ../compose.yml --profile gpuinfo build --progress=plain "$@"
