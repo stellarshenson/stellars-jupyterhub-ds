@@ -21,7 +21,7 @@ Cross-document conflicts found during consolidation are tracked in [concerns.md]
 - [design language (system-wide)](#design-language-system-wide)
 - [docker policy access mode](#docker-policy-access-mode)
 - [drop the `/portal` URL segment](#drop-the-portal-url-segment)
-- [duoptimumhub service + image rename](#duoptimumhub-service-image-rename)
+- [duoptimum-hub service + image rename](#duoptimum-hub-service-image-rename)
 - [Edit user returns to its origin](#edit-user-returns-to-its-origin)
 - [Platform event log (persistence + clear)](#platform-event-log-persistence-clear)
 - [force password change on next login (#232 / #233)](#force-password-change-on-next-login-232-233)
@@ -324,7 +324,7 @@ The portal keeps lists/status current without manual navigation: mutations refle
 
 ### Prefetch (already present)
 
-- [x] **Boot prefetch** - `App.tsx::prefetchCore` warms 12 list queries at app init; `persistCache` hydrates from localStorage so first paint is instant
+- [x] **Boot prefetch** - `App.tsx::prefetchCore` warms 11 list queries at app init; `persistCache` hydrates from localStorage so first paint is instant
   - log: 2026-06-17 pre-existing, confirmed
 - [ ] **Edge: prefetch on nav hover** - optional Phase 3 (sider link `onMouseEnter` -> `prefetchQuery`) - not yet implemented
   - log: 2026-06-17 deferred
@@ -343,13 +343,6 @@ The portal keeps lists/status current without manual navigation: mutations refle
   - log: 2026-06-17 `\`${first} ${last}\`.trim() || undefined`
 - [x] **M3: synchronous rollback** - the prior rows are snapshotted and restored synchronously on a failed write (not a refetch that shows the wrong value until it lands)
   - log: 2026-06-17
-
-### Prefetch (already present)
-
-- [x] **Boot prefetch** - `App.tsx::prefetchCore` warms 12 list queries at app init; `persistCache` hydrates from localStorage so first paint is instant
-  - log: 2026-06-17 pre-existing, confirmed
-- [ ] **Edge: prefetch on nav hover** - optional Phase 3 (sider link `onMouseEnter` -> `prefetchQuery`) - not yet implemented
-  - log: 2026-06-17 deferred
 
 ### Out of scope (follow-up)
 
@@ -826,90 +819,85 @@ The group-policy Docker section's enable toggle means "docker access granted". T
 
 Serve the React SPA at the hub root (`/hub/...`) instead of `/hub/portal/...`, so the address bar and bookmarks carry no `portal` segment. The SPA's own routes become `/hub/servers`, `/hub/users`, etc.
 
-### Implementation status (2026-06-17)
+### Implementation status
 
-IMPLEMENTED and verified to the extent possible offline: backend `make test` 566+63 green, `py_compile` + pyflakes clean, portal `tsc -b` + `build:hub` clean, manifest entry is relative (`assets/index-*.js`) so `portal.html` resolves to `/hub/assets/*` matching the route. Decision taken: home client-route renamed to `/dashboard` (nav label stays "Home"); legacy server-rendered page handlers removed (the SPA owns those features). Login/signup are safe - `main.tsx` renders `<AuthApp/>` off `window.jhdata.authPage`, independent of the router/basename. Runtime asset resolution + deep-link routing against the live hub need the user's image rebuild to confirm on-screen. Revert = `git revert` of this change set (cohesive).
+IMPLEMENTED and confirmed working live (2026-06-19). The SPA serves at the hub root (`/hub/...`, no `portal` segment) and the landing is `/home`. Rather than move the home view off the reserved path, the portal OWNS `/hub/home`: the stock `HomeHandler` renders this package's `home.html`, which `template_dir` shadows with the SPA shell - so the built-in serves the SPA, no rename and no monkeypatch. Login/signup render `<AuthApp/>` off `window.jhdata.authPage`, independent of the router/basename.
 
-### Hard constraint (the reason `/portal` exists today)
+### How the reserved-path constraint is handled
 
-JupyterHub registers its built-in page + API handlers BEFORE `c.JupyterHub.extra_handlers` and Tornado matches first-wins (`jupyterhub/app.py` ~1790-1794: `h.extend(default_handlers)` then `h.extend(self.extra_handlers)`). The portal handlers are `extra_handlers`, so they can only claim `/hub/<path>` that no built-in already owns. Built-ins that DO own a path (`jupyterhub/handlers/pages.py:772+`, `apihandlers`): `/hub/` (RootHandler), `/hub/home`, `/hub/admin`, `/hub/login`, `/hub/logout`, `/hub/token`, `/hub/spawn`, `/hub/spawn-pending`, `/hub/user-redirect`, `/hub/error`, `/hub/health`, `/hub/api/*`, `/hub/static/*`, `/hub/metrics`, `/hub/oauth_login`, `/hub/oauth2callback`.
-
-Consequence: the SPA can serve at `/hub/<route>` for every route EXCEPT the reserved ones - and its current landing route `/home` collides with the built-in `/hub/home` (stock page wins on hard-refresh / deep-link), and bare `/hub/` is RootHandler.
-
-### Decision required
-
-- [ ] **Landing-route rename** - move the SPA's home view off the reserved `/home` path (recommended `/dashboard`, keep the nav LABEL "Home"); this is the one user-facing choice and the only thing blocking a clean drop
-  - log: 2026-06-17 criterion added; alternatives: (b) accept stock hub home on a hard-refresh of the home view (poor), (c) override JupyterHub's RootHandler/HomeHandler (invasive, version-fragile, fights the framework - not recommended)
+JupyterHub registers its built-in page + API handlers BEFORE `c.JupyterHub.extra_handlers` and Tornado matches first-wins (`jupyterhub/app.py`: `h.extend(default_handlers)` then `h.extend(self.extra_handlers)`). The portal catch-all is an `extra_handler`, so it only claims `/hub/<path>` no built-in owns; reserved built-ins (`/hub/login`, `/hub/logout`, `/hub/token`, `/hub/spawn*`, `/hub/api/*`, `/hub/static/*`, `/hub/health`, ...) keep their handlers. The two paths the SPA needs that ARE built-ins - `/hub/home` and `/hub/admin` - are claimed via their TEMPLATES instead: `template_dir` (highest priority) shadows `home.html` with the SPA shell and `admin.html` with a redirect to `/home`. So `/hub/home` is the SPA landing and bare `/hub/` (RootHandler) redirects to it via `default_url`.
 
 ### Backend (duoptimum_hub_web)
 
-- [ ] **Routes drop `/portal`** - `ASSETS_ROUTE` `/portal/assets/(.*)` -> `/assets/(.*)`, `BRAND_ROUTE` `/portal/brand/(.*)` -> `/brand/(.*)`, `PORTAL_ROUTE` `/portal/?(.*)` -> `/(.*)` (the SPA shell catch-all, still after built-ins so reserved paths win)
-  - log: 2026-06-17 criterion added
-- [ ] **PORTAL_URL** - `/hub/portal` -> the chosen landing (`/hub/dashboard`); `default_url = base_prefix + PORTAL_URL` so post-login + `/hub/` land on the portal
-  - log: 2026-06-17 criterion added
-- [ ] **Asset/brand precedence** - `/hub/assets/*` and `/hub/brand/*` matched before the `/(.*)` shell catch-all and do NOT collide with built-in `/hub/static/*`
-  - log: 2026-06-17 criterion added
-- [ ] **Shell still gets XSRF** - PortalHandler renders the shell for the catch-all so `window.jhdata.xsrf_token` is injected exactly as today
-  - log: 2026-06-17 criterion added
-- [x] **Old-path redirect (no /portal flash)** - `/hub/portal[/...]` 302s server-side to the hub-root SPA (`/portal/home` -> `/dashboard`) via `PortalRedirectHandler`, registered before the catch-all - so a stale `next`/bookmark/cached link never loads the shell at `/portal` and then client-redirects (the ~1s "portal" flash after login the operator hit)
-  - log: 2026-06-17 implemented (`handlers.py::PortalRedirectHandler`, `LEGACY_PORTAL_ROUTE` before `PORTAL_ROUTE` in `portal_handlers`)
-  - log: 2026-06-17 criterion added
+- [x] **Routes drop `/portal`** - `ASSETS_ROUTE` `/assets/(.*)`, `BRAND_ROUTE` `/brand/(.*)`, `PORTAL_ROUTE` `/(?!logo|api/)(.*)` (the SPA shell catch-all, after built-ins so reserved paths win)
+  - log: 2026-06-19 verified in `duoptimum_hub_web/__init__.py`
+- [x] **PORTAL_URL** - `/hub/home`; `default_url = base_prefix + PORTAL_URL` so post-login + `/hub/` land on the portal
+  - log: 2026-06-19 `PORTAL_URL = "/hub/home"`
+- [x] **Asset/brand precedence** - `/hub/assets/*` and `/hub/brand/*` matched before the `/(.*)` shell catch-all and do NOT collide with built-in `/hub/static/*`
+  - log: 2026-06-19 verified
+- [x] **Shell gets XSRF** - the catch-all `PortalHandler` and the shadowed `home.html` both render via `BaseHandler.render_template`, so `window.jhdata.xsrf_token` is injected
+  - log: 2026-06-19 `home.html` mirrors `portal.html`, reading the entry from the global `duoptimum_entry_*` template_vars
+- [x] **`/home` owned via template override** - the stock `/hub/home` HomeHandler renders the package's `home.html` (the SPA shell); no rename, no monkeypatch
+  - log: 2026-06-19 confirmed working on the rebuilt image (#334, #336)
+- [x] **Legacy `/portal` shim removed** - the old `PortalRedirectHandler` + `LEGACY_PORTAL_ROUTE` were deleted ("no old slop"); a stale `/hub/portal` link falls to the catch-all -> SPA `*` -> `/home`
+  - log: 2026-06-19 removed in the /home change set
 
 ### Frontend (duoptimum-hub-web)
 
-- [ ] **Vite base** - `VITE_BASE` `/hub/portal/` -> `/hub/` (`.env.hub`); drives asset URLs + router base
-  - log: 2026-06-17 criterion added
-- [ ] **Router basename** - `portalBasename()` / `portalAssetBase()` drop the `/portal` suffix (read `window.jhdata.base_url` -> `<base>/hub` not `<base>/hub/portal`)
-  - log: 2026-06-17 criterion added
-- [ ] **Home route** - `/home` -> `/dashboard` in `router.tsx` (index redirect, `*` fallback), `nav.ts`, and every `navigate('/home')` / `to="/home"` (label stays "Home")
-  - log: 2026-06-17 criterion added
+- [x] **Vite base** - `VITE_BASE` is `/hub/` (no `/portal`); drives asset URLs + router base
+  - log: 2026-06-19 verified
+- [x] **Router basename** - `portalBasename()` / `portalAssetBase()` read `window.jhdata.base_url` -> `<base>/hub` (no `/portal` suffix)
+  - log: 2026-06-19 verified
+- [x] **Landing route `/home`** - `/home` is the index redirect, the `path`, and the `*` fallback in `router.tsx`; `nav.ts` and every link use `/home` (label "Home")
+  - log: 2026-06-19 the SPA owns `/home`; reverses the earlier `/dashboard` plan
 
 ### Edge cases
 
-- [ ] **Reserved paths still work** - `/hub/login`, `/hub/logout`, `/hub/api/*`, `/hub/static/*`, `/hub/spawn`, `/hub/health` are served by JupyterHub built-ins, never the SPA catch-all
-  - log: 2026-06-17 criterion added
-- [ ] **Deep-link / refresh** - hard refresh on `/hub/servers`, `/hub/users`, `/hub/dashboard`, `/hub/servers/:name/starting` serves the shell (no 404, no stock page)
-  - log: 2026-06-17 criterion added
-- [ ] **Edge: `/hub/home` typed directly** - shows stock hub home (built-in, unavoidable while extra_handlers run after built-ins); the SPA never links there once the landing is `/dashboard`
-  - log: 2026-06-17 criterion added
-- [ ] **Edge: bare `/hub/`** - RootHandler redirects to `default_url` (the portal landing)
-  - log: 2026-06-17 criterion added
-- [ ] **Edge: wrapper Traefik** - the live stack routes the public root to `/hub`; dropping `/portal` is internal to the hub image and needs no wrapper change (the wrapper is a separate repo - do not edit)
-  - log: 2026-06-17 criterion added
-- [ ] **Mock/dev** - dev-proxy + mock (no shell) fall back to `BASE_URL`; `/dashboard` works there too
-  - log: 2026-06-17 criterion added
+- [x] **Reserved paths still work** - `/hub/login`, `/hub/logout`, `/hub/api/*`, `/hub/static/*`, `/hub/spawn`, `/hub/health` are served by JupyterHub built-ins, never the SPA catch-all
+  - log: 2026-06-19
+- [x] **Deep-link / refresh** - hard refresh on `/hub/home`, `/hub/servers`, `/hub/users`, `/hub/servers/:name/starting` serves the shell (no 404, no stock page)
+  - log: 2026-06-19 confirmed live
+- [x] **`/hub/home` serves the SPA** - typing `/hub/home` shows the portal (the shadowed `home.html` shell), not the stock hub home - inverts the old reserved-path collision
+  - log: 2026-06-19 /home is now owned
+- [x] **Edge: bare `/hub/`** - RootHandler redirects to `default_url` (`/hub/home`)
+  - log: 2026-06-19
+- [x] **Edge: wrapper Traefik** - the live stack routes the public root to `/hub`; dropping `/portal` is internal to the hub image and needs no wrapper change (the wrapper is a separate repo - do not edit)
+  - log: 2026-06-19
+- [x] **Mock/dev** - dev-proxy + mock (no shell) fall back to `BASE_URL`; `/home` works there too
+  - log: 2026-06-19
 
 ### API / routes (after)
 
 - `/hub/assets/(.*)` -> ImmutableStaticFileHandler (hashed bundle)
 - `/hub/brand/(.*)` -> StaticFileHandler (public, no auth)
-- `/hub/(.*)` -> PortalHandler (`@authenticated` shell; reserved paths already claimed by built-ins)
-- `default_url = <base_prefix>/hub/dashboard`
+- `/hub/(?!logo|api/)(.*)` -> PortalHandler (`@authenticated` shell; reserved paths already claimed by built-ins)
+- `/hub/home` -> stock HomeHandler rendering the shadowed `home.html` (= SPA shell)
+- `default_url = <base_prefix>/hub/home`
 
-## duoptimumhub service + image rename
+## duoptimum-hub service + image rename
 
-The hub's Docker Compose service is renamed `jupyterhub` -> `duoptimumhub` and the published image `stellars/stellars-jupyterhub-ds` -> `stellars/duoptimumhub`, so the deployment matches the Duoptimum Hub branding and the DockerHub push targets the new repo. The hub's URL prefix (`/jupyterhub`, `JUPYTERHUB_BASE_URL`) and all `JUPYTERHUB_*` env vars are unchanged - only the compose service identity and the image tag move. Verified against the code 2026-06-18.
+The hub's Docker Compose service is renamed `jupyterhub` -> `duoptimum-hub` and the published image `stellars/stellars-jupyterhub-ds` -> `stellars/duoptimum-hub`, so the deployment matches the Duoptimum Hub branding and the DockerHub push targets the new repo. The hub's URL prefix (`/jupyterhub`, `JUPYTERHUB_BASE_URL`) and all `JUPYTERHUB_*` env vars are unchanged - only the compose service identity and the image tag move. Verified against the code 2026-06-18.
 
 ### Compose service rename
 
-- [x] **Service key** - `compose.yml` hub service is `duoptimumhub` (was `jupyterhub`)
+- [x] **Service key** - `compose.yml` hub service is `duoptimum-hub` (was `jupyterhub`)
   - log: 2026-06-18 operator: "rename jupyterhub service to duoptimumhub"
-- [x] **depends_on updated** - traefik and watchtower `depends_on` point at `duoptimumhub` (a stale `jupyterhub` reference would fail compose validation)
+- [x] **depends_on updated** - traefik and watchtower `depends_on` point at `duoptimum-hub` (a stale `jupyterhub` reference would fail compose validation)
   - log: 2026-06-18 both blocks renamed
 - [x] **Traefik identifiers** - router/service/middleware renamed `jupyterhub-rtr`/`jupyterhub-svc`/`jupyterhub-ratelimit` -> `duoptimumhub-*`, consistently in `compose.yml` and the wrapper override
   - log: 2026-06-18 the `routers.X.service` reference still matches the service definition
 - [x] **URL path unchanged** - the router rule still matches `Path(/jupyterhub)`; the deploy prefix is a separate concern from the service name and was not touched
   - log: 2026-06-18 base_url stays `/jupyterhub`
-- [x] **container_name** - the literal suffix is `-duoptimumhub` (`${COMPOSE_PROJECT_NAME:-…}-duoptimumhub`)
+- [x] **container_name** - the literal suffix is `-duoptimum-hub` (`${COMPOSE_PROJECT_NAME:-…}-duoptimum-hub`)
   - log: 2026-06-18 renamed; project-name default unchanged
-- [x] **Hub bind/connect host** - `c.JupyterHub.hub_ip` and `hub_connect_url` in `config/jupyterhub_config.py` use `duoptimumhub`; the hub binds to, and CHP / spawned labs reach the hub by, the compose service name
-  - log: 2026-06-18 the first rebuild crashed boot with `getaddrinfo ENOTFOUND jupyterhub` (hub_ip still hardcoded the old name); fixed both lines to `duoptimumhub`
+- [x] **Hub bind/connect host** - `c.JupyterHub.hub_ip = "0.0.0.0"` (bind all interfaces, no name resolution) and `hub_connect_url` built from `socket.gethostname()` (the container's own short id, rename-proof) in `config/jupyterhub_config.py`; CHP / spawned labs reach the hub by that id, not the compose service name
+  - log: 2026-06-18 the first rebuild crashed boot with `getaddrinfo ENOTFOUND jupyterhub` (hub_ip had hardcoded the old name); fixed to `hub_ip="0.0.0.0"` + `hub_connect_url` via `socket.gethostname()`
 
 ### Image rename
 
-- [x] **Image tag** - the hub image is `stellars/duoptimumhub` everywhere it is built, tagged, pulled or referenced: Makefile (`HUB_IMAGE`, build `--tag`, `tag`, push, success banners), `compose.yml`, the functional compose, `start.sh`, `start.bat`
-  - log: 2026-06-18 operator: "change the image name ... to duoptimumhub ... so the dockerhub push won't blow up"; chose `stellars/duoptimumhub`
-- [x] **README DockerHub badges** - image-size and pulls badges point at `stellars/duoptimumhub`
+- [x] **Image tag** - the hub image is `stellars/duoptimum-hub` everywhere it is built, tagged, pulled or referenced: Makefile (`HUB_IMAGE`, build `--tag`, `tag`, push, success banners), `compose.yml`, the functional compose, `start.sh`, `start.bat`
+  - log: 2026-06-18 operator: "change the image name ... to duoptimumhub ... so the dockerhub push won't blow up"; chose `stellars/duoptimum-hub`
+- [x] **README DockerHub badges** - image-size and pulls badges point at `stellars/duoptimum-hub`
   - log: 2026-06-18 GitHub repo URLs left as-is (repo not renamed)
 - [x] **Only the hub image** - the gpuinfo (`stellars/stellars-gpuinfo-nvidia`) and lab (`stellars/stellars-jupyterlab-ds`) images are unchanged (no `jupyterhub` token)
   - log: 2026-06-18 scope limited to the hub image
@@ -923,9 +911,9 @@ The hub's Docker Compose service is renamed `jupyterhub` -> `duoptimumhub` and t
 
 ### Tests + harness
 
-- [x] **Functional harness renamed** - the service is `duoptimumhub` in all three harness compose files; `conftest.py` `BASE_URL`/`HUB_HOST` default to `duoptimumhub`; the Makefile `--wait`/`restart` targets name `duoptimumhub`
+- [x] **Functional harness renamed** - the service is `duoptimum-hub` in all three harness compose files; `conftest.py` `BASE_URL`/`HUB_HOST` default to `duoptimum-hub`; the Makefile `--wait`/`restart` targets name `duoptimum-hub`
   - log: 2026-06-18 operator: "fix the tests and harness"
-- [ ] **Functional suites pass post-rebuild** - `make test-functional` and `make test-functional-env` are green against the rebuilt `stellars/duoptimumhub:latest` image
+- [ ] **Functional suites pass post-rebuild** - `make test-functional` and `make test-functional-env` are green against the rebuilt `stellars/duoptimum-hub:latest` image
   - log: 2026-06-18 needs the authorised one-time `make rebuild`
 
 ### Deployment surfaces
@@ -950,7 +938,7 @@ Configuring a user (`UserConfig`, route `/users/:name`) is reachable from three 
 
 ### Return navigation
 
-- [x] **From Home -> Home** - opening Configure-user from the Home servers widget returns to `/dashboard` on Save / Cancel / Remove
+- [x] **From Home -> Home** - opening Configure-user from the Home servers widget returns to `/home` on Save / Cancel / Remove
   - log: 2026-06-18 implemented - Home username `<Link>` tags `state.from = HOME_ORIGIN`
 - [x] **From Servers -> Servers** - opening it from the Servers list returns to `/servers`
   - log: 2026-06-18 implemented - Servers username `<Link>` tags `state.from = SERVERS_ORIGIN`
@@ -1565,7 +1553,7 @@ The core of the harness: for each policy value an admin can set on a group, spaw
 
 ### Notifications broadcast
 
-- [ ] **Page renders form** - message field, type selector, auto-close toggle
+- [ ] **Page renders form** - message field, type selector, auto-close duration segmented control (5 presets + Never)
   - log: 2026-06-13 planned
 - [ ] **Char limit** - 140-char limit + live counter
   - log: 2026-06-13 planned
@@ -1839,7 +1827,7 @@ Best-effort, hub-side blocking of browser file downloads from spawned labs. Sect
   - log: 2026-06-12 added - `group_resolver.py`
 - [x] **Priority-wins** - among configuring groups the highest-priority `downloads_allow` wins (priority-descending walk, first configuring group decides) - not OR, not biggest-wins
   - log: 2026-06-12 reworked from grant-style OR to section-gated priority-wins
-- [x] **Resolved value** - `resolve_group_config` returns `downloads_allow` as `True`/`False` when some group configures it, else `None`; the hook applies the platform default when `None`
+- [x] **Resolved value** - `resolve_policies` returns `downloads_allow` as `True`/`False` when some group configures it, else `None`; the hook applies the platform default when `None`
   - log: 2026-06-12 added - covered by `TestDownloadsAllow`
 - [x] **No admin exemption** - admins follow the same resolution as any user (no implicit bypass)
   - log: 2026-06-12 implemented (v3.11.5) - confirmed with operator
@@ -2371,7 +2359,7 @@ Every form / sub screen reached from a list must offer a way back to its parent 
 - [x] **Manage volumes** - `/servers/:name/volumes` returns to its origin (Home or Servers) via `state.from`, Servers as the canonical fallback; breadcrumb parent matches
   - log: 2026-06-17 implemented (ManageVolumes `backTo = state.from?.to ?? '/servers'`); cross-ref [acc-crit-volume-reset]
 - [x] **Start server** - `/servers/:name/starting` returns to Home for your own server, Servers for another user's
-  - log: 2026-06-18 verified (Starting `navigate(isOwn ? '/dashboard' : '/servers')`); cross-ref [acc-crit-start-server-page]
+  - log: 2026-06-18 verified (Starting `navigate(isOwn ? '/home' : '/servers')`); cross-ref [acc-crit-start-server-page]
 
 ### Breadcrumb rules
 
@@ -2443,8 +2431,6 @@ Running checklist for the rapid UI feedback pass: TTL animation, GPU labels + ri
 
 - [x] **Extend refetches the bar** - `extendSession` invalidates `['hero', user]` so the bar refetches; backend persists `cull_at` and `remaining_seconds_for` reads it
   - log: 2026-06-17 fixed + verified (backend round-trip read end-to-end, invalidate confirmed); a "still 50%" rebuild predates this fix
-- [ ] **Animate the increase** - on extend the bar should animate up to the new remaining, not snap
-  - log: 2026-06-17 antd `Progress` transitions on percent change by default - expected free once the refetch lands; confirm visually after rebuild
 
 ### GPU labels + tooltip
 
@@ -2470,11 +2456,11 @@ Running checklist for the rapid UI feedback pass: TTL animation, GPU labels + ri
 
 ### Upgrade pill
 
-- [x] **Desktop pill** - gold "Upgrade available" left of the status pill on the Server status card, running servers only
+- [x] **Desktop pill** - gold "Update available" left of the status pill on the Server status card, running servers only
   - log: 2026-06-17 implemented + running-gated
 - [x] **Mobile pill** - same pill on the mobile MyServerCard header, running only
   - log: 2026-06-17 implemented (MobileHome), typecheck clean
-- [x] **Recency check** - `docker image ls` newest local image for the repo vs the running container's image created time (`image_upgrade_available`, 6 unit tests); unknown -> no pill
+- [x] **Recency check** - compares image IDs (not `Created`): the configured lab-image tag's current id vs the running container's image id, guarded that the tag is the repo's newest (`image_upgrade_available`, 6 unit tests); unknown -> no pill
   - log: 2026-06-17 implemented + tested
 
 ### Dashboard freshness
@@ -2826,6 +2812,8 @@ The bars are 0-100% but the tooltips must also quote the live usage %, not only 
   - log: 2026-06-17 criterion added (#252)
 
 ## restart/stop progress feedback
+
+> SUPERSEDED by "server lifecycle UX": the restart/stop progress MODAL (creeping bar + flavour text) was removed - `ServerLifecycle` is now a context provider with inline spinners and no popup UI, and the `loading-messages` dependency was dropped. The `[x]` criteria below describe a feature that no longer exists; kept for history.
 
 During a server restart or stop the progress modal must clearly read as "something is happening": the bar creeps (it no longer sits at a static full bar that looks done) and a rotating funny "loading…" line plays underneath, sourced from a ready package.
 
@@ -3181,7 +3169,7 @@ Code-complete; backend `make test` 566+63 green, portal `tsc -b` + `build:hub` c
 
 ### Page + navigation
 
-- [ ] **Start -> dedicated page** - clicking Start on your own server navigates to `/servers/:name/starting` (no modal); restart/stop keep the lightweight popup
+- [ ] **Start -> dedicated page** - clicking Start on your own server navigates to `/servers/:name/starting` (no modal); restart/stop are inline spinners (no modal)
   - log: 2026-06-17 criterion added
 - [ ] **Progress bar** - a progress bar bound to the spawn SSE advances with the hub's reported spawn progress (0-100)
   - log: 2026-06-17 criterion added
@@ -3452,7 +3440,7 @@ On Extend the gadget plays a three-step animation instead of a single jump (`Ttl
 
 - [x] **Uptime on the TTL line** - the TtlGadget shows "up Xh" inline (next to the remaining-time clock) for a running server
   - log: 2026-06-17 implemented - `server_started` (spawner `orm_spawner.started`) added to the activity payload -> `getServerHero.startedISO` -> `TtlGadget uptimeLabel={timeAgoShort(startedISO)}`; mock + typecheck clean
-- [x] **Upgrade-available pill** - a gold "Upgrade available" pill shows left of the status pill on the Server status card when a newer lab image is available locally than the running container's
+- [x] **Upgrade-available pill** - a gold "Update available" pill shows left of the status pill on the Server status card when a newer lab image is available locally than the running container's
   - log: 2026-06-17 implemented - `lab_image_id` (cached ~5min) vs the container's running image id (`container.attrs['Image']`, reused from the stats inspect); `image_upgrade_available` pure helper (5 unit tests); surfaced as `lab_image_upgrade_available` -> `hero.upgradeAvailable`
 - [x] **Edge: image id unknown** - local image absent / docker unreachable -> `lab_image_id` None -> no upgrade offered (never a false pill)
   - log: 2026-06-17 covered by test_image_upgrade (None cases)
@@ -3614,6 +3602,8 @@ Root cause of "everything is mock": a leftover standalone container `duoptimum-h
 
 #### Server lifecycle popups (start / restart / stop)
 
+> SUPERSEDED by "server lifecycle UX" + "dedicated Start-server page": the lifecycle POPUPS were removed - starting your own server navigates to the dedicated Start-server page; starting another user's server, restart and stop are inline spinners, no modal. The `[x]` criteria below describe the old modal flow; kept for history.
+
 Every lifecycle action shows a progress popup tied to the real hub state, and disables conflicting controls while in flight. Verify against the existing functional tests (`docs/acc-crit-functional-test-harness.md`, `docs/acc-crit-functional-ui-sweep.md`, Playwright specs) and extend them.
 
 - [x] **Start popup** - clicking Start server opens a modal with a progress bar that reflects the spawn progressing, not a fire-and-forget toast
@@ -3637,21 +3627,6 @@ Every lifecycle action shows a progress popup tied to the real hub state, and di
 - [ ] **Use functional tests** - drive/verify these flows with the existing functional test harness, extending the specs rather than inventing parallel ones
   - log: 2026-06-16 pending - needs a live hub; tsc/eslint/build/Playwright-smoke green here, runtime verify on cutover
 - [ ] **Edge: already running** - Start no-op; the stopped/running button split already prevents Start on a running server (verify on cutover)
-
-#### TTL gadget - drain bar + working Extend
-
-- [ ] **Full = blue** - at ample time the bar reads 100% in standard blue (antd Progress)
-  - log: 2026-06-16 criterion added
-- [ ] **Drain + colour** - fill shrinks proportionally as time is used and shifts blue -> orange -> red as it approaches the cull
-  - log: 2026-06-16 criterion added
-- [ ] **Gray remainder** - the used-up portion shows as a gray track behind the coloured fill
-  - log: 2026-06-16 criterion added
-- [ ] **Extend works** - the Extend button issues the real `POST /users/{name}/extend-session` and the bar/clock refresh to the new remaining time (behaviour per `docs/acc-crit-functional-ui-sweep.md` / session handler `session.py`)
-  - log: 2026-06-16 criterion added
-- [ ] **Extend = hours input** - Extend is not a fixed +2h click; the admin types the number of hours (validated, capped at the remaining allowance up to `max_extension_hours`), then applies
-  - log: 2026-06-16 criterion added
-- [ ] **Edge: at extension ceiling** - Extend disabled / no-op when `max_extension_hours` reached
-- [ ] **Edge: server stopped** - TTL gadget hidden or inert when no running server
 
 #### Dedicated reset-volumes page
 
@@ -3689,8 +3664,8 @@ Every lifecycle action shows a progress popup tied to the real hub state, and di
 
 #### Save user / group -> confirm + return to list
 
-- [x] **Save user returns** - saving in Configure-user shows a success confirmation (per-write toasts) and navigates to the Users list
-  - log: 2026-06-16 fixed (UserConfig.save -> navigate('/users'))
+- [x] **Save user returns** - saving in Configure-user shows a success confirmation (per-write toasts) and navigates to its origin (`backTo`: Home / Servers / Users)
+  - log: 2026-06-16 fixed; 2026-06-18 now navigates to `backTo` (origin), not always `/users`
 - [x] **Save group returns** - saving in Configure-group shows a success confirmation and navigates to the Groups list
   - log: 2026-06-16 fixed (GroupConfig.save -> navigate('/groups'))
 - [x] **Edge: save error** - on failure stay on the form with the error, do not navigate
@@ -3725,7 +3700,7 @@ Every lifecycle action shows a progress popup tied to the real hub state, and di
   - log: 2026-06-16 fixed (gpu_cache.py, activity.py, liveSource.ts, meters.tsx, types.ts); supersedes the host-blocked note - `utilization.gpu` confirmed real on this WSL2 host (container sample returned 0/3/0 %)
 - [x] **Tooltip** - each striped GPU bar's tooltip shows the device name and its current utilisation % (e.g. "GPU 1 GeForce RTX 5090 - 3%")
   - log: 2026-06-16 fixed (meters.tsx GpuMeter takes devices for names)
-- [x] **Sampled via subcontainer** - `GpuUtilizationRefresher` samples `nvidia-smi --query-gpu=index,utilization.gpu,memory.used --format=csv,noheader,nounits` in an ephemeral CUDA container on a periodic background tick (default 30s, `JUPYTERHUB_GPU_UTIL_UPDATE_INTERVAL`), cached; no per-request container spin; gated on a non-empty inventory
+- [x] **Sampled from the sidecar** - `gpu_cache._refresh_sync` polls per-GPU `utilization.gpu` + `memory.used` from the gpuinfo-nvidia sidecar (not an ephemeral CUDA container) on a periodic background tick (default 30s, `JUPYTERHUB_GPU_UTIL_UPDATE_INTERVAL`), cached; no per-request container spin; gated on a non-empty inventory
   - log: 2026-06-16 fixed (gpu_cache.py mirrors volume_cache pattern; live sampler test green)
 - [x] **Snapshot field** - `/activity` `gpus[]` gains `utilization` (int %) + `memory_used_mb` per device, merged by index onto the static inventory
   - log: 2026-06-16 fixed (activity.py)
@@ -3882,6 +3857,8 @@ Make repeat portal loads near-instant: paint from cache, revalidate only what ch
 ### Live QA - round 3 (start UX, TTL, versions, perf)
 
 Server-start experience graduates from a modal to a dedicated page with a live spawn-log tail; plus TTL-bar, version-banner and preload fixes found during live testing.
+
+> SUPERSEDED (start-UX items): the start criteria immediately below are the round-3 proposal; the shipped behaviour is owned by "dedicated Start-server page" + #243 (admin-start-other is inline, no page) + "server lifecycle UX" (no popups). The spawn-log tail uses a real `ServerLogsHandler` backend endpoint, NOT the SSE `message` field as the proposal assumed. Kept for history; the TTL / version / perf items further down are current.
 
 - [ ] **Start -> dedicated page** - starting your OWN server navigates to a start page (e.g. `/servers/:name/starting`), no modal; restart/stop keep the lightweight popup (they settle in seconds)
   - log: 2026-06-16 proposed + criteria captured; not yet implemented
