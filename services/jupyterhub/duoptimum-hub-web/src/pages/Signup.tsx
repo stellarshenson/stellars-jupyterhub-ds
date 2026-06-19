@@ -16,11 +16,11 @@ export default function Signup() {
   }, [])
   if (!isMock()) return null
   return (
-    <div className="oh-auth">
-      <div className="oh-auth-card">
-        <div className="oh-auth-brand"><img src={logoSrc} alt="Duoptimum Hub" /></div>
-        <h1 className="oh-auth-title">Create an Account</h1>
-        <p className="oh-auth-sub">Duoptimum Hub</p>
+    <div className="doh-auth">
+      <div className="doh-auth-card">
+        <div className="doh-auth-brand"><img src={logoSrc} alt="Duoptimum Hub" /></div>
+        <h1 className="doh-auth-title">Create an Account</h1>
+        <p className="doh-auth-sub">Duoptimum Hub</p>
         {done && (
           <div style={{ marginBottom: 16 }}>
             <Notice type="success">Account created - an administrator must authorise it before you can sign in.</Notice>
@@ -48,7 +48,7 @@ export default function Signup() {
           </Form.Item>
           <Button type="primary" htmlType="submit" block>Create Account</Button>
         </Form>
-        <div className="oh-auth-foot">Already have an account? <Link to="/login">Sign in</Link></div>
+        <div className="doh-auth-foot">Already have an account? <Link to="/login">Sign in</Link></div>
       </div>
     </div>
   )

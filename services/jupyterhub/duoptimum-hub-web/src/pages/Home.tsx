@@ -49,7 +49,7 @@ function PendingCallout({ count }: { count: number }) {
         <b>{count} users awaiting approval</b> - review and authorise
       </div>
       <Link to="/users" style={{ marginLeft: 'auto' }}>
-        <span className="oh-pill accent" style={{ cursor: 'pointer' }}>Review</span>
+        <span className="doh-pill accent" style={{ cursor: 'pointer' }}>Review</span>
       </Link>
     </div>
   )
@@ -72,12 +72,12 @@ function ActiveServersPreview() {
       // username links to the user config + first/last name beneath, matching the
       // Servers list and Users screen
       render: (_, r) => (
-        <div className="oh-user-cell">
+        <div className="doh-user-cell">
           <span>
             <Link to={`/users/${r.user}`} state={{ from: HOME_ORIGIN }} style={{ color: 'var(--color-accent)' }} title={`Configure ${r.user}`}>{r.user}</Link>
             {r.admin && <Tag bordered={false} style={accentTag}>admin</Tag>}
           </span>
-          {r.name && <span className="oh-name-hint">{r.name}</span>}
+          {r.name && <span className="doh-name-hint">{r.name}</span>}
         </div>
       ),
     },
@@ -86,17 +86,17 @@ function ActiveServersPreview() {
     {
       title: <Tooltip title={SERVERS_COL_HELP.cpu}><span>CPU</span></Tooltip>,
       align: 'right',
-      render: (_, r) => (r.cpu == null ? <span className="oh-muted">-</span> : <span className="oh-num" title={r.cpuTip} style={{ color: quotaColor(r.cpuQuotaPct) }}>{listCpuMode === 'cores' ? r.cpu : (r.cpuAssignedPct ?? r.cpu)}%</span>),
+      render: (_, r) => (r.cpu == null ? <span className="doh-muted">-</span> : <span className="doh-num" title={r.cpuTip} style={{ color: quotaColor(r.cpuQuotaPct) }}>{listCpuMode === 'cores' ? r.cpu : (r.cpuAssignedPct ?? r.cpu)}%</span>),
     },
     {
       title: <Tooltip title={SERVERS_COL_HELP.mem}><span>Mem</span></Tooltip>,
       align: 'right',
-      render: (_, r) => (r.mem == null ? <span className="oh-muted">-</span> : <span className="oh-num" title={r.memTip} style={{ color: quotaColor(r.memQuotaPct) }}>{r.mem} GB</span>),
+      render: (_, r) => (r.mem == null ? <span className="doh-muted">-</span> : <span className="doh-num" title={r.memTip} style={{ color: quotaColor(r.memQuotaPct) }}>{r.mem} GB</span>),
     },
     {
       title: 'Time Left',
       align: 'right',
-      render: (_, r) => (r.timeLeftMin == null ? <span className="oh-muted">-</span> : <span className={r.timeLeftWarn ? 'oh-cell-amber' : 'oh-num'}>{r.timeLeftLabel}</span>),
+      render: (_, r) => (r.timeLeftMin == null ? <span className="doh-muted">-</span> : <span className={r.timeLeftWarn ? 'doh-cell-amber' : 'doh-num'}>{r.timeLeftLabel}</span>),
     },
     {
       title: '',
@@ -118,7 +118,7 @@ function ActiveServersPreview() {
         ghost
         style={{ marginTop: 12 }}
         pagination={false}
-        rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+        rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
       />
     </Card>
   )
@@ -134,9 +134,9 @@ function QuickActions() {
   return (
     <Card>
       <h3 style={{ marginBottom: 12 }}>Quick Actions</h3>
-      <div className="oh-qa">
+      <div className="doh-qa">
         {items.map((it) => (
-          <Link key={it.to} to={it.to} className="oh-qa-btn">
+          <Link key={it.to} to={it.to} className="doh-qa-btn">
             <Icon name={it.icon} size={18} />
             <span>
               {it.label}
@@ -156,13 +156,13 @@ function RecentEvents() {
       <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-subtle)' }}>
         <CardHeadLink title="Recent Events" to="/events" />
       </div>
-      <div className="oh-feed" style={{ padding: '0 16px' }}>
+      <div className="doh-feed" style={{ padding: '0 16px' }}>
         {data.slice(0, 5).map((e) => (
-          <div className="oh-feed-item" key={e.id}>
-            <div className="oh-feed-ic">
+          <div className="doh-feed-item" key={e.id}>
+            <div className="doh-feed-ic">
               <Icon name={e.icon as 'play'} size={15} />
             </div>
-            <div className="oh-feed-body">
+            <div className="doh-feed-body">
               <div className="t" dangerouslySetInnerHTML={{ __html: e.text }} />
               <div className="when">{timeAgoShort(e.whenISO)}</div>
             </div>
@@ -280,13 +280,13 @@ function UserHome() {
         <Card>
           <h3 style={{ margin: '0 0 12px' }}>What your groups grant</h3>
           {grants.map((g) => (
-            <div className="oh-grant" key={g.key}>
-              <span className="oh-g-ic"><Icon name={g.key as 'gpu'} size={16} /></span>
+            <div className="doh-grant" key={g.key}>
+              <span className="doh-g-ic"><Icon name={g.key as 'gpu'} size={16} /></span>
               <div>
                 {g.label}
-                <div className="oh-g-from">from {g.from}</div>
+                <div className="doh-g-from">from {g.from}</div>
               </div>
-              <span className="oh-g-val">{g.value}</span>
+              <span className="doh-g-val">{g.value}</span>
             </div>
           ))}
         </Card>

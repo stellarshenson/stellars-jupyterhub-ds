@@ -15,7 +15,7 @@ export function FormFooter({
   destructive?: ReactNode
 }) {
   return (
-    <div className="oh-form-foot">
+    <div className="doh-form-foot">
       <div>{destructive}</div>
       <div className="right">
         <Button onClick={onCancel}>Cancel</Button>

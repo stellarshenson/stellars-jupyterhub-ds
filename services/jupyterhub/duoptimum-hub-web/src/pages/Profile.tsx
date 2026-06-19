@@ -68,7 +68,7 @@ export default function Profile() {
           )}
           <Form.Item label="New password" extra="Leave blank to keep your current password, or generate one">
             <Space.Compact style={{ width: '100%' }}>
-              <Input className="oh-mono" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="••••••••" />
+              <Input className="doh-mono" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="••••••••" />
               <Button onClick={() => setPw(genPassword())}>Generate</Button>
             </Space.Compact>
           </Form.Item>

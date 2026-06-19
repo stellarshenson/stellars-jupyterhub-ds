@@ -66,21 +66,21 @@ export default function Starting() {
   const heading = failed ? 'Could not start' : ready ? 'Ready' : 'Starting'
 
   return (
-    <div className="oh-starting">
-      <div className="oh-starting-card">
-        <img className="oh-starting-mark" src={`${portalAssetBase()}brand/jl-logo.svg`} alt="" />
-        <h1 className="oh-starting-title">{heading} {name}'s lab</h1>
-        <p className="oh-starting-status">{message}</p>
+    <div className="doh-starting">
+      <div className="doh-starting-card">
+        <img className="doh-starting-mark" src={`${portalAssetBase()}brand/jl-logo.svg`} alt="" />
+        <h1 className="doh-starting-title">{heading} {name}'s lab</h1>
+        <p className="doh-starting-status">{message}</p>
         <Progress
           percent={failed ? 100 : percent}
           showInfo={false}
           status={failed ? 'exception' : phase === 'spawning' ? 'active' : undefined}
           strokeColor={color}
         />
-        <div className="oh-termlog" ref={logRef} aria-label="container log">
+        <div className="doh-termlog" ref={logRef} aria-label="container log">
           {logs.length === 0
-            ? <span className="oh-termlog-wait">waiting for container…</span>
-            : logs.map((l, i) => <div key={i} className="oh-termlog-line">{l}</div>)}
+            ? <span className="doh-termlog-wait">waiting for container…</span>
+            : logs.map((l, i) => <div key={i} className="doh-termlog-line">{l}</div>)}
         </div>
         {failed && (
           <Button type="primary" block onClick={() => navigate(isOwn ? '/home' : '/servers')} style={{ marginTop: 14 }}>

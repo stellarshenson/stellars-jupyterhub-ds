@@ -16,7 +16,7 @@ const COLOR: Record<NoticeType, string> = {
 
 export function Notice({ type, children }: { type: NoticeType; children: ReactNode }) {
   return (
-    <div className={`oh-notice ${type}`}>
+    <div className={`doh-notice ${type}`}>
       <Icon name={ICON[type]} size={15} style={{ color: COLOR[type] }} />
       <span>{children}</span>
     </div>

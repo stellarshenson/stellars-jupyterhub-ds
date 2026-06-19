@@ -8,7 +8,7 @@
 import { dehydrate, hydrate, type QueryClient } from '@tanstack/react-query'
 import { dataMode } from '../services/dataMode'
 
-const KEY = `oh-query-cache-${dataMode()}-v1`
+const KEY = `doh-query-cache-${dataMode()}-v1`
 const MAX_AGE_MS = 24 * 60 * 60_000 // a day - older blobs are dropped, not shown
 const EXCLUDE = ['tokens'] // never persist token data (one-time secrets)
 

@@ -51,8 +51,8 @@ def test_hub_unreachable_indicator(admin_portal, docker_client, base_url):
     admin_portal.goto("/home")
 
     # healthy: no indicator in any form
-    expect(page.locator(".oh-hub-diode")).to_have_count(0)
-    expect(page.locator(".oh-hub-offline-bar")).to_have_count(0)
+    expect(page.locator(".doh-hub-diode")).to_have_count(0)
+    expect(page.locator(".doh-hub-offline-bar")).to_have_count(0)
 
     hub = docker_client.containers.get(HUB_CONTAINER)
     try:
@@ -60,19 +60,19 @@ def test_hub_unreachable_indicator(admin_portal, docker_client, base_url):
         _wait_health(base_url, up=False)
 
         # desktop: persistent pulsating diode + the popup dialog
-        expect(page.locator(".oh-hub-diode")).to_be_visible(timeout=DETECT_TIMEOUT)
+        expect(page.locator(".doh-hub-diode")).to_be_visible(timeout=DETECT_TIMEOUT)
         expect(page.get_by_role("dialog")).to_be_visible()
         expect(page.get_by_role("dialog")).to_contain_text("not responding")
 
         # mobile: top panel instead, no diode/popup (same outage, just resize)
         page.set_viewport_size(MOBILE)
-        expect(page.locator(".oh-hub-offline-bar")).to_be_visible(timeout=DETECT_TIMEOUT)
-        expect(page.locator(".oh-hub-diode")).to_have_count(0)
+        expect(page.locator(".doh-hub-offline-bar")).to_be_visible(timeout=DETECT_TIMEOUT)
+        expect(page.locator(".doh-hub-diode")).to_have_count(0)
         page.set_viewport_size(DESKTOP)
     finally:
         hub.start()
         _wait_health(base_url, up=True)
 
     # recovery: indicator clears on the next successful poll
-    expect(page.locator(".oh-hub-diode")).to_have_count(0, timeout=CLEAR_TIMEOUT)
-    expect(page.locator(".oh-hub-offline-bar")).to_have_count(0, timeout=CLEAR_TIMEOUT)
+    expect(page.locator(".doh-hub-diode")).to_have_count(0, timeout=CLEAR_TIMEOUT)
+    expect(page.locator(".doh-hub-offline-bar")).to_have_count(0, timeout=CLEAR_TIMEOUT)

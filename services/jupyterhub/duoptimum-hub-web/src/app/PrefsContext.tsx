@@ -35,7 +35,7 @@ export function useSetPref(): (key: string, value: PrefValue) => void {
   return c.set
 }
 
-const mockKey = (user: string) => `oh-user-prefs-${dataMode()}-${user}`
+const mockKey = (user: string) => `doh-user-prefs-${dataMode()}-${user}`
 
 function readMock(user: string): RawPrefs {
   try {

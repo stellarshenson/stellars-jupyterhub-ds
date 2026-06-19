@@ -26,8 +26,8 @@ export function MetricCard({
   return (
     <Link to={to} style={{ display: 'block', height: '100%' }}>
       <Card hoverable styles={{ body: { padding: 16 } }} style={{ height: '100%' }}>
-        <div className="oh-m-top">
-          <span className="oh-m-ic">
+        <div className="doh-m-top">
+          <span className="doh-m-ic">
             <Icon name={icon} size={18} />
           </span>
           <span>{label}</span>
@@ -35,9 +35,9 @@ export function MetricCard({
             <Icon name="chevron" size={16} />
           </span>
         </div>
-        <div className="oh-m-val">{value}</div>
+        <div className="doh-m-val">{value}</div>
         <Spark segments={segments} />
-        <div className="oh-m-break">{breakdown}</div>
+        <div className="doh-m-break">{breakdown}</div>
       </Card>
     </Link>
   )

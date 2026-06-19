@@ -39,7 +39,7 @@ const ICONS: IconKey[] = [
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 16, alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--color-border-subtle)' }}>
-      <div className="oh-muted">{label}</div>
+      <div className="doh-muted">{label}</div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>{children}</div>
     </div>
   )
@@ -63,7 +63,7 @@ export default function DesignLanguage() {
   return (
     <>
       <PageHeader title="Design language" sub="Every token, pill, control and widget on one page - check the system in both themes" />
-      <div className="oh-note" style={{ marginBottom: 16 }}>
+      <div className="doh-note" style={{ marginBottom: 16 }}>
         <span><b>Unlisted:</b> reachable only by URL, not part of the product. Standard antd components carry the surface; the JupyterHub metaphors (pills, meters, bars) are custom and themed by the same tokens.</span>
       </div>
 
@@ -77,14 +77,14 @@ export default function DesignLanguage() {
 
       <Card title="Normal text" style={{ marginBottom: 16 }}>
         <Row label="text colours (reuse the palette vars)">
-          <span className="oh-text-neutral">neutral</span>
-          <span className="oh-text-link">link</span>
-          <span className="oh-text-success">success</span>
-          <span className="oh-text-warning">warning</span>
-          <span className="oh-text-danger">dangerous</span>
+          <span className="doh-text-neutral">neutral</span>
+          <span className="doh-text-link">link</span>
+          <span className="doh-text-success">success</span>
+          <span className="doh-text-warning">warning</span>
+          <span className="doh-text-danger">dangerous</span>
         </Row>
-        <div className="oh-note" style={{ marginTop: 4 }}>
-          <b>Normal text:</b> neutral (body), link (accent - e.g. a user-profile link), success (green), warning (orange), dangerous (red). One class each (<code>oh-text-*</code>), all from the defined colour vars.
+        <div className="doh-note" style={{ marginTop: 4 }}>
+          <b>Normal text:</b> neutral (body), link (accent - e.g. a user-profile link), success (green), warning (orange), dangerous (red). One class each (<code>doh-text-*</code>), all from the defined colour vars.
         </div>
       </Card>
 
@@ -97,13 +97,13 @@ export default function DesignLanguage() {
           { v: 'gray', label: 'gray' },
         ].map((c) => (
           <Row key={c.v} label={c.label}>
-            <Swatch token={`--oh-${c.v}-dim`} name="dim" />
-            <Swatch token={`--oh-${c.v}`} name="normal" />
-            <Swatch token={`--oh-${c.v}-intense`} name="intense" />
+            <Swatch token={`--doh-${c.v}-dim`} name="dim" />
+            <Swatch token={`--doh-${c.v}`} name="normal" />
+            <Swatch token={`--doh-${c.v}-intense`} name="intense" />
           </Row>
         ))}
-        <div className="oh-note" style={{ marginTop: 4 }}>
-          <b>Palette:</b> borrowed from the defined tokens (green = success, cyan/blue = accent, red = danger, orange = warning, gray = text-subtle), each <code>--oh-&lt;name&gt;</code> with <code>-dim</code> (toward surface) and <code>-intense</code> (toward text) variants - refer to them by name. Magenta is not in the current tokens.
+        <div className="doh-note" style={{ marginTop: 4 }}>
+          <b>Palette:</b> borrowed from the defined tokens (green = success, cyan/blue = accent, red = danger, orange = warning, gray = text-subtle), each <code>--doh-&lt;name&gt;</code> with <code>-dim</code> (toward surface) and <code>-intense</code> (toward text) variants - refer to them by name. Magenta is not in the current tokens.
         </div>
       </Card>
 
@@ -136,7 +136,7 @@ export default function DesignLanguage() {
           <IconAction icon="stop" title="list-dangerous - red" tone="danger" />
           <IconAction icon="activity" title="list-warning - yellow" tone="warning" />
         </Row>
-        <div className="oh-note" style={{ marginTop: 4 }}>
+        <div className="doh-note" style={{ marginTop: 4 }}>
           <b>Icons:</b> wireframe by default, filled on demand. Tones - primary (blue, active / go-to), secondary (gray, neutral), dangerous (red, destructive), warning (yellow, caution). List icons stay wireframe and fill only for emphasis (e.g. stop); non-list / button icons use the filled glyph when one is available.
         </div>
         <Row label="text / link">
@@ -161,7 +161,7 @@ export default function DesignLanguage() {
           <NotificationPill type="error" label="dangerous" />
           <NotificationPill type="in-progress" label="in-progress" />
         </Row>
-        <div className="oh-note" style={{ marginTop: 4 }}>
+        <div className="doh-note" style={{ marginTop: 4 }}>
           <b>Notification tones</b> reuse the status-pill vocabulary so every advisory reads in the same colours: success = Active green, warning = idle amber, info = the "All" scope cyan, passive = neutral gray, dangerous = red, in-progress = pulsing cyan. Broadcast types and the "Update available" badge both draw from this one map (<code>NotificationPill</code>), never an ad-hoc Tag colour.
         </div>
         <Row label="Tags">
@@ -187,12 +187,12 @@ export default function DesignLanguage() {
         </Row>
         <Row label="Scope states">
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <span className="oh-pill oh-scope accent active"><span className="oh-dot" />All 131</span>
-            <span className="oh-page-sub">active - lit with accent ring</span>
+            <span className="doh-pill doh-scope accent active"><span className="doh-dot" />All 131</span>
+            <span className="doh-page-sub">active - lit with accent ring</span>
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <span className="oh-pill oh-scope running"><span className="oh-dot" />Active 18</span>
-            <span className="oh-page-sub">inactive - dimmed to .6</span>
+            <span className="doh-pill doh-scope running"><span className="doh-dot" />Active 18</span>
+            <span className="doh-page-sub">inactive - dimmed to .6</span>
           </span>
         </Row>
       </Card>
@@ -224,7 +224,7 @@ export default function DesignLanguage() {
           <div style={{ width: 320 }}><TtlGadget timeLeftMin={300} baseMin={240} maxAddHours={6} /></div>
           <div style={{ width: 320 }}><TtlGadget timeLeftMin={180} baseMin={240} maxAddHours={0} /></div>
         </Row>
-        <div className="oh-note" style={{ marginTop: 4 }}>
+        <div className="doh-note" style={{ marginTop: 4 }}>
           <b>Progress bars:</b> the standard bar (antd Progress) is base-relative and drains blue -&gt; amber -&gt; red toward the cull; the resource bars are the same family. The <b>alternative striped bars</b> (one per GPU) are for multi-device load - a labelled bar per device rather than a single aggregate. The TTL extend is an hours slider whose last tick "max" tops the session to the ceiling.
           <br /><b>Tooltips, not static text:</b> precise values (exact GB, %, dates, breakdowns) live in a tooltip on hover, never as wasteful static text under the control - the control shows the glanceable shape, the tooltip the precise number.
         </div>
@@ -250,17 +250,17 @@ export default function DesignLanguage() {
           <ActivityMeter value={12} pct={12} hours={1} />
         </Row>
         <Row label="User cell - name links to the user, first/last beneath (no click-friction)">
-          <div className="oh-user-cell">
+          <div className="doh-user-cell">
             <span><span style={{ color: 'var(--color-accent)', cursor: 'pointer' }}>alice</span></span>
-            <span className="oh-name-hint">Alice Nowak</span>
+            <span className="doh-name-hint">Alice Nowak</span>
           </div>
         </Row>
         <Row label="List columns - status, last-activity and activity are separate; activity centered">
           <StatusPill status="active" label="Active" />
-          <span className="oh-muted">2m ago</span>
+          <span className="doh-muted">2m ago</span>
           <div style={{ width: 90, textAlign: 'center' }}><ActivityMeter value={96} pct={120} hours={9.6} /></div>
         </Row>
-        <div className="oh-note" style={{ marginTop: 4 }}>
+        <div className="doh-note" style={{ marginTop: 4 }}>
           <b>Lists keep status, last-activity and activity in separate columns</b> - the single-server widget may club status + last-activity, but a list never does; the activity meter is centered, status/last-activity columns sized to content.
           <br /><b>Admin lifecycle is inline:</b> starting / restarting another user's server spins the control in place (like Stop) and refreshes on completion - it never navigates to a progress screen.
           <br /><b>Resource %:</b> CPU / memory measure against what is ASSIGNED to the user (their cgroup limit) when set, else the host; the tooltip names which, and activity may read above 100% (works more than the daily target).
@@ -270,15 +270,15 @@ export default function DesignLanguage() {
       <Card title="Effective policy and feed" style={{ marginBottom: 16 }}>
         <Row label="Grant rows">
           <div style={{ width: 420 }}>
-            <div className="oh-grant"><span className="oh-g-ic"><Icon name="gpu" size={16} /></span><div>GPU<div className="oh-g-from">from gpu</div></div><span className="oh-g-val">all devices</span></div>
-            <div className="oh-grant"><span className="oh-g-ic"><Icon name="memory" size={16} /></span><div>Memory<div className="oh-g-from">from gpu</div></div><span className="oh-g-val">32 GB</span></div>
+            <div className="doh-grant"><span className="doh-g-ic"><Icon name="gpu" size={16} /></span><div>GPU<div className="doh-g-from">from gpu</div></div><span className="doh-g-val">all devices</span></div>
+            <div className="doh-grant"><span className="doh-g-ic"><Icon name="memory" size={16} /></span><div>Memory<div className="doh-g-from">from gpu</div></div><span className="doh-g-val">32 GB</span></div>
           </div>
         </Row>
         <Row label="Feed item">
-          <div className="oh-feed" style={{ width: 420 }}>
-            <div className="oh-feed-item">
-              <div className="oh-feed-ic"><Icon name="play" size={15} /></div>
-              <div className="oh-feed-body"><div className="t"><b>milan</b> started a server with <b>gpu</b></div><div className="when">2m ago</div></div>
+          <div className="doh-feed" style={{ width: 420 }}>
+            <div className="doh-feed-item">
+              <div className="doh-feed-ic"><Icon name="play" size={15} /></div>
+              <div className="doh-feed-body"><div className="t"><b>milan</b> started a server with <b>gpu</b></div><div className="when">2m ago</div></div>
             </div>
           </div>
         </Row>
@@ -299,7 +299,7 @@ export default function DesignLanguage() {
       </Card>
 
       <Card title="Form controls" style={{ marginBottom: 16 }}>
-        <Row label="Text / disabled"><Input style={{ width: 240 }} defaultValue="editable" /><Input className="oh-mono" style={{ width: 240 }} defaultValue="locked value" disabled /></Row>
+        <Row label="Text / disabled"><Input style={{ width: 240 }} defaultValue="editable" /><Input className="doh-mono" style={{ width: 240 }} defaultValue="locked value" disabled /></Row>
         <Row label="Password / number"><Input.Password style={{ width: 240 }} placeholder="password" /><InputNumber defaultValue={8} /></Row>
         <Row label="Select / date"><Select style={{ width: 200 }} defaultValue="single" options={[{ value: 'single', label: 'single' }, { value: 'pair', label: 'pair' }]} /><DatePicker /></Row>
         <Row label="Radio (button) / segmented">
@@ -327,28 +327,28 @@ export default function DesignLanguage() {
 
       <Card title="Conventions" style={{ marginBottom: 16 }}>
         <Row label="Relative time (always short)">
-          <span className="oh-muted">now</span>
-          <span className="oh-muted">2m</span>
-          <span className="oh-muted">5h</span>
-          <span className="oh-muted">3d</span>
-          <span className="oh-muted">4mo</span>
-          <span className="oh-muted">1y</span>
-          <span className="oh-page-sub">- one format everywhere; exact timestamp on hover</span>
+          <span className="doh-muted">now</span>
+          <span className="doh-muted">2m</span>
+          <span className="doh-muted">5h</span>
+          <span className="doh-muted">3d</span>
+          <span className="doh-muted">4mo</span>
+          <span className="doh-muted">1y</span>
+          <span className="doh-page-sub">- one format everywhere; exact timestamp on hover</span>
         </Row>
         <Row label="Alternating rows">
-          <span className="oh-page-sub">every table uses zebra striping - mandatory</span>
+          <span className="doh-page-sub">every table uses zebra striping - mandatory</span>
         </Row>
         <Row label="Panel padding">
-          <span className="oh-page-sub">cards use the standard antd body padding; content never sits flush to the edge</span>
+          <span className="doh-page-sub">cards use the standard antd body padding; content never sits flush to the edge</span>
         </Row>
         <Row label="State = colour">
-          <span className="oh-page-sub">status and type always shown as coloured pills on one shared palette</span>
+          <span className="doh-page-sub">status and type always shown as coloured pills on one shared palette</span>
         </Row>
         <Row label="Label casing (Title Case)">
-          <span className="oh-mono">Add User</span>
-          <span className="oh-mono">Manage Volumes</span>
-          <span className="oh-mono">Clear Events</span>
-          <span className="oh-page-sub">- buttons and headers Title-Case every principal word; minor words (a, of, to, on...) stay lowercase unless first; acronyms (API, GPU) and units (7h) kept as-is</span>
+          <span className="doh-mono">Add User</span>
+          <span className="doh-mono">Manage Volumes</span>
+          <span className="doh-mono">Clear Events</span>
+          <span className="doh-page-sub">- buttons and headers Title-Case every principal word; minor words (a, of, to, on...) stay lowercase unless first; acronyms (API, GPU) and units (7h) kept as-is</span>
         </Row>
       </Card>
 

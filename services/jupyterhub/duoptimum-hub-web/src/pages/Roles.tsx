@@ -19,7 +19,7 @@ function AccessPill({ level }: { level: Level }) {
   const t = LEVEL[level]
   return (
     <span
-      className="oh-pill"
+      className="doh-pill"
       style={{
         color: t.color,
         background: `color-mix(in srgb, ${t.color} 14%, transparent)`,
@@ -102,7 +102,7 @@ const CAPS: Cap[] = [
 
 const columns = [
   { title: 'Capability', dataIndex: 'capability', width: 220, render: (v: string) => <b>{v}</b> },
-  { title: 'Description', dataIndex: 'desc', render: (v: string) => <span className="oh-muted">{v}</span> },
+  { title: 'Description', dataIndex: 'desc', render: (v: string) => <span className="doh-muted">{v}</span> },
   { title: 'Admin', dataIndex: 'admin', width: 110, align: 'center' as const, render: (l: Level) => <AccessPill level={l} /> },
   { title: 'User', dataIndex: 'user', width: 110, align: 'center' as const, render: (l: Level) => <AccessPill level={l} /> },
 ]
@@ -118,7 +118,7 @@ export default function Roles() {
         <Table<RoleDef>
           rowKey="role"
           pagination={false}
-          rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+          rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
           dataSource={ROLES}
           columns={roleColumns}
         />
@@ -130,7 +130,7 @@ export default function Roles() {
             <Table<Cap>
               rowKey="capability"
               pagination={false}
-              rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+              rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
               dataSource={CAPS.filter((c) => c.area === area)}
               columns={columns}
             />

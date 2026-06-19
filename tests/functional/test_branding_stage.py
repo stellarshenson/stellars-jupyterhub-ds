@@ -4,10 +4,10 @@ The badge is driven by JUPYTERHUB_BRANDING_STAGE -> window.jhdata.stage and rend
 by StageBadge in the portal header. The default (signup) deployment sets no stage, so
 the badge is absent; the env-mode deployment (make test-functional-env) sets
 JUPYTERHUB_BRANDING_STAGE=TST in compose.functional-env.yml and the badge shows 'TST'
-in the blue/accent tone (--oh-cyan, the design theme's "blue").
+in the blue/accent tone (--doh-cyan, the design theme's "blue").
 
 Placement: ProLayout renders no top header under layout="side" (its Header returns
-null), so the language/theme/stage controls live in the .oh-topbar header row, not in
+null), so the language/theme/stage controls live in the .doh-topbar header row, not in
 actionsRender (which would drop them in the sider by the username). They sit top-right,
 with the stage badge rightmost.
 """
@@ -15,10 +15,10 @@ with the stage badge rightmost.
 import pytest
 from playwright.sync_api import expect
 
-STAGE_BADGE = ".oh-stage-badge"
-HEADER = ".oh-topbar"
-LANG = '.oh-topbar [aria-label="Language"]'
-THEME = '.oh-topbar [aria-label="Theme"]'
+STAGE_BADGE = ".doh-stage-badge"
+HEADER = ".doh-topbar"
+LANG = '.doh-topbar [aria-label="Language"]'
+THEME = '.doh-topbar [aria-label="Theme"]'
 
 
 def _x(locator):
@@ -52,12 +52,12 @@ def test_no_stage_badge_by_default(admin_portal):
 )
 def test_stage_badge_shows_configured_stage(admin_portal):
     # Env-mode sets JUPYTERHUB_BRANDING_STAGE=TST; the badge renders 'TST' in the
-    # blue/accent tone (--oh-cyan).
+    # blue/accent tone (--doh-cyan).
     page = admin_portal.goto("/home")
     badge = page.locator(STAGE_BADGE)
     expect(badge).to_be_visible()
     assert badge.inner_text().strip().upper() == "TST"
-    assert "--oh-cyan" in (badge.get_attribute("style") or "")
+    assert "--doh-cyan" in (badge.get_attribute("style") or "")
     # Placement: the badge is in the header topbar (not the sider) and is the
     # rightmost control - to the right of theme, which is to the right of language.
     assert page.locator(f"{HEADER} {STAGE_BADGE}").count() == 1

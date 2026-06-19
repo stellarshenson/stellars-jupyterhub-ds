@@ -18,8 +18,8 @@ function value(row: PlatformSetting) {
     return <Switch size="small" defaultChecked={row.value === 'enabled'} onChange={(v) => mockAction(`${row.key} ${v ? 'enabled' : 'disabled'}`)} />
   if (row.state === 'ok') return <Tag bordered={false} style={{ background: 'var(--color-success-soft)', color: 'var(--color-success)', borderRadius: 4 }}>{row.value}</Tag>
   if (row.state === 'accent') return <Tag bordered={false} style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4 }}>{row.value}</Tag>
-  if (row.state === 'neutral') return <span className="oh-mono">{row.value}</span>
-  return <span className="oh-num">{row.value}</span>
+  if (row.state === 'neutral') return <span className="doh-mono">{row.value}</span>
+  return <span className="doh-num">{row.value}</span>
 }
 
 // one option row: label (+ help tooltip) and its control, wired to the prefs store
@@ -48,7 +48,7 @@ function OptionsPanels() {
         key: panel.key,
         label: panel.title,
         children: (
-          <table className="oh-kv-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <table className="doh-kv-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <tbody>
               {panel.options.map((option) => (
                 <OptionRow key={option.key} option={option} set={set} />
@@ -70,7 +70,7 @@ export default function Settings() {
         sub="Review the running platform configuration"
         actions={
           <Link to="/settings/reference">
-            <span className="oh-pill accent" style={{ cursor: 'pointer' }}>
+            <span className="doh-pill accent" style={{ cursor: 'pointer' }}>
               <Icon name="code" size={14} /> Full Reference
             </span>
           </Link>
@@ -81,7 +81,7 @@ export default function Settings() {
         {data.map((group) => (
           <Card key={group.title} styles={{ body: { padding: 0 } }}>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-subtle)', fontWeight: 600 }}>{group.title}</div>
-            <table className="oh-kv-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <table className="doh-kv-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <tbody>
                 {group.rows.map((row) => (
                   <tr key={row.key}>

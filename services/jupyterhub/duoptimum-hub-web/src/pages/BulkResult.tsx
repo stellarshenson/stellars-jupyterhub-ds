@@ -53,12 +53,12 @@ export default function BulkResult() {
           rowKey="username"
           style={{ marginTop: 12 }}
           pagination={false}
-          rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+          rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
           dataSource={rows}
           columns={[
             { title: 'Username', dataIndex: 'username' },
-            { title: 'Password', dataIndex: 'password', render: (v) => <span className="oh-mono">{v}</span> },
-            { title: 'Groups', dataIndex: 'groups', render: (v) => <span className="oh-muted">{v}</span> },
+            { title: 'Password', dataIndex: 'password', render: (v) => <span className="doh-mono">{v}</span> },
+            { title: 'Groups', dataIndex: 'groups', render: (v) => <span className="doh-muted">{v}</span> },
           ]}
         />
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>

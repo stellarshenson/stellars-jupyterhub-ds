@@ -20,20 +20,20 @@ interface VolMount { volume: string; mountpoint: string }
 
 function Section({ icon, title, on, onToggle, children }: { icon: IconKey; title: string; on: boolean; onToggle: (v: boolean) => void; children: ReactNode }) {
   return (
-    <div className={on ? 'oh-pol-sec' : 'oh-pol-sec collapsed'}>
-      <div className="oh-pol-head">
+    <div className={on ? 'doh-pol-sec' : 'doh-pol-sec collapsed'}>
+      <div className="doh-pol-head">
         <Switch size="small" checked={on} onChange={onToggle} />
         <Icon name={icon} size={15} />
-        <span className="oh-pol-title">{title}</span>
+        <span className="doh-pol-title">{title}</span>
       </div>
-      {on && <div className="oh-pol-body">{children}</div>}
+      {on && <div className="doh-pol-body">{children}</div>}
     </div>
   )
 }
 
 function CheckRow({ checked, onChange, label, desc }: { checked: boolean; onChange: (v: boolean) => void; label: string; desc: string }) {
   return (
-    <div className="oh-pol-check">
+    <div className="doh-pol-check">
       <Checkbox checked={checked} onChange={(e) => onChange(e.target.checked)} />
       <div>
         <div>{label}</div>
@@ -193,15 +193,15 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
     <div style={{ border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: '4px 16px' }}>
       {/* Environment variables */}
       <Section icon="code" title="Environment Variables" on={on.env_vars ?? false} onToggle={toggle('env_vars')}>
-        <div className="oh-pol-hint">Set in members' containers. On a name clash across groups, the highest-priority group wins.</div>
+        <div className="doh-pol-hint">Set in members' containers. On a name clash across groups, the highest-priority group wins.</div>
         <Table<EnvVar>
           size="small"
           pagination={false}
           dataSource={envVars}
           rowKey={(_, i) => `env-${i}`}
-          rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+          rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
           columns={[
-            { title: 'Name', width: '30%', render: (_, r, i) => <Input size="small" className="oh-mono" value={r.name} placeholder="MY_VAR" onChange={(e) => setEnvVars((p) => p.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} /> },
+            { title: 'Name', width: '30%', render: (_, r, i) => <Input size="small" className="doh-mono" value={r.name} placeholder="MY_VAR" onChange={(e) => setEnvVars((p) => p.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} /> },
             { title: 'Value', width: '30%', render: (_, r, i) => <Input size="small" value={r.value} onChange={(e) => setEnvVars((p) => p.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} /> },
             { title: 'Description', render: (_, r, i) => <Input size="small" value={r.desc} onChange={(e) => setEnvVars((p) => p.map((x, j) => (j === i ? { ...x, desc: e.target.value } : x)))} /> },
             { title: '', width: 40, render: (_, __, i) => <span style={{ cursor: 'pointer', color: 'var(--color-text-subtle)' }} onClick={() => setEnvVars((p) => p.filter((_, j) => j !== i))}><Icon name="close" size={14} /></span> },
@@ -213,12 +213,12 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       {/* GPU - only when the platform has GPU */}
       {gpuSupported() && (
       <Section icon="gpu" title="GPU Access" on={on.gpu ?? false} onToggle={toggle('gpu')}>
-        <div className="oh-pol-hint">Gives members the selected GPU devices in their containers.</div>
+        <div className="doh-pol-hint">Gives members the selected GPU devices in their containers.</div>
         <Checkbox checked={gpuAll} onChange={(e) => setGpuAll(e.target.checked)}>All GPUs</Checkbox>
-        <div className="desc oh-pol-hint" style={{ margin: '2px 0 8px 24px' }}>Deselect to choose specific devices below.</div>
+        <div className="desc doh-pol-hint" style={{ margin: '2px 0 8px 24px' }}>Deselect to choose specific devices below.</div>
         <div style={{ marginLeft: 24, display: gpuAll ? 'none' : 'block' }}>
           {gpuDevices.length === 0 ? (
-            <div className="oh-pol-hint">No GPUs detected on this host.</div>
+            <div className="doh-pol-hint">No GPUs detected on this host.</div>
           ) : (
             gpuDevices.map((g) => (
               <div key={g.index} style={{ padding: '3px 0' }}>
@@ -234,7 +234,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
 
       {/* Memory */}
       <Section icon="memory" title="Memory" on={on.mem ?? false} onToggle={toggle('mem')}>
-        <div className="oh-pol-hint">Caps container memory. Across a member's groups the largest limit wins.</div>
+        <div className="doh-pol-hint">Caps container memory. Across a member's groups the largest limit wins.</div>
         <InputNumber<number> value={memGB} onChange={(v) => setMemGB(v)} min={0.1} step={0.1} addonAfter="GB" style={{ width: 160 }} />
         <div style={{ marginTop: 10 }}>
           <CheckRow checked={memSwap} onChange={setMemSwap} label="Disable swap (hard cap)" desc="OOM-killed at the limit instead of spilling to disk swap" />
@@ -243,13 +243,13 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
 
       {/* CPU */}
       <Section icon="cpu" title="CPU" on={on.cpu ?? false} onToggle={toggle('cpu')}>
-        <div className="oh-pol-hint">Caps container CPU. Largest limit across groups wins; rounded up to whole cores, minimum one.</div>
+        <div className="doh-pol-hint">Caps container CPU. Largest limit across groups wins; rounded up to whole cores, minimum one.</div>
         <InputNumber<number> value={cpuCores} onChange={(v) => setCpuCores(v)} min={0.1} step={0.1} addonAfter="cores" style={{ width: 180 }} />
       </Section>
 
       {/* Docker */}
       <Section icon="box" title="Docker Access" on={on.docker ?? false} onToggle={toggle('docker')}>
-        <div className="oh-pol-hint">Across groups the most permissive wins. Standard supersedes Limited; Privileged is orthogonal.</div>
+        <div className="doh-pol-hint">Across groups the most permissive wins. Standard supersedes Limited; Privileged is orthogonal.</div>
         <Radio.Group
           value={dStd ? 'std' : 'limited'}
           onChange={(e) => setDStd((e.target.value as string) === 'std')}
@@ -269,7 +269,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, maxWidth: 560 }}>
               {([['maxContainers', 'Max containers'], ['maxVolumes', 'Max volumes'], ['maxNetworks', 'Max networks'], ['maxStorage', 'Max storage (GB)'], ['cpuCap', 'CPU cap (cores)'], ['memCap', 'Memory cap (GB)']] as const).map(([k, label]) => (
                 <div key={k}>
-                  <div className="oh-pol-field-label">{label}</div>
+                  <div className="doh-pol-field-label">{label}</div>
                   <InputNumber<number> value={dq[k]} onChange={(v) => setDq((p) => ({ ...p, [k]: v ?? 0 }))} min={0} step={k === 'cpuCap' ? 0.5 : 1} style={{ width: '100%' }} />
                 </div>
               ))}
@@ -287,16 +287,16 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
 
       {/* Volume mounts */}
       <Section icon="disk" title="Volume Mounts" on={on.volume_mounts ?? false} onToggle={toggle('volume_mounts')}>
-        <div className="oh-pol-hint">Mount named Docker volumes into members' containers. Mountpoints must be absolute and outside protected paths; a missing volume is created on first spawn.</div>
+        <div className="doh-pol-hint">Mount named Docker volumes into members' containers. Mountpoints must be absolute and outside protected paths; a missing volume is created on first spawn.</div>
         <Table<VolMount>
           size="small"
           pagination={false}
           dataSource={volMounts}
           rowKey={(_, i) => `vol-${i}`}
-          rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+          rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
           columns={[
-            { title: 'Volume', width: '45%', render: (_, r, i) => <Input size="small" className="oh-mono" value={r.volume} placeholder="my_volume" onChange={(e) => setVolMounts((p) => p.map((x, j) => (j === i ? { ...x, volume: e.target.value } : x)))} /> },
-            { title: 'Mountpoint', render: (_, r, i) => <Input size="small" className="oh-mono" value={r.mountpoint} placeholder="/mnt/…" onChange={(e) => setVolMounts((p) => p.map((x, j) => (j === i ? { ...x, mountpoint: e.target.value } : x)))} /> },
+            { title: 'Volume', width: '45%', render: (_, r, i) => <Input size="small" className="doh-mono" value={r.volume} placeholder="my_volume" onChange={(e) => setVolMounts((p) => p.map((x, j) => (j === i ? { ...x, volume: e.target.value } : x)))} /> },
+            { title: 'Mountpoint', render: (_, r, i) => <Input size="small" className="doh-mono" value={r.mountpoint} placeholder="/mnt/…" onChange={(e) => setVolMounts((p) => p.map((x, j) => (j === i ? { ...x, mountpoint: e.target.value } : x)))} /> },
             { title: '', width: 40, render: (_, __, i) => <span style={{ cursor: 'pointer', color: 'var(--color-text-subtle)' }} onClick={() => setVolMounts((p) => p.filter((_, j) => j !== i))}><Icon name="close" size={14} /></span> },
           ]}
         />
@@ -305,8 +305,8 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
 
       {/* API keys pool */}
       <Section icon="key" title="API Keys Pool" on={on.api_keys ?? false} onToggle={toggle('api_keys')}>
-        <div className="oh-pol-hint">Hands out one credential per running container so no two members share a key. Keys return to the pool on stop.</div>
-        <div className="oh-pol-field-label">Credential type</div>
+        <div className="doh-pol-hint">Hands out one credential per running container so no two members share a key. Keys return to the pool on stop.</div>
+        <div className="doh-pol-field-label">Credential type</div>
         <Select<'' | 'single' | 'pair'>
           value={apiMode}
           onChange={setApiMode}
@@ -315,14 +315,14 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
         />
         {apiMode === 'single' && (
           <div style={{ marginTop: 10, maxWidth: 320 }}>
-            <div className="oh-pol-field-label">API key variable name</div>
-            <Input className="oh-mono" value={apiVarKey} onChange={(e) => setApiVarKey(e.target.value)} placeholder="OPENAI_API_KEY" />
+            <div className="doh-pol-field-label">API key variable name</div>
+            <Input className="doh-mono" value={apiVarKey} onChange={(e) => setApiVarKey(e.target.value)} placeholder="OPENAI_API_KEY" />
           </div>
         )}
         {apiMode === 'pair' && (
           <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, maxWidth: 480 }}>
-            <div><div className="oh-pol-field-label">Key ID variable name</div><Input className="oh-mono" value={apiVarId} onChange={(e) => setApiVarId(e.target.value)} placeholder="AWS_ACCESS_KEY_ID" /></div>
-            <div><div className="oh-pol-field-label">Key secret variable name</div><Input className="oh-mono" value={apiVarSecret} onChange={(e) => setApiVarSecret(e.target.value)} placeholder="AWS_SECRET_ACCESS_KEY" /></div>
+            <div><div className="doh-pol-field-label">Key ID variable name</div><Input className="doh-mono" value={apiVarId} onChange={(e) => setApiVarId(e.target.value)} placeholder="AWS_ACCESS_KEY_ID" /></div>
+            <div><div className="doh-pol-field-label">Key secret variable name</div><Input className="doh-mono" value={apiVarSecret} onChange={(e) => setApiVarSecret(e.target.value)} placeholder="AWS_SECRET_ACCESS_KEY" /></div>
           </div>
         )}
         {apiMode && (
@@ -333,10 +333,10 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
               pagination={false}
               dataSource={apiCreds}
               rowKey={(_, i) => `cred-${i}`}
-              rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+              rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
               columns={[
-                { title: apiMode === 'pair' ? 'Key ID' : 'API Key', render: (_, r, i) => <Input size="small" className="oh-mono" value={r.a} onChange={(e) => setApiCreds((p) => p.map((x, j) => (j === i ? { ...x, a: e.target.value } : x)))} /> },
-                ...(apiMode === 'pair' ? [{ title: 'Key Secret', render: (_: unknown, r: ApiCred, i: number) => <Input size="small" className="oh-mono" value={r.b} onChange={(e) => setApiCreds((p) => p.map((x, j) => (j === i ? { ...x, b: e.target.value } : x)))} /> }] : []),
+                { title: apiMode === 'pair' ? 'Key ID' : 'API Key', render: (_, r, i) => <Input size="small" className="doh-mono" value={r.a} onChange={(e) => setApiCreds((p) => p.map((x, j) => (j === i ? { ...x, a: e.target.value } : x)))} /> },
+                ...(apiMode === 'pair' ? [{ title: 'Key Secret', render: (_: unknown, r: ApiCred, i: number) => <Input size="small" className="doh-mono" value={r.b} onChange={(e) => setApiCreds((p) => p.map((x, j) => (j === i ? { ...x, b: e.target.value } : x)))} /> }] : []),
                 { title: 'Description', render: (_, r, i) => <Input size="small" value={r.desc} onChange={(e) => setApiCreds((p) => p.map((x, j) => (j === i ? { ...x, desc: e.target.value } : x)))} /> },
                 { title: '', width: 40, render: (_, __, i) => <span style={{ cursor: 'pointer', color: 'var(--color-text-subtle)' }} onClick={() => setApiCreds((p) => p.filter((_, j) => j !== i))}><Icon name="close" size={14} /></span> },
               ]}
@@ -348,14 +348,14 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
 
       {/* Downloads */}
       <Section icon="download" title="File Downloads" on={on.downloads ?? false} onToggle={toggle('downloads')}>
-        <div className="oh-pol-hint">Allow or block members downloading files out of their lab through the browser. Best-effort - does not stop terminal or kernel transfers.</div>
-        <div className="oh-row"><Switch size="small" checked={downloadsAllow} onChange={setDownloadsAllow} /><span>Allow downloads for members</span></div>
+        <div className="doh-pol-hint">Allow or block members downloading files out of their lab through the browser. Best-effort - does not stop terminal or kernel transfers.</div>
+        <div className="doh-row"><Switch size="small" checked={downloadsAllow} onChange={setDownloadsAllow} /><span>Allow downloads for members</span></div>
       </Section>
 
       {/* Sudo */}
       <Section icon="shield" title="Sudo Access" on={on.sudo ?? false} onToggle={toggle('sudo')}>
-        <div className="oh-pol-hint">Grant or deny members root via sudo inside their lab - needed to install system packages.</div>
-        <div className="oh-row"><Switch size="small" checked={sudoEnable} onChange={setSudoEnable} /><span>Enable sudo for members</span></div>
+        <div className="doh-pol-hint">Grant or deny members root via sudo inside their lab - needed to install system packages.</div>
+        <div className="doh-row"><Switch size="small" checked={sudoEnable} onChange={setSudoEnable} /><span>Enable sudo for members</span></div>
       </Section>
     </div>
   )

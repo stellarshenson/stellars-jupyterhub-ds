@@ -61,9 +61,9 @@ export function VolumeReset({ name, onClose }: { name: string; onClose?: () => v
         rowSelection={{ type: 'checkbox', selectedRowKeys: selected, onChange: (keys) => setSelected(keys as string[]), getCheckboxProps: (record) => ({ disabled: running || removed.includes(record.suffix) }) }}
         dataSource={rows}
         columns={[
-          { title: 'Volume', dataIndex: 'name', render: (v) => <span className="oh-mono">{v}</span> },
-          { title: 'Mount', dataIndex: 'mount', render: (v) => <span className="oh-mono">{v}</span> },
-          { title: 'Description', dataIndex: 'description', render: (v) => <span className="oh-muted">{v}</span> },
+          { title: 'Volume', dataIndex: 'name', render: (v) => <span className="doh-mono">{v}</span> },
+          { title: 'Mount', dataIndex: 'mount', render: (v) => <span className="doh-mono">{v}</span> },
+          { title: 'Description', dataIndex: 'description', render: (v) => <span className="doh-muted">{v}</span> },
           {
             title: 'Size',
             dataIndex: 'sizeGB',
@@ -72,8 +72,8 @@ export function VolumeReset({ name, onClose }: { name: string; onClose?: () => v
             // otherwise the size (or the slow-sizes placeholder)
             render: (v, record) =>
               removed.includes(record.suffix)
-                ? <span className="oh-text-danger">removed</span>
-                : v != null ? <span className="oh-num">{v} GB</span> : sizesPending ? <span className="oh-muted">updating…</span> : <span className="oh-muted">-</span>,
+                ? <span className="doh-text-danger">removed</span>
+                : v != null ? <span className="doh-num">{v} GB</span> : sizesPending ? <span className="doh-muted">updating…</span> : <span className="doh-muted">-</span>,
           },
         ]}
       />

@@ -19,7 +19,7 @@ export default function LabContainer() {
       <Card style={{ marginBottom: 16, maxWidth: 760 }}>
         <div style={{ marginBottom: 8, color: 'var(--color-text-muted)', fontSize: 13 }}>Lab image</div>
         <Tooltip title="Deployment-set; new images apply on the next spawn">
-          <span className="oh-mono" style={{ fontSize: 14, cursor: 'help' }}>{data?.image ?? '-'}</span>
+          <span className="doh-mono" style={{ fontSize: 14, cursor: 'help' }}>{data?.image ?? '-'}</span>
         </Tooltip>
       </Card>
 
@@ -30,11 +30,11 @@ export default function LabContainer() {
           pagination={false}
           locale={{ emptyText: 'No standard volumes configured' }}
           dataSource={volumes}
-          rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+          rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
           columns={[
-            { title: 'Name', dataIndex: 'name', render: (v) => <span className="oh-mono">{v}</span> },
-            { title: 'Mount Point', dataIndex: 'mount', render: (v) => <span className="oh-mono">{v}</span> },
-            { title: 'Description', dataIndex: 'description', render: (v) => <span className="oh-muted">{v}</span> },
+            { title: 'Name', dataIndex: 'name', render: (v) => <span className="doh-mono">{v}</span> },
+            { title: 'Mount Point', dataIndex: 'mount', render: (v) => <span className="doh-mono">{v}</span> },
+            { title: 'Description', dataIndex: 'description', render: (v) => <span className="doh-muted">{v}</span> },
           ]}
         />
       </Card>

@@ -9,7 +9,7 @@
  *   in-progress -> spawning (cyan, pulsing - work underway)
  * One mapping, no per-page ad-hoc Tag colours. */
 
-// notification/broadcast `type` -> oh-pill tone class
+// notification/broadcast `type` -> doh-pill tone class
 export const NOTIFICATION_TONE: Record<string, string> = {
   success: 'running',
   warning: 'idle',
@@ -24,7 +24,7 @@ export const NOTIFICATION_TONE: Record<string, string> = {
 export function NotificationPill({ type, label, title }: { type: string; label?: string; title?: string }) {
   const tone = NOTIFICATION_TONE[type] ?? 'stopped'
   return (
-    <span className={`oh-pill ${tone}`} title={title}>
+    <span className={`doh-pill ${tone}`} title={title}>
       {label ?? type}
     </span>
   )

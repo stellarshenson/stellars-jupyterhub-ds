@@ -27,7 +27,7 @@ function one(t: TagItem, accent: boolean) {
 }
 
 export function CappedTags({ items, cap = 3, accent = true }: { items: TagItem[]; cap?: number; accent?: boolean }) {
-  if (items.length === 0) return <span className="oh-muted">-</span>
+  if (items.length === 0) return <span className="doh-muted">-</span>
   const shown = items.slice(0, cap)
   const rest = items.slice(cap)
   return (

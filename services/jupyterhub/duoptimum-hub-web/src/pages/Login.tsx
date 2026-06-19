@@ -16,11 +16,11 @@ export default function Login() {
   }, [])
   if (!isMock()) return null
   return (
-    <div className="oh-auth">
-      <div className="oh-auth-card">
-        <div className="oh-auth-brand"><img src={logoSrc} alt="Duoptimum Hub" /></div>
-        <h1 className="oh-auth-title">Sign In</h1>
-        <p className="oh-auth-sub">Duoptimum Hub</p>
+    <div className="doh-auth">
+      <div className="doh-auth-card">
+        <div className="doh-auth-brand"><img src={logoSrc} alt="Duoptimum Hub" /></div>
+        <h1 className="doh-auth-title">Sign In</h1>
+        <p className="doh-auth-sub">Duoptimum Hub</p>
         <Form layout="vertical" requiredMark={false} onFinish={() => navigate('/home')}>
           <Form.Item label="Username" name="username" rules={[{ required: true, message: 'Enter your username' }]}>
             <Input autoFocus placeholder="username" autoComplete="username" />
@@ -30,7 +30,7 @@ export default function Login() {
           </Form.Item>
           <Button type="primary" htmlType="submit" block>Sign In</Button>
         </Form>
-        <div className="oh-auth-foot">New here? <Link to="/signup">Create an account</Link></div>
+        <div className="doh-auth-foot">New here? <Link to="/signup">Create an account</Link></div>
       </div>
     </div>
   )

@@ -13,8 +13,8 @@ const PILL_CLASS: Record<ServerStatus, string> = {
 
 export function StatusPill({ status, label, title }: { status: ServerStatus; label: string; title?: string }) {
   return (
-    <span className={`oh-pill ${PILL_CLASS[status]}`} title={title ?? label}>
-      <span className="oh-dot" />
+    <span className={`doh-pill ${PILL_CLASS[status]}`} title={title ?? label}>
+      <span className="doh-dot" />
       {label}
     </span>
   )

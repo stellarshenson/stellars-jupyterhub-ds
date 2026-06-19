@@ -24,8 +24,8 @@ export function HubConnectionIndicator() {
 
   if (isMobile) {
     return (
-      <div className="oh-hub-offline-bar" role="alert" aria-live="assertive">
-        <span className="oh-hub-dot" aria-hidden="true" />
+      <div className="doh-hub-offline-bar" role="alert" aria-live="assertive">
+        <span className="doh-hub-dot" aria-hidden="true" />
         {TITLE}
       </div>
     )
@@ -33,7 +33,7 @@ export function HubConnectionIndicator() {
 
   return (
     <>
-      <span className="oh-hub-diode" role="status" aria-label={TITLE} title={TITLE} />
+      <span className="doh-hub-diode" role="status" aria-label={TITLE} title={TITLE} />
       <Modal
         open={!dismissed}
         onOk={() => setDismissed(true)}

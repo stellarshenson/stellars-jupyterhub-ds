@@ -8,7 +8,7 @@ export function MockSwitch() {
   const { role, setRole } = useRole()
   const navigate = useNavigate()
   return (
-    <div className="oh-mock-switch" title="Mock navigation helper - not part of the design">
+    <div className="doh-mock-switch" title="Mock navigation helper - not part of the design">
       <b>mock</b>
       <a className={role === 'admin' ? 'on' : ''} onClick={() => setRole('admin')}>
         Admin

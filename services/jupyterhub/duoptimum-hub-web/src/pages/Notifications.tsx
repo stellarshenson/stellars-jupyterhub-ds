@@ -14,7 +14,7 @@ import type { SentNotification } from '../services/types'
 // (scoped to the current filter) so an operator can select all, then unselect a few.
 function RecipientPicker({ users, value, onChange }: { users: string[]; value: string[]; onChange: (v: string[]) => void }) {
   const [q, setQ] = useState('')
-  if (!users.length) return <div className="oh-muted" style={{ fontSize: 13 }}>No active servers to notify</div>
+  if (!users.length) return <div className="doh-muted" style={{ fontSize: 13 }}>No active servers to notify</div>
   const filtered = users.filter((u) => u.toLowerCase().includes(q.toLowerCase()))
   const selected = new Set(value)
   const allOn = filtered.length > 0 && filtered.every((u) => selected.has(u))
@@ -40,11 +40,11 @@ function RecipientPicker({ users, value, onChange }: { users: string[]; value: s
         <Checkbox checked={allOn} indeterminate={someOn && !allOn} onChange={(e) => toggleAll(e.target.checked)}>
           Select all{q ? ' shown' : ''}
         </Checkbox>
-        <span className="oh-muted" style={{ fontSize: 12 }}>{value.length} selected</span>
+        <span className="doh-muted" style={{ fontSize: 12 }}>{value.length} selected</span>
       </div>
       <div style={{ maxHeight: 200, overflowY: 'auto', marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
         {filtered.length === 0
-          ? <span className="oh-muted" style={{ fontSize: 13 }}>No match</span>
+          ? <span className="doh-muted" style={{ fontSize: 13 }}>No match</span>
           : filtered.map((u) => (
               <Checkbox key={u} checked={selected.has(u)} onChange={(e) => toggle(u, e.target.checked)}>{u}</Checkbox>
             ))}
@@ -137,8 +137,8 @@ export default function Notifications() {
             columns={[
               { title: 'Message', dataIndex: 'message' },
               { title: 'Type', dataIndex: 'type', width: 120, render: (v) => <NotificationPill type={v} /> },
-              { title: 'Delivered', dataIndex: 'delivered', align: 'right', width: 100, render: (_, n) => <span className="oh-num">{n.delivered}/{n.total}</span> },
-              { title: 'Sent', dataIndex: 'sentISO', align: 'right', width: 120, render: (v) => <span className="oh-muted" title={exactDate(v)}>{timeAgoShort(v)}</span> },
+              { title: 'Delivered', dataIndex: 'delivered', align: 'right', width: 100, render: (_, n) => <span className="doh-num">{n.delivered}/{n.total}</span> },
+              { title: 'Sent', dataIndex: 'sentISO', align: 'right', width: 120, render: (v) => <span className="doh-muted" title={exactDate(v)}>{timeAgoShort(v)}</span> },
             ]}
           />
         </Card>

@@ -102,14 +102,14 @@ def test_cpu_mem_cells_report_cores_and_gb(admin_portal, base_url, admin_api):
         _post(admin_api, base_url, "/hub/api/activity/sample")
 
         # the page does not live-refresh fast enough for the first stats sample, so
-        # reload until the CPU cell (a .oh-num carrying the "cores used" tooltip) lands
+        # reload until the CPU cell (a .doh-num carrying the "cores used" tooltip) lands
         cpu_cell = mem_cell = None
         for _ in range(12):
             page = admin_portal.goto("/servers", ready=".ant-table")
             row = page.locator("tr.ant-table-row").filter(has_text=user).first
             expect(row).to_be_visible()
-            cpu_cell = row.locator('span.oh-num[title*="cores used"]')
-            mem_cell = row.locator('span.oh-num[title*="GB used"]')
+            cpu_cell = row.locator('span.doh-num[title*="cores used"]')
+            mem_cell = row.locator('span.doh-num[title*="GB used"]')
             if cpu_cell.count() and mem_cell.count():
                 break
             time.sleep(3)

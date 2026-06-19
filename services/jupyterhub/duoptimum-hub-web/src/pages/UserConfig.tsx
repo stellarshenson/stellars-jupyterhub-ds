@@ -160,7 +160,7 @@ export default function UserConfig() {
       <Form.Item label="Email" name="email"><Input /></Form.Item>
       <Form.Item label="Change password" extra="Leave blank to keep, or generate one">
         <Space.Compact style={{ width: '100%' }}>
-          <Input className="oh-mono" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Leave blank to keep" />
+          <Input className="doh-mono" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Leave blank to keep" />
           <Button onClick={() => setPw(genPassword())}>Generate</Button>
         </Space.Compact>
       </Form.Item>
@@ -185,16 +185,16 @@ export default function UserConfig() {
     <div>
       <GroupPicker value={groups} onChange={setGroups} />
 
-      <div className="oh-section-title">Effective Policies</div>
-      <div className="oh-page-sub" style={{ marginBottom: 12 }}>The policy resolved across this user's groups - each grant cites the group that won.</div>
+      <div className="doh-section-title">Effective Policies</div>
+      <div className="doh-page-sub" style={{ marginBottom: 12 }}>The policy resolved across this user's groups - each grant cites the group that won.</div>
       {grants.map((g) => (
-        <div className="oh-grant" key={g.key}>
-          <span className="oh-g-ic"><Icon name={g.key as 'gpu'} size={16} /></span>
+        <div className="doh-grant" key={g.key}>
+          <span className="doh-g-ic"><Icon name={g.key as 'gpu'} size={16} /></span>
           <div>
             {g.label}
-            <div className="oh-g-from">from {g.from}</div>
+            <div className="doh-g-from">from {g.from}</div>
           </div>
-          <span className="oh-g-val">{g.value}</span>
+          <span className="doh-g-val">{g.value}</span>
         </div>
       ))}
     </div>
