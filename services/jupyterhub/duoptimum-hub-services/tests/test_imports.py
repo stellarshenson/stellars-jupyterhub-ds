@@ -21,6 +21,8 @@ def test_top_level_imports():
     from duoptimum_hub_services import ensure_gpuinfo_sidecar
     from duoptimum_hub_services import stop_gpuinfo_sidecar
     from duoptimum_hub_services import make_pre_spawn_hook
+    from duoptimum_hub_services import make_post_stop_hook
+    from duoptimum_hub_services import resolve_memory_quota_mb
     from duoptimum_hub_services import schedule_policy_startup
     from duoptimum_hub_services import schedule_startup_favicon_callback
     from duoptimum_hub_services import get_services_and_roles
@@ -33,6 +35,8 @@ def test_top_level_imports():
     assert callable(resolve_gpu_mode)
     assert callable(ensure_gpuinfo_sidecar)
     assert callable(stop_gpuinfo_sidecar)
+    assert callable(make_post_stop_hook)
+    assert callable(resolve_memory_quota_mb)
 
 
 def test_volumes():

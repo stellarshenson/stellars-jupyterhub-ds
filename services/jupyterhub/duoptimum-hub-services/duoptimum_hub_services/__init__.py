@@ -25,10 +25,12 @@ from .events import register_events
 from .gpu import gpu_summary_lines, is_wsl2, resolve_gpu_mode
 from .gpuinfo_sidecar import ensure_gpuinfo_sidecar, stop_gpuinfo_sidecar
 from .hooks import (
+    make_post_stop_hook,
     make_pre_spawn_hook,
     schedule_policy_startup,
     schedule_startup_favicon_callback,
 )
+from .host import resolve_memory_quota_mb
 from .hydrate import schedule_startup_hydration, start_activity_refreshers
 from .idle_culler import (
     calc_available_hours,
@@ -89,9 +91,11 @@ __all__ = [
     "is_wsl2",
     "load_merged_user_volumes",
     "make_pre_spawn_hook",
+    "make_post_stop_hook",
     "schedule_policy_startup",
     "register_events",
     "resolve_gpu_mode",
+    "resolve_memory_quota_mb",
     "schedule_startup_favicon_callback",
     "schedule_startup_hydration",
     "setup_branding",

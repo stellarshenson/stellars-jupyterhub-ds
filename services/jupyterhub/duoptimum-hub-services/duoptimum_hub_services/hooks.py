@@ -15,6 +15,8 @@ from urllib.parse import urlparse
 
 from tornado import web
 
+from .api_keys_pool import PoolManager
+from .docker_proxy import unregister_user
 from .event_log import record_event
 from .groups_config import GroupsConfigManager
 from .policy import ApplyContext, apply_policies, resolve_policies, run_hub_startup
@@ -22,6 +24,7 @@ from .user_profiles import UserProfileManager
 
 __all__ = (
     'make_pre_spawn_hook',
+    'make_post_stop_hook',
     'schedule_policy_startup',
     'schedule_startup_favicon_callback',
 )
@@ -234,6 +237,38 @@ def make_pre_spawn_hook(
 
     pre_spawn_hook._stellars_apply_context = base_actx  # exposed for schedule_policy_startup
     return pre_spawn_hook
+
+
+def make_post_stop_hook(socket_dir):
+    """Factory: async post-stop hook (twin of ``make_pre_spawn_hook``).
+
+    On server stop it unregisters the user from the in-process docker-proxy,
+    releases any in-flight api-key reservation, and records a server-stop event -
+    all best-effort so a cleanup failure never blocks the stop. ``socket_dir`` is
+    where the per-user proxy sockets live (the config's resolved value).
+    """
+    async def post_stop_hook(spawner):
+        # Unregister from the in-process docker-proxy. No-op for users without a
+        # registered listener; user-created containers are independent of the
+        # proxy and keep running - the listener is re-created on the next spawn.
+        try:
+            await unregister_user(spawner.user.name, socket_dir=socket_dir)
+        except Exception as e:  # never block a stop on cleanup
+            spawner.log.warning("[Groups] docker-proxy unregister failed: %s", e)
+        # Release any in-flight api-key reservation (best-effort; the real release
+        # is the container leaving the running set, picked up by the periodic
+        # reconcile - stop events are never the source of truth).
+        try:
+            PoolManager.get_instance().release_tentative(spawner.user.name)
+        except Exception as e:
+            spawner.log.warning("[ApiKeys] tentative release failed: %s", e)
+        # Record a server-stop event for the portal events feed (best-effort).
+        try:
+            record_event('server', f'<b>{html.escape(str(spawner.user.name))}</b> server stopped')
+        except Exception:
+            pass
+
+    return post_stop_hook
 
 
 def schedule_policy_startup(actx):
