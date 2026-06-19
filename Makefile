@@ -109,22 +109,24 @@ RUNTIME_TAG_PYTHON_CMD := python3 -c 'import tomllib;d=tomllib.load(open("pyproj
 
 # Reusable green/bold success banners. Trailing blank line separates the
 # banner from any subsequent shell output for visual breathing room.
-# Build banner reads the version/id from the BUILT IMAGE (docker inspect) - the
-# baked `version` label, the baked STELLARS_JUPYTERHUB_VERSION env, and the image
-# id - so it reports what actually got built, not what pyproject says. Falls back
-# to the pyproject-computed tag only when the image is absent.
+# Build banner reports what actually got built, read from the BUILT IMAGE:
+# - the UI version line (Duoptimum Hub vX build YYMMDD.hhmm-hash) grepped from the
+#   SPA bundle - the same string the portal header shows; __BUILD_ID__ is baked
+#   into the JS at vite build time, not an image label
+# - the cuda/jh version label + short image id via docker inspect (provenance)
+# Falls back to the inspect label, then to a not-found notice.
 PRINT_BUILD_SUCCESS = @IMG="$(HUB_IMAGE):latest"; \
-	SRC=$$($(RUNTIME_TAG_PYTHON_CMD)); \
+	BANNER=$$(docker run --rm --entrypoint sh "$$IMG" -c 'd=$$(python3 -c "import duoptimum_hub_web,os;print(os.path.dirname(duoptimum_hub_web.__file__))" 2>/dev/null); grep -rhoE "Duoptimum Hub v[0-9][^\"]*" "$$d"/static/assets/*.js 2>/dev/null | head -1' 2>/dev/null); \
 	LBL=$$(docker inspect --format '{{ index .Config.Labels "version" }}' "$$IMG" 2>/dev/null); \
-	ENVV=$$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$$IMG" 2>/dev/null | sed -n 's/^STELLARS_JUPYTERHUB_VERSION=//p'); \
 	IMGID=$$(docker inspect --format '{{ .Id }}' "$$IMG" 2>/dev/null | cut -d: -f2 | cut -c1-12); \
-	if [ -n "$$LBL" ]; then \
-		printf '\n%s%sBuild successful: %s%s\n' "$(GREEN)" "$(BOLD)" "$$IMG" "$(RESET)"; \
-		printf '%s  version (image label): %s%s\n' "$(GREEN)" "$$LBL" "$(RESET)"; \
-		printf '%s  baked env version:    %s%s\n' "$(GREEN)" "$${ENVV:-<unset>}" "$(RESET)"; \
-		printf '%s  image id:             %s%s\n\n' "$(GREEN)" "$$IMGID" "$(RESET)"; \
+	if [ -n "$$BANNER" ]; then \
+		printf '\n%s%s%s%s\n' "$(GREEN)" "$(BOLD)" "$$BANNER" "$(RESET)"; \
+		printf '%s  image: %s  (%s, id %s)%s\n\n' "$(GREEN)" "$$IMG" "$${LBL:-?}" "$$IMGID" "$(RESET)"; \
+	elif [ -n "$$LBL" ]; then \
+		printf '\n%s%sBuild successful: %s  (%s, id %s)%s\n' "$(GREEN)" "$(BOLD)" "$$IMG" "$$LBL" "$$IMGID" "$(RESET)"; \
+		printf '%s  (UI banner not readable from the bundle)%s\n\n' "$(GREEN)" "$(RESET)"; \
 	else \
-		printf '\n%s%sBuild step done, but image %s not found to inspect (source version %s)%s\n\n' "$(RED)" "$(BOLD)" "$$IMG" "$$SRC" "$(RESET)"; \
+		printf '\n%s%sBuild step done, but image %s not found to inspect%s\n\n' "$(RED)" "$(BOLD)" "$$IMG" "$(RESET)"; \
 	fi
 PRINT_PUSH_SUCCESS  = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sPush successful:  stellars/duoptimum-hub:%s (also :latest)%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
 
