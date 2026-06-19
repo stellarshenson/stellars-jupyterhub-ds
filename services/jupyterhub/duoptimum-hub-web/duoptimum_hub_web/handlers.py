@@ -5,7 +5,7 @@ A single ``@web.authenticated`` catch-all covers the hub-root SPA subtree
 
 * a request that maps to a real bundled file (``assets/*``, ``brand/*``,
   ``favicon.ico``) is served as that file
-* anything else (``/hub/dashboard``, ``/hub/servers``, deep links, refresh)
+* anything else (``/hub/home``, ``/hub/servers``, deep links, refresh)
   renders the SPA shell via ``BaseHandler.render_template`` - which injects the
   hub-signed ``xsrf_token``/``base_url``/``user`` that the SPA reads from
   ``window.jhdata`` (see ``duoptimum-hub-web/src/services/hub/client.ts``)
@@ -20,7 +20,6 @@ import mimetypes
 import os
 
 from jupyterhub.handlers import BaseHandler
-from jupyterhub.utils import url_path_join
 from tornado import web
 
 _log = logging.getLogger("duoptimum_hub_web")
@@ -131,20 +130,3 @@ class PortalHandler(BaseHandler):
             admin_access=bool(self.current_user and self.current_user.admin),
         )
         self.finish(html)
-
-
-class PortalRedirectHandler(BaseHandler):
-    """302 the legacy ``/hub/portal[/...]`` path to the hub-root SPA.
-
-    The portal moved off the ``/portal`` segment, but stale bookmarks, a login
-    ``next=/hub/portal``, or cached links still hit it. Redirecting server-side
-    (before the SPA catch-all) means the browser never loads the shell at
-    ``/portal`` and then client-redirects - which showed as a one-second "portal"
-    flash before the dashboard. The old landing ``/portal/home`` maps to the
-    renamed ``/dashboard``; any other sub-path keeps its name at the root.
-    """
-
-    async def get(self, sub=""):
-        sub = (sub or "").lstrip("/")
-        target = "dashboard" if (not sub or sub == "home") else sub
-        self.redirect(url_path_join(self.hub.base_url, target), permanent=False)

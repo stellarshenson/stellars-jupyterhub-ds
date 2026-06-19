@@ -34,7 +34,7 @@ def _x(locator):
 )
 def test_no_stage_badge_by_default(admin_portal):
     # Default deployment has no JUPYTERHUB_BRANDING_STAGE -> no badge in the header.
-    page = admin_portal.goto("/dashboard")
+    page = admin_portal.goto("/home")
     assert page.locator(STAGE_BADGE).count() == 0
     # The language + theme controls render in the header topbar (top-right), NOT in
     # the sider by the username (the old actionsRender side-layout behaviour).
@@ -53,7 +53,7 @@ def test_no_stage_badge_by_default(admin_portal):
 def test_stage_badge_shows_configured_stage(admin_portal):
     # Env-mode sets JUPYTERHUB_BRANDING_STAGE=TST; the badge renders 'TST' in the
     # blue/accent tone (--oh-cyan).
-    page = admin_portal.goto("/dashboard")
+    page = admin_portal.goto("/home")
     badge = page.locator(STAGE_BADGE)
     expect(badge).to_be_visible()
     assert badge.inner_text().strip().upper() == "TST"

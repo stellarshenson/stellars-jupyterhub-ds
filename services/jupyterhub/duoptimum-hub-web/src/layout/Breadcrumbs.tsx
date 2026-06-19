@@ -21,7 +21,7 @@ export function Breadcrumbs() {
   const origin = (state as { from?: { to: string; label: string } } | null)?.from
   const parent = origin ?? handle?.parent
 
-  const items: Array<{ title: React.ReactNode }> = [{ title: <Link to="/dashboard">Duoptimum Hub</Link> }]
+  const items: Array<{ title: React.ReactNode }> = [{ title: <Link to="/home">Duoptimum Hub</Link> }]
   if (parent) items.push({ title: <Link to={parent.to}>{parent.label}</Link> })
   items.push({ title: <b>{handle?.crumb ?? ''}</b> })
 

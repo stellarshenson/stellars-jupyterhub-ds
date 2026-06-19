@@ -12,6 +12,6 @@ import { useRole } from './RoleContext'
 
 export function RequireAdmin() {
   const { role } = useRole()
-  if (role !== 'admin') return <Navigate to="/dashboard" replace />
+  if (role !== 'admin') return <Navigate to="/home" replace />
   return <Outlet />
 }

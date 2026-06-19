@@ -796,7 +796,7 @@ c.JupyterHub.db_url = "sqlite:////data/jupyterhub.sqlite"           # user datab
 # ── Authentication ──
 c.JupyterHub.authenticator_class = BootstrapAdminAuthenticator       # bootstrap-window admin-only signup + admin rename sync
 c.JupyterHub.template_paths = [
-    duoptimum_hub_web.template_dir(),                                  # Duoptimum Hub portal shell + home/admin redirect stubs (highest priority)
+    duoptimum_hub_web.template_dir(),                                  # Duoptimum Hub portal: home.html = SPA shell, admin/token = redirect stubs (highest priority)
     "/srv/jupyterhub/templates/",                                    # custom Stellars templates (override priority)
     f"{os.path.dirname(nativeauthenticator.__file__)}/templates/",   # NativeAuthenticator signup/authorize templates
     f"{os.path.dirname(jupyterhub.__file__)}/templates",             # JupyterHub default templates (fallback)

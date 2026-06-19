@@ -6,7 +6,7 @@ is owned by the ``make test-functional*`` targets; this conftest only waits for 
 health, bootstraps the admin, and drives the React SPA portal.
 
 The portal is a React single-page app served at ``{BASE_URL}/hub/<route>`` (default
-landing ``/hub/dashboard``); login is the server-rendered NativeAuthenticator page
+landing ``/hub/home``); login is the server-rendered NativeAuthenticator page
 at ``/hub/login`` (``input[name=username|password|_xsrf]``). There are NO
 data-testid attributes - selectors use visible text, antd roles, breadcrumbs and
 button labels. ``networkidle`` is unusable (the SPA polls in the background), so

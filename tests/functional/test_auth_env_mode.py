@@ -17,7 +17,7 @@ def test_env_password_admin_authenticates(admin_portal):
     # The browser is authenticated from the API session that logged in with the env
     # password; the SPA app shell mounting (not bounced to /login) proves the
     # pre-provisioned env-password admin authenticates.
-    page = admin_portal.goto("/dashboard")
+    page = admin_portal.goto("/home")
     assert "/hub/login" not in page.url
     expect(page.locator(".ant-layout")).to_be_visible()
 

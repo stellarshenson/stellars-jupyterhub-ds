@@ -33,7 +33,7 @@ const accentTag = { background: 'var(--color-accent-soft)', color: 'var(--color-
 
 // the Home widget lists OTHER users' servers too, so its row actions tag Home as
 // the origin -> the Start / Manage-volumes sub-screens + breadcrumb return here
-const HOME_ORIGIN = { to: '/dashboard', label: 'Home' }
+const HOME_ORIGIN = { to: '/home', label: 'Home' }
 
 function PendingCallout({ count }: { count: number }) {
   if (count === 0) return null

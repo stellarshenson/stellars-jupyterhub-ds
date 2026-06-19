@@ -39,7 +39,7 @@ def test_login_shell_served(base_url):
 def test_admin_reaches_portal(admin_portal):
     # The injected session cookies authenticate the browser; the SPA app shell
     # (not the auth shell) mounts, proving the admin session is valid.
-    page = admin_portal.goto("/dashboard")
+    page = admin_portal.goto("/home")
     assert "/hub/login" not in page.url
     expect(page.locator(".ant-layout")).to_be_visible()
 
@@ -48,7 +48,7 @@ def test_admin_reaches_portal(admin_portal):
 
 @pytest.mark.acc_crit("functional-test-harness::SPA page-render smoke")
 def test_dashboard_renders(admin_portal):
-    page = admin_portal.goto("/dashboard")
+    page = admin_portal.goto("/home")
     # the admin dashboard always shows the "Active Servers" widget card
     expect(page.get_by_text("Active Servers", exact=False).first).to_be_visible()
 

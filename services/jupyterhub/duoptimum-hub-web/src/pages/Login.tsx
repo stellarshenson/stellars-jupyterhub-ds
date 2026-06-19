@@ -21,7 +21,7 @@ export default function Login() {
         <div className="oh-auth-brand"><img src={logoSrc} alt="Duoptimum Hub" /></div>
         <h1 className="oh-auth-title">Sign In</h1>
         <p className="oh-auth-sub">Duoptimum Hub</p>
-        <Form layout="vertical" requiredMark={false} onFinish={() => navigate('/dashboard')}>
+        <Form layout="vertical" requiredMark={false} onFinish={() => navigate('/home')}>
           <Form.Item label="Username" name="username" rules={[{ required: true, message: 'Enter your username' }]}>
             <Input autoFocus placeholder="username" autoComplete="username" />
           </Form.Item>

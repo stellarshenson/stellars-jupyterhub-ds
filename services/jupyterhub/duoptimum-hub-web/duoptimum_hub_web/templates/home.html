@@ -2,12 +2,48 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" href="{{ base_url }}brand/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Duoptimum Hub</title>
-    <!-- The Duoptimum Hub portal replaces the stock home page. This stub shadows
-         the stock home.html (template_paths puts the package dir first) so any
-         link or bookmark to /hub/home lands on the portal. -->
-    <meta http-equiv="refresh" content="0; url={{ base_url }}dashboard" />
-    <script>window.location.replace("{{ base_url }}dashboard");</script>
+    <!-- The Duoptimum Hub portal IS the home page. This template shadows the stock
+         home.html (template_paths puts the package dir first), so the built-in
+         /hub/home handler renders the SPA shell directly - the portal OWNS the
+         /home landing route, no redirect. Mirrors portal.html but reads the entry
+         chunk from the global template_vars (duoptimum_entry_*) because the stock
+         HomeHandler, unlike PortalHandler, does not pass entry_js/entry_css. -->
+    <script>
+      // pre-paint theme guard (mirrors portal.html): set data-theme + the page bg
+      // before React mounts so there is no flash.
+      try {
+        var m = localStorage.getItem('duoptimum-hub-theme');
+        var d = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+        var dark = m === 'dark' || m === 'duoptimum-hub-dark' || ((m === 'system' || !m) && d);
+        var el = document.documentElement;
+        el.setAttribute('data-theme', dark ? 'duoptimum-hub-dark' : 'duoptimum-hub-light');
+        el.style.colorScheme = dark ? 'dark' : 'light';
+        el.style.background = dark ? '#252b32' : '#f5f7fa';
+      } catch (e) {}
+    </script>
+    <script>
+      // Identity + hub-signed XSRF submit-token the SPA reads (services/hub/client.ts).
+      // base_url / prefix / user / xsrf_token come from render_template; gpu_enabled /
+      // admin_user / branding_stage / duoptimum_entry_* are c.JupyterHub.template_vars.
+      // admin_access mirrors PortalHandler (current_user.admin).
+      window.jhdata = {
+        base_url: "{{ base_url }}",
+        prefix: "{{ prefix }}",
+        {% if user %}user: "{{ user.json_escaped_name | safe }}",{% endif %}
+        admin_access: {% if user and user.admin %}true{% else %}false{% endif %},
+        gpu_enabled: {% if gpu_enabled %}true{% else %}false{% endif %},
+        admin_user: "{{ admin_user }}",
+        stage: "{{ branding_stage }}",
+        xsrf_token: "{{ xsrf_token }}"
+      };
+    </script>
+    {% if duoptimum_entry_css %}<link rel="stylesheet" crossorigin href="{{ base_url }}{{ duoptimum_entry_css }}" />{% endif %}
   </head>
-  <body></body>
+  <body>
+    <div id="root"></div>
+    {% if duoptimum_entry_js %}<script type="module" crossorigin src="{{ base_url }}{{ duoptimum_entry_js }}"></script>{% endif %}
+  </body>
 </html>

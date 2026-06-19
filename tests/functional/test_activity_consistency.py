@@ -77,7 +77,7 @@ def test_activity_consistent_across_pages(admin_portal, base_url, admin_api):
         # the Activity meter must be present (not a dash) on every surface...
         servers = _meter_title(admin_portal, "/servers", user)
         users = _meter_title(admin_portal, "/users", user)
-        home = _meter_title(admin_portal, "/dashboard", user)
+        home = _meter_title(admin_portal, "/home", user)
 
         # ...and report the SAME 7-day engagement on each (the meter title carries
         # the percent + avg hours); Servers and Users come from different builders
