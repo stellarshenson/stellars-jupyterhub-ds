@@ -3,10 +3,11 @@
 The proxy runs inside the JupyterHub process - same asyncio event loop,
 same container, no HTTP, no token, no second compose service. One module
 singleton `Manager` holds N per-user `UnixSite` listeners under a named
-docker volume (default `jupyterhub_docker`) mounted into the hub at
-`/var/run/jupyterhub-docker-proxy-sockets/`. The volume is shared with each user lab via
-`Subpath: <user>` so each lab sees only its own subdirectory and the
-single `docker.sock` inside it - mount-level isolation, no host path.
+docker volume mounted into the hub at the configured socket dir (the spawner
+discovers that volume from its own mounts; no name is hardcoded). The volume is
+shared with each user lab via `Subpath: <user>` so each lab sees only its own
+subdirectory and the single `docker.sock` inside it - mount-level isolation, no
+host path.
 
 `pre_spawn_hook` calls `register_user` directly (it's async, same loop);
 `post_stop_hook` calls `unregister_user`. Quotas are re-applied on every
@@ -22,16 +23,16 @@ log = logging.getLogger('jupyterhub.docker_proxy')
 
 SOCK_MOUNT_DIR = '/run/dockersock'
 SOCK_FILENAME = 'docker.sock'
-DEFAULT_SOCKET_DIR = '/var/run/jupyterhub-docker-proxy-sockets'
-DEFAULT_VOLUME_NAME = 'jupyterhub_docker'
 
 _manager = None
 
 
-def get_manager(socket_dir=DEFAULT_SOCKET_DIR):
+def get_manager(socket_dir):
     """Process-singleton Manager. Lazy-init on first call.
 
-    Import is deferred so module import doesn't require duoptimum_docker_proxy
+    ``socket_dir`` is required - the caller resolves it (no hardcoded default, so
+    a missing value fails loud instead of silently writing sockets to a stale
+    path). Import is deferred so module import doesn't require duoptimum_docker_proxy
     to be on path (it always is in the production image; in local dev test
     suites for duoptimum_hub_services it doesn't need to be).
     """
@@ -107,7 +108,7 @@ def _build_overrides(resolved, *, username, compose_project='',
     return overrides
 
 
-async def register_user(username, resolved, *, socket_dir=DEFAULT_SOCKET_DIR,
+async def register_user(username, resolved, *, socket_dir,
                         compose_project='', user_compose_project_template='',
                         hub_network_name=''):
     """Register a limited user - in-process. Idempotent: re-registers replace.
@@ -144,7 +145,7 @@ async def register_user(username, resolved, *, socket_dir=DEFAULT_SOCKET_DIR,
     return socket_host_path, SOCK_MOUNT_DIR, docker_host_url()
 
 
-async def unregister_user(username, *, socket_dir=DEFAULT_SOCKET_DIR):
+async def unregister_user(username, *, socket_dir):
     """Unregister a limited user (idempotent). Logs but never raises."""
     try:
         mgr = get_manager(socket_dir)

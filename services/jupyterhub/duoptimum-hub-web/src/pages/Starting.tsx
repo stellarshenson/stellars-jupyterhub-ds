@@ -11,7 +11,7 @@ import { useRole } from '../app/RoleContext'
 import { useSpawnProgress } from '../hooks/useSpawnProgress'
 import { useContainerLogTail } from '../hooks/useContainerLogTail'
 import { isMock } from '../services/dataMode'
-import { userServerUrl, portalAssetBase } from '../services/hub/client'
+import { userServerUrl, portalAssetBase, hubGet } from '../services/hub/client'
 
 export default function Starting() {
   const { name = '' } = useParams()
@@ -28,15 +28,36 @@ export default function Starting() {
     if (el) el.scrollTop = el.scrollHeight
   }, [logs])
 
-  // on ready: own server -> straight into the lab; admin starting someone else's
-  // -> back to the Servers fleet view (never auto-enter another user's lab)
+  // on ready: own server -> into the lab; admin starting someone else's -> back to
+  // the Servers fleet view (never auto-enter another user's lab)
   useEffect(() => {
     if (phase !== 'ready') return
-    const t = window.setTimeout(() => {
-      if (isOwn && !isMock()) window.location.assign(userServerUrl(name))
-      else navigate('/servers')
-    }, 600)
-    return () => window.clearTimeout(t)
+    // admin-other (or mock) -> straight back to the fleet view
+    if (!isOwn || isMock()) {
+      const t = window.setTimeout(() => navigate('/servers'), 600)
+      return () => window.clearTimeout(t)
+    }
+    // own server: the hub 'ready' flag flips ~1s before the lab actually serves
+    // HTTP, so redirecting on it lands on the hub's stock spawn-pending page
+    // (DEF-1). Probe the lab via the silent always-200 endpoint and enter only
+    // once it genuinely answers; last-resort enter after a deadline.
+    let alive = true
+    let timer: number | undefined
+    const deadline = Date.now() + 60_000
+    const enter = () => { if (alive) window.location.assign(userServerUrl(name)) }
+    const probe = async () => {
+      if (!alive) return
+      let ready = false
+      try {
+        const r = await hubGet<{ ready: boolean }>(`/users/${encodeURIComponent(name)}/lab-ready`)
+        ready = r.ready
+      } catch { /* transient - keep polling */ }
+      if (!alive) return
+      if (ready || Date.now() > deadline) { enter(); return }
+      timer = window.setTimeout(probe, 1000)
+    }
+    void probe()
+    return () => { alive = false; if (timer) window.clearTimeout(timer) }
   }, [phase, isOwn, name, navigate])
 
   const failed = phase === 'failed'

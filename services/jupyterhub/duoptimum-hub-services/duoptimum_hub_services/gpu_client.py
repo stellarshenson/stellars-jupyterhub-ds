@@ -19,7 +19,7 @@ import urllib.request
 
 log = logging.getLogger('jupyterhub')
 
-_GPUINFO_URL = os.environ.get('JUPYTERHUB_GPUINFO_URL', 'http://gpuinfo-nvidia:8000').rstrip('/')
+_GPUINFO_URL = os.environ.get('JUPYTERHUB_GPUINFO_NVIDIA_URL', '').rstrip('/')  # overridden by configure() at hub startup; empty default avoids a hardcoded sidecar host
 
 
 def configure(url):

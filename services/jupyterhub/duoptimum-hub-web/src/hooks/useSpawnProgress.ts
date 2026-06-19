@@ -12,8 +12,6 @@ export interface SpawnProgress {
   phase: SpawnPhase
 }
 
-const isRunning = (s: string) => s === 'active' || s === 'idle' || s === 'spawning'
-
 /* Drives a single server spawn and reports live progress - the data half of the
  * Start-server page (the page owns presentation + the redirect-on-ready policy).
  *
@@ -81,7 +79,11 @@ export function useSpawnProgress(user: string): SpawnProgress {
           try {
             const servers = await getDataSource().getServers()
             const row = servers.find((s) => s.user === user)
-            if (row && isRunning(row.status)) {
+            // only a genuinely-running server (active/idle) confirms the spawn;
+            // 'spawning' is the in-progress settle window, NOT readiness - treating
+            // it as ready flips the bar to 100% ~1.5s in and redirects onto the
+            // hub's stock spawn-pending page before the lab is up (DEF-1)
+            if (row && (row.status === 'active' || row.status === 'idle')) {
               window.clearInterval(poll)
               if (!cancelled) setState((s) => ({ ...s, percent: 100, phase: 'ready' }))
             } else if (Date.now() > deadline) {

@@ -27,8 +27,9 @@ _SIDECAR_ENV = {
 
 
 def container_name_from_url(url):
-    """Derive the sidecar container name (= DNS name) from its URL host."""
-    return urlparse(url).hostname or 'gpuinfo-nvidia'
+    """Sidecar DNS host parsed from its URL - the fallback name only when no
+    explicit container name is configured (no hardcoded default)."""
+    return urlparse(url).hostname if url else None
 
 
 def _find_hub_container(client):
@@ -64,12 +65,16 @@ def _connect_hub(client, network):
         pass  # already connected (409) or transient - non-fatal
 
 
-def ensure_gpuinfo_sidecar(image, network_name, url, compose_project=''):
+def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', container_name=None):
     """Ensure the GPU-info sidecar container is running. Never raises.
 
     Returns True if the sidecar ends up running (reused, started, or created),
     False if docker is unavailable or anything failed - the caller uses that to
     decide whether to even probe (and to fall back to last-known GPU state).
+
+    ``container_name`` is the explicit sidecar name (= its DNS name on the
+    network); it falls back to the URL host only when not supplied, and the
+    sidecar is skipped (GPU off) if neither yields a name - never a hardcoded one.
 
     The container + network are stamped with the same compose-project labels the
     spawned user containers get (see hooks.py), so the hub-started sidecar belongs
@@ -78,7 +83,14 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project=''):
     """
     import docker
 
-    name = container_name_from_url(url)
+    name = container_name or container_name_from_url(url)
+    if not name:
+        log.warning(
+            "[GPUInfo] no sidecar container name configured "
+            "(JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME) and none derivable from the URL; "
+            "sidecar not started - GPU off"
+        )
+        return False
     project_labels = {'com.docker.compose.project': compose_project} if compose_project else {}
     container_labels = dict(project_labels)
     if compose_project:
@@ -145,7 +157,7 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project=''):
     return running
 
 
-def stop_gpuinfo_sidecar(url):
+def stop_gpuinfo_sidecar(url, container_name=None):
     """Stop + remove the GPU-info sidecar. Never raises.
 
     Registered as the hub's at-exit cleanup so the hub-managed sidecar does not
@@ -159,7 +171,9 @@ def stop_gpuinfo_sidecar(url):
     """
     import docker
 
-    name = container_name_from_url(url)
+    name = container_name or container_name_from_url(url)
+    if not name:
+        return
     try:
         client = docker.DockerClient('unix://var/run/docker.sock')
     except Exception:

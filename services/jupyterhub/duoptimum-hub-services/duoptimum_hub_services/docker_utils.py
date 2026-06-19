@@ -165,6 +165,31 @@ async def volume_exists_async(volume_name):
     return await loop.run_in_executor(_docker_executor, volume_exists, volume_name)
 
 
+def resolve_self_mount_volume(destination):
+    """The Docker volume name backing a mount inside THIS (hub) container.
+
+    Inspects the hub's own container (HOSTNAME == the short container id Docker
+    assigns) and returns the Name of the named volume mounted at ``destination``
+    (e.g. the docker-proxy socket dir). Lets the hub subpath-mount that exact
+    volume into each lab WITHOUT reconstructing the compose-namespaced volume name
+    from strings - so renaming the volume on the compose side can never drift from
+    what the hub references. Returns None when it cannot be determined (not in a
+    container, docker socket unreachable, or no named volume mounted there).
+    """
+    try:
+        import socket
+        import docker
+        client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        try:
+            container = client.containers.get(socket.gethostname())
+            for m in (container.attrs.get('Mounts') or []):
+                if m.get('Type') == 'volume' and m.get('Destination') == destination:
+                    return m.get('Name')
+        finally:
+            client.close()
+    except Exception:
+        return None
+    return None
 
 
 def get_executor():
