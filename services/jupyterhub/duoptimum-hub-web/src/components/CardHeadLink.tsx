@@ -8,14 +8,14 @@ export function CardHeadLink({ title, to, suffix }: { title: string; to: string;
   return (
     <Link
       to={to}
-      className="oh-head-link"
+      className="doh-head-link"
       style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', color: 'inherit' }}
     >
-      <h3 className="oh-head-title" style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
+      <h3 className="doh-head-title" style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
         {title}
         {suffix && <span style={{ color: 'var(--color-text-subtle)', fontWeight: 400 }}> {suffix}</span>}
       </h3>
-      <span className="oh-head-go" style={{ marginLeft: 'auto' }}>
+      <span className="doh-head-go" style={{ marginLeft: 'auto' }}>
         <Icon name="chevron" size={18} />
       </span>
     </Link>

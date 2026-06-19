@@ -28,11 +28,11 @@ export function activityTitle(pct: number | null, hours?: number | null): string
 // the uncapped `pct` (when supplied) so >100% is visible. The whole meter takes
 // one tone by lit-bar count: 1 bar pale red, 2-3 orange, 4-5 green.
 export function ActivityMeter({ value, hours, pct, title }: { value: number | null; hours?: number | null; pct?: number | null; title?: string }) {
-  if (value == null) return <span className="oh-muted">-</span>
+  if (value == null) return <span className="doh-muted">-</span>
   const lit = Math.max(0, Math.min(5, Math.round(value / 20)))
   const tone = lit <= 1 ? 'low' : lit <= 3 ? 'idle' : ''
   return (
-    <span className={`oh-meter ${tone}`} title={title ?? activityTitle(pct ?? value, hours)}>
+    <span className={`doh-meter ${tone}`} title={title ?? activityTitle(pct ?? value, hours)}>
       {[0, 1, 2, 3, 4].map((i) => (
         <i key={i} className={i < lit ? 'on' : ''} />
       ))}
@@ -45,7 +45,7 @@ export function ActivityMeterFill({ value, hours, pct, title }: { value: number;
   const lit = Math.max(0, Math.min(5, Math.round(value / 20)))
   const tone = lit <= 1 ? 'low' : lit <= 3 ? 'idle' : ''
   return (
-    <span className={`oh-meter fill ${tone}`} title={title ?? activityTitle(pct ?? value, hours)}>
+    <span className={`doh-meter fill ${tone}`} title={title ?? activityTitle(pct ?? value, hours)}>
       {[0, 1, 2, 3, 4].map((i) => (
         <i key={i} className={i < lit ? 'on' : ''} />
       ))}
@@ -60,7 +60,7 @@ export interface SparkSegment {
 
 export function Spark({ segments, height = 6, title, style }: { segments: SparkSegment[]; height?: number; title?: string; style?: CSSProperties }) {
   return (
-    <div className="oh-spark" style={{ height, ...style }} title={title}>
+    <div className="doh-spark" style={{ height, ...style }} title={title}>
       {segments.map((s, i) => (
         <span key={i} style={{ width: typeof s.width === 'number' ? `${s.width}%` : s.width, background: s.color }} />
       ))}
@@ -79,11 +79,11 @@ export function GpuMeter({ gpus, devices }: { gpus: number[]; devices?: GpuDevic
   const { resolved } = useTheme()
   const accent = PALETTES[resolved].accent // the bar-fill base the stripes contrast against
   return (
-    <span className="oh-gpurows">
+    <span className="doh-gpurows">
       {gpus.map((g, i) => {
         const d = devices?.[i]
         return (
-          <span className="oh-gpurow" key={i} title={gpuTip(d, g, i)}>
+          <span className="doh-gpurow" key={i} title={gpuTip(d, g, i)}>
             <small>{d ? shortGpuName(d.name) : `GPU ${i}`}</small>
             <span className="track">
               <i
@@ -192,16 +192,16 @@ export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
   const visible = (gpuSupported() ? rows : rows.filter((r) => r.gpus === undefined && r.gpuDevices === undefined))
     .filter((r) => !r.gpuDisconnected)
   return (
-    <div className="oh-res">
+    <div className="doh-res">
       {visible.map((r) => {
         // readout unavailable: never fabricate a bar - show an explicit "unavailable"
         // (operator: better to say "I don't know" than guess a denominator)
         if (r.error) {
           return (
-            <div className="oh-res-row" key={r.label}>
-              <span className="oh-res-label">{r.label}</span>
-              <span className="oh-res-bar" title={r.tip || 'Reading unavailable'} />
-              <span className="oh-res-val oh-muted" title={r.tip || 'Reading unavailable'}>unavailable</span>
+            <div className="doh-res-row" key={r.label}>
+              <span className="doh-res-label">{r.label}</span>
+              <span className="doh-res-bar" title={r.tip || 'Reading unavailable'} />
+              <span className="doh-res-val doh-muted" title={r.tip || 'Reading unavailable'}>unavailable</span>
             </div>
           )
         }
@@ -219,17 +219,17 @@ export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
               // utilisation is not sampled the bars render at zero fill (empty
               // striped track) rather than collapsing to inventory chips
               ? <GpuMeter gpus={utils ?? devices!.map((d) => d.utilizationPct ?? 0)} devices={devices} />
-              : <span className="oh-res-bar" title={r.tip} />)
+              : <span className="doh-res-bar" title={r.tip} />)
             // the detail tooltip rides BOTH the bar and the value, so hovering the
             // progress bar itself (not only the % readout) shows the breakdown
-            : <span className="oh-res-bar" title={r.tip}><i style={{ width: `${r.value}%`, background: barColor(r.value), transition: 'width .4s ease, background .4s ease' }} /></span>)
+            : <span className="doh-res-bar" title={r.tip}><i style={{ width: `${r.value}%`, background: barColor(r.value), transition: 'width .4s ease, background .4s ease' }} /></span>)
         const val = r.valueLabel
           ?? (r.meter ? '' : isGpuRow ? (n ? (invOnly && memGB ? `${memGB} GB` : '') : '-') : `${r.value}%`)
         return (
-          <div className="oh-res-row" key={r.label}>
-            <span className="oh-res-label">{label}</span>
+          <div className="doh-res-row" key={r.label}>
+            <span className="doh-res-label">{label}</span>
             {bar}
-            <span className="oh-res-val" title={r.tip}>{val}</span>
+            <span className="doh-res-val" title={r.tip}>{val}</span>
           </div>
         )
       })}
@@ -360,20 +360,20 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
   const marks: Record<number, ReactNode> = { 1: '1h', [maxH]: 'max' }
   const atMax = hours >= maxH
   return (
-    <div className="oh-ttl">
-      <span className={boost ? 'oh-ttl-bar oh-ttl-boost' : 'oh-ttl-bar'} style={{ flex: 1, minWidth: 0, '--oh-ttl-anim': `${ANIMATION.ttlExtendMs}ms` } as CSSProperties} title="Idle session timer - your server is stopped automatically when this runs out">
+    <div className="doh-ttl">
+      <span className={boost ? 'doh-ttl-bar doh-ttl-boost' : 'doh-ttl-bar'} style={{ flex: 1, minWidth: 0, '--doh-ttl-anim': `${ANIMATION.ttlExtendMs}ms` } as CSSProperties} title="Idle session timer - your server is stopped automatically when this runs out">
         {/* status="normal" pins the status: antd otherwise auto-switches to "success"
          * at percent>=100 (progress.js), toggling .ant-progress-status-success exactly
          * at max - which re-animates/restyles the fill (the flicker + slightly-wider
          * look at max vs almost-max). Pinned, the bar renders identically at 99 and 100. */}
         <Progress percent={shownPct} status="normal" showInfo={false} strokeColor={barTone} trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
       </span>
-      <span className="oh-ttl-val" style={{ color: barTone, transition: 'color .4s ease' }}>
+      <span className="doh-ttl-val" style={{ color: barTone, transition: 'color .4s ease' }}>
         <Icon name="clock" size={14} />
         <b style={{ color: barTone }}>{fmtMinutes(displayMin)}</b>
       </span>
       {uptimeLabel && (
-        <span className="oh-muted" title="Server uptime" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+        <span className="doh-muted" title="Server uptime" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
           up {uptimeLabel}
         </span>
       )}

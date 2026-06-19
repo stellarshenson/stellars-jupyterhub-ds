@@ -33,13 +33,13 @@ def test_self_signup_then_admin_authorises(admin_portal, signup_user, admin_api,
 
     page = admin_portal.goto("/users")
     expect(page.get_by_text("Pending Authorisation", exact=False)).to_be_visible()
-    row = page.locator(".oh-pending-table tr").filter(
+    row = page.locator(".doh-pending-table tr").filter(
         has=page.get_by_role("link", name=PENDING_USER, exact=True))
     expect(row).to_be_visible()
 
     # Authorise through the SPA; the pending queue then empties (only user pending).
     row.get_by_role("button", name="Authorize").click()
-    expect(page.locator(".oh-pending-table")).to_have_count(0)
+    expect(page.locator(".doh-pending-table")).to_have_count(0)
 
     # and the backend now reports the user authorised (deterministic, no refetch race).
     users = admin_api.get(f"{base_url}/hub/api/native-users", timeout=10).json().get("users", [])

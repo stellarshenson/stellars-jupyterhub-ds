@@ -29,7 +29,7 @@ function postForm(action: string, fields: Record<string, string>) {
 
 function Brand() {
   return (
-    <div className="oh-auth-brand">
+    <div className="doh-auth-brand">
       <img src={`${portalAssetBase()}brand/jh-logo.svg`} alt="Duoptimum Hub" />
     </div>
   )
@@ -41,11 +41,11 @@ function AuthLogin() {
   const submit = (v: { username: string; password: string }) =>
     postForm(`${hubUrl('/login')}${next ? `?next=${next}` : ''}`, { username: v.username, password: v.password, _xsrf: xsrfToken() })
   return (
-    <div className="oh-auth">
-      <div className="oh-auth-card">
+    <div className="doh-auth">
+      <div className="doh-auth-card">
         <Brand />
-        <h1 className="oh-auth-title">Sign In</h1>
-        <p className="oh-auth-sub">Duoptimum Hub</p>
+        <h1 className="doh-auth-title">Sign In</h1>
+        <p className="doh-auth-sub">Duoptimum Hub</p>
         {error && <div style={{ marginBottom: 16 }}><Alert type="error" showIcon message={error} /></div>}
         <Form layout="vertical" requiredMark={false} onFinish={submit}>
           <Form.Item label="Username" name="username" rules={[{ required: true, message: 'Enter your username' }]}>
@@ -56,7 +56,7 @@ function AuthLogin() {
           </Form.Item>
           <Button type="primary" htmlType="submit" block>Sign In</Button>
         </Form>
-        <div className="oh-auth-foot">New here? <a href={hubUrl('/signup')}>Create an account</a></div>
+        <div className="doh-auth-foot">New here? <a href={hubUrl('/signup')}>Create an account</a></div>
       </div>
     </div>
   )
@@ -77,11 +77,11 @@ function AuthSignup() {
       _xsrf: xsrfToken(),
     })
   return (
-    <div className="oh-auth">
-      <div className="oh-auth-card">
+    <div className="doh-auth">
+      <div className="doh-auth-card">
         <Brand />
-        <h1 className="oh-auth-title">Create an Account</h1>
-        <p className="oh-auth-sub">Duoptimum Hub</p>
+        <h1 className="doh-auth-title">Create an Account</h1>
+        <p className="doh-auth-sub">Duoptimum Hub</p>
         {message && <div style={{ marginBottom: 16 }}><Notice type={tone}>{message}</Notice></div>}
         <Form layout="vertical" requiredMark={false} onFinish={submit}>
           <Form.Item label="Username" name="username" rules={[{ required: true, message: 'Choose a username' }]}>
@@ -110,7 +110,7 @@ function AuthSignup() {
           </Form.Item>
           <Button type="primary" htmlType="submit" block>Create Account</Button>
         </Form>
-        <div className="oh-auth-foot">Already have an account? <a href={hubUrl('/login')}>Sign in</a></div>
+        <div className="doh-auth-foot">Already have an account? <a href={hubUrl('/login')}>Sign in</a></div>
       </div>
     </div>
   )

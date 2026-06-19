@@ -34,11 +34,11 @@ export default function Tokens() {
   }
 
   const tokenCols: ProColumns<TokenRow>[] = [
-    { title: 'Note', dataIndex: 'note', render: (_, t) => <span className="oh-mono">{t.note}</span> },
-    { title: 'Scopes', dataIndex: 'scopes', render: (_, t) => <span className="oh-muted">{t.scopes ?? '-'}</span> },
+    { title: 'Note', dataIndex: 'note', render: (_, t) => <span className="doh-mono">{t.note}</span> },
+    { title: 'Scopes', dataIndex: 'scopes', render: (_, t) => <span className="doh-muted">{t.scopes ?? '-'}</span> },
     { title: 'Created', dataIndex: 'createdISO', render: (_, t) => <span title={exactDate(t.createdISO)}>{timeAgoShort(t.createdISO)}</span> },
     { title: 'Last Used', dataIndex: 'lastUsedISO', render: (_, t) => <span title={t.lastUsedISO ? exactDate(t.lastUsedISO) : 'never'}>{timeAgoShort(t.lastUsedISO)}</span> },
-    { title: 'Expires', dataIndex: 'expiresISO', render: (_, t) => (t.expiresISO ? exactDate(t.expiresISO) : <span className="oh-muted">never</span>) },
+    { title: 'Expires', dataIndex: 'expiresISO', render: (_, t) => (t.expiresISO ? exactDate(t.expiresISO) : <span className="doh-muted">never</span>) },
     { title: 'Actions', align: 'right', width: 80, render: (_, t) => <IconAction icon="close" title="Revoke" tone="danger" onClick={() => revokeToken(username, t.id, t.note)} /> },
   ]
 
@@ -65,7 +65,7 @@ export default function Tokens() {
         search={false}
         options={false}
         locale={{ emptyText: 'No personal tokens yet' }}
-        rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+        rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
         pagination={false}
         style={{ marginBottom: 16 }}
       />
@@ -77,7 +77,7 @@ export default function Tokens() {
         search={false}
         options={false}
         locale={{ emptyText: 'No authorised applications' }}
-        rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+        rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
         pagination={false}
       />
     </>

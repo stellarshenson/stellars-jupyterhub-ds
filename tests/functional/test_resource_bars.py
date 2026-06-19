@@ -14,13 +14,13 @@ from playwright.sync_api import expect
 
 @pytest.mark.acc_crit("resource-bars::Gradual ramp past 50%")
 def test_bar_at_90pct_uses_danger_token(admin_portal):
-    page = admin_portal.goto("/design-language", ready=".oh-res-row")
+    page = admin_portal.goto("/design-language", ready=".doh-res-row")
     # the demo ResourceBars row labelled "90%" - its fill must use the danger token
     # (barColor saturates to var(--color-danger) at >=90%, == the Stop-button red).
-    row = page.locator(".oh-res-row").filter(
-        has=page.locator(".oh-res-label", has_text="90%")
+    row = page.locator(".doh-res-row").filter(
+        has=page.locator(".doh-res-label", has_text="90%")
     ).first
     expect(row).to_be_visible()
-    fill = row.locator(".oh-res-bar > i")
+    fill = row.locator(".doh-res-bar > i")
     style = fill.get_attribute("style") or ""
     assert "var(--color-danger)" in style, f"90% bar is not the danger red: {style!r}"

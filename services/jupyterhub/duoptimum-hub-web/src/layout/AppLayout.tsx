@@ -114,7 +114,7 @@ function SiderHandle({ collapsed, onToggle }: { collapsed: boolean; onToggle: ()
   return (
     <Tooltip title={collapsed ? 'Expand' : 'Collapse'} placement="right">
       <button
-        className="oh-sider-handle"
+        className="doh-sider-handle"
         onClick={onToggle}
         aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         style={{
@@ -152,9 +152,9 @@ function VersionFooter() {
         <span style={{ margin: '0 6px' }}>·</span>
         JupyterHub<Tag bordered={false} style={tag}>v{hub?.version ?? '…'}</Tag>
       </span>
-      <span className="oh-techchips" style={{ marginTop: 0 }}>
+      <span className="doh-techchips" style={{ marginTop: 0 }}>
         {stackChips.map((c) => (
-          <span className="oh-chip" key={c.k}>
+          <span className="doh-chip" key={c.k}>
             <span className="k">{c.k}</span>
             <span className="v" style={{ background: c.c }}>{c.v}</span>
           </span>
@@ -194,7 +194,7 @@ export function AppLayout() {
         <Link to="/home" style={{ display: 'flex', alignItems: 'center', justifyContent: props?.collapsed ? 'center' : 'flex-start', height: '100%', flex: 1, minWidth: 0 }} title="Duoptimum Hub">
           {props?.collapsed
             ? <img src={markSrc} alt="Duoptimum Hub" style={{ width: 30, height: 30, objectFit: 'contain' }} />
-            : <img className="oh-brand-logo" src={logoSrc} alt="Stellars Tech AI Lab" />}
+            : <img className="doh-brand-logo" src={logoSrc} alt="Stellars Tech AI Lab" />}
         </Link>
       )}
       menuFooterRender={(props) => (props?.collapsed ? null : <SiderFoot />)}
@@ -212,13 +212,13 @@ export function AppLayout() {
       <HubConnectionIndicator />
       {!isMobile && <SiderHandle collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />}
       <div style={{ maxWidth: 1320, margin: '0 auto', width: '100%' }}>
-        <div className="oh-topbar">
+        <div className="doh-topbar">
           <Breadcrumbs />
           {/* header controls live top-right: side layout renders no ProLayout
            * header (Header returns null), so actionsRender would drop these in
            * the sider - keep them in this topbar row instead. Order: language,
            * theme, then the stage badge rightmost. */}
-          <div className="oh-header-actions" style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="doh-header-actions" style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
             <LanguageControl />
             <ThemeControl />
             <StageBadge />

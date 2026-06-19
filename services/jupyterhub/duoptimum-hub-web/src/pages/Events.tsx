@@ -61,8 +61,8 @@ export default function Events() {
       title: 'Event',
       dataIndex: 'text',
       render: (_, e) => (
-        <div className="oh-row">
-          <span className="oh-feed-ic">
+        <div className="doh-row">
+          <span className="doh-feed-ic">
             <Icon name={e.icon as 'play'} size={15} />
           </span>
           <span dangerouslySetInnerHTML={{ __html: e.text }} />
@@ -73,7 +73,7 @@ export default function Events() {
       title: 'Type',
       dataIndex: 'type',
       width: 120,
-      render: (_, e) => <span className={`oh-pill ${TONE_CLASS[TYPE_TONE[e.type]]}`}>{e.type}</span>,
+      render: (_, e) => <span className={`doh-pill ${TONE_CLASS[TYPE_TONE[e.type]]}`}>{e.type}</span>,
     },
     {
       title: 'When',
@@ -81,7 +81,7 @@ export default function Events() {
       width: 160,
       align: 'right',
       sorter: (a, b) => b.whenISO.localeCompare(a.whenISO),
-      render: (_, e) => <span title={exactDate(e.whenISO)} className="oh-muted">{timeAgoShort(e.whenISO)}</span>,
+      render: (_, e) => <span title={exactDate(e.whenISO)} className="doh-muted">{timeAgoShort(e.whenISO)}</span>,
     },
   ]
 
@@ -95,7 +95,7 @@ export default function Events() {
         loading={isLoading}
         search={false}
         options={false}
-        rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+        rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
         pagination={{ pageSize: 12, showSizeChanger: false }}
         headerTitle={
           <ScopeFilterPills

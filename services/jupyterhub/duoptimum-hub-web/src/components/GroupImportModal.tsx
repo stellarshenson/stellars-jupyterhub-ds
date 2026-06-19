@@ -99,14 +99,14 @@ export function GroupImportModal({ open, existing, onClose }: { open: boolean; e
       <div style={{ marginTop: 12 }}>
         <input ref={fileRef} type="file" multiple accept=".json,application/json" style={{ display: 'none' }} onChange={onFiles} />
         <Button icon={<Icon name="download" size={14} />} onClick={() => fileRef.current?.click()}>Choose JSON File(s)…</Button>
-        {fileCount > 0 && <span className="oh-muted" style={{ marginLeft: 8 }}>{fileCount} file{fileCount === 1 ? '' : 's'} selected</span>}
+        {fileCount > 0 && <span className="doh-muted" style={{ marginLeft: 8 }}>{fileCount} file{fileCount === 1 ? '' : 's'} selected</span>}
       </div>
 
       {valid.length > 0 && (
         <div style={{ marginTop: 12 }}>
           <Notice type="success">{valid.length} group{valid.length === 1 ? '' : 's'} ready to import.</Notice>
           <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-            {valid.map((r) => <span key={`${r.source}:${r.name}`} className="oh-mono">{r.name}</span>)}
+            {valid.map((r) => <span key={`${r.source}:${r.name}`} className="doh-mono">{r.name}</span>)}
           </div>
         </div>
       )}
@@ -116,10 +116,10 @@ export function GroupImportModal({ open, existing, onClose }: { open: boolean; e
           <Notice type="error">{invalid.length} group{invalid.length === 1 ? '' : 's'} cannot be imported:</Notice>
           <div style={{ marginTop: 8 }}>
             {invalid.map((r, i) => (
-              <div key={i} className="oh-row" style={{ gap: 8, padding: '3px 0' }}>
-                <span className="oh-mono">{r.name}</span>
-                <span className="oh-muted">- {r.reason}</span>
-                <span className="oh-muted" style={{ marginLeft: 'auto', fontSize: 12 }}>{r.source}</span>
+              <div key={i} className="doh-row" style={{ gap: 8, padding: '3px 0' }}>
+                <span className="doh-mono">{r.name}</span>
+                <span className="doh-muted">- {r.reason}</span>
+                <span className="doh-muted" style={{ marginLeft: 'auto', fontSize: 12 }}>{r.source}</span>
               </div>
             ))}
           </div>

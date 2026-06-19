@@ -2,7 +2,7 @@
  * active. Drives a list's visible scope. The default scope is never "everything". */
 export type ScopeTone = 'ok' | 'warn' | 'grey' | 'accent' | 'danger'
 
-// tone -> oh-pill colour class; exported so other pills (e.g. the Events Type
+// tone -> doh-pill colour class; exported so other pills (e.g. the Events Type
 // column) colour-match the legend instead of re-deriving it
 export const TONE_CLASS: Record<ScopeTone, string> = {
   ok: 'running',
@@ -25,10 +25,10 @@ export function ScopeFilterPills({ scopes, value, onChange }: { scopes: Scope[];
       {scopes.map((s) => (
         <span
           key={s.key}
-          className={`oh-pill oh-scope ${TONE_CLASS[s.tone]}${value === s.key ? ' active' : ''}`}
+          className={`doh-pill doh-scope ${TONE_CLASS[s.tone]}${value === s.key ? ' active' : ''}`}
           onClick={() => onChange(s.key)}
         >
-          <span className="oh-dot" />
+          <span className="doh-dot" />
           {s.label}
           {s.count != null && ` ${s.count.toLocaleString()}`}
         </span>

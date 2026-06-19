@@ -26,7 +26,7 @@ function PositionCell({ rank, total, disabled, onSet }: { rank: number; total: n
     setOpen(false)
     if (p !== rank) onSet(p)
   }
-  if (disabled) return <span className="oh-num" title="Clear the filter to reorder">{rank}</span>
+  if (disabled) return <span className="doh-num" title="Clear the filter to reorder">{rank}</span>
   return (
     <Popover
       open={open}
@@ -40,7 +40,7 @@ function PositionCell({ rank, total, disabled, onSet }: { rank: number; total: n
         </Space.Compact>
       }
     >
-      <span className="oh-num" style={{ cursor: 'pointer' }} title="Priority rank - top wins on conflict; click to set position, or drag to reorder">{rank}</span>
+      <span className="doh-num" style={{ cursor: 'pointer' }} title="Priority rank - top wins on conflict; click to set position, or drag to reorder">{rank}</span>
     </Popover>
   )
 }
@@ -100,7 +100,7 @@ export default function Groups() {
         </Link>
       ),
     },
-    { title: 'Description', dataIndex: 'description', render: (_, g) => <span className="oh-muted">{g.description}</span> },
+    { title: 'Description', dataIndex: 'description', render: (_, g) => <span className="doh-muted">{g.description}</span> },
     {
       title: 'Members',
       dataIndex: 'members',
@@ -115,7 +115,7 @@ export default function Groups() {
           : 'No members'
         return (
           <Tooltip title={tip} styles={{ root: { maxWidth: 320 } }}>
-            <Link to={`/groups/${g.name}`} className="oh-num">{g.members}</Link>
+            <Link to={`/groups/${g.name}`} className="doh-num">{g.members}</Link>
           </Tooltip>
         )
       },
@@ -132,7 +132,7 @@ export default function Groups() {
       render: (_, g) => {
         const i = rows.findIndex((r) => r.name === g.name)
         return (
-          <div className="oh-row" style={{ justifyContent: 'flex-end' }}>
+          <div className="doh-row" style={{ justifyContent: 'flex-end' }}>
             <IconAction icon="arrowup" title="Move up" disabled={!!q || i <= 0} onClick={() => move(i, i - 1)} />
             <IconAction icon="arrowdown" title="Move down" disabled={!!q || i < 0 || i >= rows.length - 1} onClick={() => move(i, i + 1)} />
             <IconAction icon="close" title="Delete group" tone="danger" onClick={() => deleteGroup(g.name)} />
@@ -167,7 +167,7 @@ export default function Groups() {
           if (!q) setRows(newData)
           reorderGroups(newData.map((g, i) => ({ name: g.name, priority: newData.length - i })))
         }}
-        rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+        rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
         pagination={{ pageSize: 12, showSizeChanger: false }}
         headerTitle={`${data.length} groups by priority`}
         toolBarRender={() => [

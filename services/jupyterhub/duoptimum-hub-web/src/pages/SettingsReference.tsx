@@ -19,9 +19,9 @@ export default function SettingsReference() {
   }, [data, q])
 
   const columns = [
-    { title: 'Variable', dataIndex: 'name', render: (v: string) => <span className="oh-mono">{v}</span>, width: 360 },
-    { title: 'Value', dataIndex: 'value', render: (v: string) => <span className="oh-mono">{v}</span>, width: 280 },
-    { title: 'Description', dataIndex: 'description', render: (v: string) => <span className="oh-muted">{v}</span> },
+    { title: 'Variable', dataIndex: 'name', render: (v: string) => <span className="doh-mono">{v}</span>, width: 360 },
+    { title: 'Value', dataIndex: 'value', render: (v: string) => <span className="doh-mono">{v}</span>, width: 280 },
+    { title: 'Description', dataIndex: 'description', render: (v: string) => <span className="doh-muted">{v}</span> },
   ]
 
   return (
@@ -34,7 +34,7 @@ export default function SettingsReference() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {filtered.map((cat) => (
           <Card key={cat.category} title={cat.category} styles={{ body: { padding: 0 } }}>
-            <Table<SettingsRefRow> rowKey="name" pagination={false} rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')} dataSource={cat.rows} columns={columns} />
+            <Table<SettingsRefRow> rowKey="name" pagination={false} rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')} dataSource={cat.rows} columns={columns} />
           </Card>
         ))}
       </div>

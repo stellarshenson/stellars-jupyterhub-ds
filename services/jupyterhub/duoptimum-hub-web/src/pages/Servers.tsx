@@ -60,14 +60,14 @@ function Metric({ label, value, detail, over, valueColor }: { label: string; val
     <div style={{ padding: '10px 0', borderBottom: '1px solid var(--color-border-subtle)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
         <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
-        <span className={over ? 'oh-cell-warn' : ''} style={valueColor ? { color: valueColor } : undefined}>{value}</span>
+        <span className={over ? 'doh-cell-warn' : ''} style={valueColor ? { color: valueColor } : undefined}>{value}</span>
       </div>
-      {detail && <div className="oh-muted" style={{ fontSize: 12, marginTop: 3, whiteSpace: 'pre-line' }}>{detail}</div>}
+      {detail && <div className="doh-muted" style={{ fontSize: 12, marginTop: 3, whiteSpace: 'pre-line' }}>{detail}</div>}
     </div>
   )
 }
 
-const dash = <span className="oh-muted">-</span>
+const dash = <span className="doh-muted">-</span>
 
 // the detailed per-server activity report shown in the drawer - every breakdown
 // the table keeps in tooltips, expanded inline
@@ -83,7 +83,7 @@ function ServerDetail({ row }: { row: ServerRow }) {
       <Metric label="Activity (7d)" value={<ActivityMeter value={row.activity} hours={row.activityHours} pct={row.activityPct} />} />
       <Metric label="CPU" value={row.cpu == null ? dash : `${listCpuMode === 'cores' ? row.cpu : (row.cpuAssignedPct ?? row.cpu)}%`} detail={row.cpuTip} valueColor={quotaColor(row.cpuQuotaPct)} />
       <Metric label="Memory" value={row.mem == null ? dash : `${row.mem} GB`} detail={row.memTip} valueColor={quotaColor(row.memQuotaPct)} />
-      {gpuSupported() && <Metric label="GPU" value={row.gpu ?? <span className="oh-muted">not tracked per-server</span>} />}
+      {gpuSupported() && <Metric label="GPU" value={row.gpu ?? <span className="doh-muted">not tracked per-server</span>} />}
       <Metric label="Volumes" value={row.volumesGB == null ? dash : `${row.volumesGB} GB`} detail={row.volumesTip} over={row.volumesOver} />
       <Metric label="System" value={row.systemGB == null ? dash : `+${row.systemGB} GB`} detail={row.systemTip} over={row.systemOver} />
       <Metric label="Time left" value={running ? (row.timeLeftLabel ?? dash) : dash} />
@@ -96,7 +96,7 @@ function ServerDetail({ row }: { row: ServerRow }) {
 // info (user + admin badge, server status, last activity) plus the row actions;
 // tapping a card opens the same detail drawer
 function MobileServerList({ rows, nav, lf, me, onDetail }: { rows: ServerRow[]; nav: NavigateFunction; lf: Lifecycle; me: string; onDetail: (r: ServerRow) => void }) {
-  if (!rows.length) return <div className="oh-muted" style={{ padding: '12px 4px' }}>No servers in scope</div>
+  if (!rows.length) return <div className="doh-muted" style={{ padding: '12px 4px' }}>No servers in scope</div>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {rows.map((r) => (
@@ -106,7 +106,7 @@ function MobileServerList({ rows, nav, lf, me, onDetail }: { rows: ServerRow[]; 
               <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {r.user}{r.admin && <Tag bordered={false} style={accentTag}>admin</Tag>}
               </div>
-              <div className="oh-muted" style={{ fontSize: 12 }}>{r.lastActivityISO ? timeAgoShort(r.lastActivityISO) : '-'}</div>
+              <div className="doh-muted" style={{ fontSize: 12 }}>{r.lastActivityISO ? timeAgoShort(r.lastActivityISO) : '-'}</div>
             </div>
             <StatusPill status={r.status} label={r.statusLabel} />
           </div>
@@ -165,12 +165,12 @@ export default function Servers() {
       // username links to the user config (same target as the Users list) and the
       // first/last name shows beneath it - no artificial click-friction
       render: (_, r) => (
-        <div className="oh-user-cell">
+        <div className="doh-user-cell">
           <span>
             <Link to={`/users/${r.user}`} state={{ from: SERVERS_ORIGIN }} style={{ color: 'var(--color-accent)' }} title={`Configure ${r.user}`}>{r.user}</Link>
             {r.admin && <Tag bordered={false} style={accentTag}>admin</Tag>}
           </span>
-          {r.name && <span className="oh-name-hint">{r.name}</span>}
+          {r.name && <span className="doh-name-hint">{r.name}</span>}
         </div>
       ),
     },
@@ -187,7 +187,7 @@ export default function Servers() {
       width: 128,
       sorter: (a, b) => (a.lastActivityISO ?? '').localeCompare(b.lastActivityISO ?? ''),
       render: (_, r) =>
-        r.lastActivityISO ? <span title={exactDate(r.lastActivityISO)}>{timeAgoShort(r.lastActivityISO)}</span> : <span className="oh-muted">-</span>,
+        r.lastActivityISO ? <span title={exactDate(r.lastActivityISO)}>{timeAgoShort(r.lastActivityISO)}</span> : <span className="doh-muted">-</span>,
     },
     {
       title: 'Activity',
@@ -198,7 +198,7 @@ export default function Servers() {
     },
     {
       title: <Tooltip title={SERVERS_COL_HELP.cpu}><span>CPU</span></Tooltip>, dataIndex: 'cpu', align: 'right', sorter: (a, b) => (a.cpu ?? -1) - (b.cpu ?? -1),
-      render: (_, r) => (r.cpu == null ? <span className="oh-muted">-</span> : <span className="oh-num" title={r.cpuTip} style={{ color: quotaColor(r.cpuQuotaPct) }}>{listCpuMode === 'cores' ? r.cpu : (r.cpuAssignedPct ?? r.cpu)}%</span>),
+      render: (_, r) => (r.cpu == null ? <span className="doh-muted">-</span> : <span className="doh-num" title={r.cpuTip} style={{ color: quotaColor(r.cpuQuotaPct) }}>{listCpuMode === 'cores' ? r.cpu : (r.cpuAssignedPct ?? r.cpu)}%</span>),
     },
     {
       title: <Tooltip title={SERVERS_COL_HELP.mem}><span>Mem</span></Tooltip>,
@@ -206,7 +206,7 @@ export default function Servers() {
       align: 'right',
       sorter: (a, b) => (a.mem ?? -1) - (b.mem ?? -1),
       render: (_, r) =>
-        r.mem == null ? <span className="oh-muted">-</span> : <span className="oh-num" title={r.memTip} style={{ color: quotaColor(r.memQuotaPct) }}>{r.mem} GB</span>,
+        r.mem == null ? <span className="doh-muted">-</span> : <span className="doh-num" title={r.memTip} style={{ color: quotaColor(r.memQuotaPct) }}>{r.mem} GB</span>,
     },
     // GPU column only when the platform has GPU AND some row actually carries a
     // per-server GPU value (live never collects it -> all-null -> column hidden)
@@ -215,7 +215,7 @@ export default function Servers() {
       dataIndex: 'gpu',
       align: 'center' as const,
       width: 96,
-      render: (_: unknown, r: ServerRow) => (r.gpu ? <Tag bordered={false} style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4, marginInlineEnd: 0 }}>{r.gpu}</Tag> : <span className="oh-muted">-</span>),
+      render: (_: unknown, r: ServerRow) => (r.gpu ? <Tag bordered={false} style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4, marginInlineEnd: 0 }}>{r.gpu}</Tag> : <span className="doh-muted">-</span>),
     }] as ProColumns<ServerRow>[] : []),
     {
       title: 'Vol',
@@ -223,7 +223,7 @@ export default function Servers() {
       align: 'right',
       sorter: (a, b) => (a.volumesGB ?? -1) - (b.volumesGB ?? -1),
       render: (_, r) =>
-        r.volumesGB == null ? <span className="oh-muted">-</span> : <span className={r.volumesOver ? 'oh-cell-warn' : 'oh-num'} title={r.volumesTip}>{r.volumesGB} GB</span>,
+        r.volumesGB == null ? <span className="doh-muted">-</span> : <span className={r.volumesOver ? 'doh-cell-warn' : 'doh-num'} title={r.volumesTip}>{r.volumesGB} GB</span>,
     },
     {
       title: 'Sys',
@@ -231,7 +231,7 @@ export default function Servers() {
       align: 'right',
       sorter: (a, b) => (a.systemGB ?? -1) - (b.systemGB ?? -1),
       render: (_, r) =>
-        r.systemGB == null ? <span className="oh-muted">-</span> : <span className={r.systemOver ? 'oh-cell-warn' : 'oh-num'} title={r.systemTip}>+{r.systemGB} GB</span>,
+        r.systemGB == null ? <span className="doh-muted">-</span> : <span className={r.systemOver ? 'doh-cell-warn' : 'doh-num'} title={r.systemTip}>+{r.systemGB} GB</span>,
     },
     {
       title: 'Time Left',
@@ -239,19 +239,19 @@ export default function Servers() {
       align: 'right',
       sorter: (a, b) => (a.timeLeftMin ?? -1) - (b.timeLeftMin ?? -1),
       render: (_, r) => {
-        if (r.timeLeftMin == null) return <span className="oh-muted">-</span>
+        if (r.timeLeftMin == null) return <span className="doh-muted">-</span>
         // the standard limit is the server's REAL configured idle-culler TTL (from
         // /activity); if the backend doesn't report it, show the bare time-left
         // rather than assert a limit we don't actually know
         if (r.baseTimeoutMin == null)
-          return <span className={r.timeLeftWarn ? 'oh-cell-amber' : 'oh-num'}>{r.timeLeftLabel}</span>
+          return <span className={r.timeLeftWarn ? 'doh-cell-amber' : 'doh-num'}>{r.timeLeftLabel}</span>
         const baseMin = r.baseTimeoutMin
         const baseH = Math.round((baseMin / 60) * 10) / 10
         const overH = (r.timeLeftMin - baseMin) / 60
         const tip = overH > 0.05
           ? `${Math.round(overH * 10) / 10}h over the ${baseH}h standard limit`
           : `within the ${baseH}h standard limit`
-        return <span className={r.timeLeftWarn ? 'oh-cell-amber' : 'oh-num'} title={tip}>{r.timeLeftLabel}</span>
+        return <span className={r.timeLeftWarn ? 'doh-cell-amber' : 'doh-num'} title={tip}>{r.timeLeftLabel}</span>
       },
     },
     { title: 'Actions', align: 'right', render: (_, r) => <span onClick={(e) => e.stopPropagation()}>{rowActions(r, navigate, lifecycle, me, SERVERS_ORIGIN)}</span> },
@@ -302,7 +302,7 @@ export default function Servers() {
           loading={isLoading}
           search={false}
           options={false}
-          rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+          rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
           onRow={(r) => ({ onClick: () => setDetail(r), style: { cursor: 'pointer' } })}
           pagination={{ defaultPageSize: 25, pageSizeOptions: [25, 50, 100], showSizeChanger: { showSearch: false }, showTotal: (t) => `${t} servers in scope` }}
           headerTitle={<ScopeFilterPills value={scope} onChange={setScope} scopes={scopes} />}

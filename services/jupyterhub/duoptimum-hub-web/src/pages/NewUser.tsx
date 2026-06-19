@@ -48,7 +48,7 @@ export default function NewUser() {
           </Form.Item>
           <Form.Item label="Initial password" extra="Auto-generated - type to override">
             <Space.Compact style={{ width: '100%' }}>
-              <Input className="oh-mono" value={pw} onChange={(e) => setPw(e.target.value)} />
+              <Input className="doh-mono" value={pw} onChange={(e) => setPw(e.target.value)} />
               <Button onClick={() => setPw(genPassword())}>Generate</Button>
             </Space.Compact>
           </Form.Item>

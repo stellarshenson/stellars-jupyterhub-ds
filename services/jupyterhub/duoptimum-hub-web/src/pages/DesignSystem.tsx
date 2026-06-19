@@ -16,7 +16,7 @@ const tagStyle = (bg: string, color: string) => ({ background: bg, color, border
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 16, alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--color-border-subtle)' }}>
-      <div className="oh-muted">{label}</div>
+      <div className="doh-muted">{label}</div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>{children}</div>
     </div>
   )
@@ -29,7 +29,7 @@ export default function DesignSystem() {
   return (
     <>
       <PageHeader title="Design system" sub="The control vocabulary - one language across every screen" />
-      <div className="oh-note" style={{ marginBottom: 16 }}>
+      <div className="doh-note" style={{ marginBottom: 16 }}>
         <span><b>Note:</b> mock-only reference, not part of the design. Standard antd components carry the surface; the JupyterHub-specific metaphors (pills, meters, bars) are custom and themed by the same tokens.</span>
       </div>
 
@@ -113,7 +113,7 @@ export default function DesignSystem() {
 
       <Card title="Inputs">
         <Row label="Text input"><Input style={{ width: 280 }} defaultValue="editable" /></Row>
-        <Row label="Disabled input"><Input className="oh-mono" style={{ width: 280 }} defaultValue="locked value" disabled /></Row>
+        <Row label="Disabled input"><Input className="doh-mono" style={{ width: 280 }} defaultValue="locked value" disabled /></Row>
         <Row label="Select"><Select style={{ width: 280 }} defaultValue="single" options={[{ value: 'single', label: 'single' }, { value: 'pair', label: 'pair' }]} /></Row>
         <Row label="Switch"><Switch defaultChecked /> <Switch /></Row>
         <Row label="Combo (typeahead)"><div style={{ width: 360 }}><Combo corpus={['research', 'data-science', 'gpu', 'nlp', 'vision-lab', 'staff']} value={combo} onChange={setCombo} /></div></Row>

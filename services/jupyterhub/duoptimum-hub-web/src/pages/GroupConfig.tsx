@@ -139,14 +139,14 @@ export default function GroupConfig() {
         </label>
       </div>
       {uploaded && <Notice type="success">Policy loaded into the editor - review, then Save to apply.</Notice>}
-      <div className="oh-pol-hint" style={{ margin: '12px 0' }}>Toggle a section on to grant it to every member; off keeps its data but the hub ignores it at spawn.</div>
+      <div className="doh-pol-hint" style={{ margin: '12px 0' }}>Toggle a section on to grant it to every member; off keeps its data but the hub ignores it at spawn.</div>
       <GroupPolicyTab cfg={editorCfg} onChange={setPolicyCfg} />
     </div>
   )
 
   const membersTab = (
     <div>
-      <div style={{ marginBottom: 8, color: 'var(--color-text-muted)', fontSize: 13 }}>Members <span className="oh-muted">· {members.length}</span></div>
+      <div style={{ marginBottom: 8, color: 'var(--color-text-muted)', fontSize: 13 }}>Members <span className="doh-muted">· {members.length}</span></div>
       <Combo corpus={corpus} value={members} onChange={setMembers} placeholder="Add a member…" />
     </div>
   )

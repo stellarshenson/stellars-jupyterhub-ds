@@ -73,7 +73,7 @@ function MobileServersWidget() {
     <Card style={{ marginTop: 16 }}>
       <h3 style={{ fontSize: 14, margin: '0 0 12px' }}>Active Servers</h3>
       {active.length === 0 ? (
-        <span className="oh-muted">No active servers</span>
+        <span className="doh-muted">No active servers</span>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {active.map((s) => (
@@ -82,7 +82,7 @@ function MobileServersWidget() {
                 <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {s.user}{s.admin && <Tag bordered={false} style={adminTag}>admin</Tag>}
                 </div>
-                <div className="oh-muted" style={{ fontSize: 12 }}>{s.lastActivityISO ? `active ${timeAgoShort(s.lastActivityISO)}` : '-'}</div>
+                <div className="doh-muted" style={{ fontSize: 12 }}>{s.lastActivityISO ? `active ${timeAgoShort(s.lastActivityISO)}` : '-'}</div>
               </div>
               <StatusPill status={s.status} label={s.statusLabel} />
             </div>

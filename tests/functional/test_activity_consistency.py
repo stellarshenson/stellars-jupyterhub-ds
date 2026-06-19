@@ -46,8 +46,8 @@ def _meter_title(admin_portal, route, user):
     page = admin_portal.goto(route)
     row = page.locator("tr.ant-table-row").filter(has_text=user)
     expect(row.first).to_be_visible()
-    meter = row.first.locator(".oh-meter")
-    expect(meter.first).to_be_visible()  # bug: '-' dash (oh-muted), no meter
+    meter = row.first.locator(".doh-meter")
+    expect(meter.first).to_be_visible()  # bug: '-' dash (doh-muted), no meter
     return meter.first.get_attribute("title")
 
 
@@ -108,10 +108,10 @@ def test_hero_activity_shown_when_stopped(admin_portal, base_url, admin_api):
         _delete(admin_api, base_url, f"/hub/api/users/{me}/server")
         assert _wait(lambda: not _server_state(admin_api, base_url, me)), "admin server never stopped"
 
-        # the hero uses ActivityMeterFill (.oh-meter.fill); the home widget rows use
-        # .oh-meter (not .fill), so .oh-meter.fill is the hero meter unambiguously
-        page = admin_portal.goto("/home", ready=".oh-meter.fill")
-        hero_title = page.locator(".oh-meter.fill").first.get_attribute("title")
+        # the hero uses ActivityMeterFill (.doh-meter.fill); the home widget rows use
+        # .doh-meter (not .fill), so .doh-meter.fill is the hero meter unambiguously
+        page = admin_portal.goto("/home", ready=".doh-meter.fill")
+        hero_title = page.locator(".doh-meter.fill").first.get_attribute("title")
         # same admin on the Servers list - both meters derive from the SAME activity
         # fields, so the tooltip (percent + avg hours) must be identical
         servers_title = _meter_title(admin_portal, "/servers", me)

@@ -133,7 +133,7 @@ export function CommandPalette() {
         )}
         {groups.map((g) => (
           <div key={g}>
-            <div className="oh-cmdk-group">{g}</div>
+            <div className="doh-cmdk-group">{g}</div>
             {filtered
               .filter((r) => r.group === g)
               .map((r) => {
@@ -142,13 +142,13 @@ export function CommandPalette() {
                 return (
                   <div
                     key={`${g}-${r.label}`}
-                    className={`oh-cmdk-item${i === sel ? ' sel' : ''}`}
+                    className={`doh-cmdk-item${i === sel ? ' sel' : ''}`}
                     onMouseEnter={() => setSel(i)}
                     onClick={() => run(i)}
                   >
                     <Icon name={r.icon} size={16} />
                     <span style={{ flex: 1 }}>{r.label}</span>
-                    {r.hint && <span className="oh-kbd">{r.hint}</span>}
+                    {r.hint && <span className="doh-kbd">{r.hint}</span>}
                   </div>
                 )
               })}

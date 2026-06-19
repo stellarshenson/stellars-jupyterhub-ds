@@ -94,7 +94,7 @@ export function RemoveUserModal({
       <div style={center}>
         <Spin size="large" />
         <div style={{ fontWeight: 500 }}>{DOCKER_STEPS[step]}</div>
-        <small className="oh-muted">Removing {name} and {suffixes.length} volume{suffixes.length === 1 ? '' : 's'}…</small>
+        <small className="doh-muted">Removing {name} and {suffixes.length} volume{suffixes.length === 1 ? '' : 's'}…</small>
       </div>
     )
     footer = null
@@ -103,7 +103,7 @@ export function RemoveUserModal({
       <div style={center}>
         <span style={{ color: 'var(--color-success)' }}><Icon name="check" size={32} /></span>
         <div style={{ fontWeight: 500 }}>{name} removed</div>
-        {removed.length > 0 && <small className="oh-muted">Deleted {removed.length} volume{removed.length === 1 ? '' : 's'}: {removed.join(', ')}</small>}
+        {removed.length > 0 && <small className="doh-muted">Deleted {removed.length} volume{removed.length === 1 ? '' : 's'}: {removed.join(', ')}</small>}
       </div>
     )
     footer = <Button type="primary" onClick={() => { onClose(); onRemoved() }}>Close</Button>
@@ -126,7 +126,7 @@ export function RemoveUserModal({
             <Checkbox checked={withVolumes} disabled={serverRunning} onChange={(e) => setWithVolumes(e.target.checked)}>
               Also delete this user's volumes ({suffixes.join(', ')}) - permanent
             </Checkbox>
-            {serverRunning && <div style={{ marginTop: 6 }}><small className="oh-muted">Stop the server to also remove its volumes.</small></div>}
+            {serverRunning && <div style={{ marginTop: 6 }}><small className="doh-muted">Stop the server to also remove its volumes.</small></div>}
           </div>
         ) : (
           <Notice type="info"><span>No active volumes for this user.</span></Notice>

@@ -33,9 +33,9 @@ function PendingSection({ users }: { users: UserRow[] }) {
   return (
     <Card style={{ marginBottom: 16, borderColor: 'var(--color-warning)' }} styles={{ body: { padding: 0 } }}>
       <div style={{ padding: '12px 24px', borderBottom: '1px solid var(--color-warning-soft)', fontWeight: 600 }}>
-        Pending Authorisation <span className="oh-muted">· {users.length}</span>
+        Pending Authorisation <span className="doh-muted">· {users.length}</span>
       </div>
-      <table className="oh-pending-table">
+      <table className="doh-pending-table">
         <thead>
           <tr>
             <th>User</th>
@@ -48,14 +48,14 @@ function PendingSection({ users }: { users: UserRow[] }) {
           {users.map((u) => (
             <tr key={u.name}>
               <td>
-                <div className="oh-user-cell">
+                <div className="doh-user-cell">
                   <Link to={`/users/${u.name}`} style={{ color: 'var(--color-accent)' }}>{u.name}</Link>
-                  {u.fullName && <span className="oh-name-hint">{u.fullName}</span>}
+                  {u.fullName && <span className="doh-name-hint">{u.fullName}</span>}
                 </div>
               </td>
               <td><CappedTags items={u.groups.map((g) => ({ key: g, label: g }))} cap={4} /></td>
-              <td className="oh-pending-when">{timeAgoShort(u.createdISO)}</td>
-              <td className="oh-pending-act">
+              <td className="doh-pending-when">{timeAgoShort(u.createdISO)}</td>
+              <td className="doh-pending-act">
                 <Button type="primary" size="small" onClick={() => setUserAuthorization(u.name, true)}>Authorize</Button>
                 <Button danger size="small" onClick={() => discardUser(u.name)}>Discard</Button>
               </td>
@@ -100,14 +100,14 @@ export default function Users() {
       dataIndex: 'name',
       sorter: (a, b) => a.name.localeCompare(b.name),
       render: (_, u) => (
-        <div className="oh-user-cell">
+        <div className="doh-user-cell">
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Link to={`/users/${u.name}`} style={{ color: 'var(--color-accent)' }}>
               {u.name}
             </Link>
             {u.admin && <Tag bordered={false} style={accentTag}>admin</Tag>}
           </div>
-          {u.fullName && <span className="oh-name-hint">{u.fullName}</span>}
+          {u.fullName && <span className="doh-name-hint">{u.fullName}</span>}
         </div>
       ),
     },
@@ -121,7 +121,7 @@ export default function Users() {
       render: (_, u) =>
         isAdminUser(u.name, !!u.admin) ? (
           <Tooltip title="Admins are always authorised">
-            <span className="oh-muted">authorised</span>
+            <span className="doh-muted">authorised</span>
           </Tooltip>
         ) : (
           <Switch size="small" checked={u.authorized} onChange={(checked) => setUserAuthorization(u.name, checked)} />
@@ -138,7 +138,7 @@ export default function Users() {
       dataIndex: 'lastSeenISO',
       sorter: (a, b) => (a.lastSeenISO ?? '').localeCompare(b.lastSeenISO ?? ''),
       render: (_, u) =>
-        u.lastSeenISO ? <span title={exactDate(u.lastSeenISO)}>{timeAgoShort(u.lastSeenISO)}</span> : <span className="oh-muted" title="never signed in">-</span>,
+        u.lastSeenISO ? <span title={exactDate(u.lastSeenISO)}>{timeAgoShort(u.lastSeenISO)}</span> : <span className="doh-muted" title="never signed in">-</span>,
     },
     {
       title: 'Activity',
@@ -173,7 +173,7 @@ export default function Users() {
         loading={isLoading}
         search={false}
         options={false}
-        rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+        rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
         pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (t) => `${t} users in scope` }}
         headerTitle={
           <ScopeFilterPills

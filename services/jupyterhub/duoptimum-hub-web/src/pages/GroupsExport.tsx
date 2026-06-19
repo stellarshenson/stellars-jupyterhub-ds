@@ -39,12 +39,12 @@ export default function GroupsExport() {
         <Table<GroupRow>
           rowKey="name"
           pagination={false}
-          rowClassName={(_, i) => (i % 2 ? 'oh-row-alt' : '')}
+          rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
           rowSelection={{ selectedRowKeys: selected, onChange: setSelected }}
           dataSource={[...data].sort((a, b) => b.priority - a.priority)}
           columns={[
             { title: 'Group', dataIndex: 'name' },
-            { title: 'Description', dataIndex: 'description', render: (v) => <span className="oh-muted">{v}</span> },
+            { title: 'Description', dataIndex: 'description', render: (v) => <span className="doh-muted">{v}</span> },
             { title: 'Policies', dataIndex: 'policies', render: (_, g) => <CappedTags items={g.policies.map((p) => ({ key: p.key, label: p.label, detail: p.detail }))} cap={4} /> },
           ]}
         />

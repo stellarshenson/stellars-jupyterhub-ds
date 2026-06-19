@@ -15,7 +15,7 @@ const MODES: Array<{ mode: ThemeMode; icon: IconKey; title: string }> = [
 export function ThemeChanger() {
   const { mode, setMode } = useTheme()
   return (
-    <div className="oh-theme-changer">
+    <div className="doh-theme-changer">
       {MODES.map((m) => (
         <Tooltip key={m.mode} title={m.title}>
           <button className={mode === m.mode ? 'on' : ''} onClick={() => setMode(m.mode)} aria-label={m.title}>

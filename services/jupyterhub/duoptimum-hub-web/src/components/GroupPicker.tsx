@@ -30,8 +30,8 @@ export function GroupPicker({ value, onChange, label = 'Groups' }: { value: stri
       {label && <div style={{ marginBottom: 8, color: 'var(--color-text-muted)', fontSize: 13 }}>{label}</div>}
       <Combo corpus={corpus} value={value} onChange={onChange} placeholder="Add a group by name…" />
 
-      <div className="oh-section-title">Add a Group</div>
-      <div className="oh-page-sub" style={{ marginBottom: 12 }}>Browse the catalogue - each group's policies are shown; membership grants them.</div>
+      <div className="doh-section-title">Add a Group</div>
+      <div className="doh-page-sub" style={{ marginBottom: 12 }}>Browse the catalogue - each group's policies are shown; membership grants them.</div>
       <Input
         allowClear
         prefix={<Icon name="search" size={14} />}
@@ -49,7 +49,7 @@ export function GroupPicker({ value, onChange, label = 'Groups' }: { value: stri
         locale={{ emptyText: 'No group matches that filter' }}
         columns={[
           { title: 'Group', dataIndex: 'name', width: 160, render: (v) => <b>{v}</b> },
-          { title: 'Description', dataIndex: 'description', render: (v) => <span className="oh-muted">{v}</span> },
+          { title: 'Description', dataIndex: 'description', render: (v) => <span className="doh-muted">{v}</span> },
           {
             title: 'Policies',
             dataIndex: 'policies',
@@ -57,7 +57,7 @@ export function GroupPicker({ value, onChange, label = 'Groups' }: { value: stri
               g.policies.length ? (
                 <CappedTags items={g.policies.map((p) => ({ key: p.key, label: p.label, detail: p.detail }))} cap={4} />
               ) : (
-                <span className="oh-muted">No policies</span>
+                <span className="doh-muted">No policies</span>
               ),
           },
           {
