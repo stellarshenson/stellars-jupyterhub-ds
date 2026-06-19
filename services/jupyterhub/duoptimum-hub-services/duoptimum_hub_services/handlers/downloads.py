@@ -33,7 +33,7 @@ import time
 from tornado import web
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest
 
-from ..docker_utils import encode_username_for_docker
+from ..docker_utils import lab_container_name
 
 
 # ── Notification throttle ────────────────────────────────────────────────────
@@ -163,7 +163,7 @@ async def notify_blocked(username, filename):
     try:
         token = user.new_api_token(note="download-blocked", expires_in=300)
         base_url = spawner.server.base_url
-        container_url = f"http://jupyterlab-{encode_username_for_docker(username)}:8888"
+        container_url = f"http://{lab_container_name(username)}:8888"
         endpoint = f"{container_url}{base_url}jupyterlab-notifications-extension/ingest"
         request = HTTPRequest(
             url=endpoint,
@@ -303,7 +303,7 @@ class FilesGuardHandler(web.RequestHandler):
         if not (spawner and spawner.active and spawner.server):
             raise web.HTTPError(503, "Server not available")
 
-        container_url = f"http://jupyterlab-{encode_username_for_docker(username)}:8888"
+        container_url = f"http://{lab_container_name(username)}:8888"
         target = f"{container_url}{spawner.server.base_url}{subpath}"
         if self.request.query:
             target = f"{target}?{self.request.query}"

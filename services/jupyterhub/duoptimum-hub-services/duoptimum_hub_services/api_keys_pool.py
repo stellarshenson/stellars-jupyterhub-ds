@@ -214,11 +214,12 @@ def _list_running_pool_slots():
     by_container = {}
     try:
         import docker
+        from .docker_utils import encoded_username_from_lab_container
         client = docker.DockerClient(base_url='unix://var/run/docker.sock')
         try:
             for c in client.containers.list(filters={'status': 'running'}):
                 name = c.name or ''
-                if not name.startswith('jupyterlab-'):
+                if encoded_username_from_lab_container(name) is None:
                     continue
                 pls = parse_pool_labels(c.labels or {})
                 if not pls:
@@ -241,8 +242,8 @@ async def observe_in_use():
 
 
 def _container_name(username):
-    from .docker_utils import encode_username_for_docker
-    return f'jupyterlab-{encode_username_for_docker(username)}'
+    from .docker_utils import lab_container_name
+    return lab_container_name(username)
 
 
 # ── PoolManager singleton (closes the assign-time race) ──────────────────────

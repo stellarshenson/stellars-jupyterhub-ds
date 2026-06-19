@@ -1,6 +1,7 @@
 """Docker utility functions for container and volume operations."""
 
 import asyncio
+import os
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -17,6 +18,44 @@ def encode_username_for_docker(username):
     """
     from escapism import escape
     return escape(username, escape_char='-').lower()
+
+
+# Lab-container name template. The hub sets ``c.DockerSpawner.name_template`` from
+# JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE; every place that addresses a user's lab
+# from the hub (logs, restart, stats, the api-keys pool, the notification/download
+# proxy hosts) derives the name from this SAME env var, so a rename never drifts
+# between the spawner that creates the container and the lookups that find it. The
+# default mirrors the historical literal.
+LAB_CONTAINER_NAME_TEMPLATE_DEFAULT = 'jupyterlab-{username}'
+
+
+def lab_container_name(username):
+    """Docker container name (= its DNS name on the user network) for a user's
+    lab server, rendered from JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE with the
+    docker-encoded username. The spawner names the container from the same
+    template, so this is the authoritative way to address a lab from the hub."""
+    template = (
+        os.environ.get('JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE')
+        or LAB_CONTAINER_NAME_TEMPLATE_DEFAULT
+    )
+    return template.replace('{username}', encode_username_for_docker(username))
+
+
+def encoded_username_from_lab_container(name):
+    """Inverse of ``lab_container_name``: recover the docker-encoded username from a
+    running lab container's name, or None when the name is not a lab container (so
+    enumerators can skip non-lab containers). Prefix/suffix are derived from the
+    SAME template, so renaming via JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE keeps the
+    forward (spawn) and reverse (enumerate) directions in sync - nothing hardcodes
+    the 'jupyterlab-' prefix."""
+    template = (
+        os.environ.get('JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE')
+        or LAB_CONTAINER_NAME_TEMPLATE_DEFAULT
+    )
+    prefix, _, suffix = template.partition('{username}')
+    if not name.startswith(prefix) or not name.endswith(suffix):
+        return None
+    return name[len(prefix):len(name) - len(suffix)]
 
 
 def derive_cpu_assignment(hostcfg, online_cpus):
@@ -128,7 +167,7 @@ def get_container_stats(username):
     try:
         import docker
         docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
-        container_name = f'jupyterlab-{encode_username_for_docker(username)}'
+        container_name = lab_container_name(username)
 
         try:
             container = docker_client.containers.get(container_name)

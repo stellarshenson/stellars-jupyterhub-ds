@@ -6,7 +6,7 @@ import docker
 from jupyterhub.handlers import BaseHandler
 from tornado import web
 
-from ..docker_utils import encode_username_for_docker
+from ..docker_utils import lab_container_name
 
 
 class RestartServerHandler(BaseHandler):
@@ -38,7 +38,7 @@ class RestartServerHandler(BaseHandler):
             self.log.warning("[Restart Server] Server is not running, cannot restart")
             return self.send_error(400, "Server is not running")
 
-        container_name = f'jupyterlab-{encode_username_for_docker(username)}'
+        container_name = lab_container_name(username)
 
         try:
             docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
@@ -105,7 +105,7 @@ class ServerLogsHandler(BaseHandler):
             tail = self._DEFAULT_TAIL
         tail = max(1, min(self._MAX_TAIL, tail))
 
-        container_name = f'jupyterlab-{encode_username_for_docker(username)}'
+        container_name = lab_container_name(username)
         try:
             docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
         except Exception as e:
