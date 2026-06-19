@@ -11,10 +11,11 @@ import os
 from dataclasses import dataclass, field
 from typing import Tuple
 
-# Label namespace; overridable via env to dodge clashes with host's own labels.
+# Label namespace; mirrors this package's name (duoptimum-docker-proxy ->
+# duoptimum.docker.proxy). Overridable via env to dodge clashes with host labels.
 LABEL_NAMESPACE = os.environ.get(
     "JUPYTERHUB_DOCKER_PROXY_LABEL_PREFIX",
-    "jupyterhub.docker.proxy",
+    "duoptimum.docker.proxy",
 )
 OWNER_LABEL = f"{LABEL_NAMESPACE}.owner"
 MANAGED_LABEL = f"{LABEL_NAMESPACE}.managed"

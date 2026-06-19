@@ -32,6 +32,36 @@ def container_name_from_url(url):
     return urlparse(url).hostname if url else None
 
 
+def resolve_gpuinfo_url(url, hostname):
+    """Substitute the ``{hostname}`` placeholder in the sidecar URL template with the
+    runtime-discovered sidecar address, so the host is never hardcoded in the URL. A
+    URL without the placeholder passes through unchanged; an empty hostname leaves the
+    placeholder in place (degrades to an unreachable host)."""
+    if url and hostname:
+        return url.replace('{hostname}', hostname)
+    return url
+
+
+def _sidecar_host(container, network_name):
+    """The sidecar's address on the dedicated network, read from the LIVE container -
+    never a hardcoded host. Primary is its IP on that network (assigned by docker at
+    create time); the fallback is the container's own name (docker's embedded DNS
+    resolves it on a user-defined network) if the IP isn't populated yet. Returns
+    None if neither can be read, which the caller treats as "sidecar unreachable"."""
+    try:
+        container.reload()
+        nets = (container.attrs.get('NetworkSettings') or {}).get('Networks') or {}
+        ip = (nets.get(network_name) or {}).get('IPAddress')
+        if ip:
+            return ip
+    except Exception:
+        pass
+    try:
+        return container.name
+    except Exception:
+        return None
+
+
 def _find_hub_container(client):
     """Find the hub's own container. Docker normally sets HOSTNAME to the short
     container id, so containers.get(hostname) resolves it - but an explicit compose
@@ -68,18 +98,25 @@ def _connect_hub(client, network):
 def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', container_name=None):
     """Ensure the GPU-info sidecar container is running. Never raises.
 
-    Returns True if the sidecar ends up running (reused, started, or created),
-    False if docker is unavailable or anything failed - the caller uses that to
-    decide whether to even probe (and to fall back to last-known GPU state).
+    Returns the sidecar base URL with the ``{hostname}`` placeholder filled in from the
+    address the hub DISCOVERS for the container it just created (its IP on the
+    dedicated network, read from the live container - never a hardcoded host), so
+    the URL always points at the real running sidecar. Returns '' if docker is
+    unavailable, the image is absent, or anything failed - the caller treats the
+    empty string as "sidecar not up" (skip the probe, fall back to last-known GPU
+    state). ``url`` is the template (e.g. ``http://{hostname}:8000``); a literal URL
+    with no placeholder is returned unchanged.
 
-    ``container_name`` is the explicit sidecar name (= its DNS name on the
-    network); it falls back to the URL host only when not supplied, and the
+    ``container_name`` is the name the hub gives the sidecar it creates (and finds /
+    removes it by); it falls back to the URL host only when not supplied, and the
     sidecar is skipped (GPU off) if neither yields a name - never a hardcoded one.
 
-    The container + network are stamped with the same compose-project labels the
-    spawned user containers get (see hooks.py), so the hub-started sidecar belongs
-    to the compose project (shows in `docker compose ps`) rather than running as a
-    standalone container.
+    The dedicated network is DECLARED in compose.yml (compose owns and creates it; the
+    hub discovers it by label and only joins it - it never creates it here). The
+    container is stamped with the same compose-project labels the spawned user
+    containers get (see hooks.py), so the hub-started sidecar belongs to the compose
+    project (shows in `docker compose ps`) rather than running as a standalone
+    container.
     """
     import docker
 
@@ -90,7 +127,13 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', contain
             "(JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME) and none derivable from the URL; "
             "sidecar not started - GPU off"
         )
-        return False
+        return ""
+    if not network_name:
+        log.warning(
+            "[GPUInfo] no hub<->sidecar network resolved (the labelled network declared "
+            "in compose.yml was not found); sidecar not started - GPU off"
+        )
+        return ""
     project_labels = {'com.docker.compose.project': compose_project} if compose_project else {}
     container_labels = dict(project_labels)
     if compose_project:
@@ -103,16 +146,20 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', contain
         client = docker.DockerClient('unix://var/run/docker.sock')
     except Exception as e:
         log.warning(f"[GPUInfo] docker unavailable; sidecar not started: {e}")
-        return False
+        return ""
 
-    running = False
+    resolved = ""
     try:
-        # 1. dedicated network (create if absent), then join the hub to it.
+        # 1. dedicated network: compose DECLARES and creates it (labelled, discovered
+        # by the hub) - the hub never creates it here (that historically clashed with
+        # compose's own "not created by compose" ownership check). Just join the hub to
+        # the existing network; if it is missing, compose did not bring it up, so degrade
+        # to GPU-off rather than recreating a network compose would then reject.
         try:
             network = client.networks.get(network_name)
         except docker.errors.NotFound:
-            network = client.networks.create(network_name, driver='bridge', labels=(project_labels or None))
-            log.info(f"[GPUInfo] created network {network_name}")
+            log.warning(f"[GPUInfo] network '{network_name}' not found (declared in compose.yml?); sidecar not started - GPU off")
+            return ""
         _connect_hub(client, network)
 
         # 2. recreate fresh: remove any pre-existing sidecar (a clean hub stop
@@ -133,20 +180,39 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', contain
             client.images.get(image)
         except docker.errors.ImageNotFound:
             log.warning(f"[GPUInfo] image '{image}' not present locally; not pulling at boot - GPU off until available")
-            return False
+            return ""
 
-        client.containers.run(
+        # Request the nvidia runtime only when the docker host actually registers it.
+        # A real sidecar needs it for GPU access, but asking for an unregistered runtime
+        # just fails the run; on a host without it there are no GPUs anyway (a real
+        # sidecar reports none) and a mock sidecar still starts (used by the functional
+        # tests, which run the mock on any host).
+        run_kwargs = {}
+        try:
+            if 'nvidia' in ((client.info() or {}).get('Runtimes') or {}):
+                run_kwargs['runtime'] = 'nvidia'
+        except Exception:
+            pass
+        container = client.containers.run(
             image=image,
             name=name,
             detach=True,
             restart_policy={'Name': 'unless-stopped'},
-            runtime='nvidia',
             environment=dict(_SIDECAR_ENV),
             network=network_name,
             labels=container_labels,
+            **run_kwargs,
         )
-        log.info(f"[GPUInfo] created sidecar '{name}' from {image} on {network_name}")
-        running = True
+        # Discover the sidecar's address at runtime (its IP on the dedicated network,
+        # read from the live container) and fill it into the URL - the host is never
+        # hardcoded. If we cannot determine an address the sidecar is unreachable, so
+        # report "not up" (empty) and let the caller fall back to last-known/off.
+        host = _sidecar_host(container, network_name)
+        if host:
+            resolved = resolve_gpuinfo_url(url, host)
+            log.info(f"[GPUInfo] created sidecar '{name}' from {image} on {network_name}; reachable at {host} -> {resolved}")
+        else:
+            log.warning(f"[GPUInfo] created sidecar '{name}' but could not determine its address; GPU off")
     except Exception as e:
         log.warning(f"[GPUInfo] could not ensure sidecar: {e}")
     finally:
@@ -154,7 +220,7 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', contain
             client.close()
         except Exception:
             pass
-    return running
+    return resolved
 
 
 def stop_gpuinfo_sidecar(url, container_name=None):

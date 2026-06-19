@@ -57,7 +57,7 @@ def _render_user_compose_project(template, *, compose_project, username):
     if not template:
         return ''
     try:
-        return template.format(compose_project=compose_project or '', username=username)
+        return template.format(compose=compose_project or '', username=username)
     except (KeyError, IndexError) as e:
         log.warning(
             "user_compose_project_template render failed (%s); falling back to hub project",

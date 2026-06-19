@@ -4,7 +4,7 @@
 # GLOBALS                                                                       #
 #################################################################################
 .DEFAULT_GOAL := help
-.PHONY: help preflight build build_verbose rebuild rebuild_increment_version _rebuild_impl push pull start stop clean increment_version maybe_increment_version tag logs test test-functional test-functional-env test-functional-signup-open test-functional-all test-functional-clean
+.PHONY: help preflight build build_verbose rebuild rebuild_increment_version _rebuild_impl push pull start stop clean increment_version maybe_increment_version tag logs test test-functional test-functional-gpu test-functional-env test-functional-signup-open test-functional-all test-functional-clean
 
 # ── Preflight: tools, services, and files required end-to-end ──
 # Covers versioning (python3 + tomllib + awk + sed), build (docker), push (git),
@@ -30,12 +30,12 @@ VERSION         := $(PROJECT_VERSION)_cuda-$(CUDA_VERSION)_jh-$(JH_VERSION)
 TAG             := $(VERSION)
 
 # ── Images ──
-# The GPU-info sidecar ships as stellars/stellars-gpuinfo-nvidia (CUDA base
-# pinned in its Dockerfile). `make build` builds it via compose (it has a build
-# section); rebuild/push/pull handle it explicitly alongside the hub below.
+# The GPU-info sidecar is a compose service (gpuinfo-nvidia, gated behind the
+# `gpuinfo` profile). build AND rebuild build it via compose by service name (the
+# Dockerfile path lives in compose.yml, not duplicated here); push/pull handle it
+# by image tag alongside the hub below.
 HUB_IMAGE          := stellars/duoptimum-hub
-GPUINFO_IMAGE      := stellars/stellars-gpuinfo-nvidia
-GPUINFO_DOCKERFILE := services/jupyterhub/gpuinfo-nvidia/Dockerfile
+GPUINFO_IMAGE      := stellars/duoptimum-gpuinfo-nvidia
 
 # ── Version sync ──
 # Every in-repo package baked into the hub image tracks the platform version -
@@ -197,14 +197,8 @@ _rebuild_impl:
 		-f services/jupyterhub/Dockerfile.jupyterhub \
 		.
 	@echo "Rebuilding GPU-info sidecar ($(GPUINFO_IMAGE):latest)..."
-	@docker build \
-		--network=host \
-		--platform linux/amd64 \
-		--target target \
-		$(DOCKER_BUILD_OPTS) \
-		--tag $(GPUINFO_IMAGE):latest \
-		-f $(GPUINFO_DOCKERFILE) \
-		.
+	@DOCKER_DEFAULT_PLATFORM=linux/amd64 COMPOSE_BAKE=false \
+		docker compose -f compose.yml --profile gpuinfo build $(DOCKER_BUILD_OPTS) gpuinfo-nvidia
 	$(PRINT_BUILD_SUCCESS)
 
 ## pull docker images from dockerhub (hub + GPU-info sidecar)
@@ -256,6 +250,8 @@ FUNCTEST_PROJECT := stellars-functest
 FUNCTEST_COMPOSE := tests/functional/compose.functional.yml
 FUNCTEST_ENV_COMPOSE := tests/functional/compose.functional-env.yml
 FUNCTEST_SIGNUPOPEN_COMPOSE := tests/functional/compose.functional-signup-open.yml
+FUNCTEST_GPU_COMPOSE := tests/functional/compose.functional-gpu.yml
+GPUINFO_MOCK_IMAGE := stellars/duoptimum-gpuinfo-mock:latest
 FUNCTEST_IMAGES  := quay.io/jupyterhub/singleuser:latest mcr.microsoft.com/playwright/python:v1.49.0-noble
 
 ## run the python unit test suites locally (duoptimum-hub-services + duoptimum-docker-proxy)
@@ -265,7 +261,7 @@ test:
 
 ## run the functional UI/scenario harness in an isolated throwaway deployment, then clean containers/network/volumes (LOCAL ONLY; pulled images kept to avoid re-pull - REMOVE_IMAGES=1 to also remove them)
 test-functional:
-	@if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then gpumode=2; else gpumode=0; fi; \
+	@if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then gpumode=1; else gpumode=0; fi; \
 	echo "[functional] booting isolated deployment ($(FUNCTEST_PROJECT)) [GPU auto-detect mode=$$gpumode]..."; \
 	start=$$(date +%s); \
 	FUNCTEST_GPU_ENABLED=$$gpumode docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) up --abort-on-container-exit --exit-code-from tests; \
@@ -273,6 +269,19 @@ test-functional:
 	$(MAKE) --no-print-directory test-functional-clean; \
 	end=$$(date +%s); \
 	echo "[functional] total time (boot + tests + teardown): $$((end-start))s; test-suite total is the pytest 'in Xs' line above"; \
+	exit $$rc
+
+## run the functional harness with a MOCK gpuinfo sidecar (GPU autodetect on ANY host, no real GPU needed), then clean up
+test-functional-gpu:
+	@echo "[functional/gpu] building mock gpuinfo image ($(GPUINFO_MOCK_IMAGE))..."
+	@docker build -q -t $(GPUINFO_MOCK_IMAGE) tests/functional/mock_gpuinfo >/dev/null
+	@echo "[functional/gpu] booting hub with the mock sidecar (GPU autodetect)..."
+	@start=$$(date +%s); \
+	FUNCTEST_GPU_ENABLED=1 docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_GPU_COMPOSE) up --abort-on-container-exit --exit-code-from tests; \
+	rc=$$?; \
+	$(MAKE) --no-print-directory test-functional-clean; \
+	end=$$(date +%s); \
+	echo "[functional/gpu] total time (boot + tests + teardown): $$((end-start))s"; \
 	exit $$rc
 
 ## run the functional harness in auth mode 2 (signup disabled + env-password admin; restart-to-provision on a fresh DB), then clean up
@@ -308,12 +317,13 @@ test-functional-signup-open:
 ## run EVERY functional setup (initial condition) one by one - signup-bootstrap, env-password, signup-open - cleaning between each; reports which setups passed and exits non-zero if any failed
 test-functional-all:
 	@overall=0; failed=""; \
-	for setup in signup env signup-open; do \
+	for setup in signup gpu env signup-open; do \
 	  echo "==================================================================="; \
 	  echo "[functional/all] setup: $$setup"; \
 	  echo "==================================================================="; \
 	  case $$setup in \
 	    signup)      $(MAKE) --no-print-directory test-functional || { overall=1; failed="$$failed signup"; } ;; \
+	    gpu)         $(MAKE) --no-print-directory test-functional-gpu || { overall=1; failed="$$failed gpu"; } ;; \
 	    env)         $(MAKE) --no-print-directory test-functional-env || { overall=1; failed="$$failed env"; } ;; \
 	    signup-open) $(MAKE) --no-print-directory test-functional-signup-open || { overall=1; failed="$$failed signup-open"; } ;; \
 	  esac; \
@@ -327,6 +337,7 @@ test-functional-clean:
 	@echo "[functional] cleaning harness (containers, network, volumes)..."
 	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) down -v --remove-orphans >/dev/null 2>&1 || true
 	@docker ps -aq --filter "label=com.docker.compose.project=$(FUNCTEST_PROJECT)" | xargs -r docker rm -f >/dev/null 2>&1 || true
+	@docker rm -f gpuinfo-nvidia >/dev/null 2>&1 || true   # hub-started sidecar/mock (not labelled with the functest project)
 	@docker volume ls -q --filter "name=^$(FUNCTEST_PROJECT)_" | xargs -r docker volume rm >/dev/null 2>&1 || true
 	@docker volume rm jupyterlab-functestadmin_home jupyterlab-functestadmin_workspace jupyterlab-functestadmin_cache >/dev/null 2>&1 || true
 	@docker network rm $(FUNCTEST_PROJECT)_network >/dev/null 2>&1 || true

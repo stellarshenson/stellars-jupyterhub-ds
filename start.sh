@@ -6,8 +6,8 @@ cd $CURRENT_DIR
 # first pull the jupyterlab, jupyterhub and gpu-info sidecar images
 # (gpu-info pull is best-effort: a not-yet-published image is built by `make build`)
 docker pull stellars/stellars-jupyterlab-ds:latest
-docker pull stellars/duoptimumhub:latest
-docker pull stellars/stellars-gpuinfo-nvidia:latest
+docker pull stellars/duoptimum-hub:latest
+docker pull stellars/duoptimum-gpuinfo-nvidia:latest
 
 # Run the command for when GPU is not available
 if [ -f './compose_override.yml' ]; then

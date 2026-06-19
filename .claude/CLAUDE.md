@@ -87,14 +87,15 @@ This Python configuration file controls all JupyterHub behavior:
 - `JUPYTERHUB_LAB_IMAGE`: JupyterLab image to spawn (default: `stellars/stellars-jupyterlab-ds:latest`)
 - `JUPYTERHUB_NETWORK_NAME`: Network for spawned containers (default: `jupyterhub_network`)
 - `JUPYTERHUB_BASE_URL`: URL prefix (default: `/jupyterhub`)
-- `JUPYTERHUB_GPU_ENABLED`: GPU mode - `0` (disabled), `1` (enabled), `2` (auto-detect)
+- `JUPYTERHUB_GPU_ENABLED`: GPU mode - `0` (off), `1` (autodetect, default; GPU on only when devices are actually detected). No forced-on; legacy `2` accepted as autodetect
 - `JUPYTERHUB_SSL_ENABLED`: Direct SSL config - `0` (disabled), `1` (enabled)
 - `JUPYTERHUB_LAB_SERVICE_MLFLOW`: Enable MLflow tracking (`0`/`1`)
 - `JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR`: Enable resource monitor (`0`/`1`)
 - `JUPYTERHUB_LAB_SERVICE_TENSORBOARD`: Enable TensorBoard (`0`/`1`)
 - `JUPYTERHUB_GPUINFO_NVIDIA_IMAGE`: GPU-info sidecar image - detection, utilisation and per-GPU processes (default: `stellars/stellars-gpuinfo-nvidia:latest`; CUDA base pinned in its Dockerfile)
-- `JUPYTERHUB_GPUINFO_URL`: GPU-info sidecar base URL (default: `http://gpuinfo-nvidia:8000`)
-- `JUPYTERHUB_GPUINFO_NETWORK_NAME`: dedicated hub-to-sidecar network (default: `jupyterhub-gpuinfo-network`)
+- `JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME`: name the hub gives the sidecar it creates (and finds/removes it by) (default: `gpuinfo-nvidia`)
+- `JUPYTERHUB_GPUINFO_NVIDIA_URL`: GPU-info sidecar base URL template; `{hostname}` is filled at boot with the address the hub discovers for the running sidecar - never a hardcoded host (default: `http://{hostname}:8000`)
+- Dedicated hub-to-sidecar network: DECLARED in compose.yml (`hub_gpuinfo_network`) with the marker label `duoptimum.gpuinfo.network=true`; the hub discovers it among its own attached networks by that label (no env name). Override with `JUPYTERHUB_GPUINFO_NETWORK_NAME` only if needed
 - `JUPYTERHUB_BRANDING_STAGE`: Environment-stage header badge - DEV/STG/TST/PRD or custom text; empty = no badge (default: empty)
 - `JUPYTERHUB_BRANDING_LOGO_URI`: Custom logo - `file://` for local files, URL for external (default: empty)
 - `JUPYTERHUB_BRANDING_FAVICON_URI`: Custom favicon - `file://` copies to static dir and enables CHP proxy routes for JupyterLab sessions (default: empty)

@@ -1,9 +1,13 @@
-"""Functional tests for docker_utils.py - username encoding + lab name."""
+"""Functional tests for docker_utils.py - username encoding + lab name + network discovery."""
+
+import sys
+from types import SimpleNamespace
 
 from duoptimum_hub_services.docker_utils import (
     encode_username_for_docker,
     encoded_username_from_lab_container,
     lab_container_name,
+    resolve_self_network_by_label,
 )
 
 
@@ -66,3 +70,64 @@ class TestEncodedUsernameFromLabContainer:
         monkeypatch.setenv("JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE", "lab_{username}_srv")
         name = lab_container_name("user.name")
         assert encoded_username_from_lab_container(name) == encode_username_for_docker("user.name")
+
+
+class TestResolveSelfNetworkByLabel:
+    """The hub<->sidecar network is DISCOVERED by its compose-declared marker label among
+    the hub's OWN attached networks - so its real namespaced name can never drift, and a
+    second stack carrying the same label on the host is never picked by mistake."""
+
+    @staticmethod
+    def _install_fake_docker(monkeypatch, *, attached=None, networks=None, get_raises=False):
+        # attached: name -> {NetworkID}; networks: id/name -> labels dict
+        networks = networks or {}
+
+        class _Net:
+            def __init__(self, name, labels):
+                self.name = name
+                self.attrs = {"Labels": labels}
+
+        class _Networks:
+            def get(self, key):
+                name, labels = networks[key]
+                return _Net(name, labels)
+
+        class _Containers:
+            def get(self, host):
+                if get_raises:
+                    raise RuntimeError("not found")
+                return SimpleNamespace(attrs={"NetworkSettings": {"Networks": attached or {}}})
+
+        class _Client:
+            def __init__(self, *a, **k):
+                self.containers = _Containers()
+                self.networks = _Networks()
+
+            def close(self):
+                pass
+
+        monkeypatch.setitem(sys.modules, "docker", SimpleNamespace(DockerClient=_Client))
+
+    def test_returns_attached_network_carrying_label(self, monkeypatch):
+        # hub attached to two networks; only the gpuinfo one carries the marker label
+        self._install_fake_docker(
+            monkeypatch,
+            attached={"hub_net": {"NetworkID": "id-hub"}, "gpu_net": {"NetworkID": "id-gpu"}},
+            networks={
+                "id-hub": ("duoptimum-hub_hub_network", {}),
+                "id-gpu": ("duoptimum-hub_hub_gpuinfo_network", {"duoptimum.gpuinfo.network": "true"}),
+            },
+        )
+        assert resolve_self_network_by_label("duoptimum.gpuinfo.network") == "duoptimum-hub_hub_gpuinfo_network"
+
+    def test_none_when_no_attached_network_has_label(self, monkeypatch):
+        self._install_fake_docker(
+            monkeypatch,
+            attached={"hub_net": {"NetworkID": "id-hub"}},
+            networks={"id-hub": ("duoptimum-hub_hub_network", {})},
+        )
+        assert resolve_self_network_by_label("duoptimum.gpuinfo.network") is None
+
+    def test_none_when_self_container_undeterminable(self, monkeypatch):
+        self._install_fake_docker(monkeypatch, get_raises=True)
+        assert resolve_self_network_by_label("duoptimum.gpuinfo.network") is None

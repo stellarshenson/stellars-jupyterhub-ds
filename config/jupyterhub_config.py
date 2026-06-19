@@ -24,7 +24,7 @@ from duoptimum_hub_services import (
     apply_abuse_protection,                 # abuse protection: maps env -> spawn/active caps + login lockout onto c.*
     configure_gpu_cache,                    # one-time init: sets the CUDA image the background GPU-utilisation sampler uses
     configure_volume_cache,                 # one-time init: feeds canonical volume-name templates to the activity-monitor sizes cache
-    ensure_gpuinfo_sidecar,                 # hub self-starts the gpuinfo-nvidia sidecar (so detection never waits on compose)
+    ensure_gpuinfo_sidecar,                 # hub self-starts the gpuinfo-nvidia sidecar (so detection never waits on compose) and returns its runtime-resolved URL
     stop_gpuinfo_sidecar,                   # hub removes the sidecar on shutdown so it never outlives its parent (recreated fresh next boot)
     get_services_and_roles,                 # builds JupyterHub services list (activity sampler)
     schedule_idle_culler,                   # in-hub idle culler (honours per-user session extensions)
@@ -37,13 +37,15 @@ from duoptimum_hub_services import (
     make_post_stop_hook,                    # factory returning async post-stop hook: docker-proxy unregister + api-key release + stop event
     prepare_sent_notification_log,          # boot-time self-heal of the sent-notification history table
     register_events,                        # attaches SQLAlchemy listeners for user rename/delete sync
-    resolve_gpu_mode,                       # GPU detection: 0=off, 1=forced, 2=auto-detect via nvidia-smi
+    resolve_gpu_mode,                       # GPU detection: 0=off, otherwise autodetect (default)
     resolve_memory_quota_mb,                # calc: per-user memory warning threshold MB from host-RAM fraction
     schedule_startup_hydration,             # consolidated startup hydration: warms caches + image-update check + survivor favicon routes/policy, all deferred to the IOLoop
     setup_branding,                         # processes logo/favicon/icon URIs, copies file:// to static dir
 )
 
 from duoptimum_hub_services.docker_utils import resolve_self_mount_volume  # runtime discovery of the docker-proxy volume from the hub's own mounts (no hardcoded/reconstructed name)
+from duoptimum_hub_services.docker_utils import resolve_self_compose_project  # runtime discovery of the hub's own compose project from its own container label (no env needed)
+from duoptimum_hub_services.docker_utils import resolve_self_network_by_label  # runtime discovery of the hub<->sidecar network by its compose-declared marker label (no name env needed)
 from duoptimum_hub_services.admin_bootstrap import query_admin_state, provision_admin_userinfo  # first-admin bootstrap DB queries (raw sqlite3 on users_info, before the ORM exists)
 
 # Tornado request handlers - registered via c.JupyterHub.extra_handlers
@@ -95,7 +97,7 @@ c = get_config()  # noqa: F821  - JupyterHub injects get_config() into config fi
 
 # Core platform toggles (0=disabled, 1=enabled)
 JUPYTERHUB_SSL_ENABLED = int(os.environ.get("JUPYTERHUB_SSL_ENABLED", 1))                      # direct SSL termination (disable when behind reverse proxy)
-JUPYTERHUB_GPU_ENABLED = int(os.environ.get("JUPYTERHUB_GPU_ENABLED", 2))                      # 0=off, 1=forced, 2=auto-detect
+JUPYTERHUB_GPU_ENABLED = int(os.environ.get("JUPYTERHUB_GPU_ENABLED", 1))                      # 0=off, 1=autodetect (default); GPU on only when devices are actually detected
 JUPYTERHUB_LAB_SERVICE_MLFLOW = int(os.environ.get("JUPYTERHUB_LAB_SERVICE_MLFLOW", 1))                 # MLflow tracking in spawned containers
 JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR = int(os.environ.get("JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR", 1))  # resource monitor widget
 JUPYTERHUB_LAB_SERVICE_TENSORBOARD = int(os.environ.get("JUPYTERHUB_LAB_SERVICE_TENSORBOARD", 1))       # TensorBoard in spawned containers
@@ -144,32 +146,37 @@ JUPYTERHUB_TIMEZONE = os.environ.get("JUPYTERHUB_TIMEZONE", "Etc/UTC")          
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")                                     # URL prefix (e.g. /jupyterhub), None or / for root
 JUPYTERHUB_NETWORK_NAME = os.environ.get("JUPYTERHUB_NETWORK_NAME", "").strip()          # Docker network for hub + spawned containers (required; baked image ENV - validated below)
 JUPYTERHUB_LAB_IMAGE = os.environ.get("JUPYTERHUB_LAB_IMAGE", "").strip()                # JupyterLab image to spawn (required; baked image ENV - validated below)
-# Hub's own compose project. Renamed from the bare COMPOSE_PROJECT_NAME so the
-# hub's notion of its project is an explicit hub var, not docker-compose's magic
-# one; falls back to COMPOSE_PROJECT_NAME during the transition so a not-yet-updated
-# compose file still boots. Drives volume namespace + hub compose labels; required
-# (every named volume is f"{JUPYTERHUB_COMPOSE_PROJECT_NAME}_..."; empty would
-# mismatch compose's namespacing and fail spawns at Subpath resolution).
+# Hub's own compose project - drives the volume namespace + hub/sidecar/lab compose
+# labels (every named volume is f"{JUPYTERHUB_COMPOSE_PROJECT_NAME}_..."). DISCOVERED
+# at boot from the hub's own container's com.docker.compose.project label rather than
+# passed via env: all compose services share one project, and the label compose stamps
+# is the exact string it uses to prefix named volumes, so the discovered value can
+# never drift from the real namespace (an env could be set wrong). An explicit env
+# still wins as an override; empty after both is fatal (an empty prefix would resolve
+# to a different volume than the one compose creates and fail spawns at Subpath).
 JUPYTERHUB_COMPOSE_PROJECT_NAME = (
-    os.environ.get("JUPYTERHUB_COMPOSE_PROJECT_NAME")
-    or os.environ.get("COMPOSE_PROJECT_NAME")
+    os.environ.get("JUPYTERHUB_COMPOSE_PROJECT_NAME", "").strip()
+    or resolve_self_compose_project()
     or ""
 ).strip()
 if not JUPYTERHUB_COMPOSE_PROJECT_NAME:
     raise RuntimeError(
-        "JUPYTERHUB_COMPOSE_PROJECT_NAME is empty - cannot start. Every named volume "
-        "in this config is namespaced as f'{JUPYTERHUB_COMPOSE_PROJECT_NAME}_...' to "
-        "match compose's own project-prefixing; an empty prefix would resolve to a "
-        "different volume than the one compose creates. Set it in compose.yml "
-        "(mapped from compose's COMPOSE_PROJECT_NAME)."
+        "JUPYTERHUB_COMPOSE_PROJECT_NAME could not be determined - cannot start. The hub "
+        "reads its compose project from its own container's com.docker.compose.project "
+        "label; that was missing (not run under docker compose, or the docker socket is "
+        "unreachable). Every named volume is namespaced as f'{project}_...' to match "
+        "compose's prefixing; an empty prefix would resolve to the wrong volume. Run via "
+        "docker compose, or set JUPYTERHUB_COMPOSE_PROJECT_NAME explicitly."
     )
 # Compose project for spawned lab/user containers - the com.docker.compose.project
-# label they carry. Defaults to the hub project (empty suffix = same project); set
-# JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME to group labs under a different project.
+# label they carry. The {compose} placeholder is filled with the discovered hub
+# project (so compose.yml can say "{compose}_labs" to group labs under their own
+# project without hardcoding the project name); empty = same project as the hub.
 # Volume namespacing is unaffected (it stays on JUPYTERHUB_COMPOSE_PROJECT_NAME) -
 # only the user-container compose label changes.
 JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME = (
     os.environ.get("JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME", "").strip()
+    .replace("{compose}", JUPYTERHUB_COMPOSE_PROJECT_NAME)
     or JUPYTERHUB_COMPOSE_PROJECT_NAME
 )
 # Lab-container name template ({username} placeholder). Single source of truth for
@@ -181,9 +188,19 @@ JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE = (
     os.environ.get("JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE", "").strip()
     or "jupyterlab-{username}"
 )
-JUPYTERHUB_GPUINFO_NVIDIA_URL = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_URL", "")  # GPU-info sidecar base URL (detection + utilisation); baked as a Dockerfile ENV derived from the container name - empty => GPU detection degrades to off, no hardcoded host
-JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME", "")  # sidecar container + DNS name the hub creates and reaches; baked as a Dockerfile ENV (project-prefixed), must match the URL host
-JUPYTERHUB_GPUINFO_NETWORK_NAME = os.environ.get("JUPYTERHUB_GPUINFO_NETWORK_NAME", "hub-gpuinfo-network")  # dedicated hub<->sidecar network (compose-level)
+JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME", "")  # name the hub gives the sidecar it creates (and finds/removes it by); baked as a Dockerfile ENV (project-prefixed)
+JUPYTERHUB_GPUINFO_NVIDIA_URL = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_URL", "")  # GPU-info sidecar base URL TEMPLATE; the {hostname} placeholder is filled at runtime by ensure_gpuinfo_sidecar with the address it discovers for the running sidecar - no hardcoded host
+# The hub<->sidecar network is DECLARED in compose.yml (compose owns/creates it) and
+# tagged with a marker label; the hub DISCOVERS its real, compose-namespaced name by
+# that label rather than being told via an env, so the name can never drift from the
+# declaration. An explicit env still wins as an override; empty (no labelled network and
+# no env) means the sidecar cannot be placed -> GPU off (ensure_gpuinfo_sidecar degrades).
+JUPYTERHUB_GPUINFO_NETWORK_LABEL = "duoptimum.gpuinfo.network"  # marker label compose stamps on the network; MUST match the label in compose.yml
+JUPYTERHUB_GPUINFO_NETWORK_NAME = (
+    os.environ.get("JUPYTERHUB_GPUINFO_NETWORK_NAME", "").strip()
+    or resolve_self_network_by_label(JUPYTERHUB_GPUINFO_NETWORK_LABEL)
+    or ""
+)
 JUPYTERHUB_GPUINFO_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_IMAGE", "stellars/duoptimum-gpuinfo-nvidia:latest")  # sidecar image the hub self-starts
 JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN", "").strip()                              # admin username (auto-authorized on first signup) (required; baked image ENV - validated below)
 
@@ -477,24 +494,29 @@ async def _admin_post_auth_hook(authenticator, handler, authentication):
         authentication['admin'] = True
     return authentication
 
-# Detect GPU availability: modes 1 (forced) and 2 (autodetect) query the
-# gpuinfo-nvidia sidecar for the host inventory (the hub itself has no GPU
-# access); mode 2 also derives on/off from whether any were found.
+# Detect GPU availability: autodetect (the default, any non-zero mode) queries the
+# gpuinfo-nvidia sidecar for the host inventory (the hub itself has no GPU access) and
+# derives on/off from whether any were found. Mode 0 is deliberately off.
 # Returns (gpu_enabled: 0|1, nvidia_detected: 0|1, gpu_list: list of GPU dicts)
-configure_gpu_cache(JUPYTERHUB_GPUINFO_NVIDIA_URL)
-# Self-start the gpuinfo sidecar (best-effort) so detection talks to a reachable
-# peer on the local docker host instead of waiting on compose to have brought it
-# up - the old 20x1s probe stalled boot ~20s whenever the sidecar was absent.
-_gpuinfo_sidecar_up = (
+# Self-start the gpuinfo sidecar (best-effort) so detection talks to a reachable peer
+# on the local docker host instead of waiting on compose - GPU on (autodetect) implies
+# the hub manages the sidecar. A missing/failed sidecar degrades cleanly to GPU-off.
+# It returns the sidecar's base URL with {hostname} filled in from the address it discovers
+# for the container it just created (its IP on the dedicated network) - the host is
+# obtained at runtime, never hardcoded - or '' when the sidecar isn't up.
+_gpuinfo_url = (
     ensure_gpuinfo_sidecar(JUPYTERHUB_GPUINFO_NVIDIA_IMAGE, JUPYTERHUB_GPUINFO_NETWORK_NAME, JUPYTERHUB_GPUINFO_NVIDIA_URL, JUPYTERHUB_COMPOSE_PROJECT_NAME, container_name=JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME)
-    if JUPYTERHUB_GPU_ENABLED in (1, 2) else False
+    if JUPYTERHUB_GPU_ENABLED != 0 else ""
 )
-# Tie the sidecar's lifecycle to the hub: remove it when the hub exits so it does
-# not linger as an orphan after the hub stops (and so the next boot recreates it
-# fresh from the current image). Best-effort - skipped on a hard SIGKILL.
+_gpuinfo_sidecar_up = bool(_gpuinfo_url)
+# Point the detection client + utilisation sampler at the runtime-resolved URL.
+configure_gpu_cache(_gpuinfo_url)
+# Tie the sidecar's lifecycle to the hub: remove it when the hub exits so it does not
+# linger as an orphan after the hub stops (next boot recreates it fresh from the current
+# image). Best-effort - skipped on a hard SIGKILL.
 if _gpuinfo_sidecar_up:
     import atexit
-    atexit.register(stop_gpuinfo_sidecar, JUPYTERHUB_GPUINFO_NVIDIA_URL, JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME)
+    atexit.register(stop_gpuinfo_sidecar, _gpuinfo_url, JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME)
 # probe only when the sidecar is actually up; otherwise skip straight to
 # last-known/off so a missing sidecar never stalls boot on DNS/connect
 gpu_enabled, nvidia_detected, gpu_list = resolve_gpu_mode(JUPYTERHUB_GPU_ENABLED, probe_sidecar=_gpuinfo_sidecar_up)
@@ -685,7 +707,7 @@ if not JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME:
         "guessed name - it would 404 every limited-docker spawn."
     )
 # Template rendered into a per-user com.docker.compose.project label when a
-# docker-limited group opts in. Placeholders: {compose_project}, {username}.
+# docker-limited group opts in. Placeholders: {compose}, {username}.
 # Baked into the image via Dockerfile ENV; operator can override in compose.yml.
 JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE = os.environ.get(
     "JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE",

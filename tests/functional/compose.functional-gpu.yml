@@ -1,0 +1,24 @@
+# Overlay: GPU autodetect backed by a MOCK gpuinfo sidecar, so the GPU display tests
+# run on ANY host (no real GPU/driver needed). The hub self-starts this image as its
+# sidecar (self-start requests the nvidia runtime only when present, so the mock starts
+# on CPU hosts too). `make test-functional-gpu` builds the mock image and passes
+# FUNCTEST_GPU_ENABLED=1 (which the base compose feeds to both the hub and the test
+# marker gate). Layer ON TOP of compose.functional.yml.
+
+services:
+  duoptimum-hub:
+    environment:
+      # the hub self-starts THIS image as the gpuinfo sidecar; it serves canned GPUs
+      - JUPYTERHUB_GPUINFO_NVIDIA_IMAGE=stellars/duoptimum-gpuinfo-mock:latest
+    # The hub discovers the gpuinfo network among its OWN attachments by the marker label
+    # (resolve_self_network_by_label) and runs the mock sidecar on it - so it must be
+    # declared here and attached to the hub (the base functional stack has no GPU network).
+    networks:
+      - jupyterhub_network
+      - hub_gpuinfo_network
+
+networks:
+  hub_gpuinfo_network:
+    name: stellars-functest_hub_gpuinfo_network
+    labels:
+      duoptimum.gpuinfo.network: "true"

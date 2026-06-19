@@ -31,7 +31,7 @@ def _resolved(**overrides):
 class TestRenderUserComposeProject:
     def test_renders_full_template(self):
         out = _render_user_compose_project(
-            "{compose_project}_{username}_containers",
+            "{compose}_{username}_containers",
             compose_project="stellars-tech-ai-lab",
             username="konrad.jelen",
         )
@@ -49,6 +49,16 @@ class TestRenderUserComposeProject:
             username="u",
         )
         assert out == "stellars-tech-ai-lab"
+
+    def test_renamed_placeholder_is_compose_not_compose_project(self):
+        # The placeholder is {compose} now; the old {compose_project} no longer
+        # resolves (unknown -> graceful fallback to the hub project).
+        assert _render_user_compose_project(
+            "{compose}-x", compose_project="proj", username="u",
+        ) == "proj-x"
+        assert _render_user_compose_project(
+            "{compose_project}-x", compose_project="proj", username="u",
+        ) == "proj"
 
     def test_template_with_only_username(self):
         out = _render_user_compose_project(
@@ -94,7 +104,7 @@ class TestBuildOverrides:
             _resolved(docker_limited_user_compose_project_enabled=False),
             username="alice",
             compose_project="hub-proj",
-            user_compose_project_template="{compose_project}_{username}_containers",
+            user_compose_project_template="{compose}_{username}_containers",
         )
         assert 'compose_project' not in ov
 
@@ -103,7 +113,7 @@ class TestBuildOverrides:
             _resolved(docker_limited_user_compose_project_enabled=True),
             username="alice",
             compose_project="hub-proj",
-            user_compose_project_template="{compose_project}_{username}_containers",
+            user_compose_project_template="{compose}_{username}_containers",
         )
         assert ov['compose_project'] == "hub-proj_alice_containers"
 
@@ -126,12 +136,12 @@ class TestBuildOverrides:
     def test_empty_compose_project_omits_field(self):
         # When no compose project is set, the override dict doesn't carry one
         # (ProxyConfig default of '' wins). With enforcement on and the
-        # template referencing {compose_project}, the result is also empty.
+        # template referencing {compose}, the result is also empty.
         ov = _build_overrides(
             _resolved(docker_limited_user_compose_project_enabled=True),
             username="alice",
             compose_project="",
-            user_compose_project_template="{compose_project}_{username}_containers",
+            user_compose_project_template="{compose}_{username}_containers",
         )
         assert 'compose_project' not in ov or ov.get('compose_project') == '_alice_containers'
 

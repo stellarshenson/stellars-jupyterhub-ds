@@ -34,7 +34,17 @@ Environment: `GPUINFO_HOST` (default `0.0.0.0`), `GPUINFO_PORT` (default `8000`)
 ## Develop
 
 ```bash
-make install   # editable install with test extras
-make test      # pytest (subprocess mocked - no GPU required)
-make image     # build the sidecar image (build context = repo root)
+uv venv .venv && uv pip install -e ".[test]" --python .venv/bin/python  # editable install with test extras
+.venv/bin/pytest tests/ -v                                              # subprocess mocked - no GPU required
 ```
+
+The sidecar image is built from the repo root as the `gpuinfo-nvidia` compose service
+(it carries the `gpuinfo` profile, so it is not auto-started):
+
+```bash
+# from the repo root
+make build                                              # builds hub + this sidecar via compose
+docker compose --profile gpuinfo build gpuinfo-nvidia   # just this sidecar
+```
+
+The image build also runs this package's tests in its first stage, so they gate the image.

@@ -24,7 +24,7 @@ RUN pip install --no-cache-dir /dist/gpuinfo_nvidia-*.whl pytest httpx \
 FROM ${NVIDIA_BASE_IMAGE} AS target
 
 LABEL maintainer="Konrad Jelen <konrad.jelen@delaval.com>"
-LABEL org.opencontainers.image.title="gpuinfo-nvidia"
+LABEL org.opencontainers.image.title="duoptimum-gpuinfo-nvidia"
 LABEL org.opencontainers.image.description="Vendor-neutral GPU-info sidecar API (NVIDIA implementation)"
 
 ENV DEBIAN_FRONTEND=noninteractive
