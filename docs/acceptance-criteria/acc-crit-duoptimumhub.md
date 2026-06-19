@@ -47,6 +47,7 @@ Cross-document conflicts found during consolidation are tracked in [concerns.md]
 - [Roles reference page](#roles-reference-page)
 - [server lifecycle UX (inline spinners, no modal, real log)](#server-lifecycle-ux-inline-spinners-no-modal-real-log)
 - [server status immediacy](#server-status-immediacy)
+- [Servers filtering and sorting](#servers-filtering-and-sorting)
 - [Servers host-relative resources](#servers-host-relative-resources)
 - [Servers list layout](#servers-list-layout)
 - [Servers resource cells](#servers-resource-cells)
@@ -2950,6 +2951,58 @@ After a server starts or stops, the hub status (hero + table) must reflect the n
 - [ ] **Runtime: no 10s lag** - on the live hub the status flips within one refresh of start/stop
   - log: 2026-06-17 code done + builds; on-screen confirm pends operator rebuild
 
+## Servers filtering and sorting
+
+Both the Servers list (`Servers.tsx`) and the Home "Active Servers" widget (`Home.tsx::ActiveServersPreview`) let an admin sort and filter on their columns. Default order on both surfaces: status rank (active before idle before offline) then user name. One shared status-rank constant drives the default so the two surfaces cannot drift.
+
+### Default sort
+
+- [ ] **Status then name** - on first load both the list and the widget sort by status rank then user name (case-insensitive ascending), never raw source order
+  - log: 2026-06-19 criterion added
+- [ ] **Status rank** - rank is active -> spawning -> idle -> offline -> error; spawning ranks WITH active (it is becoming active, matching the scope-pill bucketing), error last
+  - log: 2026-06-19 criterion added
+- [ ] **Shared rank constant** - both surfaces import ONE status-rank map; fixes the current drift where the widget ranks spawning AFTER idle while the list ranks it with active
+  - log: 2026-06-19 criterion added; cross-ref the closed "[MED] Spawning bucketed as Active but sorted below Idle" item
+- [ ] **Name tie-break stable** - rows with equal status and name keep a deterministic order across refreshes (no flicker)
+  - log: 2026-06-19 criterion added
+
+### Sorting
+
+- [ ] **List columns sortable** - User, Status, Last activity, Activity, CPU, Mem, Vol, Sys and Time left each carry an interactive sorter; Actions does not
+  - log: 2026-06-19 criterion added (the list already has the per-column sorters; default-sort + the widget below are the new work)
+- [ ] **Widget columns sortable** - the Home widget columns carry sorters too (currently none)
+  - log: 2026-06-19 criterion added
+- [ ] **Manual sort overrides default** - clicking a header sorts by that column; clearing it returns to the status-then-name default
+  - log: 2026-06-19 criterion added
+- [ ] **Edge: null metric sorts last** - a row whose metric is a dash (CPU/Mem/Vol/Time-left null) sorts to the bottom of that column, not interleaved as 0
+  - log: 2026-06-19 criterion added
+
+### Filtering
+
+- [ ] **Status column filter** - the Status column offers a multi-select filter (Active / Spawning / Idle / Offline / Error)
+  - log: 2026-06-19 criterion added
+- [ ] **User free-text retained** - the existing "Filter by user" box stays and narrows by username substring, case-insensitive
+  - log: 2026-06-19 criterion added
+- [ ] **Composes with scope pills** - the Active/Idle/Offline/All scope pills keep working; a column filter narrows WITHIN the current scope (more restrictive wins)
+  - log: 2026-06-19 criterion added
+- [ ] **Report exports the visible set** - the CSV "Report" export reflects the rows currently shown (scope + column filters + user search applied), one row per visible server
+  - log: 2026-06-19 criterion added
+- [ ] **Edge: empty match** - when scope + filters match nothing, the table shows the existing "No servers in scope" empty state, not a blank grid
+  - log: 2026-06-19 criterion added
+
+### Tests
+
+- [ ] **Functional: default order** - a Playwright test asserts the first rows on the Servers page and the Home widget are the active servers, then idle, then offline, name-ordered within each status bucket
+  - log: 2026-06-19 criterion added
+- [ ] **Functional: sort + filter** - clicking a column header reorders the visible rows; the Status filter and user box narrow them
+  - log: 2026-06-19 criterion added
+
+### Open decisions
+
+- The widget is a top-10 "preview"; does it need the full filter dropdowns, or only the specified default sort + clickable column sort on the 10 shown (filters on a preview are unusual)
+- Status column filter vs the existing scope pills overlap - keep both (compose) or fold the pills into the column filter
+- Whether the chosen sort/filter persists across reloads (per-user, like the display-options harness) or resets to the default each visit
+
 ## Servers host-relative resources
 
 On the Servers widget (Home) and the Servers page table the per-server CPU/MEM cell is a numeric COUNTER (no progress bar): CPU shows the server's total CPU usage in the docker/top convention (100% = one core, so 1300% means the server is saturating ~13 cores) and MEM shows the absolute GB used. The counter's COLOUR encodes the server's usage as a % of its own ASSIGNED quota. The Server Status hero widget is unchanged and remains the only surface showing % of assigned (with its bars). Tooltips reveal the full breakdown.
@@ -3179,6 +3232,8 @@ Code-complete; backend `make test` 566+63 green, portal `tsc -b` + `build:hub` c
   - log: 2026-06-17 criterion added
 - [ ] **Admin starting another user's server** - lands on the page; on ready returns to the parent screen (Servers), never auto-enters someone else's lab (consistent with the open-someone-else confirm rule)
   - log: 2026-06-17 criterion added
+- [ ] **Enter only when the lab truly serves** - the own-server redirect is gated on a real lab-readiness probe (`/api/users/{name}/lab-ready`), NOT the hub's `ready` flag which flips ~1s early; the SSE-drop fallback likewise treats only `active`/`idle` as ready, never `spawning`; this stops the page falling through to the stock spawn-pending screen
+  - log: 2026-06-19 regression fixed - see [DEF-1](defects-duoptimumhub.md#def-1-start-server-page-falls-through-to-the-stock-jupyterhub-spawn-screen-no-logs); code done + tsc/eslint clean, runtime confirm pends operator rebuild
 
 ### Live container-log feed
 

@@ -88,7 +88,7 @@ GPU:
     description: GPU-info sidecar image (pulled from stellars/ DockerHub, built from base when absent)
     default: stellars/stellars-gpuinfo-nvidia:latest
 
-  - name: JUPYTERHUB_GPUINFO_URL
+  - name: JUPYTERHUB_GPUINFO_NVIDIA_URL
     description: GPU-info sidecar base URL (detection + utilisation + processes)
     default: http://gpuinfo-nvidia:8000
 
