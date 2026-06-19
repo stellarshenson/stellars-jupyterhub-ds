@@ -3,7 +3,7 @@
 VENV := .venv
 PYTHON := $(VENV)/bin/python
 PYTEST := $(VENV)/bin/pytest
-IMAGE := stellars/stellars-gpuinfo-nvidia:latest
+IMAGE := stellars/duoptimum-gpuinfo-nvidia:latest
 # Build context is the repo root so the Dockerfile can COPY the package by path.
 REPO_ROOT := ../../..
 
