@@ -44,6 +44,7 @@ from duoptimum_hub_services import (
 )
 
 from duoptimum_hub_services.docker_utils import resolve_self_mount_volume  # runtime discovery of the docker-proxy volume from the hub's own mounts (no hardcoded/reconstructed name)
+from duoptimum_hub_services.admin_bootstrap import query_admin_state, provision_admin_userinfo  # first-admin bootstrap DB queries (raw sqlite3 on users_info, before the ORM exists)
 
 # Tornado request handlers - registered via c.JupyterHub.extra_handlers
 from duoptimum_hub_services.handlers import (
@@ -141,8 +142,8 @@ JUPYTERHUB_TIMEZONE = os.environ.get("JUPYTERHUB_TIMEZONE", "Etc/UTC")          
 
 # Docker spawner settings
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")                                     # URL prefix (e.g. /jupyterhub), None or / for root
-JUPYTERHUB_NETWORK_NAME = os.environ.get("JUPYTERHUB_NETWORK_NAME", "hub_network")       # Docker network for hub + spawned containers
-JUPYTERHUB_LAB_IMAGE = os.environ.get("JUPYTERHUB_LAB_IMAGE", "stellars/stellars-jupyterlab-ds:latest")  # JupyterLab image to spawn
+JUPYTERHUB_NETWORK_NAME = os.environ.get("JUPYTERHUB_NETWORK_NAME", "").strip()          # Docker network for hub + spawned containers (required; baked image ENV - validated below)
+JUPYTERHUB_LAB_IMAGE = os.environ.get("JUPYTERHUB_LAB_IMAGE", "").strip()                # JupyterLab image to spawn (required; baked image ENV - validated below)
 # Hub's own compose project. Renamed from the bare COMPOSE_PROJECT_NAME so the
 # hub's notion of its project is an explicit hub var, not docker-compose's magic
 # one; falls back to COMPOSE_PROJECT_NAME during the transition so a not-yet-updated
@@ -171,11 +172,20 @@ JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME = (
     os.environ.get("JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME", "").strip()
     or JUPYTERHUB_COMPOSE_PROJECT_NAME
 )
+# Lab-container name template ({username} placeholder). Single source of truth for
+# how a user's lab container is named: the spawner names it from this (set on
+# c.DockerSpawner.name_template below) and duoptimum_hub_services.docker_utils
+# .lab_container_name() reads the SAME env var to find it again - no place
+# hardcodes the prefix, so renaming the template never desyncs spawn from lookup.
+JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE = (
+    os.environ.get("JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE", "").strip()
+    or "jupyterlab-{username}"
+)
 JUPYTERHUB_GPUINFO_NVIDIA_URL = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_URL", "")  # GPU-info sidecar base URL (detection + utilisation); baked as a Dockerfile ENV derived from the container name - empty => GPU detection degrades to off, no hardcoded host
 JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME", "")  # sidecar container + DNS name the hub creates and reaches; baked as a Dockerfile ENV (project-prefixed), must match the URL host
 JUPYTERHUB_GPUINFO_NETWORK_NAME = os.environ.get("JUPYTERHUB_GPUINFO_NETWORK_NAME", "hub-gpuinfo-network")  # dedicated hub<->sidecar network (compose-level)
 JUPYTERHUB_GPUINFO_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_IMAGE", "stellars/duoptimum-gpuinfo-nvidia:latest")  # sidecar image the hub self-starts
-JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN")                                          # admin username (auto-authorized on first signup)
+JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN", "").strip()                              # admin username (auto-authorized on first signup) (required; baked image ENV - validated below)
 
 # Branding URIs - file:// copies to static dir, http(s):// passed to templates, empty = stock assets
 JUPYTERHUB_BRANDING_LOGO_URI = os.environ.get("JUPYTERHUB_BRANDING_LOGO_URI", "")                          # hub logo (login page, nav bar)
@@ -191,6 +201,33 @@ JUPYTERLAB_AUX_MENU_PATH = os.environ.get("JUPYTERLAB_AUX_MENU_PATH", "")       
 JUPYTERLAB_SYSTEM_NAME = os.environ.get("JUPYTERLAB_SYSTEM_NAME", "")                       # rebrand stellars-jupyterlab-ds in welcome page, MOTD, toolbar header badge; empty = no rebrand
 JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME = os.environ.get("JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME", "1")  # uppercase the toolbar header badge (0/1)
 JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR = os.environ.get("JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR", "")            # CSS color for toolbar header badge text; empty = --jp-ui-font-color2
+
+
+# ── Required-config validation ───────────────────────────────────────────────
+# Fail fast (raise) when a key variable is empty, rather than limping on with a
+# silent default that mismatches the real deployment. These three are baked as
+# image ENV defaults and set in compose.yml, so an empty value here means the
+# environment is genuinely misconfigured - a default would spawn against the wrong
+# image/network or leave the platform with no admin. JUPYTERHUB_COMPOSE_PROJECT_NAME
+# and the docker-proxy socket dir/volume are validated at their own resolution
+# points (they carry deployment-specific messages).
+def _validate_required_config():
+    required = {
+        "JUPYTERHUB_ADMIN": JUPYTERHUB_ADMIN,
+        "JUPYTERHUB_LAB_IMAGE": JUPYTERHUB_LAB_IMAGE,
+        "JUPYTERHUB_NETWORK_NAME": JUPYTERHUB_NETWORK_NAME,
+    }
+    missing = [name for name, value in required.items() if not (value or "").strip()]
+    if missing:
+        raise RuntimeError(
+            "Required configuration is empty - refusing to start: "
+            + ", ".join(missing)
+            + ". Each is baked as an image ENV and set in compose.yml; an empty value "
+            "means the environment is misconfigured (set it in compose.yml / .env)."
+        )
+
+
+_validate_required_config()
 
 
 # ── Section 2: Data Literals ─────────────────────────────────────────────────
@@ -210,8 +247,8 @@ else:
 # the volume reset UI. Same pattern as the env-variable dictionary so all
 # volume metadata lives in one place. Volumes are namespaced by the compose
 # project so distinct deployments do not collide on per-user data. Container
-# names stay literal (jupyterlab-{username}); the compose project label
-# provides the grouping in `docker compose ls`.
+# names follow JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE (default jupyterlab-{username});
+# the compose project label provides the grouping in `docker compose ls`.
 #
 # Loaded from:
 #   /srv/jupyterhub/volumes_dictionary.yml          - platform defaults (image-baked)
@@ -299,75 +336,9 @@ prepare_sent_notification_log()
 
 JUPYTERHUB_ADMIN_PASSWORD = os.environ.get("JUPYTERHUB_ADMIN_PASSWORD", "").strip()
 
-_DB_PATH = '/data/jupyterhub.sqlite'
-
-
-def _query_admin_state(admin_username, db_path=_DB_PATH):
-    """Return (db_empty, admin_present) at startup.
-
-    db_empty is True iff users_info has zero rows (or doesn't exist yet).
-    admin_present is True iff a UserInfo row for admin_username exists.
-    First-ever boot (no DB file) reports (True, False) so the bootstrap window opens.
-    """
-    import sqlite3
-    if not admin_username or not os.path.exists(db_path):
-        return True, False
-    conn = sqlite3.connect(db_path)
-    try:
-        cur = conn.cursor()
-        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users_info'")
-        if not cur.fetchone():
-            return True, False
-        cur.execute("SELECT COUNT(*) FROM users_info")
-        empty = cur.fetchone()[0] == 0
-        cur.execute("SELECT 1 FROM users_info WHERE username = ?", (admin_username,))
-        present = cur.fetchone() is not None
-        return empty, present
-    finally:
-        conn.close()
-
-
-def _provision_admin_userinfo(admin_username, admin_password, db_path=_DB_PATH):
-    """Bootstrap-by-env: seed admin UserInfo from JUPYTERHUB_ADMIN_PASSWORD.
-
-    Initial-only semantics:
-      - missing UserInfo                        -> INSERT bcrypt(env), is_authorized=1
-      - exists, env still verifies against hash -> no-op (already initial)
-      - exists, env does NOT verify             -> leave alone (admin has changed it)
-    """
-    import sqlite3
-    import bcrypt
-    if not admin_username or not admin_password or not os.path.exists(db_path):
-        return
-    conn = sqlite3.connect(db_path)
-    try:
-        cur = conn.cursor()
-        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users_info'")
-        if not cur.fetchone():
-            return
-        cur.execute("SELECT password FROM users_info WHERE username = ?", (admin_username,))
-        row = cur.fetchone()
-        if row is None:
-            hashed = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt())
-            cur.execute(
-                "INSERT INTO users_info (username, password, is_authorized) VALUES (?, ?, 1)",
-                (admin_username, hashed),
-            )
-            conn.commit()
-            print(f"[Admin Bootstrap] Provisioned '{admin_username}' from JUPYTERHUB_ADMIN_PASSWORD", flush=True)
-            return
-        stored = row[0].encode('utf-8') if isinstance(row[0], str) else row[0]
-        try:
-            still_initial = bcrypt.checkpw(admin_password.encode('utf-8'), stored)
-        except Exception:
-            still_initial = False
-        if not still_initial:
-            print(f"[Admin Bootstrap] '{admin_username}' has changed their password; JUPYTERHUB_ADMIN_PASSWORD ignored", flush=True)
-    finally:
-        conn.close()
-
-
-_DB_EMPTY_AT_STARTUP, _ADMIN_PRESENT_AT_STARTUP = _query_admin_state(JUPYTERHUB_ADMIN)
+# Raw-sqlite bootstrap queries live in duoptimum_hub_services.admin_bootstrap (imported
+# above); this config only drives the policy around them.
+_DB_EMPTY_AT_STARTUP, _ADMIN_PRESENT_AT_STARTUP = query_admin_state(JUPYTERHUB_ADMIN)
 _ADMIN_PROVISIONING_REQUESTED = bool(JUPYTERHUB_ADMIN and JUPYTERHUB_ADMIN_PASSWORD)
 
 # Bootstrap window: signup off, no env password, no users yet, no admin yet.
@@ -380,7 +351,7 @@ _BOOTSTRAP_WINDOW_OPEN = (
 )
 
 if _ADMIN_PROVISIONING_REQUESTED:
-    _provision_admin_userinfo(JUPYTERHUB_ADMIN, JUPYTERHUB_ADMIN_PASSWORD)
+    provision_admin_userinfo(JUPYTERHUB_ADMIN, JUPYTERHUB_ADMIN_PASSWORD)
 
 
 class BootstrapAdminSignUpHandler(DuoptimumSignUpHandler):
@@ -613,7 +584,7 @@ c.DockerSpawner.use_internal_ip = True                       # use container IP 
 c.DockerSpawner.network_name = JUPYTERHUB_NETWORK_NAME       # Docker network connecting hub and user containers
 c.JupyterHub.default_url = JUPYTERHUB_BASE_URL_PREFIX + PORTAL_URL  # land everyone on the Duoptimum Hub portal after login
 # c.DockerSpawner.notebook_dir = DOCKER_NOTEBOOK_DIR         # redundant - stellars-jupyterlab-ds image defaults to /home/lab/workspace
-c.DockerSpawner.name_template = "jupyterlab-{username}"  # literal - compose project label (set in pre_spawn_hook) provides the grouping namespace
+c.DockerSpawner.name_template = JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE  # env-driven; lab_container_name() reads the same var so hub lookups never desync. compose project label (pre_spawn_hook) provides the grouping namespace
 c.DockerSpawner.volumes = DOCKER_SPAWNER_VOLUMES             # per-user persistent volumes + shared storage
 
 # ── Branding: logo ──
