@@ -52,34 +52,34 @@ def enumerate_gpus(_image=None, **probe):
 def resolve_gpu_mode(gpu_enabled, _image=None, probe_sidecar=True):
     """Resolve GPU mode from env setting. Returns (gpu_enabled, nvidia_detected, gpu_list).
 
-    gpu_enabled: 0=disabled, 1=enabled, 2=autodetect
+    Two modes only:
+      0          = deliberately OFF - never touches the sidecar, no GPUs
+      1          = AUTODETECT (the default) - probe the sidecar and turn GPU on iff
+                   GPUs are actually detected
+      other != 0 = autodetect too (the legacy value 2 still works, for back-compat)
 
-    Whenever GPU is on - forced (mode 1) or autodetected (mode 2) - the sidecar is
-    queried for the host inventory (short bounded probe), but only when
-    ``probe_sidecar`` is True (the caller's self-start succeeded). If the sidecar
-    is known-unreachable (``probe_sidecar`` False) we skip the probe entirely so
-    a missing sidecar can never stall boot on DNS/connect. A fresh probe result
-    is persisted as the last-known inventory; an empty/skipped probe seeds from
-    that persisted snapshot instead, so a cold/slow sidecar at boot reuses
-    last-known GPUs rather than dropping to off. In autodetect, presence is
-    derived from the (possibly seeded) inventory so the mode collapses to on/off.
-    In forced mode the grant stays on regardless; the list is still populated for
-    the UI. Mode 0 never touches the sidecar.
+    There is no "forced on": the platform never claims GPUs it cannot back.
+
+    In autodetect the sidecar is queried for the host inventory (short bounded probe),
+    but only when ``probe_sidecar`` is True (the caller's self-start succeeded, or an
+    operator/compose-managed sidecar is configured). If the sidecar is known-unreachable
+    (``probe_sidecar`` False) the probe is skipped so a missing sidecar never stalls boot
+    on DNS/connect. A fresh probe result is persisted as the last-known inventory; an
+    empty/skipped probe seeds from that persisted snapshot, so a cold/slow sidecar at
+    boot reuses last-known GPUs rather than dropping to off. Presence is derived from the
+    (possibly seeded) inventory, so the mode collapses to on/off.
     """
-    nvidia_detected = 0
-    gpu_list = []
-    if gpu_enabled in (1, 2):
-        gpu_list = enumerate_gpus() if probe_sidecar else []
-        if gpu_list:
-            save_cached(_INVENTORY_CACHE, gpu_list)          # refresh last-known
-        else:
-            seeded = load_cached(_INVENTORY_CACHE)           # fall back to last-known
-            if seeded is not None:
-                gpu_list = seeded[0] or []
-        nvidia_detected = 1 if gpu_list else 0
-        if gpu_enabled == 2:
-            gpu_enabled = 1 if nvidia_detected else 0
-    return gpu_enabled, nvidia_detected, gpu_list
+    if gpu_enabled == 0:
+        return 0, 0, []
+    gpu_list = enumerate_gpus() if probe_sidecar else []
+    if gpu_list:
+        save_cached(_INVENTORY_CACHE, gpu_list)          # refresh last-known
+    else:
+        seeded = load_cached(_INVENTORY_CACHE)           # fall back to last-known
+        if seeded is not None:
+            gpu_list = seeded[0] or []
+    nvidia_detected = 1 if gpu_list else 0
+    return (1 if nvidia_detected else 0), nvidia_detected, gpu_list
 
 
 def gpu_summary_lines():

@@ -30,7 +30,7 @@ services:
       # cannot seed on a single fresh boot - the users_info table is created after
       # the config runs).
       - JUPYTERHUB_SIGNUP_ENABLED=0
-      - JUPYTERHUB_GPU_ENABLED=${FUNCTEST_GPU_ENABLED:-0}   # default off (fast); FUNCTEST_GPU_ENABLED=2 on a GPU host to test auto-detect
+      - JUPYTERHUB_GPU_ENABLED=${FUNCTEST_GPU_ENABLED:-0}   # default off (fast); 1=autodetect (make test-functional-gpu deploys a mock sidecar)
       - JUPYTERHUB_LAB_IMAGE=quay.io/jupyterhub/singleuser:latest   # minimal public spawnable image
       - JUPYTERHUB_LAB_SERVICE_MLFLOW=0
       - JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR=0
@@ -56,7 +56,7 @@ services:
       - ADMIN_USER=functestadmin
       - ADMIN_PASSWORD=functest-secret
       - PYTEST_ARGS=${PYTEST_ARGS:-}                           # select specific workflows e.g. PYTEST_ARGS="-k priority"
-      - FUNCTEST_GPU_ENABLED=${FUNCTEST_GPU_ENABLED:-0}        # conftest collects the gpu test only when this is 2
+      - FUNCTEST_GPU_ENABLED=${FUNCTEST_GPU_ENABLED:-0}        # conftest collects gpu-marked tests only when this is non-zero (1=autodetect)
     volumes:
       - ./:/tests
       - /var/run/docker.sock:/var/run/docker.sock:rw          # inspect/exec spawned labs (end-to-end verification)

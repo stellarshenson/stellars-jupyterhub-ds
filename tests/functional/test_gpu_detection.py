@@ -5,7 +5,10 @@ Reads the hub's startup `[GPU debug] enabled=N detected=N ... gpus=[...]` line
 (no spawn needed). Skips when no GPU is detected, so it is a no-op on a CPU-only
 host. To exercise auto-detection, run on a GPU host with:
 
-    FUNCTEST_GPU_ENABLED=2 make test-functional
+    FUNCTEST_GPU_ENABLED=1 make test-functional
+
+or run `make test-functional-gpu`, which deploys a mock gpuinfo sidecar so detection
+fires on any host (no real GPU needed).
 """
 
 import os
@@ -29,7 +32,7 @@ def test_gpu_autodetection(docker_client):
     enabled, detected, gpus = int(m.group(1)), int(m.group(2)), m.group(3)
 
     if not detected:
-        pytest.skip("no GPU detected on host (FUNCTEST_GPU_ENABLED=2 make test-functional on a GPU host)")
+        pytest.skip("no GPU detected (run on a GPU host, or `make test-functional-gpu` for the mock)")
 
     # GPU present -> auto-detection must have enabled GPU support and enumerated GPUs.
     assert enabled == 1, "GPU detected but support not enabled by auto-detection"

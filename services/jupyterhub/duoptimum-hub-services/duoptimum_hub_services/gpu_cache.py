@@ -21,7 +21,11 @@ from .docker_utils import get_executor
 log = logging.getLogger('jupyterhub.custom_handlers')
 
 # Cache: {'data': {index: {utilization, memory_used_mb, processes}}, 'timestamp': datetime, 'refreshing': bool}
-_gpu_util_cache = {'data': {}, 'timestamp': None, 'refreshing': False}
+# 'last_attempt'/'last_ok' track sidecar reachability independently of 'timestamp'
+# (the last SUCCESSFUL sample): a dead sidecar returns empty samples -> last_ok False
+# -> gpu_sidecar_connected() False, so the UI hides GPU widgets rather than render the
+# startup inventory (which is seeded from a persisted cache and outlives the sidecar).
+_gpu_util_cache = {'data': {}, 'timestamp': None, 'refreshing': False, 'last_attempt': None, 'last_ok': False}
 
 
 def _get_logger():
@@ -80,6 +84,10 @@ def _refresh_sync():
     _gpu_util_cache['refreshing'] = True
     try:
         data = _fetch_gpu_utilization()
+        # record reachability every attempt (success OR empty), so a sidecar that
+        # goes down flips gpu_sidecar_connected() off on the next tick
+        _gpu_util_cache['last_attempt'] = datetime.now(timezone.utc)
+        _gpu_util_cache['last_ok'] = bool(data)
         if data:
             # First successful sample logs once at INFO with the cadence so
             # operators see the cache come alive; every later refresh is DEBUG
@@ -115,6 +123,23 @@ def get_gpu_utilization_with_refresh():
     if needs_refresh and not _gpu_util_cache['refreshing']:
         get_executor().submit(_refresh_sync)
     return _gpu_util_cache['data']
+
+
+def gpu_sidecar_connected():
+    """True iff the most recent sidecar sample succeeded and is fresh.
+
+    The GPU inventory is enumerated once at startup and seeded from a persisted
+    cache that can be hours old, so it outlives the sidecar. This is the LIVE
+    signal: a disconnected/dead sidecar returns empty samples (last_ok False), and
+    a stalled refresher ages the last attempt out (staleness window), so callers
+    hide GPU widgets rather than render stale inventory with no health.
+    """
+    last_attempt = _gpu_util_cache.get('last_attempt')
+    if last_attempt is None or not _gpu_util_cache.get('last_ok'):
+        return False
+    interval = _get_update_interval()
+    staleness = max(2 * interval, 90)
+    return (datetime.now(timezone.utc) - last_attempt).total_seconds() <= staleness
 
 
 class GpuUtilizationRefresher:

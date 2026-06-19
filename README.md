@@ -260,7 +260,7 @@ graph LR
     style APPLY_OFF stroke:#6b7280,stroke-width:2px
 ```
 
-When `JUPYTERHUB_GPU_ENABLED=2` (auto-detect mode), JupyterHub spawns a temporary CUDA container running `nvidia-smi` with `runtime=nvidia`. If the command succeeds, GPU support is enabled and `device_requests` are added to spawned user containers. If it fails, GPU support is disabled. The test container is always removed after detection. Manual override is possible by setting `JUPYTERHUB_GPU_ENABLED=1` (force enable) or `JUPYTERHUB_GPU_ENABLED=0` (force disable).
+GPU has two modes: `JUPYTERHUB_GPU_ENABLED=1` (autodetect, the default) and `0` (off). In autodetect the hub queries the `gpuinfo-nvidia` sidecar for the host GPU inventory and enables GPU support only when devices are actually detected, adding `device_requests` to spawned user containers; otherwise GPU stays off. There is no forced-on mode - the platform never claims GPUs it cannot back (the legacy value `2` is still accepted as autodetect). The hub self-starts the sidecar when GPU is on. The live GPU display (Host Status, group GPU grants) is gated on the sidecar being reachable, so a disconnected sidecar shows no GPUs rather than stale inventory.
 
 ## User Self-Service Workflow
 
@@ -449,7 +449,7 @@ Changes in your `compose_override.yml`:
 services:
   jupyterhub:
     environment:
-      - JUPYTERHUB_GPU_ENABLED=1 # enable NVIDIA GPU, values: 0 - disabled, 1 - enabled, 2 - auto-detect
+      - JUPYTERHUB_GPU_ENABLED=1 # NVIDIA GPU: 0=off, 1=autodetect (default; on only when devices are detected)
 ```
 
 #### Disable self-registration
