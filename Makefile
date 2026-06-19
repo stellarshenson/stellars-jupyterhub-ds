@@ -109,7 +109,23 @@ RUNTIME_TAG_PYTHON_CMD := python3 -c 'import tomllib;d=tomllib.load(open("pyproj
 
 # Reusable green/bold success banners. Trailing blank line separates the
 # banner from any subsequent shell output for visual breathing room.
-PRINT_BUILD_SUCCESS = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sBuild successful: stellars/duoptimum-hub:%s%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
+# Build banner reads the version/id from the BUILT IMAGE (docker inspect) - the
+# baked `version` label, the baked STELLARS_JUPYTERHUB_VERSION env, and the image
+# id - so it reports what actually got built, not what pyproject says. Falls back
+# to the pyproject-computed tag only when the image is absent.
+PRINT_BUILD_SUCCESS = @IMG="$(HUB_IMAGE):latest"; \
+	SRC=$$($(RUNTIME_TAG_PYTHON_CMD)); \
+	LBL=$$(docker inspect --format '{{ index .Config.Labels "version" }}' "$$IMG" 2>/dev/null); \
+	ENVV=$$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$$IMG" 2>/dev/null | sed -n 's/^STELLARS_JUPYTERHUB_VERSION=//p'); \
+	IMGID=$$(docker inspect --format '{{ .Id }}' "$$IMG" 2>/dev/null | cut -d: -f2 | cut -c1-12); \
+	if [ -n "$$LBL" ]; then \
+		printf '\n%s%sBuild successful: %s%s\n' "$(GREEN)" "$(BOLD)" "$$IMG" "$(RESET)"; \
+		printf '%s  version (image label): %s%s\n' "$(GREEN)" "$$LBL" "$(RESET)"; \
+		printf '%s  baked env version:    %s%s\n' "$(GREEN)" "$${ENVV:-<unset>}" "$(RESET)"; \
+		printf '%s  image id:             %s%s\n\n' "$(GREEN)" "$$IMGID" "$(RESET)"; \
+	else \
+		printf '\n%s%sBuild step done, but image %s not found to inspect (source version %s)%s\n\n' "$(RED)" "$(BOLD)" "$$IMG" "$$SRC" "$(RESET)"; \
+	fi
 PRINT_PUSH_SUCCESS  = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sPush successful:  stellars/duoptimum-hub:%s (also :latest)%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
 
 # Build options (e.g., BUILD_OPTS='--no-cache' or BUILD_OPTS='--no-version-increment')
