@@ -45,7 +45,10 @@ from duoptimum_hub_services import (
 
 from duoptimum_hub_services.docker_utils import resolve_self_mount_volume  # runtime discovery of the docker-proxy volume from the hub's own mounts (no hardcoded/reconstructed name)
 from duoptimum_hub_services.docker_utils import resolve_self_compose_project  # runtime discovery of the hub's own compose project from its own container label (no env needed)
-from duoptimum_hub_services.docker_utils import resolve_self_network_by_label  # runtime discovery of the hub<->sidecar network by its compose-declared marker label (no name env needed)
+from duoptimum_hub_services.docker_utils import (  # net discovery by role label + {network} token resolve; no net-name env
+    resolve_self_network_by_label,
+    resolve_network_placeholder,
+)
 from duoptimum_hub_services.admin_bootstrap import query_admin_state, provision_admin_userinfo  # first-admin bootstrap DB queries (raw sqlite3 on users_info, before the ORM exists)
 
 # Tornado request handlers - registered via c.JupyterHub.extra_handlers
@@ -144,26 +147,29 @@ JUPYTERHUB_TIMEZONE = os.environ.get("JUPYTERHUB_TIMEZONE", "Etc/UTC")          
 
 # Docker spawner settings
 JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")                                     # URL prefix (e.g. /jupyterhub), None or / for root
-# The hub<->lab network spawned labs join. It MUST be shared with the hub so labs reach
-# the hub API and the hub/CHP proxy them. DECLARED in compose.yml (hub_network) with a
-# marker label; the hub DISCOVERS its real, compose-namespaced name among its OWN attached
-# networks by that label (the hub now sits on several networks - hub_network + the gpuinfo
-# one), so the name can never drift from the declaration. An explicit env overrides; empty
-# after both is fatal - labs cannot spawn without a hub<->lab network.
-JUPYTERHUB_LAB_NETWORK_LABEL = "duoptimum.lab.network"  # marker label compose stamps on hub_network; MUST match the label in compose.yml
-JUPYTERHUB_NETWORK_NAME = (
-    os.environ.get("JUPYTERHUB_NETWORK_NAME", "").strip()
-    or resolve_self_network_by_label(JUPYTERHUB_LAB_NETWORK_LABEL)
-    or ""
-)
+# Network role labels. Hub finds each net by duoptimum.network.role value among own
+# attachments (sits on several: hub_network + gpuinfo net). Key + role values from env
+# (baked Dockerfile defaults); compose stamps matching literals on the nets (MUST match).
+JUPYTERHUB_NETWORK_ROLE_LABEL_KEY = os.environ.get("JUPYTERHUB_NETWORK_ROLE_LABEL_KEY", "duoptimum.network.role").strip()
+JUPYTERHUB_LAB_NETWORK_ROLE_LABEL = os.environ.get("JUPYTERHUB_LAB_NETWORK_ROLE_LABEL", "lab").strip()
+JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL = os.environ.get("JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL", "gpuinfo").strip()
+# Hub<->lab net spawned labs join. MUST be shared with hub (labs reach hub API; hub/CHP
+# proxy them). Env defaults (baked) to "{network}" token -> role=lab net. Literal env =
+# operator override (no discovery). Empty after resolve = fatal: no hub<->lab net, no spawn.
+JUPYTERHUB_NETWORK_NAME = os.environ.get("JUPYTERHUB_NETWORK_NAME", "{network}").strip()
+if "{network}" in JUPYTERHUB_NETWORK_NAME:
+    JUPYTERHUB_NETWORK_NAME = resolve_network_placeholder(
+        JUPYTERHUB_NETWORK_NAME,
+        resolve_self_network_by_label(JUPYTERHUB_NETWORK_ROLE_LABEL_KEY, JUPYTERHUB_LAB_NETWORK_ROLE_LABEL) or "",
+    ).strip()  # {network} -> hub<->lab net (role=lab)
 if not JUPYTERHUB_NETWORK_NAME:
     raise RuntimeError(
-        "JUPYTERHUB_NETWORK_NAME could not be determined - cannot start. The hub discovers "
-        f"the lab network from the compose-declared hub_network carrying the "
-        f"'{JUPYTERHUB_LAB_NETWORK_LABEL}' label among its own attachments; that was not found "
-        "(network not labelled, hub not attached, or the docker socket is unreachable). "
-        "Spawned labs must share a network with the hub. Run via docker compose with the "
-        "labelled hub_network, or set JUPYTERHUB_NETWORK_NAME explicitly."
+        "JUPYTERHUB_NETWORK_NAME could not be determined - cannot start. Hub discovers the lab "
+        f"net from compose-declared hub_network carrying "
+        f"'{JUPYTERHUB_NETWORK_ROLE_LABEL_KEY}={JUPYTERHUB_LAB_NETWORK_ROLE_LABEL}' among own "
+        "attachments; not found (net unlabelled, hub not attached, or docker socket unreachable). "
+        "Labs must share a net with the hub. Run via docker compose with the labelled hub_network, "
+        "or set JUPYTERHUB_NETWORK_NAME to a literal name."
     )
 JUPYTERHUB_LAB_IMAGE = os.environ.get("JUPYTERHUB_LAB_IMAGE", "").strip()                # JupyterLab image to spawn (required; baked image ENV - validated below)
 # Hub's own compose project - drives the volume namespace + hub/sidecar/lab compose
@@ -210,17 +216,21 @@ JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE = (
 )
 JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME", "")  # name the hub gives the sidecar it creates (and finds/removes it by); baked as a Dockerfile ENV (project-prefixed)
 JUPYTERHUB_GPUINFO_NVIDIA_URL = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_URL", "")  # GPU-info sidecar base URL TEMPLATE; the {hostname} placeholder is filled at runtime by ensure_gpuinfo_sidecar with the address it discovers for the running sidecar - no hardcoded host
-# The hub<->sidecar network is DECLARED in compose.yml (compose owns/creates it) and
-# tagged with a marker label; the hub DISCOVERS its real, compose-namespaced name by
-# that label rather than being told via an env, so the name can never drift from the
-# declaration. An explicit env still wins as an override; empty (no labelled network and
-# no env) means the sidecar cannot be placed -> GPU off (ensure_gpuinfo_sidecar degrades).
-JUPYTERHUB_GPUINFO_NETWORK_LABEL = "duoptimum.gpuinfo.network"  # marker label compose stamps on the network; MUST match the label in compose.yml
-JUPYTERHUB_GPUINFO_NETWORK_NAME = (
-    os.environ.get("JUPYTERHUB_GPUINFO_NETWORK_NAME", "").strip()
-    or resolve_self_network_by_label(JUPYTERHUB_GPUINFO_NETWORK_LABEL)
-    or ""
-)
+# Container role label on hub-created sidecar (mirrored on compose gpuinfo-nvidia service).
+# Future code finds gpuinfo containers by role. Key + value from env (baked; MUST match
+# compose service label).
+JUPYTERHUB_CONTAINER_ROLE_LABEL_KEY = os.environ.get("JUPYTERHUB_CONTAINER_ROLE_LABEL_KEY", "duoptimum.container.role").strip()
+JUPYTERHUB_GPUINFO_CONTAINER_ROLE_LABEL = os.environ.get("JUPYTERHUB_GPUINFO_CONTAINER_ROLE_LABEL", "gpuinfo").strip()
+# Hub<->sidecar net DECLARED in compose.yml (compose owns/creates it: driver + attachments
+# managed there) tagged duoptimum.network.role=gpuinfo. Env defaults (baked) to "{network}"
+# -> role=gpuinfo net. Literal env = override (no discovery). Empty = sidecar unplaceable ->
+# GPU off (ensure_gpuinfo_sidecar degrades).
+JUPYTERHUB_GPUINFO_NETWORK_NAME = os.environ.get("JUPYTERHUB_GPUINFO_NETWORK_NAME", "{network}").strip()
+if "{network}" in JUPYTERHUB_GPUINFO_NETWORK_NAME:
+    JUPYTERHUB_GPUINFO_NETWORK_NAME = resolve_network_placeholder(
+        JUPYTERHUB_GPUINFO_NETWORK_NAME,
+        resolve_self_network_by_label(JUPYTERHUB_NETWORK_ROLE_LABEL_KEY, JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL) or "",
+    ).strip()  # {network} -> hub<->sidecar net (role=gpuinfo)
 JUPYTERHUB_GPUINFO_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_IMAGE", "stellars/duoptimum-gpuinfo-nvidia:latest")  # sidecar image the hub self-starts
 JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN", "").strip()                              # admin username (auto-authorized on first signup) (required; baked image ENV - validated below)
 
@@ -524,7 +534,12 @@ async def _admin_post_auth_hook(authenticator, handler, authentication):
 # for the container it just created (its IP on the dedicated network) - the host is
 # obtained at runtime, never hardcoded - or '' when the sidecar isn't up.
 _gpuinfo_url = (
-    ensure_gpuinfo_sidecar(JUPYTERHUB_GPUINFO_NVIDIA_IMAGE, JUPYTERHUB_GPUINFO_NETWORK_NAME, JUPYTERHUB_GPUINFO_NVIDIA_URL, JUPYTERHUB_COMPOSE_PROJECT_NAME, container_name=JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME)
+    ensure_gpuinfo_sidecar(
+        JUPYTERHUB_GPUINFO_NVIDIA_IMAGE, JUPYTERHUB_GPUINFO_NETWORK_NAME, JUPYTERHUB_GPUINFO_NVIDIA_URL,
+        JUPYTERHUB_COMPOSE_PROJECT_NAME, container_name=JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME,
+        container_role_label_key=JUPYTERHUB_CONTAINER_ROLE_LABEL_KEY,
+        container_role_label_value=JUPYTERHUB_GPUINFO_CONTAINER_ROLE_LABEL,
+    )
     if JUPYTERHUB_GPU_ENABLED != 0 else ""
 )
 _gpuinfo_sidecar_up = bool(_gpuinfo_url)

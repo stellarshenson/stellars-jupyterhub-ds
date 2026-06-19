@@ -256,21 +256,17 @@ def resolve_self_compose_project():
         return None
 
 
-def resolve_self_network_by_label(label_key):
-    """The Docker network THIS (hub) container is attached to that carries ``label_key``,
-    discovered at runtime instead of being named via an env.
+def resolve_self_network_by_label(label_key, label_value=None):
+    """Net THIS (hub) container attached to that carries label_key. Discover at runtime,
+    not name via env (name would drift).
 
-    The hub<->sidecar network is DECLARED in compose.yml with a marker label
-    (e.g. ``duoptimum.gpuinfo.network``) and the hub is attached to it there; the hub
-    finds it by that label so its real, compose-namespaced name
-    (``<project>_hub_gpuinfo_network``) never has to be repeated in an env that could
-    drift from the declaration. Discovery is scoped to the hub's OWN attached networks
-    (not a host-wide label scan) so a second stack on the same host - e.g. the
-    functional test project carrying the same label - can never be picked by mistake.
-    Compose owns and creates the network; the hub only discovers and joins it. Returns
-    the network's Name, or None when undeterminable (not attached to a labelled network,
-    or the docker socket is unreachable), letting the caller fall back to an explicit env
-    or skip the sidecar.
+    Both hub<->lab and hub<->sidecar nets DECLARED in compose.yml with role label
+    (duoptimum.network.role = lab / gpuinfo); hub attached there. label_value given ->
+    match equality (Labels[label_key]==label_value, the role); None -> match key presence.
+    Scoped to hub's OWN attachments (not host-wide scan), so a second stack on the host with
+    the same label never picked by mistake. Compose owns/creates the net; hub only discovers
+    + joins. Returns net Name, or None when undeterminable (no matching net, or docker socket
+    unreachable) - caller falls back to env or skips sidecar.
     """
     try:
         import socket
@@ -281,13 +277,26 @@ def resolve_self_network_by_label(label_key):
             attached = (container.attrs.get('NetworkSettings') or {}).get('Networks') or {}
             for net_name, net_info in attached.items():
                 net = client.networks.get((net_info or {}).get('NetworkID') or net_name)
-                if label_key in ((net.attrs.get('Labels') or {})):
+                labels = net.attrs.get('Labels') or {}
+                if label_value is None:
+                    if label_key in labels:
+                        return net.name
+                elif labels.get(label_key) == label_value:
                     return net.name
             return None
         finally:
             client.close()
     except Exception:
         return None
+
+
+def resolve_network_placeholder(value, network):
+    """Sub {network} token in env value with resolved net name for that context (role=lab
+    net for JUPYTERHUB_NETWORK_NAME, role=gpuinfo for JUPYTERHUB_GPUINFO_NETWORK_NAME).
+    No-op when value empty or no token - literal override (real net name) passes through."""
+    if value and '{network}' in value:
+        return value.replace('{network}', network or '')
+    return value
 
 
 def get_executor():

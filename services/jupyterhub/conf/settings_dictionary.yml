@@ -76,8 +76,16 @@ Docker Spawner:
     default: stellars/stellars-jupyterlab-ds:latest
 
   - name: JUPYTERHUB_NETWORK_NAME
-    description: Hub<->lab network spawned labs join. Auto-discovered at boot from the compose-declared hub_network carrying the `duoptimum.lab.network` label (among the hub's own attachments); set only to override
-    default: ""
+    description: Hub<->lab network spawned labs join. Defaults to the `{network}` token, resolved at boot to the hub's attached net carrying `duoptimum.network.role=lab`; set a literal name to override
+    default: "{network}"
+
+  - name: JUPYTERHUB_NETWORK_ROLE_LABEL_KEY
+    description: Label key the hub matches to discover its networks by role; compose stamps it on the networks
+    default: duoptimum.network.role
+
+  - name: JUPYTERHUB_LAB_NETWORK_ROLE_LABEL
+    description: Role value identifying the hub<->lab network (matched against JUPYTERHUB_NETWORK_ROLE_LABEL_KEY)
+    default: lab
 
   - name: JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE
     description: Lab-container name template ({username} placeholder); spawner names from this and the hub's container lookups read the same var, so the prefix is never hardcoded
@@ -95,6 +103,22 @@ GPU:
   - name: JUPYTERHUB_GPUINFO_NVIDIA_URL
     description: GPU-info sidecar base URL TEMPLATE (detection + utilisation + processes); {hostname} is filled at boot with the address the hub discovers for the running sidecar
     default: http://{hostname}:8000
+
+  - name: JUPYTERHUB_GPUINFO_NETWORK_NAME
+    description: Hub<->sidecar network. Defaults to the `{network}` token, resolved at boot to the hub's attached net carrying `duoptimum.network.role=gpuinfo`; set a literal name to override. Empty = sidecar unplaceable, GPU off
+    default: "{network}"
+
+  - name: JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL
+    description: Role value identifying the hub<->sidecar network (matched against JUPYTERHUB_NETWORK_ROLE_LABEL_KEY)
+    default: gpuinfo
+
+  - name: JUPYTERHUB_CONTAINER_ROLE_LABEL_KEY
+    description: Label key stamped on hub-managed containers to mark their role; enables discovery by role
+    default: duoptimum.container.role
+
+  - name: JUPYTERHUB_GPUINFO_CONTAINER_ROLE_LABEL
+    description: Role value stamped on the gpuinfo sidecar container (matched against JUPYTERHUB_CONTAINER_ROLE_LABEL_KEY)
+    default: gpuinfo
 
 Services:
   - name: JUPYTERHUB_LAB_SERVICE_MLFLOW
