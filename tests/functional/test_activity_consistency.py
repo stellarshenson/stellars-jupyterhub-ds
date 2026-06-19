@@ -86,3 +86,39 @@ def test_activity_consistent_across_pages(admin_portal, base_url, admin_api):
     finally:
         _delete(admin_api, base_url, f"/hub/api/users/{user}/server")
         _delete(admin_api, base_url, f"/hub/api/users/{user}")
+
+
+@pytest.mark.acc_crit(
+    "activity-consistency::Server Status hero shown when stopped (DEF-2)",
+    "activity-consistency::Functional: hero shown when stopped (DEF-2)",
+)
+def test_hero_activity_shown_when_stopped(admin_portal, base_url, admin_api):
+    """DEF-2: the Server Status hero (the logged-in user's OWN server) must show the
+    7-day Activity meter even when the server is stopped - the list test above covers
+    only table rows, never the hero. Spawn the admin's own lab, sample while active,
+    stop it -> offline but with activity, then assert the hero meter matches the
+    Servers list row (the regression rendered the hero value=0 -> "No activity")."""
+    me = admin_api.get(f"{base_url}/hub/api/user", timeout=30).json()["name"]
+    try:
+        _post(admin_api, base_url, f"/hub/api/users/{me}/server")
+        assert _wait(lambda: _server_state(admin_api, base_url, me).get("", {}).get("ready")), \
+            "admin server never became ready"
+        time.sleep(10)
+        _post(admin_api, base_url, "/hub/api/activity/sample")  # record an active sample
+        _delete(admin_api, base_url, f"/hub/api/users/{me}/server")
+        assert _wait(lambda: not _server_state(admin_api, base_url, me)), "admin server never stopped"
+
+        # the hero uses ActivityMeterFill (.oh-meter.fill); the home widget rows use
+        # .oh-meter (not .fill), so .oh-meter.fill is the hero meter unambiguously
+        page = admin_portal.goto("/home", ready=".oh-meter.fill")
+        hero_title = page.locator(".oh-meter.fill").first.get_attribute("title")
+        # same admin on the Servers list - both meters derive from the SAME activity
+        # fields, so the tooltip (percent + avg hours) must be identical
+        servers_title = _meter_title(admin_portal, "/servers", me)
+        assert hero_title == servers_title, \
+            f"hero activity != list when stopped: hero={hero_title!r} list={servers_title!r}"
+        # and it must be a real reading, not the zeroed "No activity recorded yet"
+        assert hero_title and "No activity recorded yet" not in hero_title, \
+            f"hero shows no activity when stopped (DEF-2): {hero_title!r}"
+    finally:
+        _delete(admin_api, base_url, f"/hub/api/users/{me}/server")

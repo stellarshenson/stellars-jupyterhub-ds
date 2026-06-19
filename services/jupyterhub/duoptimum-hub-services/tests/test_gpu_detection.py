@@ -2,8 +2,8 @@
 
 The sidecar is stubbed so we never touch the network. Covers: a reachable
 sidecar (detect + persist + bounded probe budget), an unreachable sidecar that
-falls back to the last-known persisted inventory, the no-seed collapse (mode 2
-off / mode 1 forced-on-empty), mode 0 never probing, and probe_sidecar=False
+falls back to the last-known persisted inventory, the no-seed collapse to off
+(autodetect with nothing found), mode 0 never probing, and probe_sidecar=False
 skipping the probe entirely so a missing sidecar can never stall boot.
 """
 
@@ -62,9 +62,10 @@ def test_unreachable_no_seed_mode2_off(monkeypatch, _data_dir):
     assert gpu.resolve_gpu_mode(2, probe_sidecar=True) == (0, 0, [])
 
 
-def test_unreachable_no_seed_mode1_forced_on_empty(monkeypatch, _data_dir):
+def test_unreachable_no_seed_mode1_off(monkeypatch, _data_dir):
+    # mode 1 is autodetect now (no forced-on): unreachable + no last-known -> off
     _stub_payload(monkeypatch, None)
-    assert gpu.resolve_gpu_mode(1, probe_sidecar=True) == (1, 0, [])
+    assert gpu.resolve_gpu_mode(1, probe_sidecar=True) == (0, 0, [])
 
 
 def test_mode0_never_probes(monkeypatch, _data_dir):

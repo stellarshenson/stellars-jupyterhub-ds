@@ -62,7 +62,7 @@ def pytest_collection_modifyitems(config, items):
     suite never reports noise skips. Each regime runs only the tests it owns plus
     the regime-agnostic ones; gpu tests are collected only when auto-detect is on.
     """
-    gpu_on = os.environ.get("FUNCTEST_GPU_ENABLED", "0") == "2"
+    gpu_on = os.environ.get("FUNCTEST_GPU_ENABLED", "0") != "0"
     if AUTH_MODE == "env":
         items[:] = [i for i in items if "envauth" in i.keywords]
     elif AUTH_MODE == "signupopen":

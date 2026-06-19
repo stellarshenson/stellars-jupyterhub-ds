@@ -52,7 +52,7 @@ def _host_cpu_count():
 from ..docker_utils import encode_username_for_docker, newer_lab_image_available
 from ..container_size_cache import get_container_sizes_with_refresh
 from ..container_stats_cache import get_container_stats_with_refresh
-from ..gpu_cache import get_gpu_utilization_with_refresh
+from ..gpu_cache import get_gpu_utilization_with_refresh, gpu_sidecar_connected
 from ..hydrate import start_activity_refreshers
 from ..idle_culler import calc_ceiling, remaining_seconds_for
 from ..volume_cache import get_volume_sizes_with_refresh
@@ -251,6 +251,10 @@ class ActivityDataHandler(BaseHandler):
             "cpu_host_total": _host_cpu_count(),
             "activity_target_hours": get_activity_target_hours(),
             "gpus": gpus,
+            # live gpuinfo-sidecar reachability: the inventory above is enumerated at
+            # startup (persisted, can be hours old) and outlives the sidecar, so the
+            # UI gates GPU widgets on THIS, hiding them when the sidecar is down
+            "gpu_connected": gpu_sidecar_connected() if gpu_list else False,
             "lab_image": lab_image,
             "lab_volumes": lab_volumes,
             "timestamp": datetime.now(timezone.utc).isoformat(),

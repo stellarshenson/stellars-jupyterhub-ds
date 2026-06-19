@@ -16,41 +16,37 @@ def _payload(gpus):
 
 
 class TestResolveGpuMode:
-    def test_mode_0_disabled(self):
-        """Mode 0 returns (0, 0, []) without touching the sidecar."""
+    def test_mode_0_off(self):
+        """Mode 0 (off) returns (0, 0, []) without touching the sidecar."""
         with patch("duoptimum_hub_services.gpu.enumerate_gpus") as mock_enum:
             result = resolve_gpu_mode(0)
         assert result == (0, 0, [])
         mock_enum.assert_not_called()
 
-    def test_mode_1_enabled_enumerates(self):
-        """Mode 1 (forced) stays on AND enumerates via the sidecar."""
+    def test_mode_1_autodetect_found(self):
+        """Mode 1 (autodetect, the default) turns GPU on iff GPUs are found."""
         gpus = [{"index": "0", "name": "NVIDIA L4", "uuid": "GPU-x", "memory_mb": 24576}]
         with patch("duoptimum_hub_services.gpu.enumerate_gpus", return_value=gpus) as mock_enum:
             result = resolve_gpu_mode(1)
         assert result == (1, 1, gpus)
         mock_enum.assert_called_once_with()
 
-    def test_mode_1_enabled_stays_on_when_no_gpus(self):
-        """Mode 1 forced grant stays on even if the inventory is empty."""
-        with patch("duoptimum_hub_services.gpu.enumerate_gpus", return_value=[]) as mock_enum:
+    def test_mode_1_autodetect_off_when_no_gpus(self):
+        """No "forced on": autodetect with an empty inventory resolves to off - the
+        platform never claims GPUs it cannot back."""
+        with patch("duoptimum_hub_services.gpu.enumerate_gpus", return_value=[]) as mock_enum, \
+             patch("duoptimum_hub_services.gpu.load_cached", return_value=None):
             result = resolve_gpu_mode(1)
-        assert result == (1, 0, [])
+        assert result == (0, 0, [])
         mock_enum.assert_called_once_with()
 
-    def test_mode_2_autodetect_found(self):
-        """Mode 2 + GPUs found returns (1, 1, gpu_list)."""
+    def test_legacy_mode_2_treated_as_autodetect(self):
+        """The legacy value 2 (old explicit autodetect) still autodetects, so existing
+        deployments keep working."""
         gpus = [{"index": "0", "name": "NVIDIA A100", "uuid": "GPU-a", "memory_mb": 81920}]
         with patch("duoptimum_hub_services.gpu.enumerate_gpus", return_value=gpus) as mock_enum:
             result = resolve_gpu_mode(2)
         assert result == (1, 1, gpus)
-        mock_enum.assert_called_once_with()
-
-    def test_mode_2_autodetect_not_found(self):
-        """Mode 2 + no GPUs returns (0, 0, [])."""
-        with patch("duoptimum_hub_services.gpu.enumerate_gpus", return_value=[]) as mock_enum:
-            result = resolve_gpu_mode(2)
-        assert result == (0, 0, [])
         mock_enum.assert_called_once_with()
 
 
