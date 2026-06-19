@@ -34,6 +34,7 @@ Cross-document conflicts found during consolidation are tracked in [concerns.md]
 - [group policy import/export bundle shape](#group-policy-importexport-bundle-shape)
 - [Unified Group Policy Model](#unified-group-policy-model)
 - [Group Sudo Access Control](#group-sudo-access-control)
+- [Hub connectivity indicator (offline detection)](#hub-connectivity-indicator-offline-detection)
 - [Label capitalisation (Title Case)](#label-capitalisation-title-case)
 - [live data honesty (no mock masquerade)](#live-data-honesty-no-mock-masquerade)
 - [Mobile Responsive Portal](#mobile-responsive-portal)
@@ -4099,3 +4100,52 @@ The hub<->GPU-info sidecar is fully DECLARED in compose (role-labelled networks 
 - `resolve_gpuinfo_url(url, hostname)` -> `url` with `{hostname}` substituted (passthrough if no placeholder / empty hostname)
 - `ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', container_name=None, container_role_label_key='', container_role_label_value='')` -> resolved sidecar URL, or `''` on any degrade path; stamps the container role label; never creates the network, never raises
 - `stop_gpuinfo_sidecar(url, container_name=None)` -> removes the sidecar at hub exit; never raises
+
+## Hub connectivity indicator (offline detection)
+
+The SPA continuously probes hub reachability and, when the hub stops responding, raises a prominent, persistent indicator so the user knows the data is stale and actions will fail - desktop gets a popup plus a pulsating warning diode, mobile gets a top panel. Cleared automatically on recovery. Detection grounds on the unauthenticated `/hub/health` endpoint (rate-limited 1 req/s per IP) and/or hub API errors; the SPA already runs react-query with `retry: false`, `useIsMobile` (<768px) and a ProLayout shell (`layout/AppLayout.tsx`) with a banner precedent (`ReadonlyBanner`).
+
+- [ ] **Health probe** - SPA polls hub reachability on an interval (target `/hub/health`, base-url aware: `/` or `/hub` per `JUPYTERHUB_BASE_URL`); poll cadence respects the 1 req/s per-IP rate limit
+  - log: 2026-06-19 criterion added
+- [ ] **Disconnected = sustained failure** - indicator raises only after N consecutive failed probes (debounce), not a single transient blip; N + interval documented in one place
+  - log: 2026-06-19 criterion added
+- [ ] **Failure classification** - "hub down" = network error / timeout / 5xx / health-fail; a `401/403` is a session/auth issue (handled by existing auth flow), NOT the offline indicator
+  - log: 2026-06-19 criterion added
+- [ ] **Desktop: popup** - at/above the mobile breakpoint a modal/popup states the hub is not responding (plain language, no jargon); non-blocking enough to read stale data, re-shown while still down
+  - log: 2026-06-19 criterion added
+- [ ] **Desktop: pulsating diode** - a persistent warning diode (animated pulse) shows in the layout chrome (`AppLayout`) for the whole disconnected period, independent of the popup being dismissed
+  - log: 2026-06-19 criterion added
+- [ ] **Mobile: top panel** - below 768px (`useIsMobile`) a top banner (ReadonlyBanner pattern) states the hub is not responding; no modal on mobile
+  - log: 2026-06-19 criterion added
+- [ ] **Single source of truth** - one connectivity hook/store drives desktop popup, desktop diode and mobile panel; no three independent detectors
+  - log: 2026-06-19 criterion added
+- [ ] **Auto-clear on recovery** - first successful probe after reconnect removes popup, diode and panel; queued/stale queries refetch
+  - log: 2026-06-19 criterion added
+- [ ] **No false positive when healthy** - steady-state connected shows none of popup / diode / panel
+  - log: 2026-06-19 criterion added
+- [ ] **Colour from design tokens** - warning visuals use the warning/danger design tokens, not hardcoded hex; pulse honours reduced-motion
+  - log: 2026-06-19 criterion added
+
+### Edge cases
+
+- [ ] **Edge: cold start, hub already down** - first load with hub unreachable shows the indicator immediately, not a blank/empty page (the empty-Settings symptom that triggered this feature)
+  - log: 2026-06-19 criterion added
+- [ ] **Edge: resize across breakpoint while down** - crossing 768px swaps desktop popup+diode <-> mobile panel without losing the disconnected state
+  - log: 2026-06-19 criterion added
+- [ ] **Edge: flapping hub** - rapid up/down does not strobe the UI; debounce + auto-clear hysteresis prevent popup spam
+  - log: 2026-06-19 criterion added
+- [ ] **Edge: slow hub vs down** - a probe slower than the timeout counts as a failure toward N; a recovered slow probe clears
+  - log: 2026-06-19 criterion added
+- [ ] **Edge: popup dismissed, still down** - diode (desktop) / panel (mobile) remain; popup may re-raise on the next failed cycle
+  - log: 2026-06-19 criterion added
+
+### Functional tests (end-to-end, mandatory)
+
+- [ ] **E2E: hub stop raises indicator** - in the functional stack, stop the hub container, load/keep the SPA, assert the offline indicator appears (desktop: popup + diode; mobile viewport: top panel)
+  - log: 2026-06-19 criterion added
+- [ ] **E2E: hub restart clears indicator** - restart the hub, assert popup/diode/panel auto-clear and data refetches without a manual reload
+  - log: 2026-06-19 criterion added
+- [ ] **E2E: both viewports** - the test runs at a desktop and a mobile (<768px) viewport (browser driver, e.g. the existing headless-chromium/playwright harness) and asserts the correct form per viewport
+  - log: 2026-06-19 criterion added
+- [ ] **E2E: no false trigger while healthy** - with the hub up, the indicator never appears across the test run
+  - log: 2026-06-19 criterion added

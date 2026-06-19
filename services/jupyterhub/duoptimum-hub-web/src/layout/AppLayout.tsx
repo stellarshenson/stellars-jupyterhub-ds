@@ -26,6 +26,7 @@ import { CommandPalette } from './CommandPalette'
 import { MessageBinder } from './MessageBinder'
 import { ReadonlyBanner } from './ReadonlyBanner'
 import { StageBadge } from '../components/StageBadge'
+import { HubConnectionIndicator } from '../components/HubConnectionIndicator'
 
 const THEME_MODES: Array<{ mode: ThemeMode; icon: IconKey; label: string }> = [
   { mode: 'light', icon: 'sun', label: 'Light' },
@@ -208,6 +209,7 @@ export function AppLayout() {
     >
       <MessageBinder />
       <CommandPalette />
+      <HubConnectionIndicator />
       {!isMobile && <SiderHandle collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />}
       <div style={{ maxWidth: 1320, margin: '0 auto', width: '100%' }}>
         <div className="oh-topbar">
