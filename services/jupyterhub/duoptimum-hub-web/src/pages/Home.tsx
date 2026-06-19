@@ -242,7 +242,7 @@ function AdminHome() {
               rows={[
                 { label: 'CPU', value: total.cpu, valueLabel: hostCpuMode === 'cores' && total.cpuAggregateLabel ? total.cpuAggregateLabel : `${total.cpu}%`, tip: total.cpuTip, error: total.cpuError },
                 { label: 'Memory', value: total.mem, tip: total.memTip, error: total.memError },
-                { label: 'GPU', value: total.gpu, gpus: total.gpus, gpuDevices: total.gpuDevices },
+                { label: 'GPU', value: total.gpu, gpus: total.gpus, gpuDevices: total.gpuDevices, gpuDisconnected: total.gpuDisconnected },
               ]}
             />
           )}

@@ -199,6 +199,7 @@ export interface ResourceSnapshot {
   gpu: number // % host (aggregate)
   gpus?: number[] // per-GPU utilisation % - segmented GPU meter (only when utilisation is sampled)
   gpuDevices?: GpuDevice[] // real host GPU inventory; drives the device count when utilisation is not sampled
+  gpuDisconnected?: boolean // gpuinfo sidecar down - hide the GPU row entirely (inventory may be stale, no live health)
   memTip?: string
 }
 

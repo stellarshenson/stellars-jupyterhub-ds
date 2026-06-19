@@ -87,7 +87,12 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
               label: 'Activity',
               value: 0,
               valueLabel: '',
-              meter: <ActivityMeterFill value={running ? hero.activity : 0} hours={running ? hero.activityHours : null} pct={running ? hero.activityPct : null} />,
+              // Activity is a 7-DAY engagement metric (decays over ~3 days), NOT a
+              // live reading - it is meaningful whether or not the server runs right
+              // now, exactly like the Servers/Users meters (see liveSource
+              // activityFields). A `running ?` gate here was the regression that
+              // zeroed the hero meter for an offline-but-active user.
+              meter: <ActivityMeterFill value={hero.activity} hours={hero.activityHours} pct={hero.activityPct} />,
             },
           ]}
         />

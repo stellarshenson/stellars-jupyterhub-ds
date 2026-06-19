@@ -44,8 +44,10 @@ function CheckRow({ checked, onChange, label, desc }: { checked: boolean; onChan
 }
 
 export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?: (config: PolicyConfig) => void }) {
-  // real host GPU inventory (shared cache with the Home resource bar); empty when
-  // GPU is disabled or none are present -> the per-device list renders empty
+  // CURRENTLY-available host GPUs (shared with the Home resource bar) - empty when GPU
+  // is off, none are present, or the gpuinfo sidecar is disconnected. The list reflects
+  // live availability, so saving re-syncs the grant to the real devices (see the
+  // gpu_device_ids reconcile below)
   const { data: resources } = useTotalResources()
   const gpuDevices = resources?.gpuDevices ?? []
 
@@ -137,7 +139,13 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       // gpu_access:true round-trip invisibly through Save on a GPU-less host
       gpu_access: gpuSupported() ? (on.gpu ?? false) : false,
       gpu_all: gpuAll,
-      gpu_device_ids: gpuIds,
+      // reconcile granted devices against what is CURRENTLY available: once the device
+      // inventory has loaded, drop any granted id no longer present (sidecar down -> none,
+      // or hardware changed) so saving re-syncs the grant to reality; while it is still
+      // loading keep the stored grant untouched
+      gpu_device_ids: resources === undefined
+        ? gpuIds
+        : gpuIds.filter((id) => (resources.gpuDevices ?? []).some((d) => d.index === id)),
       docker_active: on.docker ?? false,
       // section on = access granted; the radio only chooses how. Standard = raw
       // socket; otherwise limited (the default). Both false when the section is off.
@@ -177,7 +185,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       },
     }
     onChange(config)
-  }, [onChange, on, envVars, gpuAll, gpuIds, memGB, memSwap, cpuCores, dStd, dPriv, dq, dFlags, volMounts, apiMode, apiVarKey, apiVarId, apiVarSecret, apiCreds, downloadsAllow, sudoEnable])
+  }, [onChange, on, envVars, gpuAll, gpuIds, resources, memGB, memSwap, cpuCores, dStd, dPriv, dq, dFlags, volMounts, apiMode, apiVarKey, apiVarId, apiVarSecret, apiCreds, downloadsAllow, sudoEnable])
 
   const toggle = (key: string) => (v: boolean) => setOn((e) => ({ ...e, [key]: v }))
 

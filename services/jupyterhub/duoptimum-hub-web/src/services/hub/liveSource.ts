@@ -91,6 +91,7 @@ interface RawActivity {
   cpu_host_total?: number | null // real host logical-core count - the "% of host" CPU denominator
   activity_target_hours?: number // daily active-hours target (uncapped-% denominator)
   gpus?: Array<{ index: string; name: string; uuid?: string; memory_mb?: number; utilization?: number; memory_used_mb?: number; temperature_c?: number; power_w?: number }> // host GPU inventory + live load
+  gpu_connected?: boolean // gpuinfo sidecar is live (fresh sample); false = inventory is stale, hide GPU widgets
   lab_image?: string // spawn image (Lab Container page)
   lab_volumes?: Array<{ suffix: string; mount: string; description?: string }> // standard per-user volumes
 }
@@ -484,12 +485,18 @@ export const liveSource: DataSource = {
   async getTotalResources(): Promise<ResourceSnapshot> {
     try {
       const activity = await fetchActivity()
-      // Host GPU inventory is independent of active servers - surface the real
-      // device count/names even when nothing is running. The background sampler
-      // adds per-device `utilization` (real load %) when available, which drives
-      // the striped per-GPU meter; absent it falls back to inventory chips.
-      const gpuDevices: GpuDevice[] | undefined = activity.gpus
-        ? activity.gpus.map((g) => ({
+      // GPU devices reflect LIVE availability ("available" = sidecar connected AND
+      // GPUs detected; a -> b). The inventory is enumerated at startup and seeded from
+      // a persisted cache that OUTLIVES the sidecar, so activity.gpus alone is not
+      // "available" - the devices are exposed ONLY when gpu_connected. When the sidecar
+      // is down: the Host Status GPU row hides (gpuDisconnected) AND the group
+      // GPU-grant editor lists no devices, so editing re-syncs the grant to reality
+      // (none) - the stored grant is preserved until the admin saves.
+      const hasGpuInventory = !!(activity.gpus && activity.gpus.length)
+      const gpuConnected = hasGpuInventory && !!activity.gpu_connected
+      const gpuDisconnected = hasGpuInventory && !gpuConnected
+      const gpuDevices: GpuDevice[] | undefined = gpuConnected
+        ? activity.gpus!.map((g) => ({
             index: String(g.index),
             name: g.name,
             uuid: g.uuid,
@@ -508,8 +515,11 @@ export const liveSource: DataSource = {
           : undefined
       // Aggregate GPU load = busiest device (host-level headline number).
       const gpuAgg = gpus && gpus.length ? Math.max(...gpus) : 0
+      // Host CPU/MEM bars aggregate ACTIVE user servers as a % of the host total.
+      // With zero active servers the figure is an honest 0% - but it MUST still carry
+      // a tooltip and the host-total error flags. The early return that dropped both
+      // was the "blank bar, no tooltip" regression.
       const active = activity.users.filter((u) => u.server_active)
-      if (!active.length) return { cpu: 0, mem: 0, gpu: gpuAgg, gpus, gpuDevices }
       // host RAM, NOT the first user's cgroup ceiling. NO fallback: if the backend
       // could not read the host total (_host_total_memory_mb -> null) the memory bar
       // shows an explicit "unavailable" rather than a fabricated denominator
@@ -546,6 +556,7 @@ export const liveSource: DataSource = {
         gpu: gpuAgg, // busiest GPU's real load
         gpus,
         gpuDevices,
+        gpuDisconnected, // sidecar down -> hide the GPU row entirely (no stale inventory)
         memTip: memError ? 'Host RAM total unavailable' : `${memBar}% used\n${round1(memUsed / 1024)} of ${round1(totalMb / 1024)} GB across ${svrs}`,
       }
     } catch {
