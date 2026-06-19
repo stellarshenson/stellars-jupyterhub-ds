@@ -54,11 +54,11 @@ export const router = createBrowserRouter(
       path: '/',
       element: <AppLayout />,
       children: [
-        { index: true, element: <Navigate to="/dashboard" replace /> },
-        // Landing route is /dashboard, not /home: /hub/home is a JupyterHub
-        // built-in page, so at the hub root (no /portal segment) the SPA must
-        // not reuse that path. Nav label stays "Home".
-        { path: 'dashboard', handle: { crumb: 'Home' }, element: <Home /> },
+        { index: true, element: <Navigate to="/home" replace /> },
+        // Landing route is /home: the stock /hub/home built-in renders the portal
+        // package's home.html, which is the SPA shell (template_dir shadows the
+        // stock template), so the SPA owns /home directly.
+        { path: 'home', handle: { crumb: 'Home' }, element: <Home /> },
         { path: 'profile', handle: { crumb: 'Profile' }, element: <ProfileRoute /> },
         // Spawn progress + live log tail. Not admin-gated: a plain user starts
         // their OWN server here; the backend endpoints enforce admin-or-self.
@@ -96,7 +96,7 @@ export const router = createBrowserRouter(
           ],
         },
 
-        { path: '*', element: <Navigate to="/dashboard" replace /> },
+        { path: '*', element: <Navigate to="/home" replace /> },
       ],
     },
   ],

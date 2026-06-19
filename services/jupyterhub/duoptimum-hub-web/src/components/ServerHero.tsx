@@ -17,7 +17,7 @@ import type { ServerHero as Hero } from '../services/types'
 
 // the hero only renders on Home, so the sub-screens it opens (Start, Manage
 // volumes) and their breadcrumb return to Home
-const HERO_ORIGIN = { to: '/dashboard', label: 'Home' }
+const HERO_ORIGIN = { to: '/home', label: 'Home' }
 
 export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitle: string }) {
   const running = hero.status === 'active' || hero.status === 'idle'

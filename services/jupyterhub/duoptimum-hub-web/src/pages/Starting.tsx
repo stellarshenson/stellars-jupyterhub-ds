@@ -62,7 +62,7 @@ export default function Starting() {
             : logs.map((l, i) => <div key={i} className="oh-termlog-line">{l}</div>)}
         </div>
         {failed && (
-          <Button type="primary" block onClick={() => navigate(isOwn ? '/dashboard' : '/servers')} style={{ marginTop: 14 }}>
+          <Button type="primary" block onClick={() => navigate(isOwn ? '/home' : '/servers')} style={{ marginTop: 14 }}>
             Back to {isOwn ? 'home' : 'servers'}
           </Button>
         )}

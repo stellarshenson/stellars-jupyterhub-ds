@@ -18,7 +18,7 @@ import { userServerUrl } from '../services/hub/client'
 
 const adminTag = { background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4, marginInlineStart: 6 }
 // mobile home is Home, so its sub-screens (Start, Manage volumes) return to Home
-const HOME_ORIGIN = { to: '/dashboard', label: 'Home' }
+const HOME_ORIGIN = { to: '/home', label: 'Home' }
 
 // status + the SAME action set as the desktop hero (full-width, touch-friendly),
 // plus the TTL extend when running
