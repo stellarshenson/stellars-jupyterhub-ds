@@ -28,20 +28,20 @@ from duoptimum_hub_services import (
     stop_gpuinfo_sidecar,                   # hub removes the sidecar on shutdown so it never outlives its parent (recreated fresh next boot)
     get_services_and_roles,                 # builds JupyterHub services list (activity sampler)
     schedule_idle_culler,                   # in-hub idle culler (honours per-user session extensions)
-    unregister_user,                        # central docker-proxy: unregister on server stop
     get_user_volume_name_templates,         # maps suffix -> full volume-name template (with {username} placeholder)
     get_user_volume_suffixes,               # extracts ['home', 'workspace', 'cache'] from volumes dict
     gpu_summary_lines,                      # readable per-GPU capabilities + health snapshot for the startup log
     is_wsl2,                                # host is WSL2 -> per-GPU isolation not enforceable (advisory)
     load_merged_user_volumes,               # loads + merges platform-defaults YAML with operator overrides
     make_pre_spawn_hook,                    # factory returning async hook for group perms, favicon, icons
+    make_post_stop_hook,                    # factory returning async post-stop hook: docker-proxy unregister + api-key release + stop event
     prepare_sent_notification_log,          # boot-time self-heal of the sent-notification history table
     register_events,                        # attaches SQLAlchemy listeners for user rename/delete sync
     resolve_gpu_mode,                       # GPU detection: 0=off, 1=forced, 2=auto-detect via nvidia-smi
+    resolve_memory_quota_mb,                # calc: per-user memory warning threshold MB from host-RAM fraction
     schedule_startup_hydration,             # consolidated startup hydration: warms caches + image-update check + survivor favicon routes/policy, all deferred to the IOLoop
     setup_branding,                         # processes logo/favicon/icon URIs, copies file:// to static dir
 )
-from duoptimum_hub_services.api_keys_pool import PoolManager  # singleton arbiter of api-key slot assignments (post-stop release)
 
 # Tornado request handlers - registered via c.JupyterHub.extra_handlers
 from duoptimum_hub_services.handlers import (
@@ -119,20 +119,7 @@ JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB = int(os.environ.get("JUPYTERHUB_LAB_VOL
 JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION = float(os.environ.get("JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION", 0.25))  # per-user memory warning threshold as fraction of host RAM (default 25%)
 
 
-def _resolve_memory_quota_mb(fraction):
-    """Return per-user memory warning threshold in MB as a fraction of host total RAM."""
-    try:
-        with open('/proc/meminfo') as f:
-            for line in f:
-                if line.startswith('MemTotal:'):
-                    total_kb = int(line.split()[1])
-                    return int((total_kb / 1024) * fraction)
-    except Exception:
-        pass
-    return 4096  # fallback: 4 GB if /proc/meminfo unavailable
-
-
-JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB = _resolve_memory_quota_mb(JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION)
+JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB = resolve_memory_quota_mb(JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION)  # host-RAM fraction -> MB (calc helper in services)
 
 # File downloads (best-effort policy). 0=allow everywhere (dormant, no routes),
 # 1=block browser downloads from labs unless a user's group grants it via the
@@ -736,34 +723,7 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
 )
 
 
-async def _post_stop_cleanup(spawner):
-    """Unregister the user from the in-process docker-proxy on server stop.
-
-    No-op for users without a registered listener. User-created containers
-    are independent of the proxy and keep running; the listener is re-created
-    on the next spawn via the pre-spawn hook.
-    """
-    try:
-        await unregister_user(spawner.user.name, socket_dir=JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR)
-    except Exception as e:  # never block a stop on cleanup
-        spawner.log.warning("[Groups] docker-proxy unregister failed: %s", e)
-    # Release any in-flight api-key reservation for this user (best-effort; the
-    # real release is the container leaving the running set, picked up by the
-    # periodic reconcile - stop events are never the source of truth).
-    try:
-        PoolManager.get_instance().release_tentative(spawner.user.name)
-    except Exception as e:
-        spawner.log.warning("[ApiKeys] tentative release failed: %s", e)
-    # Record a server-stop event for the portal events feed (best-effort).
-    try:
-        import html as _html
-        from duoptimum_hub_services.event_log import record_event
-        record_event('server', f'<b>{_html.escape(str(spawner.user.name))}</b> server stopped')
-    except Exception:
-        pass
-
-
-c.DockerSpawner.post_stop_hook = _post_stop_cleanup
+c.DockerSpawner.post_stop_hook = make_post_stop_hook(socket_dir=JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR)  # docker-proxy unregister + api-key release + stop event
 
 # ── Spawner args ──
 # Command-line arguments passed to the spawned JupyterLab ServerApp
