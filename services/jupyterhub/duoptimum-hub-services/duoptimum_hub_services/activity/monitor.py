@@ -132,12 +132,14 @@ class ActivityMonitor:
         """Calculate activity score (0-100). Returns (score, sample_count).
 
         The score is the user's recent active time measured against the daily
-        target (``target_hours``), not against the 24h clock. Samples are taken
-        24/7, so the decay-weighted active fraction equals the share of the day
-        the user is active; multiplying by 24 gives average active hours/day, and
+        target (``target_hours``), not against the 24h clock. The decay-weighted
+        active fraction is active time over a FULL retention window (see
+        ``_weighted_expected_total``), not just the samples on hand - so a brand-new
+        mostly-active user ramps from zero instead of spiking on a handful of active
+        samples. Multiplying the fraction by 24 gives average active hours/day, and
         dividing by ``target_hours`` (capped at 100%) yields the score. A user who
-        works the target hours scores 100; half the target scores 50. Without
-        this normalisation an 8h/day user caps at 8/24 = 33%.
+        works the target hours scores 100; half the target scores 50. Without this
+        normalisation an 8h/day user caps at 8/24 = 33%.
         """
         active_frac, count = self._weighted_active_fraction(username)
         if active_frac is None:
@@ -155,11 +157,38 @@ class ActivityMonitor:
         active_frac, _ = self._weighted_active_fraction(username)
         return None if active_frac is None else round(active_frac * 24.0, 1)
 
+    def _weighted_expected_total(self):
+        """Decay-weighted count of every sample slot a fully-sampled retention
+        window would hold - the denominator the active fraction is measured against.
+
+        The sampler records one sample per user every ``sample_interval`` (active or
+        inactive, online or not), so an established account's window is already full
+        and this equals the sum of its existing sample weights - its score is
+        unchanged. It only differs for under-sampled (new) accounts, where the
+        not-yet-elapsed slots count as inactive, so the active fraction starts near
+        zero and ramps up instead of spiking on the few active samples on hand.
+
+        Geometric series: slots at ages 0, dt, 2dt, ... across the window, each
+        weighted exp(-lambda*age) = r**k with r = exp(-lambda*dt); sum_{k=0}^{n-1} r**k.
+        """
+        dt_hours = self.sample_interval / 3600.0
+        n_slots = int(round(self.retention_days * 24.0 / dt_hours))
+        if n_slots <= 0:
+            return 0.0
+        r = math.exp(-self.decay_lambda * dt_hours)
+        if r >= 1.0:  # no decay (would need half_life=inf); guard the geometric form
+            return float(n_slots)
+        return (1.0 - r ** n_slots) / (1.0 - r)
+
     def _weighted_active_fraction(self, username):
-        """Decay-weighted fraction of samples that were active in the window.
+        """Decay-weighted active time as a fraction of a full retention window.
 
         Returns (fraction, sample_count), or (None, 0) when there are no samples.
-        Shared by get_score (normalised vs target) and get_avg_active_hours.
+        Numerator is the decay-weighted active samples; denominator is the full
+        window (``_weighted_expected_total``), not the samples on hand, so a new
+        user ramps from zero. Capped at 1.0 (cannot be active more than all the
+        time; guards sampler jitter / duplicate samples). Shared by get_score
+        (normalised vs target) and get_avg_active_hours.
         """
         db = self._get_db()
         if db is None:
@@ -178,18 +207,16 @@ class ActivityMonitor:
                 return None, 0
 
             weighted_active = 0.0
-            weighted_total = 0.0
             for s in samples:
-                ts = s.timestamp.replace(tzinfo=timezone.utc) if s.timestamp.tzinfo is None else s.timestamp
-                age_hours = (now - ts).total_seconds() / 3600.0
-                weight = math.exp(-self.decay_lambda * age_hours)
-                weighted_total += weight
                 if s.active:
-                    weighted_active += weight
+                    ts = s.timestamp.replace(tzinfo=timezone.utc) if s.timestamp.tzinfo is None else s.timestamp
+                    age_hours = (now - ts).total_seconds() / 3600.0
+                    weighted_active += math.exp(-self.decay_lambda * age_hours)
 
-            if weighted_total <= 0:
+            expected_total = self._weighted_expected_total()
+            if expected_total <= 0:
                 return 0.0, len(samples)
-            return weighted_active / weighted_total, len(samples)
+            return min(1.0, weighted_active / expected_total), len(samples)
         except Exception as e:
             log.info(f"[ActivityMonitor] Error calculating score for {username}: {e}")
             return None, 0

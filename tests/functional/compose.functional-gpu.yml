@@ -1,7 +1,7 @@
 # Overlay: GPU autodetect backed by a MOCK gpuinfo sidecar, so the GPU display tests
 # run on ANY host (no real GPU/driver needed). The hub self-starts this image as its
 # sidecar (self-start requests the nvidia runtime only when present, so the mock starts
-# on CPU hosts too). `make test-functional-gpu` builds the mock image and passes
+# on CPU hosts too). `tests/functional/run.sh gpu` builds the mock image and passes
 # FUNCTEST_GPU_ENABLED=1 (which the base compose feeds to both the hub and the test
 # marker gate). Layer ON TOP of compose.functional.yml.
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "duoptimum-hub-services"
-version = "4.0.7"
+version = "4.0.10"
 description = "Stellars JupyterHub platform logic package"
 requires-python = ">=3.10"
 dependencies = [

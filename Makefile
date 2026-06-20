@@ -4,7 +4,7 @@
 # GLOBALS                                                                       #
 #################################################################################
 .DEFAULT_GOAL := help
-.PHONY: help preflight build build_verbose rebuild rebuild_increment_version _rebuild_impl push pull start stop clean increment_version maybe_increment_version tag logs test test-functional test-functional-gpu test-functional-env test-functional-signup-open test-functional-all test-functional-clean
+.PHONY: help preflight build build_verbose rebuild rebuild_increment_version _rebuild_impl push pull start stop clean increment_version maybe_increment_version tag logs test test-functional
 
 # ── Preflight: tools, services, and files required end-to-end ──
 # Covers versioning (python3 + tomllib + awk + sed), build (docker), push (git),
@@ -139,11 +139,15 @@ NO_VERSION_INCREMENT := $(findstring --no-version-increment,$(BUILD_OPTS))
 # Filter out --no-version-increment from opts passed to docker
 DOCKER_BUILD_OPTS := $(filter-out --no-version-increment,$(BUILD_OPTS))
 
-# Conditional version increment target
-maybe_increment_version: preflight
+# Conditional version increment target. When bumping is on, increment_version is
+# a real prerequisite - deduped with preflight in the SAME make process, so
+# preflight runs once. (The old `$(MAKE) increment_version` recipe spawned a
+# sub-make that re-ran preflight a second time.)
 ifeq ($(NO_VERSION_INCREMENT),)
-	@$(MAKE) increment_version
+maybe_increment_version: preflight increment_version
+	@:
 else
+maybe_increment_version: preflight
 	@printf '%s%sVersion unchanged: %s (--no-version-increment)%s\n' "$(CYAN)" "$(BOLD)" "$(PROJECT_VERSION)" "$(RESET)"
 endif
 
@@ -246,105 +250,20 @@ logs: preflight
 	fi
 
 # ── Functional test harness (LOCAL ONLY - isolated throwaway deployment) ──
-FUNCTEST_PROJECT := stellars-functest
-FUNCTEST_COMPOSE := tests/functional/compose.functional.yml
-FUNCTEST_ENV_COMPOSE := tests/functional/compose.functional-env.yml
-FUNCTEST_SIGNUPOPEN_COMPOSE := tests/functional/compose.functional-signup-open.yml
-FUNCTEST_GPU_COMPOSE := tests/functional/compose.functional-gpu.yml
-GPUINFO_MOCK_IMAGE := stellars/duoptimum-gpuinfo-mock:latest
-FUNCTEST_IMAGES  := quay.io/jupyterhub/singleuser:latest mcr.microsoft.com/playwright/python:v1.49.0-noble
+# ONE target, ALL regimes. Orchestration (regimes, boot, run, teardown) lives in
+# tests/functional/run.sh - kept out of make so the recipe stays a one-liner (a
+# multi-line recipe with $(MAKE) in it ALSO runs under `make -n`, silently executing
+# the suite). Run a single regime or just clean up with the script directly:
+#   tests/functional/run.sh <signup|gpu|env|signup-open|signup-bootstrap|all|clean>
 
 ## run the python unit test suites locally (duoptimum-hub-services + duoptimum-docker-proxy)
 test:
 	@cd services/jupyterhub/duoptimum-hub-services && python3 -m pytest tests/ -q
 	@cd services/jupyterhub/duoptimum-docker-proxy && python3 -m pytest tests/ -q
 
-## run the functional UI/scenario harness in an isolated throwaway deployment, then clean containers/network/volumes (LOCAL ONLY; pulled images kept to avoid re-pull - REMOVE_IMAGES=1 to also remove them)
+## run the FULL functional UI/scenario harness - every regime (signup, gpu, env, signup-open, signup-bootstrap), cleaning between each (LOCAL ONLY; single regime/cleanup: tests/functional/run.sh <regime>; PYTEST_ARGS=... selects tests, REMOVE_IMAGES=1 drops pulled images)
 test-functional:
-	@if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then gpumode=1; else gpumode=0; fi; \
-	echo "[functional] booting isolated deployment ($(FUNCTEST_PROJECT)) [GPU auto-detect mode=$$gpumode]..."; \
-	start=$$(date +%s); \
-	FUNCTEST_GPU_ENABLED=$$gpumode docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) up --abort-on-container-exit --exit-code-from tests; \
-	rc=$$?; \
-	$(MAKE) --no-print-directory test-functional-clean; \
-	end=$$(date +%s); \
-	echo "[functional] total time (boot + tests + teardown): $$((end-start))s; test-suite total is the pytest 'in Xs' line above"; \
-	exit $$rc
-
-## run the functional harness with a MOCK gpuinfo sidecar (GPU autodetect on ANY host, no real GPU needed), then clean up
-test-functional-gpu:
-	@echo "[functional/gpu] building mock gpuinfo image ($(GPUINFO_MOCK_IMAGE))..."
-	@docker build -q -t $(GPUINFO_MOCK_IMAGE) tests/functional/mock_gpuinfo >/dev/null
-	@echo "[functional/gpu] booting hub with the mock sidecar (GPU autodetect)..."
-	@start=$$(date +%s); \
-	FUNCTEST_GPU_ENABLED=1 docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_GPU_COMPOSE) up --abort-on-container-exit --exit-code-from tests; \
-	rc=$$?; \
-	$(MAKE) --no-print-directory test-functional-clean; \
-	end=$$(date +%s); \
-	echo "[functional/gpu] total time (boot + tests + teardown): $$((end-start))s"; \
-	exit $$rc
-
-## run the functional harness in auth mode 2 (signup disabled + env-password admin; restart-to-provision on a fresh DB), then clean up
-test-functional-env:
-	@echo "[functional/env] booting hub (first boot creates the DB + tables)..."
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) up -d --wait duoptimum-hub
-	@echo "[functional/env] restarting hub to provision the env-password admin..."
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) restart duoptimum-hub
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) up -d --wait duoptimum-hub
-	@start=$$(date +%s); \
-	docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_ENV_COMPOSE) run --rm tests; \
-	rc=$$?; \
-	$(MAKE) --no-print-directory test-functional-clean; \
-	end=$$(date +%s); \
-	echo "[functional/env] total time: $$((end-start))s"; \
-	exit $$rc
-
-## run the functional harness in signup-open mode (signup enabled; env-provisioned admin authorises a self-signed-up user via the SPA), then clean up
-test-functional-signup-open:
-	@echo "[functional/signup-open] booting hub (first boot creates the DB + tables)..."
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) up -d --wait duoptimum-hub
-	@echo "[functional/signup-open] restarting hub to provision the env-password admin..."
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) restart duoptimum-hub
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) up -d --wait duoptimum-hub
-	@start=$$(date +%s); \
-	docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) -f $(FUNCTEST_SIGNUPOPEN_COMPOSE) run --rm tests; \
-	rc=$$?; \
-	$(MAKE) --no-print-directory test-functional-clean; \
-	end=$$(date +%s); \
-	echo "[functional/signup-open] total time: $$((end-start))s"; \
-	exit $$rc
-
-## run EVERY functional setup (initial condition) one by one - signup-bootstrap, env-password, signup-open - cleaning between each; reports which setups passed and exits non-zero if any failed
-test-functional-all:
-	@overall=0; failed=""; \
-	for setup in signup gpu env signup-open; do \
-	  echo "==================================================================="; \
-	  echo "[functional/all] setup: $$setup"; \
-	  echo "==================================================================="; \
-	  case $$setup in \
-	    signup)      $(MAKE) --no-print-directory test-functional || { overall=1; failed="$$failed signup"; } ;; \
-	    gpu)         $(MAKE) --no-print-directory test-functional-gpu || { overall=1; failed="$$failed gpu"; } ;; \
-	    env)         $(MAKE) --no-print-directory test-functional-env || { overall=1; failed="$$failed env"; } ;; \
-	    signup-open) $(MAKE) --no-print-directory test-functional-signup-open || { overall=1; failed="$$failed signup-open"; } ;; \
-	  esac; \
-	done; \
-	echo "==================================================================="; \
-	if [ $$overall -eq 0 ]; then echo "[functional/all] ALL SETUPS PASSED"; else echo "[functional/all] FAILED SETUPS:$$failed"; fi; \
-	exit $$overall
-
-## remove the functional-test harness - containers, spawned labs, network, volumes (idempotent; pulled images kept - REMOVE_IMAGES=1 also removes them)
-test-functional-clean:
-	@echo "[functional] cleaning harness (containers, network, volumes)..."
-	@docker compose -p $(FUNCTEST_PROJECT) -f $(FUNCTEST_COMPOSE) down -v --remove-orphans >/dev/null 2>&1 || true
-	@docker ps -aq --filter "label=com.docker.compose.project=$(FUNCTEST_PROJECT)" | xargs -r docker rm -f >/dev/null 2>&1 || true
-	@docker rm -f gpuinfo-nvidia >/dev/null 2>&1 || true   # hub-started sidecar/mock (not labelled with the functest project)
-	@docker volume ls -q --filter "name=^$(FUNCTEST_PROJECT)_" | xargs -r docker volume rm >/dev/null 2>&1 || true
-	@docker volume rm jupyterlab-functestadmin_home jupyterlab-functestadmin_workspace jupyterlab-functestadmin_cache >/dev/null 2>&1 || true
-	@docker network rm $(FUNCTEST_PROJECT)_network >/dev/null 2>&1 || true
-ifdef REMOVE_IMAGES
-	@docker rmi $(FUNCTEST_IMAGES) >/dev/null 2>&1 || true
-endif
-	@echo "[functional] cleanup complete (pulled images kept)"
+	@tests/functional/run.sh all
 
 ## clean orphaned containers
 clean: preflight

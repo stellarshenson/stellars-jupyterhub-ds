@@ -9,6 +9,28 @@ import pytest
 from duoptimum_hub_services.activity.monitor import ActivityMonitor
 
 
+def _seed_window(monitor, username, active_every):
+    """Fill EVERY slot of a full retention window at sample_interval spacing, marking
+    a slot active when its index % active_every == 0. Represents an ESTABLISHED user
+    whose window is already fully sampled (the sampler records every user every
+    interval). Uniform interleave spreads active slots across the decay curve, so the
+    decay-weighted active fraction is ~= 1/active_every: 1 -> all active (24h/day),
+    2 -> ~12h, 3 -> ~8h, 6 -> ~4h."""
+    from duoptimum_hub_services.activity.model import ActivitySample
+    now = datetime.now(timezone.utc)
+    dt = timedelta(seconds=monitor.sample_interval)
+    n_slots = int(round(monitor.retention_days * 24 * 3600 / monitor.sample_interval))
+    rows = []
+    for k in range(n_slots):
+        active = (k % active_every == 0)
+        ts = now - k * dt
+        rows.append(ActivitySample(
+            username=username, timestamp=ts,
+            last_activity=(ts if active else ts - timedelta(hours=3)), active=active))
+    monitor._db_session.add_all(rows)
+    monitor._db_session.commit()
+
+
 # ---------------------------------------------------------------------------
 # Recording
 # ---------------------------------------------------------------------------
@@ -81,19 +103,10 @@ class TestScoring:
         assert count == 0
 
     def test_all_active_score_100(self, memory_db_monitor):
-        """All recent active samples -> score near 100."""
-        from duoptimum_hub_services.activity.model import ActivitySample
-
-        now = datetime.now(timezone.utc)
-        for i in range(5):
-            memory_db_monitor._db_session.add(ActivitySample(
-                username="alice", timestamp=now - timedelta(minutes=i),
-                last_activity=now, active=True,
-            ))
-        memory_db_monitor._db_session.commit()
-
+        """A full window of active samples (active all the time) -> score 100."""
+        _seed_window(memory_db_monitor, "alice", active_every=1)
         score, count = memory_db_monitor.get_score("alice")
-        assert count == 5
+        assert count > 0
         assert score == 100
 
     def test_all_inactive_score_0(self, memory_db_monitor):
@@ -113,47 +126,30 @@ class TestScoring:
         assert score == 0
 
     def test_decay_weights_recent_more(self, memory_db_monitor):
-        """Recent active + old inactive -> score between 0 and 100, biased high."""
+        """The same amount of active time scores higher when it is recent."""
         from duoptimum_hub_services.activity.model import ActivitySample
 
         now = datetime.now(timezone.utc)
-        # Recent sample: active
-        memory_db_monitor._db_session.add(ActivitySample(
-            username="carol", timestamp=now, last_activity=now, active=True,
-        ))
-        # Old sample: inactive (but within retention)
-        memory_db_monitor._db_session.add(ActivitySample(
-            username="carol", timestamp=now - timedelta(days=3),
-            last_activity=now - timedelta(days=4), active=False,
-        ))
+        dt = timedelta(seconds=memory_db_monitor.sample_interval)
+        # 48 active samples (~8h) placed recently for "fresh", the same 48 placed
+        # ~6 days back for "stale" - both within the 7-day window, same active time.
+        for k in range(48):
+            memory_db_monitor._db_session.add(ActivitySample(
+                username="fresh", timestamp=now - k * dt, last_activity=now, active=True))
+        for k in range(48):
+            old_ts = now - timedelta(days=6) - k * dt
+            memory_db_monitor._db_session.add(ActivitySample(
+                username="stale", timestamp=old_ts, last_activity=old_ts, active=True))
         memory_db_monitor._db_session.commit()
 
-        score, count = memory_db_monitor.get_score("carol")
-        assert count == 2
-        assert 50 < score <= 100  # recent active sample dominates due to decay
+        fresh_score, _ = memory_db_monitor.get_score("fresh")
+        stale_score, _ = memory_db_monitor.get_score("stale")
+        assert fresh_score > stale_score  # recent active time dominates due to decay
 
 
 # ---------------------------------------------------------------------------
 # Target-hours normalisation (the under-reporting fix)
 # ---------------------------------------------------------------------------
-
-def _seed(monitor, username, active_count, inactive_count):
-    """Seed active+inactive samples all within a short recent window so decay is
-    roughly uniform and the active fraction ~= active/(active+inactive)."""
-    from duoptimum_hub_services.activity.model import ActivitySample
-    now = datetime.now(timezone.utc)
-    n = 0
-    for _ in range(active_count):
-        monitor._db_session.add(ActivitySample(
-            username=username, timestamp=now - timedelta(minutes=n), last_activity=now, active=True))
-        n += 1
-    for _ in range(inactive_count):
-        monitor._db_session.add(ActivitySample(
-            username=username, timestamp=now - timedelta(minutes=n),
-            last_activity=now - timedelta(hours=3), active=False))
-        n += 1
-    monitor._db_session.commit()
-
 
 class TestTargetNormalisation:
     def test_target_hours_default(self, reset_activity_monitor):
@@ -170,20 +166,20 @@ class TestTargetNormalisation:
 
         Pre-fix the score was the raw active fraction (8/24 = 33%); now it is the
         active hours measured against the 8h target, so a full-time user reads 100."""
-        _seed(memory_db_monitor, "natalia", active_count=8, inactive_count=16)
+        _seed_window(memory_db_monitor, "natalia", active_every=3)  # ~1/3 -> 8h/day
         score, _ = memory_db_monitor.get_score("natalia")
         assert score == 100
 
     def test_half_target_scores_about_50(self, memory_db_monitor):
         """~4h/day (half the 8h target) scores ~50."""
-        _seed(memory_db_monitor, "halfday", active_count=4, inactive_count=20)
+        _seed_window(memory_db_monitor, "halfday", active_every=6)  # ~1/6 -> 4h/day
         score, _ = memory_db_monitor.get_score("halfday")
         assert 45 <= score <= 55
 
     def test_avg_active_hours_is_real_and_uncapped(self, memory_db_monitor):
         """get_avg_active_hours returns the real hours/day, uncapped above target."""
-        # 12 active / 24 total -> ~12h/day; score caps at 100 but hours stays 12
-        _seed(memory_db_monitor, "heavy", active_count=12, inactive_count=12)
+        # ~1/2 of a full window active -> ~12h/day; score caps at 100 but hours stays 12
+        _seed_window(memory_db_monitor, "heavy", active_every=2)
         hours = memory_db_monitor.get_avg_active_hours("heavy")
         score, _ = memory_db_monitor.get_score("heavy")
         assert 11.0 <= hours <= 13.0
@@ -191,6 +187,52 @@ class TestTargetNormalisation:
 
     def test_avg_active_hours_none_without_samples(self, memory_db_monitor):
         assert memory_db_monitor.get_avg_active_hours("ghost") is None
+
+
+# ---------------------------------------------------------------------------
+# New-user ramp (DEF-6): active fraction measured against a FULL window, so a
+# brand-new mostly-active account ramps from zero instead of spiking to ~300%.
+# ---------------------------------------------------------------------------
+
+class TestNewUserRamp:
+    def _add_active(self, monitor, username, n):
+        """n recent active samples on a brand-new account (rest of window empty)."""
+        from duoptimum_hub_services.activity.model import ActivitySample
+        now = datetime.now(timezone.utc)
+        dt = timedelta(seconds=monitor.sample_interval)
+        monitor._db_session.add_all([
+            ActivitySample(username=username, timestamp=now - k * dt,
+                           last_activity=now, active=True) for k in range(n)])
+        monitor._db_session.commit()
+
+    def test_new_active_user_does_not_spike(self, memory_db_monitor):
+        """~1h of solid activity on a new account reads low, not the old 100/300%."""
+        self._add_active(memory_db_monitor, "newbie", 6)
+        score, count = memory_db_monitor.get_score("newbie")
+        hours = memory_db_monitor.get_avg_active_hours("newbie")
+        assert count == 6
+        assert score < 10                       # not the old ~100 spike
+        assert hours is not None and hours < 2.0  # not the old 24h (300% of 8h target)
+
+    def test_ramp_grows_as_active_time_accumulates(self, memory_db_monitor):
+        """More accumulated active time -> higher score (progressive ramp)."""
+        self._add_active(memory_db_monitor, "early", 6)
+        self._add_active(memory_db_monitor, "later", 60)
+        early, _ = memory_db_monitor.get_score("early")
+        later, _ = memory_db_monitor.get_score("later")
+        assert later > early
+
+    def test_avg_active_hours_never_exceeds_24(self, memory_db_monitor):
+        """Active fraction caps at 1.0 - hours can never exceed 24 (sampler jitter)."""
+        from duoptimum_hub_services.activity.model import ActivitySample
+        now = datetime.now(timezone.utc)
+        n_slots = int(round(
+            memory_db_monitor.retention_days * 24 * 3600 / memory_db_monitor.sample_interval))
+        memory_db_monitor._db_session.add_all([
+            ActivitySample(username="jitter", timestamp=now, last_activity=now, active=True)
+            for _ in range(n_slots + 200)])  # more active samples than expected slots
+        memory_db_monitor._db_session.commit()
+        assert memory_db_monitor.get_avg_active_hours("jitter") == 24.0
 
 
 # ---------------------------------------------------------------------------

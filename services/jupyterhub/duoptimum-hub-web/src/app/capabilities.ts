@@ -18,6 +18,14 @@ export function adminUser(): string {
   return d?.admin_user ?? ''
 }
 
+/** Configurable display name (JUPYTERHUB_HUB_NAME) - the logo tooltip and the
+ * login/signup screen text. Falls back to the product default when unset (mock/dev
+ * or an empty env value). */
+export function hubName(): string {
+  const d = typeof window !== 'undefined' ? window.jhdata : undefined
+  return d?.hub_name || 'Duoptimum Hub'
+}
+
 /** Effective admin: the persistent admin flag OR the platform admin username.
  * The platform grants admin at login via post_auth_hook without writing the
  * persistent User.admin row, so `user.admin` alone is False for the real admin. */

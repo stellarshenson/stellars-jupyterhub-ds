@@ -99,8 +99,91 @@ def configure_volume_cache(templates):
     _load_persisted_volume_sizes()
 
 
+def _volume_mount_root():
+    """Read-only host bind-mount of the Docker volumes dir, or '' to use df.
+
+    When set (and present) the cache measures only the user volumes by walking
+    `<root>/<volume>/_data` directly - deterministic and fast. Absent (e.g. Docker
+    Desktop, where the path lives in the VM) -> fall back to `docker system df`.
+    """
+    return os.environ.get('JUPYTERHUB_DOCKER_VOLUMES_DIR', '/host-docker-volumes')
+
+
+def _du_bytes(path):
+    """Apparent size of `path` in bytes via `du -sb`. Returns 0 for a genuinely
+    empty/absent data dir, None on an error (so the caller can SKIP it rather than
+    poison the total with a fake 0 - the partial-result bug DEF-7)."""
+    import subprocess
+    if not os.path.isdir(path):
+        return 0  # volume exists but no _data yet -> genuinely empty, not an error
+    try:
+        out = subprocess.run(
+            ['du', '-sb', path], capture_output=True, text=True, timeout=_get_docker_timeout()
+        )
+        if out.returncode != 0 or not out.stdout.strip():
+            return None
+        return int(out.stdout.split()[0])
+    except Exception:
+        return None
+
+
+def _fetch_via_du(root):
+    """Measure ONLY the user volumes by du-ing their `_data` dirs in parallel.
+
+    Discovers volumes by listing `root` and matching the configured templates (same
+    rule as the df path), then du's each match concurrently. A du that errors is
+    SKIPPED, never recorded as 0, so a partial/incomplete pass is detectable (fewer
+    users) instead of silently reporting zeros. Deterministic: du blocks until done.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    try:
+        names = os.listdir(root)
+    except OSError as e:
+        _get_logger().error(f"[Volume Sizes] Cannot list volume root {root}: {e}")
+        return {}
+
+    matched = []  # (encoded_username, suffix, data_path)
+    for name in names:
+        for suffix, regex in _template_regexes:
+            m = regex.match(name)
+            if m:
+                matched.append((m.group(1), suffix, os.path.join(root, name, '_data')))
+                break  # first matching template wins
+
+    if not matched:
+        _get_logger().info(f"[Volume Sizes] No user volumes found under {root}")
+        return {}
+
+    user_data = {}
+    skipped = 0
+    with ThreadPoolExecutor(max_workers=min(8, len(matched)), thread_name_prefix="vol-du") as ex:
+        futs = {ex.submit(_du_bytes, p): (u, s) for (u, s, p) in matched}
+        for fut in as_completed(futs):
+            encoded_username, suffix = futs[fut]
+            size_bytes = fut.result()
+            if size_bytes is None:
+                skipped += 1
+                continue
+            size_mb = round(size_bytes / (1024 * 1024), 1)
+            d = user_data.setdefault(encoded_username, {"total": 0.0, "volumes": {}})
+            d["total"] += size_mb
+            d["volumes"][suffix] = size_mb
+
+    for u in user_data:
+        user_data[u]["total"] = round(user_data[u]["total"], 1)
+
+    total_size = sum(u["total"] for u in user_data.values())
+    _get_logger().info(
+        f"[Volume Sizes] Measured (du): {len(user_data)} users, {total_size:.1f} MB"
+        + (f" ({skipped} volume(s) skipped on error)" if skipped else "")
+    )
+    return user_data
+
+
 def _fetch_volume_sizes():
-    """Fetch sizes of all user volumes via docker system df (blocking, slow)."""
+    """Fetch sizes of all user volumes. Targeted parallel du when the volume root is
+    bind-mounted (deterministic + fast); else fall back to docker system df."""
     if not _template_regexes:
         _get_logger().warning(
             "[Volume Sizes] No volume-name templates configured; cache will be empty. "
@@ -108,6 +191,15 @@ def _fetch_volume_sizes():
         )
         return {}
 
+    root = _volume_mount_root()
+    if root and os.path.isdir(root):
+        return _fetch_via_du(root)
+    return _fetch_via_df()
+
+
+def _fetch_via_df():
+    """Fallback: fetch sizes via docker system df (blocking, slow, scans ALL volumes;
+    can return a PARTIAL mid-scan snapshot - DEF-7 - so used only without the bind-mount)."""
     try:
         import docker
         api_client = docker.APIClient(base_url='unix://var/run/docker.sock', timeout=_get_docker_timeout())
@@ -126,6 +218,8 @@ def _fetch_volume_sizes():
                     encoded_username = m.group(1)
                     usage_data = vol.get('UsageData', {}) or {}
                     size_bytes = usage_data.get('Size', 0) or 0
+                    if size_bytes < 0:
+                        continue  # lazy-df sentinel (-1) for not-yet-computed; skip, don't record garbage (DEF-7)
                     size_mb = round(size_bytes / (1024 * 1024), 1)
 
                     if encoded_username not in user_data:
@@ -213,8 +307,7 @@ class VolumeSizeRefresher:
         logger = _get_logger()
 
         if self.periodic_callback is not None:
-            logger.info("[VolumeSizeRefresher] Already running")
-            return
+            return  # already scheduled; quiet - start() is called on every activity poll
 
         interval_ms = self.interval_seconds * 1000
         self.periodic_callback = PeriodicCallback(self._refresh_tick, interval_ms)

@@ -24,6 +24,7 @@
       window.jhdata = {
         base_url: "{{ base_url }}",
         prefix: "{{ prefix }}",
+        hub_name: {{ hub_name | tojson }},
         xsrf_token: "{{ xsrf_token }}",
         authPage: "signup",
         authMessage: {{ (result_message or '') | tojson }},

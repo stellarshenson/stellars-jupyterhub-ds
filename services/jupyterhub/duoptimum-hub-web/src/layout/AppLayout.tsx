@@ -11,6 +11,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '../components/Icon'
 import type { IconKey } from '../components/Icon'
 import { useRole } from '../app/RoleContext'
+import { hubName } from '../app/capabilities'
 import { useTheme } from '../theme/ThemeProvider'
 import { PALETTES } from '../theme/tokens'
 import type { ThemeMode } from '../theme/tokens'
@@ -129,13 +130,6 @@ function SiderHandle({ collapsed, onToggle }: { collapsed: boolean; onToggle: ()
 
 function VersionFooter() {
   const { data: hub } = useHubInfo()
-  // JupyterHub major derived from the live version (5.5.0 -> "5"), not hardcoded
-  const hubMajor = hub?.version ? hub.version.split('.')[0] : '5'
-  const stackChips = [
-    { k: 'JupyterHub', v: hubMajor, c: '#d97f3f' },
-    { k: 'JupyterLab', v: '4', c: '#d97f3f' },
-    { k: 'Ant Design', v: '6', c: '#4f86d6' },
-  ]
   const tag = { background: 'var(--color-surface-active)', color: 'var(--color-text-muted)', borderRadius: 4, marginInline: 4 }
   // click the version to copy the full version + build id to the clipboard
   const fullVersion = `Duoptimum Hub v${__APP_VERSION__} build ${__BUILD_ID__}`
@@ -151,14 +145,6 @@ function VersionFooter() {
         </Tooltip>
         <span style={{ margin: '0 6px' }}>·</span>
         JupyterHub<Tag bordered={false} style={tag}>v{hub?.version ?? '…'}</Tag>
-      </span>
-      <span className="doh-techchips" style={{ marginTop: 0 }}>
-        {stackChips.map((c) => (
-          <span className="doh-chip" key={c.k}>
-            <span className="k">{c.k}</span>
-            <span className="v" style={{ background: c.c }}>{c.v}</span>
-          </span>
-        ))}
       </span>
     </div>
   )
@@ -179,7 +165,7 @@ export function AppLayout() {
 
   return (
     <ProLayout
-      title="Duoptimum Hub"
+      title={hubName()}
       layout="side"
       fixSiderbar
       fixedHeader
@@ -191,9 +177,9 @@ export function AppLayout() {
       menuRender={isMobile ? false : undefined}
       menuContentRender={(props) => <SiderMenu collapsed={!!props?.collapsed} />}
       menuHeaderRender={(_logo, _title, props) => (
-        <Link to="/home" style={{ display: 'flex', alignItems: 'center', justifyContent: props?.collapsed ? 'center' : 'flex-start', height: '100%', flex: 1, minWidth: 0 }} title="Duoptimum Hub">
+        <Link to="/home" style={{ display: 'flex', alignItems: 'center', justifyContent: props?.collapsed ? 'center' : 'flex-start', height: '100%', flex: 1, minWidth: 0 }} title={hubName()}>
           {props?.collapsed
-            ? <img src={markSrc} alt="Duoptimum Hub" style={{ width: 30, height: 30, objectFit: 'contain' }} />
+            ? <img src={markSrc} alt={hubName()} style={{ width: 30, height: 30, objectFit: 'contain' }} />
             : <img className="doh-brand-logo" src={logoSrc} alt="Stellars Tech AI Lab" />}
         </Link>
       )}

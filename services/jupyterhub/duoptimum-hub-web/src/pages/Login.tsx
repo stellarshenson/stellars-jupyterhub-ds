@@ -7,6 +7,7 @@ import { Button, Form, Input } from 'antd'
 import { Link, useNavigate } from 'react-router-dom'
 import { isMock } from '../services/dataMode'
 import { hubUrl, portalAssetBase } from '../services/hub/client'
+import { hubName } from '../app/capabilities'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -20,7 +21,7 @@ export default function Login() {
       <div className="doh-auth-card">
         <div className="doh-auth-brand"><img src={logoSrc} alt="Duoptimum Hub" /></div>
         <h1 className="doh-auth-title">Sign In</h1>
-        <p className="doh-auth-sub">Duoptimum Hub</p>
+        <p className="doh-auth-sub">{hubName()}</p>
         <Form layout="vertical" requiredMark={false} onFinish={() => navigate('/home')}>
           <Form.Item label="Username" name="username" rules={[{ required: true, message: 'Enter your username' }]}>
             <Input autoFocus placeholder="username" autoComplete="username" />

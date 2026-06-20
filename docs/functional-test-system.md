@@ -34,19 +34,17 @@ graph LR
 - **Admin bootstrap** - signup mode signs up the first admin during the bootstrap window; env and signup-open modes env-provision the admin via restart-to-provision (`is_authorized=1`), since the bootstrap window is closed when an env password is set or signup is enabled
 - **Per-test isolation** - an autouse fixture wipes all groups (admin API) before and after each test, so tests are independent
 - **Policy -> container** - the core check: configure a group, add the admin, spawn, then `docker inspect` the container and assert the resolved policy landed (env, mounts, memory, labels). DockerSpawner sets this at container-create, so it is asserted without waiting for the lab app
-- **Three setups (initial conditions), one by one** - `make test-functional-all` loops them, cleaning between each and reporting which passed / exiting non-zero if any failed: signup-bootstrap (the full SPA UI suite + container policy), env-password admin (restart-to-provision; one focused login test), and signup-open (signup enabled; a non-admin self-signs-up and the admin authorises through the SPA Users page). A conftest collection hook runs only the tests each regime owns (`FUNCTEST_AUTH_MODE`)
-- **GPU** - `make test-functional` auto-detects a host GPU and, when present, runs the GPU auto-detection test (reads the hub `[GPU debug]` startup line); on CPU-only hosts that test is deselected
+- **Every setup (initial condition), one by one** - `make test-functional` runs `tests/functional/run.sh all`, looping the regimes, cleaning between each and reporting which passed / exiting non-zero if any failed: signup (bootstrap-window admin + full SPA UI suite + container policy), gpu (mock sidecar; GPU display tests), env-password admin (restart-to-provision; one focused login test), and signup-open (signup enabled; a non-admin self-signs-up and the admin authorises through the SPA Users page). A conftest collection hook runs only the tests each regime owns (`FUNCTEST_AUTH_MODE`)
+- **GPU** - the `signup` regime auto-detects a host GPU and, when present, runs the GPU auto-detection test (reads the hub `[GPU debug]` startup line); on CPU-only hosts that test is deselected; the `gpu` regime forces GPU on via a mock sidecar (any host)
 - **Acceptance-criteria coverage** - every test declares the acc-crit it covers via `@pytest.mark.acc_crit("<doc-slug>::<label>", ...)`; the declaration is mandatory (a marker-less collected test aborts the run) and the suite prints a `MET`/`UNMET` coverage report per criterion at conclusion
 - **No skip noise** - a conftest collection hook deselects (never skips) tests outside the run's regime
 - **Teardown** - on pass or fail, removes the project's containers, spawned labs, network and volumes; pulled images are kept (`REMOVE_IMAGES=1` to drop them); the operator's real deployment is never touched
 
 ## Running
 
-- `make test-functional-all` - run every setup (signup, env, signup-open) one by one, cleaning between each; reports which passed
-- `make test-functional` - the signup-bootstrap setup: boot, run the full SPA suite + container policy, clean up
-- `make test-functional-env` - the env-password admin mode (one quick test)
-- `make test-functional-signup-open` - signup enabled; self-signup + admin authorises via the SPA
-- `make test-functional-clean` - force-remove a leftover harness
+- `make test-functional` - run EVERY setup (signup, gpu, env, signup-open, signup-bootstrap) one by one, cleaning between each; reports which passed, non-zero if any failed
+- `tests/functional/run.sh <regime>` - run ONE setup: `signup` | `gpu` | `env` | `signup-open` | `signup-bootstrap`
+- `tests/functional/run.sh clean` - force-remove a leftover harness
 - `PYTEST_ARGS="-k ..."` - selective re-run; the default always runs all
 - `FUNCTEST_GPU_ENABLED=2` - force GPU mode (otherwise auto-detected)
 

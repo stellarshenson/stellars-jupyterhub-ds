@@ -19,10 +19,11 @@ services:
       - certs:/certs
       - data:/data
       - shared:/mnt/shared
-      - docker_sockets:/var/run/jupyterhub-docker-proxy-sockets
+      - docker_sockets:/var/run/docker-proxy-sockets   # MUST equal baked JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR (hub self-inspects this path)
     environment:
       - JUPYTERHUB_ADMIN=functestadmin                   # dedicated test admin (no clash with real 'admin')
       - JUPYTERHUB_BASE_URL=/jupyterhub
+      - JUPYTERHUB_HUB_NAME=Functest Hub Name            # exercise the configurable display name (logo tooltip + login/signup text)
       - JUPYTERHUB_SSL_ENABLED=0                        # http; no Traefik in the test stack
       # Bootstrap-by-signup: signup off + no admin password + fresh DB opens the
       # one-shot admin bootstrap window, so the harness creates the first admin
@@ -30,7 +31,7 @@ services:
       # cannot seed on a single fresh boot - the users_info table is created after
       # the config runs).
       - JUPYTERHUB_SIGNUP_ENABLED=0
-      - JUPYTERHUB_GPU_ENABLED=${FUNCTEST_GPU_ENABLED:-0}   # default off (fast); 1=autodetect (make test-functional-gpu deploys a mock sidecar)
+      - JUPYTERHUB_GPU_ENABLED=${FUNCTEST_GPU_ENABLED:-0}   # default off (fast); 1=autodetect (tests/functional/run.sh gpu deploys a mock sidecar)
       - JUPYTERHUB_LAB_IMAGE=quay.io/jupyterhub/singleuser:latest   # minimal public spawnable image
       - JUPYTERHUB_LAB_SERVICE_MLFLOW=0
       - JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR=0

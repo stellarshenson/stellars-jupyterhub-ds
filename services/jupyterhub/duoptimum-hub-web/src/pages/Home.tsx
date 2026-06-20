@@ -242,7 +242,11 @@ function AdminHome() {
               rows={[
                 { label: 'CPU', value: total.cpu, valueLabel: hostCpuMode === 'cores' && total.cpuAggregateLabel ? total.cpuAggregateLabel : `${total.cpu}%`, tip: total.cpuTip, error: total.cpuError },
                 { label: 'Memory', value: total.mem, tip: total.memTip, error: total.memError },
-                { label: 'GPU', value: total.gpu, gpus: total.gpus, gpuDevices: total.gpuDevices, gpuDisconnected: total.gpuDisconnected },
+                // GPU row only when there is real GPU data (matches ServerHero); a bare
+                // GPU row must not leak when GPU is off or the sidecar is down
+                ...(total.gpus !== undefined || total.gpuDevices !== undefined
+                  ? [{ label: 'GPU', value: total.gpu, gpus: total.gpus, gpuDevices: total.gpuDevices }]
+                  : []),
               ]}
             />
           )}

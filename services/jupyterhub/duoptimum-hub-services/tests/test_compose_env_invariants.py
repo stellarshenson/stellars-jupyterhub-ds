@@ -10,12 +10,21 @@ from pathlib import Path
 
 import pytest
 
-_ROOT = Path(__file__).resolve().parents[4]
-_COMPOSE = _ROOT / "compose.yml"
-_DOCKERFILE = _ROOT / "services" / "jupyterhub" / "Dockerfile.jupyterhub"
+def _find_repo_root():
+    # walk up to the dir holding both compose.yml and the hub Dockerfile; a fixed
+    # parents[N] crashed in the packaged /src/... layout where the depth differs
+    for p in Path(__file__).resolve().parents:
+        if (p / "compose.yml").is_file() and (p / "services" / "jupyterhub" / "Dockerfile.jupyterhub").is_file():
+            return p
+    return None
+
+
+_ROOT = _find_repo_root()
+_COMPOSE = _ROOT / "compose.yml" if _ROOT else None
+_DOCKERFILE = _ROOT / "services" / "jupyterhub" / "Dockerfile.jupyterhub" if _ROOT else None
 
 pytestmark = pytest.mark.skipif(
-    not (_COMPOSE.exists() and _DOCKERFILE.exists()),
+    _ROOT is None,
     reason="repo root compose.yml / Dockerfile not available (packaged test run)",
 )
 

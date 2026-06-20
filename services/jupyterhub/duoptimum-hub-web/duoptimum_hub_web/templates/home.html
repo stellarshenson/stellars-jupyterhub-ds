@@ -32,6 +32,7 @@
       window.jhdata = {
         base_url: "{{ base_url }}",
         prefix: "{{ prefix }}",
+        hub_name: {{ hub_name | tojson }},
         {% if user %}user: "{{ user.json_escaped_name | safe }}",{% endif %}
         admin_access: {% if user and user.admin %}true{% else %}false{% endif %},
         gpu_enabled: {% if gpu_enabled %}true{% else %}false{% endif %},

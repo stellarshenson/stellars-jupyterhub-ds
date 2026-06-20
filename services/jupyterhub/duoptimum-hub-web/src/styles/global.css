@@ -139,15 +139,26 @@ body { margin: 0; font-family: var(--font-sans); }
    The min-width holds the bar width stable; tabular-nums keeps digits uniform. */
 .doh-ttl-val { display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; white-space: nowrap; min-width: 84px; font-size: var(--text-sm); color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .doh-ttl-val b { color: var(--color-text); }
-/* extend animation: the bar fills to the new limit over ~1s (override antd's
-   quick default bar transition) with a brief accent glow, like the old design */
+/* extend animation: on extend the bar fills to the new limit over the boost window
+   (override antd's quick default transition). The bar glows; the counter (readout)
+   glows AND blurs, both ramping up then back down over the same window - so the
+   number reads as "moving" while it climbs. Fires ONLY on extend (doh-ttl-boost
+   added at the click, removed when the new value lands) - never on a countdown tick.
+   Filter endpoints are explicit zero values (not `none`) so blur/glow interpolate
+   smoothly in and out instead of snapping. */
 .doh-ttl-bar { display: inline-block; }
 .doh-ttl-boost .ant-progress-bg { transition: width var(--doh-ttl-anim, 1s) ease !important; }
-.doh-ttl-boost { animation: doh-ttl-pulse var(--doh-ttl-anim, 1s) ease; }
+.doh-ttl-bar.doh-ttl-boost { animation: doh-ttl-pulse var(--doh-ttl-anim, 1s) ease; }
+.doh-ttl-val.doh-ttl-boost { animation: doh-ttl-val-pulse var(--doh-ttl-anim, 1s) ease; }
 @keyframes doh-ttl-pulse {
-  0% { filter: none; }
-  50% { filter: drop-shadow(0 0 4px var(--color-accent)); }
-  100% { filter: none; }
+  0% { filter: drop-shadow(0 0 0 transparent); }
+  50% { filter: drop-shadow(0 0 5px var(--color-accent)); }
+  100% { filter: drop-shadow(0 0 0 transparent); }
+}
+@keyframes doh-ttl-val-pulse {
+  0% { filter: blur(0) drop-shadow(0 0 0 transparent); }
+  50% { filter: blur(1.5px) drop-shadow(0 0 5px var(--color-accent)); }
+  100% { filter: blur(0) drop-shadow(0 0 0 transparent); }
 }
 
 /* ---- metric card ---- */
@@ -233,6 +244,7 @@ body { margin: 0; font-family: var(--font-sans); }
 }
 @media (prefers-reduced-motion: reduce) {
   .doh-hub-diode, .doh-hub-offline-bar .doh-hub-dot { animation: none; }
+  .doh-ttl-bar.doh-ttl-boost, .doh-ttl-val.doh-ttl-boost { animation: none; }
 }
 
 /* ---- command palette ---- */
@@ -280,12 +292,6 @@ body { margin: 0; font-family: var(--font-sans); }
 
 /* ---- add-a-group browse list (Configure user) ---- */
 .doh-addgrp-tags { display: flex; flex-wrap: wrap; gap: 4px; }
-
-/* ---- tech-stack chips (footer "built with" badges, shields.io style) ---- */
-.doh-techchips { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.doh-chip { display: inline-flex; align-items: stretch; border-radius: 5px; overflow: hidden; font-size: 11px; font-weight: 600; line-height: 1.6; box-shadow: var(--shadow-sm); }
-.doh-chip > .k { padding: 1px 8px; background: var(--color-surface-active); color: var(--color-text-muted); }
-.doh-chip > .v { padding: 1px 8px; color: #fff; }
 
 /* ---- group policy form: foldable sections (Configure group / Policy) ---- */
 .doh-pol-sec { border-bottom: 1px solid var(--color-border-subtle); padding: 14px 0; }

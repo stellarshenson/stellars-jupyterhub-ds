@@ -24,6 +24,7 @@ Cross-document conflicts found during consolidation are tracked in [concerns.md]
 - [duoptimum-hub service + image rename](#duoptimum-hub-service-image-rename)
 - [Edit user returns to its origin](#edit-user-returns-to-its-origin)
 - [Platform event log (persistence + clear)](#platform-event-log-persistence-clear)
+- [first-admin bootstrap (deterministic provisioning + fail-fast)](#first-admin-bootstrap-deterministic-provisioning--fail-fast)
 - [force password change on next login (#232 / #233)](#force-password-change-on-next-login-232-233)
 - [Functional Test Harness](#functional-test-harness)
 - [Functional UI Sweep](#functional-ui-sweep)
@@ -204,6 +205,23 @@ The activity score is the user's recent active time measured against a daily tar
   - log: 2026-06-17 added; `getUsers` now derives `activityHours`/`activityPct` like `getServers`; `Users.tsx` passes both to `ActivityMeter` (Servers already did)
 - [x] **Same tooltip on the Home servers widget** - the Home "Active servers" preview activity meter carries the same multiline tooltip as the Servers list; it passes `hours`/`pct` from the shared `ServerRow`, not the bare `value`-only meter
   - log: 2026-06-17 added; `Home.tsx::ActiveServersPreview` activity column now `<ActivityMeter value hours pct />`
+
+### New-account ramp ([DEF-6](defects-duoptimumhub.md#def-6-new-user-activity-spikes-to-300-instead-of-ramping-from-zero))
+
+A brand-new account must start near zero and grow with real activity, never spike. Fix: `_weighted_active_fraction` divides decay-weighted active samples by `_weighted_expected_total()` - the decay-weighted count of every slot a FULLY sampled retention window holds (geometric series), not the samples on hand. Not-yet-elapsed slots count as inactive, so an under-sampled (new) account ramps continuously from zero; a full window (established account) is unchanged.
+
+- [x] **Ramp from zero** - a freshly-created account active for a short while reads near-zero activity, growing monotonically with accumulated real activity; it does NOT jump to a high value on its first samples
+  - log: 2026-06-20 implemented + tested (`TestNewUserRamp.test_new_active_user_does_not_spike`, `test_ramp_grows_as_active_time_accumulates`)
+- [x] **Honest hours bounded for new account** - `get_avg_active_hours` for a new account does not return ~24h/day off a handful of all-active samples; measured against the full-window denominator, not the count of existing samples
+  - log: 2026-06-20 implemented (full-window denominator)
+- [x] **Continuous full-window denominator** - the active fraction is measured against a full retention window of expected slots, so under-sampling ramps continuously; no discrete "collecting data" threshold needed (subsumes the methodology-doc ~24h/144-sample idea)
+  - log: 2026-06-20 implemented; `activity-tracking-methodology.md` narrative is a follow-up
+- [x] **Edge: init sample not the lever** - ramp comes from the full-window denominator, NOT from the user-creation init inactive sample; with the new denominator a single active sample is still ~0% (regression guard against the "remove init sample" mis-fix)
+  - log: 2026-06-20 implemented (denominator-driven, init sample incidental)
+- [x] **Genuine overtime still reads >100%** - an established user over the 8h target still reads >100% honest-hours (e.g. 12h/day -> 150%); fraction capped at 1.0 so honest hours never exceed 24h/day
+  - log: 2026-06-20 preserved + tested (`test_avg_active_hours_is_real_and_uncapped`, `test_avg_active_hours_never_exceeds_24`)
+- [x] **Tests** - unit tests cover: new account ramps low (not ~300%), ramp grows with activity, honest-hours capped at 24h, established 8h/day reads 100, 4h/day reads ~50, decay favours recent
+  - log: 2026-06-20 743 pass (`test_activity_monitor.py`)
 
 ### API
 
@@ -961,8 +979,9 @@ The hub's Docker Compose service is renamed `jupyterhub` -> `duoptimum-hub` and 
 
 - [x] **Functional harness renamed** - the service is `duoptimum-hub` in all three harness compose files; `conftest.py` `BASE_URL`/`HUB_HOST` default to `duoptimum-hub`; the Makefile `--wait`/`restart` targets name `duoptimum-hub`
   - log: 2026-06-18 operator: "fix the tests and harness"
-- [ ] **Functional suites pass post-rebuild** - `make test-functional` and `make test-functional-env` are green against the rebuilt `stellars/duoptimum-hub:latest` image
+- [ ] **Functional suites pass post-rebuild** - `make test-functional` (all regimes) is green against the rebuilt `stellars/duoptimum-hub:latest` image
   - log: 2026-06-18 needs the authorised one-time `make rebuild`
+  - log: 2026-06-20 harness consolidated to one `make test-functional` target -> `tests/functional/run.sh all`; non-abort `run --rm` boot so hub-lifecycle tests (test_hub_unreachable) run without aborting the suite
 
 ### Deployment surfaces
 
@@ -1202,6 +1221,10 @@ Legend: `[x]` implemented, `[ ]` planned (the test/scenario backlog). Each item 
   - log: 2026-06-18 implemented (signup-open: `signup_user` -> pending section)
 - [x] **Admin authorizes user** - admin authorises a pending user through the SPA Users page; the pending queue empties and the backend reports `is_authorized=true`
   - log: 2026-06-18 implemented (`test_self_signup_then_admin_authorises`)
+- [x] **No login redirect loop** - a logged-out browser hitting the SPA landing settles on a single un-nested `/hub/login?next=...` URL (DEF-5); no ever-growing nested/encoded `?next=` chain, URL stable, login surface rendered
+  - log: 2026-06-20 functest `test_login_redirect.py` (default regime), verifies the DEF-5 fix
+- [x] **Signup-on first admin auto-authorised** - signup ENABLED, NO env password, fresh DB: the configured admin self-signs-up via the open form and is auto-authorised (`first_admin_self_signup_pending`), logging in immediately and reaching the portal - not stranded `is_authorized=False`
+  - log: 2026-06-20 functest `test_signup_bootstrap.py` + `signupbootstrap` regime (`make test-functional-signup-bootstrap`)
 - [ ] **Logout** - logout returns to login and clears the session
   - log: 2026-06-13 planned
 - [ ] **Wrong password rejected** - invalid login shows an error, no session
@@ -3440,6 +3463,18 @@ Extending the idle-session TTL must move the progress bar immediately on click a
   - log: 2026-06-17 safety timeout in `apply`
 - [x] **Edge: extend across the base crossover** - extending a session from below base up past base animates to the post-extend ceiling-scaled % (a one-time scale-switch drop is the operator-chosen two-phase model, not the bug); within the banked regime (both endpoints > base) the bar grows monotonically
   - log: 2026-06-18 documented - the target-% boost makes the crossover land on the true % with no overshoot
+- [x] **Counter always shows minutes** - the TTL readout never collapses to a bare hour ("4h"); it always renders the minute component ("4h 0m"), in the hero gadget and every TTL cell/metric (Home/Servers tables, Servers "Time left")
+  - log: 2026-06-20 `fmtMinutes` drops the `m ? ... : ...` branch in `lib/format.ts`, `services/hub/liveSource.ts`, `services/mockSource.ts`
+- [x] **Counter blurs + glows on extend** - during the boost the time readout (`.doh-ttl-val`) gets the same accent glow as the bar plus a slight blur, so the climbing number reads as moving
+  - log: 2026-06-20 `doh-ttl-boost` now added to the counter span; `@keyframes doh-ttl-val-pulse` (`meters.tsx`, `global.css`)
+- [x] **Blur/glow ramps up and down** - the blur and glow ramp from zero to peak at mid-animation and back to zero by the end, over the same `--doh-ttl-anim` window as the fill; filter endpoints are explicit zero values (`blur(0)` / transparent shadow) so they interpolate smoothly rather than snap
+  - log: 2026-06-20 `doh-ttl-val-pulse` 0/50/100% envelope
+- [x] **Effect is extend-only** - the blur/glow fires only while `doh-ttl-boost` is set (an extend in flight) and clears when the new value lands; a normal per-minute countdown tick never triggers it
+  - log: 2026-06-20 boost state drives the class; confirmed with operator
+- [x] **Bar glow scoped, not doubled** - the bar keeps its accent glow on extend, now scoped to `.doh-ttl-bar.doh-ttl-boost` so it does not also apply the counter's blur pulse
+  - log: 2026-06-20 split `doh-ttl-pulse` (bar) from `doh-ttl-val-pulse` (counter)
+- [x] **Edge: reduced motion** - under `prefers-reduced-motion: reduce` both the bar and counter pulses are disabled (`animation: none`); the value still updates, without blur/glow
+  - log: 2026-06-20 added to the existing reduced-motion block in `global.css`
 
 ## TTL progress bar behaviour matrix
 
@@ -4149,3 +4184,83 @@ The SPA continuously probes hub reachability and, when the hub stops responding,
   - log: 2026-06-19 criterion added
 - [ ] **E2E: no false trigger while healthy** - with the hub up, the indicator never appears across the test run
   - log: 2026-06-19 criterion added
+
+## first-admin bootstrap (deterministic provisioning + fail-fast)
+
+Two mutually-exclusive paths create the first admin: env-password pre-provisioning and self-signup. Self-signup covers normal signup (`JUPYTERHUB_SIGNUP_ENABLED=1`) and a one-shot bootstrap window scoped to the admin name when signup is off on a fresh DB. Env provisioning is deterministic: it runs at authenticator-init, after `NativeAuthenticator.__init__` -> `add_new_table()` has guaranteed the `users_info` table exists, using the authenticator's own ORM session. Decision logic lives in `duoptimum_hub_services.admin_bootstrap`; the config only wires policy. Survived two rounds of adversarial `claude -p` review (round 2: SOUND).
+
+- [x] **Both paths supported** - env-password (`JUPYTERHUB_ADMIN_PASSWORD`) and self-signup are both first-class; mutually exclusive (env password sets `_ADMIN_PROVISIONING_REQUESTED`, which closes the signup bootstrap window)
+  - log: 2026-06-20 implemented
+- [x] **Deterministic provisioning anchor** - `provision_admin_userinfo` runs in `BootstrapAdminAuthenticator.__init__` after `super().__init__()`; `users_info` is guaranteed to exist there (NativeAuth `add_new_table`), so the INSERT never silently no-ops (the original bug was provisioning at config-load on a fresh volume, before the table/ORM existed)
+  - log: 2026-06-20 implemented; full init-time lifecycle simulated (create -> fresh-session read -> login verify -> idempotent restart)
+- [x] **ORM, single session** - provisioning uses the authenticator's `self.db` + NativeAuth `UserInfo`; stored bcrypt hash is byte-identical to a normal signup; no second sqlite connection to the live DB file
+  - log: 2026-06-20 implemented (`admin_bootstrap.provision_admin_userinfo`)
+- [x] **Gated creation log** - on the INSERT branch only (admin row absent) the hub logs that `JUPYTERHUB_ADMIN_PASSWORD` was provided and the admin is being created; the password value is never logged
+  - log: 2026-06-20 implemented; creation line fires exactly once (idempotent on restart)
+- [x] **Initial-only semantics** - env password seeds the admin only when absent; if the stored hash still verifies the env value it is a no-op; once the admin changes their password (hash no longer verifies) the env value is permanently ignored (`bcrypt` verify)
+  - log: 2026-06-20 implemented (unit tests `test_admin_bootstrap.py`)
+- [x] **First-admin self-signup auto-authorised regardless of signup flag** - the configured admin's own self-signup is set `is_authorized=True` whenever the admin row is absent and env provisioning is not in use; covers both signup-on and the signup-off window. Decoupled from `SIGNUP_ENABLED==0` (the round-1 break: the signup-on default left the admin `is_authorized=False` with no authoriser -> locked out)
+  - log: 2026-06-20 implemented (`admin_bootstrap.first_admin_self_signup_pending`, used by `create_user`); round-2 adversarial review confirmed closed
+- [x] **Non-admin signup still pending** - with signup on, a non-admin self-signup lands `is_authorized=False` (the auto-authorise second guard is `normalize(username)==normalize(admin)`)
+  - log: 2026-06-20 implemented (unit test `test_other_users_present_admin_absent_still_pending`)
+- [x] **Fail fast - no reachable admin** - hub raises `SystemExit` when signup is disabled AND no env password AND no admin row AND the bootstrap window cannot open (DB already has users); message names both remedies (set env password, or enable signup)
+  - log: 2026-06-20 implemented; exhaustive 16-state truth table = exactly one outcome per state, zero policy holes
+- [x] **Edge: fresh DB, signup off, no env password** - bootstrap window opens (scoped to admin name), hub boots, admin self-signs-up and is auto-authorised; does NOT fail fast
+  - log: 2026-06-20 verified by truth table + unit tests
+- [x] **Edge: signup on, no env password, no admin** - never fails fast; admin self-signs-up via the normal form and is auto-authorised
+  - log: 2026-06-20 verified (round-2 review trace)
+- [x] **Edge: provisioning idempotent** - restart with the admin present is a no-op (`UserInfo.find` returns the row); no duplicate, creation log silent
+  - log: 2026-06-20 verified by simulation
+- [ ] **Edge: admin exists but unauthorized** - `query_admin_state` reports admin present by username, so an `is_authorized=0` admin row does not trigger fail-fast; does not arise through env or self-signup paths (both set is_authorized); recovery is DELETE the row
+  - log: 2026-06-20 noted - not produced by normal flows
+- [x] **Edge: uppercase JUPYTERHUB_ADMIN** - a non-normalised admin name (e.g. `Admin`) is stored normalised (`admin`), so a raw compare would never grant the admin role; FIXED by lowercasing `JUPYTERHUB_ADMIN` at the single source in `config/jupyterhub_config.py` (`.strip().lower()`), matching JupyterHub's unconditional `username.lower()`, so every bootstrap lookup / `post_auth_hook` / SPA `admin_user` compare holds
+  - log: 2026-06-20 fixed (#344); single-source lowercase, no `username_map` override in play
+  - log: 2026-06-20 noted by round-2 review - pre-existing, out of scope
+- [ ] **E2E: env-password admin login** - on the live stack, fresh `/data`, `JUPYTERHUB_ADMIN_PASSWORD` set: admin logs in with the env password and reaches the portal; the creation log line is present, the password is not
+  - log: 2026-06-20 pending deploy verification (functional test, task #335)
+- [ ] **E2E: signup-on default admin login** - on the live stack, fresh `/data`, shipped default (signup on, no env password): admin self-signs-up and immediately logs in (auto-authorised), reaching the portal
+  - log: 2026-06-20 pending deploy verification (functional test, task #335)
+- [ ] **E2E: fail-fast boot refusal** - signup off + no env password + a non-empty DB without the admin row: hub refuses to boot with the clear message
+  - log: 2026-06-20 pending deploy verification (functional test, task #335)
+
+---
+
+## Volume-size reporting
+
+Per-user volume sizes shown on the Servers list + Manage-Volumes table (and the activity API `volume_size_mb` / `volume_breakdown`) must be accurate, complete and cheap to compute. The size source must never surface a partial / mid-computation snapshot, and must scan only the user's own volumes, not every volume on the host. See [DEF-7](defects-duoptimumhub.md#def-7-volume-sizes-show-0-gb-partial-cold-boot-df-result-cached-for-an-hour).
+
+- [ ] **Accurate** - reported per-suffix size matches on-disk size within tolerance (a 1.5 GB volume reads ~1.5 GB, never 0)
+  - log: 2026-06-20 criterion added (DEF-7)
+- [ ] **No partial snapshot** - a size source caught mid-computation is never cached or persisted; the cache only ever holds a complete result
+  - log: 2026-06-20 criterion added (DEF-7)
+- [ ] **Targeted scan** - only the active project's templated user volumes are measured, not the full host volume set (no re-scan of system / other-project / orphaned volumes)
+  - log: 2026-06-20 criterion added (DEF-7)
+- [ ] **Fast** - a refresh measures only the user volumes, in parallel; no multi-minute full-system `docker system df` on the request or refresh path
+  - log: 2026-06-20 criterion added (DEF-7); current full-system df measured 131.7s
+- [ ] **Fresh after boot** - after a hub restart the correct sizes appear within seconds (first refresh), not after the hourly interval; a bad first fetch self-corrects quickly rather than persisting for an hour
+  - log: 2026-06-20 criterion added (DEF-7)
+- [ ] **Edge: empty volume** - a genuinely empty volume reports ~0 and is distinguishable from "not yet computed"
+  - log: 2026-06-20 criterion added (DEF-7)
+- [ ] **Edge: orphaned/renamed-project volumes** - only the active project's templated volumes count toward a user's total; stale prior-project volumes are not double-counted
+  - log: 2026-06-20 criterion added (DEF-7)
+- [ ] **Functional: small then 1.5 GB** - start with a small volume -> reported small; grow cache/home/workspace to ~1.5 GB each -> each reported ~1.5 GB (not 0), within tolerance
+  - log: 2026-06-20 criterion added (DEF-7); functional test `test_volume_sizes.py`
+- [ ] **No log spam** - the volume refresher does not log a line every poll when already running
+  - log: 2026-06-20 criterion added (DEF-7)
+
+---
+
+## Hub display name (JUPYTERHUB_HUB_NAME)
+
+Configurable platform display name via `JUPYTERHUB_HUB_NAME`. Shown as the portal logo tooltip and as the login/signup screen text. Default "Duoptimum Hub", baked in `Dockerfile.jupyterhub` and as the `config/jupyterhub_config.py` fallback; flows to the SPA via `window.jhdata.hub_name` (`c.JupyterHub.template_vars`).
+
+- [x] **Env + default** - `JUPYTERHUB_HUB_NAME` read in config (default "Duoptimum Hub"); baked `ENV` in the Dockerfile branding block; listed in `settings_dictionary.yml`
+  - log: 2026-06-20 implemented (config + Dockerfile + settings dict)
+- [x] **Shell injection** - `hub_name` added to `c.JupyterHub.template_vars` and to `window.jhdata` in all four shells (portal, home, login, signup) via `{{ hub_name | tojson }}`
+  - log: 2026-06-20 implemented
+- [ ] **Hub name as the logo tooltip** - hovering the portal logo shows the configured name (`AppLayout` logo `title` = `hubName()`)
+  - log: 2026-06-20 implemented; functional test `test_hub_name.py::test_hub_name_logo_tooltip`
+- [ ] **Hub name on the login screen** - the login (and signup) screen subtitle shows the configured name (`AuthApp`/`Login`/`Signup` `doh-auth-sub` = `hubName()`)
+  - log: 2026-06-20 implemented; functional test `test_hub_name.py::test_hub_name_on_login_screen`
+- [ ] **Default when unset** - empty / unset env falls back to "Duoptimum Hub" on every surface (`hubName()` `||` default; config default; mock/dev with no jhdata)
+  - log: 2026-06-20 criterion added
