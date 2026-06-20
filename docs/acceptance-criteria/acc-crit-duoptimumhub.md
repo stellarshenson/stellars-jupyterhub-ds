@@ -4227,26 +4227,24 @@ Two mutually-exclusive paths create the first admin: env-password pre-provisioni
 
 ## Volume-size reporting
 
-Per-user volume sizes shown on the Servers list + Manage-Volumes table (and the activity API `volume_size_mb` / `volume_breakdown`) must be accurate, complete and cheap to compute. The size source must never surface a partial / mid-computation snapshot, and must scan only the user's own volumes, not every volume on the host. See [DEF-7](defects-duoptimumhub.md#def-7-volume-sizes-show-0-gb-partial-cold-boot-df-result-cached-for-an-hour).
+Per-user volume sizes shown on the Servers list + Manage-Volumes table (and the activity API `volume_size_mb` / `volume_breakdown`) must be accurate and complete, and must never surface a partial / mid-computation snapshot. Approach decision (DEF-7): both the host bind-mount and a throwaway `du` helper container were rejected; the size source stays `docker system df` (type=volume), but the refresh caches ONLY a complete pass and retries until df has gathered every volume - correctness + non-blocking over a targeted fast scan. See [DEF-7](defects-duoptimumhub.md#def-7-volume-sizes-show-0-gb-partial-cold-boot-df-result-cached-for-an-hour).
 
 - [ ] **Accurate** - reported per-suffix size matches on-disk size within tolerance (a 1.5 GB volume reads ~1.5 GB, never 0)
-  - log: 2026-06-20 criterion added (DEF-7)
+  - log: 2026-06-20 implemented (DEF-7): complete df pass reports real sizes; live 1.5 GB check pends rebuild
 - [ ] **No partial snapshot** - a size source caught mid-computation is never cached or persisted; the cache only ever holds a complete result
-  - log: 2026-06-20 criterion added (DEF-7)
-- [ ] **Targeted scan** - only the active project's templated user volumes are measured, not the full host volume set (no re-scan of system / other-project / orphaned volumes)
-  - log: 2026-06-20 criterion added (DEF-7)
-- [ ] **Fast** - a refresh measures only the user volumes, in parallel; no multi-minute full-system `docker system df` on the request or refresh path
-  - log: 2026-06-20 criterion added (DEF-7); current full-system df measured 131.7s
-- [ ] **Fresh after boot** - after a hub restart the correct sizes appear within seconds (first refresh), not after the hourly interval; a bad first fetch self-corrects quickly rather than persisting for an hour
-  - log: 2026-06-20 criterion added (DEF-7)
+  - log: 2026-06-20 implemented (DEF-7): `_fetch_via_df` returns `(data, complete)`, any `-1` marks the pass partial; `_refresh_volume_sizes_sync` caches only `complete`; unit-tested `test_volume_cache.py::TestDfCompleteness` + `TestRefreshCachesOnlyComplete`
+- [ ] **Off the request/event-loop path** - no `docker system df` on the request path (cache-only); the refresh runs in the shared executor thread, never blocking the hub event loop
+  - log: 2026-06-20 implemented (DEF-7): refresh submitted to `get_executor()`; full df (~131.7s) is non-blocking. NOTE: targeted/parallel "fast" scan dropped - the rejected helper-container approach; df still scans all host volumes
+- [ ] **Fresh after boot** - after a hub restart the correct sizes appear within the retry window (not the hourly interval); a partial first fetch self-corrects quickly rather than persisting for an hour
+  - log: 2026-06-20 implemented (DEF-7): bounded short-delay retry until complete (`JUPYTERHUB_ACTIVITYMON_VOLUMES_DF_RETRY_DELAY` 15s x `..._MAX_ATTEMPTS` 12 safety-net cap)
 - [ ] **Edge: empty volume** - a genuinely empty volume reports ~0 and is distinguishable from "not yet computed"
-  - log: 2026-06-20 criterion added (DEF-7)
+  - log: 2026-06-20 implemented (DEF-7): `Size=0` recorded as 0.0, `Size=-1` skipped as pending; unit-tested
 - [ ] **Edge: orphaned/renamed-project volumes** - only the active project's templated volumes count toward a user's total; stale prior-project volumes are not double-counted
-  - log: 2026-06-20 criterion added (DEF-7)
+  - log: 2026-06-20 implemented (DEF-7): first-matching-template wins; non-matching names ignored; unit-tested
 - [ ] **Functional: small then 1.5 GB** - start with a small volume -> reported small; grow cache/home/workspace to ~1.5 GB each -> each reported ~1.5 GB (not 0), within tolerance
-  - log: 2026-06-20 criterion added (DEF-7); functional test `test_volume_sizes.py`
+  - log: 2026-06-20 completeness logic unit-tested with a mocked df; real-volume functional test pends a rebuilt image
 - [ ] **No log spam** - the volume refresher does not log a line every poll when already running
-  - log: 2026-06-20 criterion added (DEF-7)
+  - log: 2026-06-20 implemented (DEF-7): `refreshing` flag guards re-entry; partial-pass lines emit only during cold-boot retries, not per poll
 
 ---
 
