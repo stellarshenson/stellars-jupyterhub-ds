@@ -6,6 +6,10 @@
 # healthy, so /certs is populated before traefik starts). No published host port - the
 # Playwright runner reaches `traefik` by service name on the test net (never binds the
 # operator's :443). Layer ON TOP of compose.functional.yml.
+#
+# Serves BOTH regimes (run.sh): default open (traefik.enable=true, mode=traefik) and,
+# when run.sh exports TRAEFIK_DASHBOARD_ENABLED=false + FUNCTEST_AUTH_MODE=traefikclosed,
+# the closed regime - the dashboard router is dropped so /traefik is unreachable.
 
 services:
   traefik:
@@ -14,10 +18,13 @@ services:
       - "--entrypoints.websecure.address=:443"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
+      # NAMESPACE isolation (mirrors prod): only read THIS project's labels, else the operator's
+      # live stack (or any other) injects its enabled /traefik router and the closed regime leaks.
+      - "--providers.docker.constraints=Label(`com.docker.compose.project`,`stellars-functest`)"
       - "--providers.file.directory=/certs"
       - "--providers.file.watch=true"
       - "--serverstransport.insecureskipverify=true"
-      - "--api.dashboard=true" # open for the test
+      - "--api.dashboard=true" # enable dashboard+API; exposure gated by the router toggle below
       - "--api.basePath=/traefik"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -28,7 +35,9 @@ services:
     networks:
       - jupyterhub_network
     labels:
-      - "traefik.enable=true"
+      # THE TOGGLE (mirrors prod): traefik.enable gates the whole dashboard route.
+      # false (closed regime) -> docker provider never creates it -> /traefik 404.
+      - "traefik.enable=${TRAEFIK_DASHBOARD_ENABLED:-true}"
       - "traefik.http.routers.traefik-dashboard.rule=PathPrefix(`/traefik`)"
       - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
       - "traefik.http.routers.traefik-dashboard.service=api@internal"
@@ -36,7 +45,7 @@ services:
 
   tests:
     environment:
-      - FUNCTEST_AUTH_MODE=traefik # conftest collects only traefik-marked tests
+      - FUNCTEST_AUTH_MODE=${FUNCTEST_AUTH_MODE:-traefik} # conftest collects traefik OR traefikclosed tests
       - TRAEFIK_BASE=https://traefik # dashboard reached by service name over TLS
     depends_on:
       traefik:

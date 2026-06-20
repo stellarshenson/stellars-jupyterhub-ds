@@ -47,6 +47,7 @@ Cross-document conflicts found during consolidation are tracked in [concerns.md]
 - [Rename user (admin action on the profile)](#rename-user-admin-action-on-the-profile)
 - [resource bars (limits + tooltips)](#resource-bars-limits-tooltips)
 - [restart/stop progress feedback](#restartstop-progress-feedback)
+- [Role labels, namespace and config validator](#role-labels-namespace-and-config-validator)
 - [Roles reference page](#roles-reference-page)
 - [server lifecycle UX (inline spinners, no modal, real log)](#server-lifecycle-ux-inline-spinners-no-modal-real-log)
 - [server status immediacy](#server-status-immediacy)
@@ -4054,22 +4055,23 @@ Server-start experience graduates from a modal to a dedicated page with a live s
 
 ## GPU-info sidecar wiring - explicit compose, runtime discovery
 
-The hub<->GPU-info sidecar is fully DECLARED in compose (role-labelled networks + a profiled service) while every address, network name and compose project is RESOLVED at runtime from the hub's own container - no hardcoded host, name or project, and no hidden runtime-created resources. Networks carry one role label key (`duoptimum.network.role` = `lab` / `gpuinfo`); network-name env vars are the `{network}` token resolved per-context. The sidecar's own spec lives in its image; the hub orchestrates and applies the nvidia runtime conditionally (portable to non-GPU hosts). Compose owns the network and the image; the hub only discovers, joins and runs.
+The hub<->GPU-info sidecar is fully DECLARED in compose (role-labelled networks + a profiled service) while every address, network name and compose project is RESOLVED at runtime from the hub's own container - no hardcoded host, name or project, and no hidden runtime-created resources. Networks carry one role label key (`duoptimum-hub.network.role` = `lab` / `gpuinfo`); network-name env vars are the `{network}` token resolved per-context. The sidecar's own spec lives in its image; the hub orchestrates and applies the nvidia runtime conditionally (portable to non-GPU hosts). Compose owns the network and the image; the hub only discovers, joins and runs.
 
 - [x] **Sidecar URL is a template** - `JUPYTERHUB_GPUINFO_NVIDIA_URL=http://{hostname}:8000`; `{hostname}` is filled at boot by `ensure_gpuinfo_sidecar` with the sidecar's IP read from the live container (its address on the dedicated network) - never a hardcoded host
   - log: 2026-06-19 implemented (v4.0.7)
 - [x] **Sidecar URL host fallback** - when the IP is not yet populated, fall back to the container name (docker DNS resolves it on a user-defined network); `''` (GPU off) only when neither is readable
   - log: 2026-06-19 implemented (v4.0.7)
-- [x] **Hub compose project discovered** - `resolve_self_compose_project()` reads the hub's own `com.docker.compose.project` label; no `JUPYTERHUB_COMPOSE_PROJECT_NAME` env in compose (explicit env still overrides); empty after both is fatal (volume namespace would be wrong)
+- [x] **Hub compose project discovered (exact, no env)** - `resolve_self_compose_project()` reads the hub's own `com.docker.compose.project` label as the sole source; empty is fatal (volume namespace would be wrong). This is the deployment NAMESPACE (see Namespace principle below)
   - log: 2026-06-19 implemented (v4.0.7)
+  - log: 2026-06-20 hardened - dropped the `JUPYTERHUB_COMPOSE_PROJECT_NAME` env override; discovery is the only source (no optional fallback)
 - [x] **Lab compose project uses {compose}** - `JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME={compose}_labs`; `{compose}` resolves to the discovered hub project; empty = same project as the hub
   - log: 2026-06-19 implemented (v4.0.7)
 - [x] **Docker-proxy label prefix is static** - `JUPYTERHUB_DOCKER_PROXY_LABEL_PREFIX=duoptimum.docker.proxy` (from the package name); the proxy package `config.py::LABEL_NAMESPACE` default matches
   - log: 2026-06-19 implemented (v4.0.7)
-- [x] **Networks declared in compose with role labels** - `hub_network` carries `duoptimum.network.role: "lab"` and `hub_gpuinfo_network` carries `duoptimum.network.role: "gpuinfo"`; the hub is attached to both in the hub service `networks:`
+- [x] **Networks declared in compose with role labels** - `hub_network` carries `duoptimum-hub.network.role: "lab"` and `hub_gpuinfo_network` carries `duoptimum-hub.network.role: "gpuinfo"`; the hub is attached to both in the hub service `networks:`
   - log: 2026-06-19 implemented (v4.0.7)
-  - log: 2026-06-19 role model - one key `duoptimum.network.role`, value = role (was per-purpose presence labels `duoptimum.lab.network` / `duoptimum.gpuinfo.network`)
-- [x] **Networks discovered by role** - `resolve_self_network_by_label(key, value)` finds each network among the hub's OWN attachments by `Labels[duoptimum.network.role] == role`; the label key + role values come from env (`JUPYTERHUB_NETWORK_ROLE_LABEL_KEY`, `JUPYTERHUB_LAB_NETWORK_ROLE_LABEL`, `JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL`), baked as Dockerfile defaults; compose literals MUST match
+  - log: 2026-06-19 role model - one key `duoptimum-hub.network.role`, value = role (was per-purpose presence labels `duoptimum-hub.lab.network` / `duoptimum-hub.gpuinfo.network`)
+- [x] **Networks discovered by role** - `resolve_self_network_by_label(key, value)` finds each network among the hub's OWN attachments by `Labels[duoptimum-hub.network.role] == role`; the label key + role values come from env (`JUPYTERHUB_NETWORK_ROLE_LABEL_KEY`, `JUPYTERHUB_LAB_NETWORK_ROLE_LABEL`, `JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL`), baked as Dockerfile defaults; compose literals MUST match
   - log: 2026-06-19 implemented (v4.0.7)
   - log: 2026-06-19 generalized to (key,value) role match; label key + values moved to env vars
 - [x] **Hub never creates the network** - `ensure_gpuinfo_sidecar` only `networks.get()` + joins; it never calls `networks.create()` (that historically clashed with compose's ownership check)
@@ -4095,7 +4097,7 @@ The hub<->GPU-info sidecar is fully DECLARED in compose (role-labelled networks 
   - log: 2026-06-19 implemented
 - [x] **Lab fatal, gpuinfo degrades** - lab `{network}` unresolved -> hub raises and refuses to start; gpuinfo `{network}` unresolved -> sidecar skipped, GPU off, hub still starts
   - log: 2026-06-19 implemented
-- [x] **gpuinfo container role label** - the hub stamps `duoptimum.container.role=gpuinfo` (key+value from env) on the sidecar it creates; the compose `gpuinfo-nvidia` service mirrors the label
+- [x] **gpuinfo container role label** - the hub stamps `duoptimum-hub.container.role=gpuinfo` (key+value from env) on the sidecar it creates; the compose `gpuinfo-nvidia` service mirrors the label
   - log: 2026-06-19 implemented
 - [x] **Sidecar spec single-sourced in the image** - the sidecar's NVIDIA env, port and command live only in its image (`gpuinfo-nvidia/Dockerfile`); the hub passes no `environment=` and the compose service declares no `environment:` (no duplication)
   - log: 2026-06-19 implemented
@@ -4124,7 +4126,7 @@ The hub<->GPU-info sidecar is fully DECLARED in compose (role-labelled networks 
   - log: 2026-06-19 implemented (v4.0.7)
 - [x] **Edge: hub on 3+ networks** - role-value match still uniquely selects lab vs gpuinfo (keyed on the label, not attachment order)
   - log: 2026-06-19 implemented
-- [ ] **Functional: live labels via docker socket** - a functional test inspects the running stack over the socket: `hub_network` role=lab, `hub_gpuinfo_network` role=gpuinfo, the gpuinfo container carries `duoptimum.container.role=gpuinfo`, hub attached to both
+- [ ] **Functional: live labels via docker socket** - a functional test inspects the running stack over the socket: `hub_network` role=lab, `hub_gpuinfo_network` role=gpuinfo, the gpuinfo container carries `duoptimum-hub.container.role=gpuinfo`, hub attached to both
   - log: 2026-06-19 criterion added
 
 ### API / functions
@@ -4135,6 +4137,101 @@ The hub<->GPU-info sidecar is fully DECLARED in compose (role-labelled networks 
 - `resolve_gpuinfo_url(url, hostname)` -> `url` with `{hostname}` substituted (passthrough if no placeholder / empty hostname)
 - `ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', container_name=None, container_role_label_key='', container_role_label_value='')` -> resolved sidecar URL, or `''` on any degrade path; stamps the container role label; never creates the network, never raises
 - `stop_gpuinfo_sidecar(url, container_name=None)` -> removes the sidecar at hub exit; never raises
+
+## Role labels, namespace and config validator
+
+Floating Docker resources the hub references in CODE outside its compose-declared mounts (the shared volume, the docker-proxy sockets volume, per-user lab volumes, the role networks, the gpuinfo sidecar) are identified by a stable ROLE label, never by a name - a name drifts on rename (the `jupyterhub_shared` -> `hub_shared` bug) and the code 404s silently. Uniqueness of a role is checked within the deployment NAMESPACE (the compose project), so many deployments share one docker host without colliding. A single validator in `duoptimum_hub_services.config_validator` is handed the hub's gathered config and fails hard on missing/inconsistent values, warning on degraded-but-bootable ones.
+
+### Label namespace (prefix)
+
+- [x] **Prefix is `duoptimum-hub.`** - all hub-owned role labels live under `duoptimum-hub.<noun>.<attr>` (`duoptimum-hub.volume.role/.owner/.description`, `duoptimum-hub.network.role`, `duoptimum-hub.container.role`)
+  - log: 2026-06-20 renamed prefix `duoptimum.*` -> `duoptimum-hub.*` across compose, Dockerfile, config, hub-services, tests, types, docs (sweep)
+- [x] **docker-proxy namespace unchanged** - `duoptimum.docker.proxy` (the docker-proxy package's own `LABEL_NAMESPACE`, stamped on USER resources, not hub-owned) is deliberately NOT renamed; `-hub` would be semantically wrong for it
+  - log: 2026-06-20 excluded from the prefix rename
+- [x] **Compose literals == baked env** - the role label keys/values stamped in `compose.yml` equal the Dockerfile-baked env defaults; a build/config test asserts the invariant
+  - log: 2026-06-20 covered by `test_compose_env_invariants.py`
+
+### Role-labelled resources (why labels, not names)
+
+- [x] **Shared volume by role** - the Groups one-click `/mnt/shared` volume is found by `duoptimum-hub.volume.role=shared` among the hub's own mounts (`resolve_self_mount_volume_by_label`), never by name
+  - log: 2026-06-20 implemented
+- [x] **Docker-proxy volume by role (exact)** - the sockets volume is found ONLY by `duoptimum-hub.volume.role=docker-proxy`; the old mount-destination + explicit-env fallbacks are removed (slop); unresolved -> validator fails
+  - log: 2026-06-20 hardened to a single source - removed `resolve_self_mount_volume` (by-dest) + `JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME` env fallbacks
+- [x] **Network roles by label** - `hub_network` (role=lab) and `hub_gpuinfo_network` (role=gpuinfo) found by `duoptimum-hub.network.role` among the hub's own attachments
+  - log: 2026-06-20 prefix updated (see GPU-info sidecar section for the network model)
+- [x] **gpuinfo container by role** - the hub stamps `duoptimum-hub.container.role=gpuinfo` on the sidecar; compose mirrors it
+  - log: 2026-06-20 prefix updated
+
+### Per-user lab volumes (role + owner + description)
+
+- [x] **Lab volumes self-describe** - `pre_spawn_hook` pre-creates each per-user volume (DockerSpawner makes them lazily, unlabelled) carrying `duoptimum-hub.volume.role` (lab-home / lab-workspace / lab-cache), `duoptimum-hub.volume.owner={username}`, `duoptimum-hub.volume.description` (`ensure_volumes_labeled`)
+  - log: 2026-06-20 implemented
+- [x] **Create-if-absent only** - an existing volume is never relabelled or removed (labels set at create; user data never touched); best-effort, a docker error is logged not raised
+  - log: 2026-06-20 implemented
+- [x] **(role, owner) identifies a user's volume** - role alone is not unique across users; the owner label makes `(role, owner)` the unique key within a namespace
+  - log: 2026-06-20 implemented
+- [x] **UI reads role + description off the volume** - `ManageVolumesHandler` GET reads `duoptimum-hub.volume.role/.description` from the volume labels (settings fallback for legacy unlabelled volumes); the portal IDs a system volume by role; `Volume.role` / `LabMount.role` flow through `types.ts`, `liveSource.ts`, `mockSource.ts`
+  - log: 2026-06-20 implemented (backend + frontend sweep)
+
+### Namespace principle
+
+- [x] **Namespace = compose project** - the deployment namespace is the compose project (`com.docker.compose.project`); the abstraction is named "namespace" so a future k8s deployment maps it to a k8s namespace (k8s NOT implemented, just the concept)
+  - log: 2026-06-20 documented
+- [x] **Uniqueness is per-namespace** - a role is unique within the current namespace, not host-wide; the self-mount / self-attached resolvers are namespace-safe by construction (they inspect only what the hub itself mounts / is attached to)
+  - log: 2026-06-20 implemented
+- [x] **Multi-deployment-per-host supported** - many compose projects coexist on one docker host, each owning its own role-labelled `hub_shared` / `hub_docker` / networks; deployment B's resource never trips deployment A's uniqueness check
+  - log: 2026-06-20 implemented
+
+### Fail-hard on inconsistency
+
+- [x] **Duplicate volume role raises** - `resolve_self_mount_volume_by_label` raises `ValueError` when >1 of the hub's own mounts carry the same role (the hub must not guess)
+  - log: 2026-06-20 implemented
+- [x] **Duplicate network role raises** - `resolve_self_network_by_label` collects all matches and raises `ValueError` on >1 (was: silently returned the first) - mirrors the volume resolver
+  - log: 2026-06-20 implemented
+- [x] **Lab missing-label tolerated** - the ONLY tolerated missing-label case: a per-user lab volume without labels still works (handler falls back to suffix; `ensure_volumes_labeled` never raises); legacy/pre-label volumes are not broken
+  - log: 2026-06-20 implemented
+
+### Config validator (errors + warnings)
+
+- [x] **Conf reads required vars raw** - `config/jupyterhub_config.py` reads required vars without an inline Python default (defaults live only in the Dockerfile ENV); the scattered `if not X: raise` blocks are removed (thinner conf)
+  - log: 2026-06-20 implemented
+- [x] **Single validation pass** - `validate_hub_config(values)` is called once after all values resolve; `.raise_if_errors(log)` logs every warning then raises one `SystemExit` listing all errors
+  - log: 2026-06-20 implemented
+- [x] **Errors (fatal)** - missing required var (admin, lab image, namespace, lab network, every role label key/value, gpuinfo image/container/url, docker-proxy socket dir + sockets volume, lab + user-compose templates) and inconsistencies (lab role == gpuinfo role on the network key; shared role == docker-proxy role on the volume key; a per-user template lacking `{username}`)
+  - log: 2026-06-20 implemented
+  - log: 2026-06-20 added the symmetric volume-role collision check (shared == docker-proxy) - found in adversarial review
+- [x] **Warnings (degraded, non-fatal)** - gpuinfo network unresolved (GPU off), shared volume unresolved (quick-add hidden), a branding `file://` logo/favicon/busy/lab-main/lab-splash URI whose file does not exist (stock asset used)
+  - log: 2026-06-20 implemented
+- [x] **Pure + unit-tested** - the validator is pure (dict in, result out; `path_exists` injectable); `test_config_validator.py` covers the clean pass, each required-var error, each consistency error, each warning, and the raise/log behaviour
+  - log: 2026-06-20 implemented
+
+### Edge cases
+
+- [x] **Edge: docker socket down at boot** - the resolvers return None (caller falls back to "" / warning); duplicate-role `ValueError` only fires when the socket IS reachable and returns >1
+  - log: 2026-06-20 implemented
+- [x] **Edge: hub-critical volume unlabelled** - shared unresolved -> warning (quick-add hidden); docker-proxy unresolved -> validator error (hub refuses to start)
+  - log: 2026-06-20 implemented
+- [x] **Edge: branding http(s) URI** - never warns on a missing file (only `file://` URIs are existence-checked)
+  - log: 2026-06-20 implemented
+- [x] **Functional: live role labels per namespace** - `test_role_labels.py` inspects the running stack over the docker socket: a hub mount carries role=shared, another role=docker-proxy, each role unique within the project, the prefix is `duoptimum-hub.`
+  - log: 2026-06-20 implemented (`tests/functional/test_role_labels.py`, default regime)
+- [x] **Functional: foreign-namespace volume not picked** - `test_role_labels.py` creates a second `role=shared` volume on the host and asserts it does NOT enter the hub's own discovery (uniqueness is per-namespace, not host-wide)
+  - log: 2026-06-20 implemented
+- [x] **Missing required var fails boot** - validator raises `SystemExit` on any missing required var (unit-tested in `test_config_validator.py`); the functional `test_hub_booted_so_validator_passed` proves the pass path (a healthy hub means the single validation pass succeeded)
+  - log: 2026-06-20 implemented (unit fail-path + functional pass-path)
+- [x] **Duplicate role fails** - the resolver raises `ValueError` on >1 same-role resource (unit-tested for both volume + network in `test_docker_utils.py`); the functional per-namespace uniqueness + foreign-namespace isolation tests exercise the live scoping
+  - log: 2026-06-20 implemented (unit raise-path + functional scoping)
+- [x] **Lab volume without label tolerated** - a per-user lab volume lacking labels still works: `ManageVolumesHandler` falls back to the suffix, `ensure_volumes_labeled` never raises (the one tolerated missing-label case)
+  - log: 2026-06-20 implemented (handler suffix-fallback + best-effort labelling)
+
+### API / functions
+
+- `validate_hub_config(values, *, path_exists=os.path.exists)` -> `ValidationResult(errors, warnings)`; pure
+- `ValidationResult.ok` -> True when no errors; `.raise_if_errors(log=None)` -> logs warnings, raises `SystemExit` on any error
+- `resolve_self_mount_volume_by_label(label_key, label_value)` -> hub-mounted volume name carrying the role, None if absent/socket-down, `ValueError` on >1 (per-namespace)
+- `resolve_self_network_by_label(label_key, label_value=None)` -> hub-attached network carrying the role, None if absent/socket-down, `ValueError` on >1
+- `ensure_volumes_labeled(name_to_labels)` -> `{name: 'created'|'exists'|'error: ...'}`; create-if-absent only, never raises
+- `get_user_volume_roles(volumes_dict, compose_project)` -> `{suffix: role}` (role defaults to the suffix)
 
 ## Hub connectivity indicator (offline detection)
 
@@ -4237,6 +4334,8 @@ Per-user volume sizes shown on the Servers list + Manage-Volumes table (and the 
   - log: 2026-06-20 implemented (DEF-7): refresh submitted to `get_executor()`; full df (~131.7s) is non-blocking. NOTE: targeted/parallel "fast" scan dropped - the rejected helper-container approach; df still scans all host volumes
 - [ ] **Fresh after boot** - after a hub restart the correct sizes appear within the retry window (not the hourly interval); a partial first fetch self-corrects quickly rather than persisting for an hour
   - log: 2026-06-20 implemented (DEF-7): bounded short-delay retry until complete (`JUPYTERHUB_ACTIVITYMON_VOLUMES_DF_RETRY_DELAY` 15s x `..._MAX_ATTEMPTS` 12 safety-net cap)
+- [ ] **Bounded worker-hold** - the wait-for-complete loop cannot pin a worker of the shared 4-worker executor unboundedly; capped by a wall-clock budget AND the attempt cap
+  - log: 2026-06-20 added + implemented (DEF-7 adversarial review): the attempt cap alone did NOT bound time - each df can run up to `JUPYTERHUB_DOCKER_TIMEOUT` (360s), so 12 attempts could hold a worker ~75 min and starve spawn/stats calls; added `JUPYTERHUB_ACTIVITYMON_VOLUMES_DF_BUDGET` (600s) wall-clock cap; unit-tested `test_budget_caps_retry_before_attempt_cap`
 - [ ] **Edge: empty volume** - a genuinely empty volume reports ~0 and is distinguishable from "not yet computed"
   - log: 2026-06-20 implemented (DEF-7): `Size=0` recorded as 0.0, `Size=-1` skipped as pending; unit-tested
 - [ ] **Edge: orphaned/renamed-project volumes** - only the active project's templated volumes count toward a user's total; stale prior-project volumes are not double-counted
@@ -4245,6 +4344,7 @@ Per-user volume sizes shown on the Servers list + Manage-Volumes table (and the 
   - log: 2026-06-20 completeness logic unit-tested with a mocked df; real-volume functional test pends a rebuilt image
 - [ ] **No log spam** - the volume refresher does not log a line every poll when already running
   - log: 2026-06-20 implemented (DEF-7): `refreshing` flag guards re-entry; partial-pass lines emit only during cold-boot retries, not per poll
+  - log: 2026-06-20 hardened (adversarial review): the `refreshing` check-and-set now runs under a `threading.Lock`, so two submits (event-loop trigger + periodic tick) can't both enter and run two retry loops; unit-tested `test_reentry_guard_skips_when_already_refreshing`
 
 ---
 
@@ -4267,14 +4367,17 @@ Configurable platform display name via `JUPYTERHUB_HUB_NAME`. Shown as the porta
 
 ## Traefik dashboard route (/traefik on 443)
 
-Traefik dashboard reached over the secure 443 entrypoint at `/traefik`, replacing the removed insecure `:8080` port. No auth - a single prominent toggle `TRAEFIK_DASHBOARD_ENABLED` (env on the `traefik` service) opens or closes it. Served via `--api.basePath=/traefik` (Traefik v3.3+) so the SPA assets and API load under `/traefik` with no stripprefix; router `traefik-dashboard` (PathPrefix `/traefik` -> `api@internal`, websecure, tls) lives on the `traefik` service labels in `compose.yml`. Exercised by the Traefik + TLS functional regime (`compose.functional-traefik.yml`, `run.sh traefik`).
+Traefik dashboard reached over the secure 443 entrypoint at `/traefik`, replacing the removed insecure `:8080` port. No auth - a single prominent toggle `TRAEFIK_DASHBOARD_ENABLED` opens or closes it. The toggle is a `.env`/shell variable (compose interpolates it into the `traefik.enable` label at parse time - NOT a service `environment` entry, which compose never feeds back into `${...}` label interpolation). Served via `--api.basePath=/traefik` (Traefik v3.3+) so the SPA assets and API load under `/traefik` with no stripprefix; router `traefik-dashboard` (PathPrefix `/traefik` -> `api@internal`, websecure, tls) lives on the `traefik` service labels in `compose.yml`, gated by `traefik.enable`. Exercised by the Traefik + TLS functional regime (`compose.functional-traefik.yml`, `run.sh traefik` open / `run.sh traefik-closed`).
+
+NOTE (corrected 2026-06-20): the toggle gates the ROUTER, not the `--api.dashboard` flag. Empirically (isolated traefik probe) `--api.dashboard=false` hides ONLY the UI - `/traefik/api/overview` and `/traefik/api/rawdata` keep returning 200. Closure must drop the route so `api@internal` has no entrypoint.
 
 - [ ] **basePath quirk-free** - `--api.basePath=/traefik`; dashboard UI assets + API load under `/traefik` (no stripprefix, no white page)
   - log: 2026-06-20 criterion added
 - [ ] **Open by default** - `TRAEFIK_DASHBOARD_ENABLED` unset/true -> dashboard reachable at `/traefik/dashboard/` on 443
   - log: 2026-06-20 criterion added
-- [ ] **Closeable** - `TRAEFIK_DASHBOARD_ENABLED=false` -> `--api.dashboard=false` -> `api@internal` absent -> `/traefik` 404 (UI and API both gone)
-  - log: 2026-06-20 criterion added; verified by flag wiring, not a second runtime regime
+- [ ] **Closeable** - `TRAEFIK_DASHBOARD_ENABLED=false` (in `.env`) -> `traefik.enable=false` -> docker provider drops the dashboard router -> `api@internal` has no entrypoint -> `/traefik` 404 (UI AND API both gone)
+  - log: 2026-06-20 criterion added
+  - log: 2026-06-20 CORRECTED - original wiring (`--api.dashboard=false`) left `/traefik/api/*` OPEN (adversarial review + isolated empirical probe); fixed by gating the router via `traefik.enable`, and the dead `environment` toggle replaced with a `.env`-interpolated label; covered by `test_traefik_dashboard_closed.py::test_dashboard_closed_api_unreachable` (traefik-closed regime)
 - [ ] **Dashboard API on /traefik** - `https://<host>/traefik/api/overview` returns 200 JSON via `api@internal`
   - log: 2026-06-20 criterion added; functional test `test_traefik_dashboard.py::test_dashboard_api_open`
 - [ ] **Dashboard UI on /traefik** - `https://<host>/traefik/dashboard/` renders the dashboard SPA in-browser (harness sees it render, not a white page)

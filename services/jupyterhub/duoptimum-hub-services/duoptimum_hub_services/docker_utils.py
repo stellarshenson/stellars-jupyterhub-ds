@@ -231,6 +231,75 @@ def resolve_self_mount_volume(destination):
     return None
 
 
+def resolve_self_mount_volume_by_label(label_key, label_value):
+    """Volume mounted in THIS (hub) container carrying label_key=label_value (the
+    duoptimum-hub.volume.role). Discover by role, not reconstructed name (name drifts on
+    rename). Scoped to hub's OWN mounts - second stack's volume never picked. One volume
+    per role -> Name. Zero (or socket down) -> None, caller falls back. >1 -> ValueError
+    (ambiguous, hub must not guess)."""
+    matches = []
+    try:
+        import socket
+        import docker
+        client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        try:
+            container = client.containers.get(socket.gethostname())
+            seen = set()
+            for m in (container.attrs.get('Mounts') or []):
+                if m.get('Type') != 'volume':
+                    continue
+                name = m.get('Name')
+                if not name or name in seen:
+                    continue                       # same volume at >1 path is still ONE volume
+                seen.add(name)
+                labels = (client.volumes.get(name).attrs.get('Labels')) or {}
+                if labels.get(label_key) == label_value:
+                    matches.append(name)
+        finally:
+            client.close()
+    except Exception:
+        return None
+    if len(matches) > 1:
+        raise ValueError(
+            f"Ambiguous volume role '{label_key}={label_value}': the hub mounts "
+            f"{len(matches)} volumes carrying it ({', '.join(sorted(matches))}). Exactly "
+            "one volume may hold a given role - fix the compose volume labels."
+        )
+    return matches[0] if matches else None
+
+
+def ensure_volumes_labeled(name_to_labels):
+    """Ensure each named volume exists carrying the given labels (role + owner).
+    DockerSpawner creates per-user volumes lazily WITHOUT labels; pre-create them here so
+    they self-describe by role/owner. Create-if-absent ONLY - an existing volume is never
+    relabelled or removed (labels are set at create; user data is never touched).
+    Best-effort: a docker error on one volume is recorded, never raised.
+    name_to_labels: {volume_name: {label_key: value, ...}}. Returns
+    {name: 'created'|'exists'|'error: ...'}."""
+    out = {}
+    try:
+        import docker
+        client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+    except Exception as e:
+        return {name: f'error: {e}' for name in name_to_labels}
+    try:
+        for name, labels in name_to_labels.items():
+            try:
+                client.volumes.get(name)
+                out[name] = 'exists'                      # never relabel - data safety
+            except docker.errors.NotFound:
+                try:
+                    client.volumes.create(name=name, labels=dict(labels))
+                    out[name] = 'created'
+                except Exception as e:
+                    out[name] = f'error: {e}'
+            except Exception as e:
+                out[name] = f'error: {e}'
+    finally:
+        client.close()
+    return out
+
+
 def resolve_self_compose_project():
     """The docker-compose project THIS (hub) container belongs to, read from its own
     ``com.docker.compose.project`` label.
@@ -261,13 +330,14 @@ def resolve_self_network_by_label(label_key, label_value=None):
     not name via env (name would drift).
 
     Both hub<->lab and hub<->sidecar nets DECLARED in compose.yml with role label
-    (duoptimum.network.role = lab / gpuinfo); hub attached there. label_value given ->
+    (duoptimum-hub.network.role = lab / gpuinfo); hub attached there. label_value given ->
     match equality (Labels[label_key]==label_value, the role); None -> match key presence.
     Scoped to hub's OWN attachments (not host-wide scan), so a second stack on the host with
     the same label never picked by mistake. Compose owns/creates the net; hub only discovers
-    + joins. Returns net Name, or None when undeterminable (no matching net, or docker socket
-    unreachable) - caller falls back to env or skips sidecar.
+    + joins. One net per role -> Name. Zero (or socket down) -> None, caller falls back. >1 ->
+    ValueError (ambiguous role, hub must not guess).
     """
+    matches = []
     try:
         import socket
         import docker
@@ -275,19 +345,30 @@ def resolve_self_network_by_label(label_key, label_value=None):
         try:
             container = client.containers.get(socket.gethostname())
             attached = (container.attrs.get('NetworkSettings') or {}).get('Networks') or {}
+            seen = set()
             for net_name, net_info in attached.items():
                 net = client.networks.get((net_info or {}).get('NetworkID') or net_name)
+                if net.name in seen:
+                    continue                       # same net under name+id keys is still ONE net
+                seen.add(net.name)
                 labels = net.attrs.get('Labels') or {}
                 if label_value is None:
                     if label_key in labels:
-                        return net.name
+                        matches.append(net.name)
                 elif labels.get(label_key) == label_value:
-                    return net.name
-            return None
+                    matches.append(net.name)
         finally:
             client.close()
     except Exception:
         return None
+    if len(matches) > 1:
+        target = label_key if label_value is None else f"{label_key}={label_value}"
+        raise ValueError(
+            f"Ambiguous network role '{target}': the hub is attached to "
+            f"{len(matches)} networks carrying it ({', '.join(sorted(matches))}). Exactly "
+            "one network may hold a given role - fix the compose network labels."
+        )
+    return matches[0] if matches else None
 
 
 def resolve_network_placeholder(value, network):

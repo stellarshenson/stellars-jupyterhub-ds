@@ -42,12 +42,14 @@ from .idle_culler import (
     schedule_idle_culler,
     should_cull,
 )
+from .config_validator import ValidationResult, validate_hub_config
 from .gpu_cache import configure_gpu_cache
 from .sent_notification_log import prepare_sent_notification_log, record_sent_notification
 from .services import get_services_and_roles
 from .volume_cache import configure_volume_cache
 from .volumes import (
     get_user_volume_name_templates,
+    get_user_volume_roles,
     get_user_volume_suffixes,
     load_merged_user_volumes,
 )
@@ -87,6 +89,9 @@ __all__ = [
     "schedule_idle_culler",
     "should_cull",
     "get_user_volume_name_templates",
+    "get_user_volume_roles",
+    "validate_hub_config",
+    "ValidationResult",
     "get_user_volume_suffixes",
     "gpu_summary_lines",
     "is_wsl2",

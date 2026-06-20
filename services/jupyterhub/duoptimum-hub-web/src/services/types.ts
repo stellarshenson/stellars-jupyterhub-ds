@@ -224,11 +224,12 @@ export interface ServerHero {
 
 export interface Volume {
   suffix: string // home | workspace | cache | shared | datasets
-  name: string // jupyterlab-{user}_home, jupyterhub_shared, ...
+  name: string // jupyterlab-{user}_home, hub_shared, ...
   mount: string // /home, /home/lab/workspace, /mnt/shared
   description?: string
   sizeGB?: number
   standard: boolean // platform-managed core volume vs custom mount
+  role?: string // duoptimum-hub.volume.role (lab-home/lab-workspace/lab-cache); marks a system volume by role, not name
 }
 
 // Lab Container page: the spawn image + the standard per-user volumes every lab
@@ -237,6 +238,7 @@ export interface LabMount {
   name: string // home | workspace | cache
   mount: string // /home, /home/lab/workspace, /home/lab/.cache
   description?: string
+  role?: string // duoptimum-hub.volume.role (lab-home/lab-workspace/lab-cache)
 }
 
 export interface LabContainerInfo {

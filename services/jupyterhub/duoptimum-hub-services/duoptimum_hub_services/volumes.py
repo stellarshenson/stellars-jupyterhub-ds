@@ -66,3 +66,20 @@ def get_user_volume_name_templates(volumes_dict, compose_project="jupyterhub"):
         for volume_name in volumes_dict.keys()
         if volume_name.startswith(pattern)
     }
+
+
+def get_user_volume_roles(volumes_dict, compose_project="jupyterhub"):
+    """Map suffix -> duoptimum-hub.volume.role value. Role marks a per-user volume a
+    platform system volume so the portal identifies it by role, not name (name
+    drifts on rename). Defaults to the suffix when the entry has no explicit `role`.
+
+        {f"{cp}_jupyterlab_{{username}}_home": {"role": "home", ...}, ...}
+            -> {"home": "home", ...}
+    """
+    pattern = f"{compose_project}_jupyterlab_{{username}}_"
+    roles = {}
+    for volume_name, data in volumes_dict.items():
+        if volume_name.startswith(pattern):
+            suffix = volume_name[len(pattern):]
+            roles[suffix] = (data or {}).get('role') or suffix
+    return roles

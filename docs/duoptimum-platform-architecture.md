@@ -22,6 +22,22 @@ Three declared Compose services plus one the hub self-starts.
 
 Three SQLite databases live under `/data`: `jupyterhub.sqlite` (core), `activity_samples.sqlite` (activity), `groups_config.sqlite` (group policy).
 
+## Resource identification by role label
+
+Any floating named Docker resource the hub references in code outside its own compose-declared mounts is identified by a stable role label, never by a name. A name is local to a deployment and can be renamed at any time; the moment the code reconstructs or hardcodes one, it silently resolves to the wrong resource or 404s (the `jupyterhub_shared` to `hub_shared` rename did exactly this). The label is the contract; the name is free to change.
+
+The hub stamps and discovers three label namespaces, all under the `duoptimum-hub.` prefix: `duoptimum-hub.volume.role` (values `shared`, `docker-proxy`, and per-user `lab-home` / `lab-workspace` / `lab-cache`), `duoptimum-hub.network.role` (`lab`, `gpuinfo`), and `duoptimum-hub.container.role` (`gpuinfo`). Per-user volumes additionally carry `duoptimum-hub.volume.owner` (the username) and `duoptimum-hub.volume.description`, so a volume self-describes - the portal reads role, owner and description straight off the labels rather than from a separate file. Compose stamps the literals on its declared resources; the hub bakes the matching keys and values as image defaults, and a build test asserts the two agree. The docker-proxy's own `duoptimum.docker.proxy` namespace is separate and unchanged - it tags user-created resources, not hub-owned ones.
+
+Discovery is scoped to the hub's own attachments: the hub inspects only the volumes it mounts and the networks it is attached to, reads their labels, and matches by role. Resolution is exact - one source, no name reconstruction and no fallback chain. A resource that resolves to more than one match for a single role is a fatal inconsistency and the resolver raises rather than guess; the only tolerated absence is a per-user lab volume that predates labelling, which falls back to its name suffix.
+
+## Namespace
+
+The deployment namespace is the Docker Compose project, discovered at boot from the hub's own `com.docker.compose.project` label (`resolve_self_compose_project`) - never passed as an env, so it cannot drift from the real volume prefix. It is named "namespace" deliberately as an abstraction: a future Kubernetes deployment maps it to a k8s namespace without changing the model. Uniqueness of a role is checked within the namespace, not across the host, so many deployments run side by side on one Docker host - each owns its own role-labelled `hub_shared`, `hub_docker` and networks, and one deployment's resources never trip another's uniqueness check. Because the resolvers only ever look at the hub's own mounts and attachments, this scoping holds by construction.
+
+## Configuration validation
+
+The hub gathers its configuration from environment variables (required values baked into the image, not defaulted in the config file) and hands the lot to a single validator (`duoptimum_hub_services.config_validator.validate_hub_config`) before it starts serving. The validator returns errors and warnings. An error - a missing required value, or an inconsistency such as the lab and gpuinfo networks sharing a role, or a per-user template missing its `{username}` placeholder - aborts the boot with one aggregated message naming every offender, so a misconfiguration surfaces in a single pass rather than one failed boot at a time. A warning - an unresolved gpuinfo network (GPU features off), an unresolved shared volume (the one-click mount hidden), or a branding `file://` icon whose file is missing - is logged and the hub starts degraded. Keeping the logic in one validator keeps the config file thin and the rules unit-tested.
+
 ## Topology
 
 ```mermaid

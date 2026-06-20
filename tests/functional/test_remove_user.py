@@ -100,7 +100,8 @@ def test_remove_user_with_volumes(admin_portal, base_url, admin_api):
         # done report (after the spinner) names the user and the deleted volumes
         expect(modal).to_contain_text(f"{user} removed", timeout=30000)
         expect(modal).to_contain_text("Deleted")
-        modal.get_by_role("button", name="Close").click()
+        # footer Close (the antd X-icon shares the "Close" accessible name)
+        modal.locator(".ant-modal-footer").get_by_role("button", name="Close").click()
         assert _wait(lambda: not _exists(admin_api, base_url, user), timeout=30), "user not removed"
     finally:
         admin_api.delete(f"{base_url}/hub/api/users/{user}", headers=_hdr(admin_api), timeout=30)

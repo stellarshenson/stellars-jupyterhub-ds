@@ -59,21 +59,27 @@ class ManageVolumesHandler(BaseHandler):
         # description text rather than re-parsing the templates dict.
         ui = self.settings['stellars_config'].get('user_volumes', None)
         descriptions = {v['suffix']: v.get('description', '') for v in (ui or [])}
+        # suffix -> duoptimum-hub.volume.role, so the portal IDs each as a system volume by role
+        roles = self.settings['stellars_config'].get('user_volume_roles', {}) or {}
 
         existing = []
         for suffix, template in templates.items():
             volume_name = template.replace('{username}', encoded)
             try:
-                client.volumes.get(volume_name)
+                vol = client.volumes.get(volume_name)
             except docker.errors.NotFound:
                 continue
             except docker.errors.APIError as e:
                 self.log.warning(f"[Manage Volumes] Docker error checking {volume_name}: {e}")
                 continue
+            # Self-describing volume: read role + description off the labels the hub stamped
+            # at spawn; fall back to settings for legacy (pre-label) volumes.
+            labels = (vol.attrs.get('Labels') or {})
             existing.append({
                 'suffix': suffix,
                 'name': volume_name,
-                'description': descriptions.get(suffix, ''),
+                'description': labels.get('duoptimum-hub.volume.description') or descriptions.get(suffix, ''),
+                'role': labels.get('duoptimum-hub.volume.role') or roles.get(suffix, suffix),
             })
         client.close()
         self.log.info(f"[Manage Volumes] {username} has {len(existing)} volume(s) on disk")

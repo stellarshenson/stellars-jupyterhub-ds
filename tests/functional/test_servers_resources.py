@@ -74,12 +74,13 @@ def test_cpu_mem_column_header_tooltips(admin_portal):
     page = admin_portal.goto("/servers", ready=".ant-table")
 
     page.get_by_role("columnheader", name="CPU", exact=True).hover()
-    expect(page.locator(".ant-tooltip-inner")).to_contain_text("one core")
+    # scope by content - a sortable header ALSO shows antd's built-in "Click to sort" tooltip
+    expect(page.locator(".ant-tooltip-inner").filter(has_text="one core")).to_be_visible()
 
     # move off, then hover the Mem header so a fresh tooltip renders
     page.mouse.move(0, 0)
     page.get_by_role("columnheader", name="Mem", exact=True).hover()
-    expect(page.locator(".ant-tooltip-inner")).to_contain_text("Memory used")
+    expect(page.locator(".ant-tooltip-inner").filter(has_text="Memory used")).to_be_visible()
 
 
 @pytest.mark.acc_crit(

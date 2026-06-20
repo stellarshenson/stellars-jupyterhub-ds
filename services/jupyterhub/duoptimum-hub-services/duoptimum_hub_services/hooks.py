@@ -46,6 +46,10 @@ def make_pre_spawn_hook(
     block_file_downloads=0,
     lab_sudo_enable_default=1,
     api_keys_reconcile_interval=0,
+    volume_role_label_key='',
+    volume_owner_label_key='duoptimum-hub.volume.owner',
+    volume_description_label_key='duoptimum-hub.volume.description',
+    user_volume_label_templates=None,
 ):
     """Create a pre_spawn_hook closure capturing branding + the apply context.
 
@@ -135,6 +139,32 @@ def make_pre_spawn_hook(
             })
             kwargs['labels'] = labels
             spawner.extra_create_kwargs = kwargs
+
+        # Per-user volume role/owner/description labels. DockerSpawner creates
+        # home/workspace/cache volumes lazily WITHOUT labels; pre-create them here carrying
+        # duoptimum-hub.volume.role=lab-*, duoptimum-hub.volume.owner={username} and
+        # duoptimum-hub.volume.description so the portal IDs them by role+owner and reads the
+        # description off the label - not by name, not from settings. Create-if-absent only
+        # (never relabel/remove - data safety); best-effort, a docker error never blocks spawn.
+        if volume_role_label_key and user_volume_label_templates:
+            from .docker_utils import encode_username_for_docker, ensure_volumes_labeled
+            enc = encode_username_for_docker(username)
+            name_to_labels = {}
+            for tmpl, meta in user_volume_label_templates.items():
+                labels = {
+                    volume_role_label_key: meta['role'],
+                    volume_owner_label_key: username,
+                }
+                if meta.get('description'):
+                    labels[volume_description_label_key] = meta['description']
+                name_to_labels[tmpl.replace('{username}', enc)] = labels
+            results = ensure_volumes_labeled(name_to_labels)
+            created = [n for n, s in results.items() if s == 'created']
+            errs = {n: s for n, s in results.items() if s.startswith('error')}
+            if created:
+                spawner.log.info(f"[Volumes] labelled {len(created)} new volume(s) by role/owner: {created}")
+            if errs:
+                spawner.log.warning(f"[Volumes] could not label volume(s): {errs}")
 
         # Aggregate resolution log line (recompute the human-facing summaries
         # from the resolved object + the spawner state the models just set).

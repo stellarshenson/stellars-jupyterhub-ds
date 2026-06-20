@@ -45,7 +45,7 @@ def _compose_label_values(key):
 
 def test_network_role_labels_match_baked_env():
     key = _env("JUPYTERHUB_NETWORK_ROLE_LABEL_KEY")
-    assert key == "duoptimum.network.role"
+    assert key == "duoptimum-hub.network.role"
     values = _compose_label_values(key)
     assert _env("JUPYTERHUB_LAB_NETWORK_ROLE_LABEL") in values, "compose must stamp the lab role"
     assert _env("JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL") in values, "compose must stamp the gpuinfo role"
@@ -53,7 +53,7 @@ def test_network_role_labels_match_baked_env():
 
 def test_container_role_label_matches_baked_env():
     key = _env("JUPYTERHUB_CONTAINER_ROLE_LABEL_KEY")
-    assert key == "duoptimum.container.role"
+    assert key == "duoptimum-hub.container.role"
     assert _env("JUPYTERHUB_GPUINFO_CONTAINER_ROLE_LABEL") in _compose_label_values(key), \
         "compose gpuinfo service must stamp the container role"
 

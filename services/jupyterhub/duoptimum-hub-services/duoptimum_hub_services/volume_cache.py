@@ -4,10 +4,13 @@ Uses `docker system df` (type=volume) to get volume usage. A cold daemon hands b
 sizes mid-computation (uncomputed volumes carry Size=-1); caching that partial
 snapshot was DEF-7 (zeros stuck for the whole refresh interval). So the refresh
 caches ONLY a COMPLETE pass - one where every matched user volume has a computed
-size - retrying on a short delay until df has gathered them all, bounded by a
-safety-net attempt cap. The df call is slow (can take minutes) but runs in a
-background executor thread, so the activity page returns cached data immediately
-and never blocks on it.
+size - retrying on a short delay until df has gathered them all. The retry loop is
+bounded by BOTH a wall-clock budget and a safety-net attempt cap so a slow/degraded
+df cannot compound across attempts and pin a worker of the shared 4-worker executor
+(a single in-flight df can still run up to JUPYTERHUB_DOCKER_TIMEOUT on top of the
+budget). The df call runs in a background executor thread, so the activity page
+returns cached data immediately and never blocks on it; a threading.Lock makes the
+"refresh already running" check-and-set atomic so two submits never run two loops.
 
 Volume-name parsing is driven by templates configured at hub startup via
 configure_volume_cache() - the same map used by ManageVolumesHandler so both code
@@ -20,6 +23,7 @@ first hit wins.
 import logging
 import os
 import re
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -30,6 +34,10 @@ log = logging.getLogger('jupyterhub.custom_handlers')
 
 # Cache: {'data': {encoded_username: {total, volumes}}, 'timestamp': datetime, 'refreshing': bool}
 _volume_sizes_cache = {'data': {}, 'timestamp': None, 'refreshing': False}
+
+# Guards the 'refreshing' check-and-set so two executor submits (event loop + periodic
+# tick) can't both enter the retry loop and pin two workers (DEF-7 review finding).
+_refresh_lock = threading.Lock()
 
 # Volume-name template config (set by configure_volume_cache at hub startup).
 # _volume_name_templates: {suffix: template_string_with_{username}_placeholder}
@@ -69,6 +77,15 @@ def _get_df_max_attempts():
     # safety net: cap the wait-for-complete passes so a permanently-degraded df
     # cannot pin a worker of the shared 4-worker executor forever.
     return int(os.environ.get('JUPYTERHUB_ACTIVITYMON_VOLUMES_DF_MAX_ATTEMPTS', 12))
+
+
+def _get_df_budget():
+    # wall-clock cap (seconds) on the whole wait-for-complete retry loop. The attempt
+    # cap alone does NOT bound time: each df can run up to JUPYTERHUB_DOCKER_TIMEOUT
+    # (default 360s), so 12 attempts could otherwise hold a worker ~75 min (DEF-7
+    # review). This stops the loop once elapsed would exceed the budget; a single
+    # in-flight df can still overrun by up to its own timeout.
+    return int(os.environ.get('JUPYTERHUB_ACTIVITYMON_VOLUMES_DF_BUDGET', 600))
 
 
 def _load_persisted_volume_sizes():
@@ -189,19 +206,24 @@ def _refresh_volume_sizes_sync():
     """Refresh the cache from df in a background executor thread (off the event loop).
     Caches ONLY a complete df pass; a cold daemon returns sizes mid-computation and
     caching that partial snapshot was DEF-7 (zeros stuck for the whole interval). Retries
-    on a short delay until df has gathered every volume, bounded by a safety-net attempt
-    cap so a degraded df cannot pin a worker of the shared executor forever."""
+    on a short delay until df has gathered every volume, bounded by BOTH a wall-clock
+    budget and a safety-net attempt cap so a degraded df cannot pin a shared-executor
+    worker. A threading.Lock makes the re-entry check-and-set atomic, so two submits
+    (event-loop trigger + periodic tick) never run two loops at once."""
     global _volume_sizes_cache
     logger = _get_logger()
 
-    if _volume_sizes_cache['refreshing']:
-        logger.info("[Volume Sizes] Refresh already in progress, skipping")
-        return
+    with _refresh_lock:
+        if _volume_sizes_cache['refreshing']:
+            logger.info("[Volume Sizes] Refresh already in progress, skipping")
+            return
+        _volume_sizes_cache['refreshing'] = True
 
-    _volume_sizes_cache['refreshing'] = True
     try:
         max_attempts = _get_df_max_attempts()
         retry_delay = _get_df_retry_delay()
+        budget = _get_df_budget()
+        start = time.monotonic()
         for attempt in range(1, max_attempts + 1):
             data, complete = _fetch_volume_sizes()
             if complete:
@@ -210,15 +232,18 @@ def _refresh_volume_sizes_sync():
                 save_cached('volume_sizes', data)  # survive restarts: replace last-known on disk
                 logger.info(f"[Volume Sizes] Cache updated: {len(data)} users")
                 return
-            if attempt >= max_attempts:
+            elapsed = time.monotonic() - start
+            # stop on the attempt cap OR when another wait would blow the wall-clock budget
+            if attempt >= max_attempts or elapsed + retry_delay >= budget:
                 logger.warning(
-                    f"[Volume Sizes] df still partial after {max_attempts} attempts; "
-                    "keeping previous cache, retrying at next interval"
+                    f"[Volume Sizes] df still partial after {attempt} attempt(s)/{elapsed:.0f}s "
+                    f"(caps {max_attempts}/{budget}s); keeping previous cache, retrying next interval"
                 )
                 return
             time.sleep(retry_delay)
     finally:
-        _volume_sizes_cache['refreshing'] = False
+        with _refresh_lock:
+            _volume_sizes_cache['refreshing'] = False
 
 
 def get_cached_volume_sizes():

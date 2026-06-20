@@ -10,15 +10,23 @@
 # `home` they keep the platform default description; if they redefine `mount`
 # their value wins. Operator-only suffixes (e.g. `models`) get added to the
 # merged set verbatim.
+#
+# `role` = duoptimum-hub.volume.role label value stamped on the volume at spawn. Marks
+# it a platform system volume so the portal identifies it by role, not name (name
+# drifts). `lab-` prefix indicates where it belongs - a lab, vs hub volumes
+# (shared, docker-proxy). Optional - defaults to the suffix when omitted.
 
 home:
   mount: /home
   description: User home directory files, configurations
+  role: lab-home
 
 workspace:
   mount: /home/lab/workspace
   description: Project files, notebooks, code
+  role: lab-workspace
 
 cache:
   mount: /home/lab/.cache
   description: Temporary files, pip cache, conda cache
+  role: lab-cache

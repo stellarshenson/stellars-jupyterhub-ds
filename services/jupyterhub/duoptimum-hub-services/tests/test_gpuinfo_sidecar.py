@@ -227,10 +227,10 @@ def test_ensure_stamps_container_role_label_and_passes_no_env(monkeypatch):
     out = ensure_gpuinfo_sidecar(
         "img:latest", "gpuinfo-net", "http://{hostname}:8000",
         compose_project="proj", container_name="gpuinfo-nvidia",
-        container_role_label_key="duoptimum.container.role",
+        container_role_label_key="duoptimum-hub.container.role",
         container_role_label_value="gpuinfo",
     )
     assert out == "http://172.20.0.7:8000"
     kw = client.containers.last_run_kwargs
-    assert kw["labels"]["duoptimum.container.role"] == "gpuinfo"
+    assert kw["labels"]["duoptimum-hub.container.role"] == "gpuinfo"
     assert "environment" not in kw

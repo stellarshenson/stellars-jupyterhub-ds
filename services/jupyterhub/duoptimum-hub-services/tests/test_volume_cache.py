@@ -191,11 +191,20 @@ class TestRefreshCachesOnlyComplete:
         vc._volume_sizes_cache['timestamp'] = None
         vc._volume_sizes_cache['refreshing'] = False
 
+    @staticmethod
+    def _count_save_cached(monkeypatch):
+        """Patch save_cached with a call counter so tests assert the persist DID/ DID
+        NOT happen - the previous no-op patch left the 'never persist a partial' DEF-7
+        invariant unasserted (review finding)."""
+        saves = {"n": 0}
+        monkeypatch.setattr(vc, "save_cached", lambda *a, **k: saves.__setitem__("n", saves["n"] + 1))
+        return saves
+
     def test_partial_then_complete_caches_complete(self, monkeypatch):
         self._reset()
         monkeypatch.setattr(vc, "_get_df_retry_delay", lambda: 0)
         monkeypatch.setattr(vc, "_get_df_max_attempts", lambda: 5)
-        monkeypatch.setattr(vc, "save_cached", lambda *a, **k: None)
+        saves = self._count_save_cached(monkeypatch)
         passes = iter([
             ({"alice": {"total": 1.0, "volumes": {"home": 1.0}}}, False),  # partial -> not cached
             ({"alice": {"total": 2.0, "volumes": {"home": 2.0}}}, True),   # complete -> cached
@@ -204,6 +213,7 @@ class TestRefreshCachesOnlyComplete:
         vc._refresh_volume_sizes_sync()
         assert vc._volume_sizes_cache['data'] == {"alice": {"total": 2.0, "volumes": {"home": 2.0}}}
         assert vc._volume_sizes_cache['timestamp'] is not None
+        assert saves["n"] == 1, "persists exactly once - only the complete pass (not the partial)"
         assert vc._volume_sizes_cache['refreshing'] is False
 
     def test_all_partial_keeps_previous_and_does_not_cache(self, monkeypatch):
@@ -212,7 +222,7 @@ class TestRefreshCachesOnlyComplete:
         vc._volume_sizes_cache['data'] = dict(prev)
         monkeypatch.setattr(vc, "_get_df_retry_delay", lambda: 0)
         monkeypatch.setattr(vc, "_get_df_max_attempts", lambda: 3)
-        monkeypatch.setattr(vc, "save_cached", lambda *a, **k: None)
+        saves = self._count_save_cached(monkeypatch)
         calls = {"n": 0}
 
         def _always_partial():
@@ -222,6 +232,35 @@ class TestRefreshCachesOnlyComplete:
         monkeypatch.setattr(vc, "_fetch_volume_sizes", _always_partial)
         vc._refresh_volume_sizes_sync()
         assert calls["n"] == 3, "retries up to the safety-net cap"
+        assert saves["n"] == 0, "an all-partial run NEVER persists (DEF-7: no partial to disk)"
         assert vc._volume_sizes_cache['data'] == prev, "partial never overwrites the previous cache (DEF-7)"
         assert vc._volume_sizes_cache['timestamp'] is None
+        assert vc._volume_sizes_cache['refreshing'] is False
+
+    def test_reentry_guard_skips_when_already_refreshing(self, monkeypatch):
+        """The lock-guarded 'refreshing' flag makes a second concurrent refresh a no-op
+        (review: two submits could otherwise run two retry loops + pin two workers)."""
+        self._reset()
+        vc._volume_sizes_cache['refreshing'] = True  # simulate a refresh already in flight
+        calls = {"n": 0}
+        monkeypatch.setattr(vc, "_fetch_volume_sizes", lambda: calls.__setitem__("n", calls["n"] + 1) or ({}, True))
+        vc._refresh_volume_sizes_sync()
+        assert calls["n"] == 0, "did not fetch - the in-flight refresh owns the flag"
+        assert vc._volume_sizes_cache['refreshing'] is True, "left the other refresh's flag untouched"
+
+    def test_budget_caps_retry_before_attempt_cap(self, monkeypatch):
+        """Wall-clock budget stops the loop well before a high attempt cap, so a slow df
+        can't hold a worker for attempts x df-timeout (review finding 1.3)."""
+        self._reset()
+        monkeypatch.setattr(vc, "_get_df_retry_delay", lambda: 5)
+        monkeypatch.setattr(vc, "_get_df_max_attempts", lambda: 100)  # high - budget must bite first
+        monkeypatch.setattr(vc, "_get_df_budget", lambda: 12)
+        self._count_save_cached(monkeypatch)
+        monkeypatch.setattr(vc.time, "sleep", lambda *_: None)  # don't actually wait
+        clock = {"t": 0.0}
+        monkeypatch.setattr(vc.time, "monotonic", lambda: clock.__setitem__("t", clock["t"] + 5.0) or clock["t"])
+        calls = {"n": 0}
+        monkeypatch.setattr(vc, "_fetch_volume_sizes", lambda: calls.__setitem__("n", calls["n"] + 1) or ({}, False))
+        vc._refresh_volume_sizes_sync()
+        assert calls["n"] <= 3, "budget stopped the loop far short of the 100-attempt cap"
         assert vc._volume_sizes_cache['refreshing'] is False

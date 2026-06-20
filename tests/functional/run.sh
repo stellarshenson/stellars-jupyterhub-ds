@@ -16,7 +16,8 @@
 #   env               signup off + env-password admin (restart-to-provision on fresh DB)
 #   signup-open       signup on + env-password admin authorises a self-signup
 #   signup-bootstrap  signup on + NO env pw -> admin self-signup auto-authorised
-#   traefik           Traefik + TLS front; /traefik dashboard route reached over HTTPS
+#   traefik           Traefik + TLS front; /traefik dashboard route reached over HTTPS (OPEN)
+#   traefik-closed    same front, TRAEFIK_DASHBOARD_ENABLED=false; /traefik must be unreachable
 #   all               every regime in turn; non-zero if any failed
 #   clean             tear the harness down and exit
 # Env: PYTEST_ARGS passed through to pytest (e.g. PYTEST_ARGS="-k redirect");
@@ -49,9 +50,6 @@ clean() {
   echo "[functional] cleanup complete (pulled images kept)"
 }
 
-# host has a usable NVIDIA GPU? -> autodetect mode for the default regime
-detect_gpu() { if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then echo 1; else echo 0; fi; }
-
 # boot hub -> (optional provision restart) -> run suite -> clean. ALWAYS cleans,
 # returns the pytest exit code. $1 label, $2 GPU_ENABLED, $3 restart(0/1), rest -f files
 run_regime() {
@@ -76,7 +74,7 @@ run_regime() {
 # every regime in turn, cleaning between each; report which passed, non-zero if any failed
 run_all() {
   local overall=0 failed="" setup
-  for setup in signup gpu env signup-open signup-bootstrap traefik; do
+  for setup in signup gpu env signup-open signup-bootstrap traefik traefik-closed; do
     echo "==================================================================="
     echo "[functional/all] setup: $setup"
     echo "==================================================================="
@@ -88,7 +86,7 @@ run_all() {
 }
 
 case "${1:-signup}" in
-  signup)           run_regime signup "$(detect_gpu)" 0 "$BASE" ;;
+  signup)           run_regime signup 0 0 "$BASE" ;;   # GPU off: gpu-overlay tests (net/sidecar) belong to the gpu regime that adds the overlay
   gpu)
     echo "[functional/gpu] building mock gpuinfo image ($GPUINFO_MOCK_IMAGE)..."
     docker build -q -t "$GPUINFO_MOCK_IMAGE" tests/functional/mock_gpuinfo >/dev/null
@@ -97,7 +95,12 @@ case "${1:-signup}" in
   signup-open)      run_regime signup-open 0 1 "$BASE" "$SIGNUPOPEN_OVERLAY" ;;
   signup-bootstrap) run_regime signup-bootstrap 0 0 "$BASE" "$SIGNUPBOOTSTRAP_OVERLAY" ;;
   traefik)          run_regime traefik 0 0 "$BASE" "$TRAEFIK_OVERLAY" ;;
+  traefik-closed)
+    # toggle off: gate the dashboard router so /traefik is unreachable. Both vars are
+    # exported so the docker-compose label/env ${...} interpolation picks them up.
+    export TRAEFIK_DASHBOARD_ENABLED=false FUNCTEST_AUTH_MODE=traefikclosed
+    run_regime traefik-closed 0 0 "$BASE" "$TRAEFIK_OVERLAY" ;;
   all)              run_all ;;
   clean)            clean ;;
-  *) echo "run.sh: unknown regime '${1:-}' (signup|gpu|env|signup-open|signup-bootstrap|traefik|all|clean)" >&2; exit 2 ;;
+  *) echo "run.sh: unknown regime '${1:-}' (signup|gpu|env|signup-open|signup-bootstrap|traefik|traefik-closed|all|clean)" >&2; exit 2 ;;
 esac

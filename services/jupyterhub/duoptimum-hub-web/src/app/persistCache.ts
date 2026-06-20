@@ -10,7 +10,7 @@ import { dataMode } from '../services/dataMode'
 
 const KEY = `doh-query-cache-${dataMode()}-v1`
 const MAX_AGE_MS = 24 * 60 * 60_000 // a day - older blobs are dropped, not shown
-const EXCLUDE = ['tokens'] // never persist token data (one-time secrets)
+const EXCLUDE = ['tokens', 'events'] // never persist: token data (one-time secrets); the events audit feed (must be fresh on load, not painted 30s-stale from cache)
 
 function excluded(queryKey: unknown): boolean {
   return Array.isArray(queryKey) && queryKey.some((k) => EXCLUDE.includes(k as string))
