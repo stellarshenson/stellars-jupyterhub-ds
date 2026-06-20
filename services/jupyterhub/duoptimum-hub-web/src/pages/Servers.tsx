@@ -84,7 +84,7 @@ function ServerDetail({ row }: { row: ServerRow }) {
       <Metric label="CPU" value={row.cpu == null ? dash : `${listCpuMode === 'cores' ? row.cpu : (row.cpuAssignedPct ?? row.cpu)}%`} detail={row.cpuTip} valueColor={quotaColor(row.cpuQuotaPct)} />
       <Metric label="Memory" value={row.mem == null ? dash : `${row.mem} GB`} detail={row.memTip} valueColor={quotaColor(row.memQuotaPct)} />
       {gpuSupported() && <Metric label="GPU" value={row.gpu ?? <span className="doh-muted">not tracked per-server</span>} />}
-      <Metric label="Volumes" value={row.volumesGB == null ? dash : `${row.volumesGB} GB`} detail={row.volumesTip} over={row.volumesOver} />
+      <Metric label="Volumes" value={!row.volumesGB ? dash : `${row.volumesGB} GB`} detail={row.volumesTip} over={row.volumesOver} />
       <Metric label="System" value={row.systemGB == null ? dash : `+${row.systemGB} GB`} detail={row.systemTip} over={row.systemOver} />
       <Metric label="Time left" value={running ? (row.timeLeftLabel ?? dash) : dash} />
       <Metric label="Last activity" value={row.lastActivityISO ? timeAgoShort(row.lastActivityISO) : dash} detail={row.lastActivityISO ? exactDate(row.lastActivityISO) : undefined} />
@@ -223,7 +223,7 @@ export default function Servers() {
       align: 'right',
       sorter: (a, b) => (a.volumesGB ?? -1) - (b.volumesGB ?? -1),
       render: (_, r) =>
-        r.volumesGB == null ? <span className="doh-muted">-</span> : <span className={r.volumesOver ? 'doh-cell-warn' : 'doh-num'} title={r.volumesTip}>{r.volumesGB} GB</span>,
+        !r.volumesGB ? <span className="doh-muted">-</span> : <span className={r.volumesOver ? 'doh-cell-warn' : 'doh-num'} title={r.volumesTip}>{r.volumesGB} GB</span>,
     },
     {
       title: 'Sys',

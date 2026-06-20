@@ -46,8 +46,7 @@ The UI rule: normal and limited are mutually exclusive within a group; Docker (r
 
 ## Labels stamped on every create
 
-- `jupyterhub.docker.proxy.owner=<user>` - identity, used for all filtering
-- `jupyterhub.docker.proxy.managed=true` - proxy-created (for janitors)
+- `duoptimum-hub.docker.proxy.owner=<user>` - identity, used for all filtering; owner presence alone marks a resource proxy-created (no separate managed flag)
 - `com.docker.compose.project=<per-user-project>` - per-user compose project rendered from `JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE` when `docker_limited_user_compose_project_enabled=True` (default). With `_allow_override=True` (default) the user's own `docker compose -p <name>` / `COMPOSE_PROJECT_NAME=<name>` is respected; with `_allow_override=False` (strict) the user's label is REWRITTEN. With `_enabled=False` the label is not set at all (ad-hoc containers are free-floating)
 
 ## Request flow
@@ -55,7 +54,7 @@ The UI rule: normal and limited are mutually exclusive within a group; Docker (r
 ```mermaid
 flowchart TD
     REQ[Docker API request] --> CL{classify}
-    CL -- create --> CR[inject owner+managed labels<br/>prefix name 'user-owner-...'<br/>reject privileged / host-mount / host-net / cap-add<br/>reject non-owned non-allow-listed networks<br/>count quota<br/>storage budget<br/>cap CPU and mem]
+    CL -- create --> CR[inject owner label<br/>prefix name 'user-owner-...'<br/>reject privileged / host-mount / host-net / cap-add<br/>reject non-owned non-allow-listed networks<br/>count quota<br/>storage budget<br/>cap CPU and mem]
     CL -- list --> LS[merge owner-label filter into ?filters=<br/>networks: post-filter owned OR accessible-extras]
     CL -- "action id" --> AC{target owner<br/>equals caller?<br/>networks: OR allow-listed?}
     AC -- yes --> FW
@@ -72,7 +71,7 @@ flowchart TD
 | Endpoint | Behaviour |
 |---|---|
 | `POST /containers\|volumes\|networks/create` | inject labels; count quota; storage budget (containers, volumes); containers also: name prefix, dangerous-flag check, image allowlist, CPU/mem cap, network-access check (`HostConfig.NetworkMode` and `NetworkingConfig.EndpointsConfig` must reference a built-in mode, an owner-labelled network, or an entry of `extra_accessible_networks`; else 403) |
-| `GET /containers/json`, `/volumes` | inject `label=jupyterhub.docker.proxy.owner=<user>` into `?filters=` |
+| `GET /containers/json`, `/volumes` | inject `label=duoptimum-hub.docker.proxy.owner=<user>` into `?filters=` |
 | `GET /networks` | inject owner-label filter normally; when `extra_accessible_networks` is non-empty, buffer the response and post-filter to `is_owned(owner) OR Name in extras` instead (so the user sees their own networks AND the hub network) |
 | `GET/POST/DELETE /containers\|volumes/{id}/...` | inspect target, 404 if not owned, else forward |
 | `GET/POST/DELETE /networks/{id}/...` (incl. `/connect`, `/disconnect`) | inspect target, 404 if not owned AND not in `extra_accessible_networks`, else forward |
@@ -114,7 +113,8 @@ Baked into the image as Dockerfile `ENV`s or computed in Python. Operators do no
 | `JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR` | `Dockerfile.jupyterhub` `ENV` | `/var/run/jupyterhub-docker-proxy-sockets` | Path inside the hub container where the in-process proxy writes per-user listener sockets. Backed by a named docker volume - not a host path |
 | `JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME` | `config/jupyterhub_config.py` (computed) | `f"{COMPOSE_PROJECT_NAME}_jupyterhub_docker"` | Actual on-daemon name of the named docker volume that backs the socket directory. Not operator-configurable - computed to match compose's automatic project-prefix namespacing of the `jupyterhub_docker:` volume declared in `compose.yml`. Follows the same convention as `f"{COMPOSE_PROJECT_NAME}_jupyterhub_shared"` in `DOCKER_SPAWNER_VOLUMES`. The spawner subpath-mounts this volume into each lab so each lab sees only its own subdirectory |
 | `JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE` | `Dockerfile.jupyterhub` `ENV` | `{username}_containers` | Python `str.format` template rendered into the per-user `com.docker.compose.project` label stamped on ad-hoc `docker run` containers when a docker-limited group enables enforcement (see below). Placeholders: `{compose}` (hub project) and `{username}` (lab owner). Operator can override in `compose.yml` to e.g. `{compose}_{username}_containers` for cross-deployment disambiguation |
-| `JUPYTERHUB_DOCKER_PROXY_LABEL_PREFIX` | `Dockerfile.jupyterhub` `ENV` | `jupyterhub.docker.proxy` | Label namespace; proxy stamps `<prefix>.owner=<user>` (all filtering keys off this) and `<prefix>.managed=true` on its resources. Override to dodge clashes with host labels; changing it needs a lab restart (existing resources keep old labels until recreated) |
+| `JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_KEY` | `Dockerfile.jupyterhub` `ENV` | `duoptimum-hub.docker.proxy.owner` | Owner label key stamped on every proxy-created container/volume/network; all ownership filtering keys off it (owner presence alone marks a resource proxy-managed - no separate managed flag). Override to dodge clashes with host labels; changing it needs a lab restart (existing resources keep old labels until recreated) |
+| `JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_VALUE` | `Dockerfile.jupyterhub` `ENV` | `{username}` | Owner label value template; `{username}` is substituted with the resource owner at stamp time |
 | `COMPOSE_PROJECT_NAME` | compose-passthrough env | required, no default | Drives docker compose project label and volume namespacing. Empty raises `RuntimeError` at hub startup - silent fallback would mismatch compose's namespacing and fail spawns at Subpath resolution |
 
 Compose-side: a single named volume `jupyterhub_docker` is declared at the bottom of `compose.yml`; compose namespaces it on the daemon to `${COMPOSE_PROJECT_NAME}_jupyterhub_docker` and mounts it on the hub at the socket-dir path. No host bind, no second container, no token, no `.env` change. To wipe state, operator can `docker volume rm ${COMPOSE_PROJECT_NAME}_jupyterhub_docker` (must be down first).
@@ -144,7 +144,7 @@ The proxy ALWAYS enforces these regardless of any toggle:
 - Per-create quota counts (`max_containers` / `_volumes` / `_networks`)
 - Per-create storage budget against `max_storage_gb` (queries `/system/df`)
 - Per-container CPU and memory caps (`cpu_cap_cores` / `mem_cap_gb`)
-- Owner labelling: every created container / volume / network gets `jupyterhub.docker.proxy.owner=<user>` and `jupyterhub.docker.proxy.managed=true`
+- Owner labelling: every created container / volume / network gets `duoptimum-hub.docker.proxy.owner=<user>` (owner presence alone marks it proxy-created)
 - Owner-scope on list and prune: `docker ps` / `docker volume ls` / `docker network ls` / `docker container prune` etc. are filtered to the user's own resources
 - Ownership check on actions: `docker stop/inspect/exec/rm <id>` on a non-owned target returns 404
 

@@ -1336,10 +1336,12 @@ Legend: `[x]` implemented, `[ ]` planned (the test/scenario backlog). Each item 
   - log: 2026-06-13 planned
 - [ ] **Busy favicon injected** - `JUPYTERHUB_BRANDING_FAVICON_BUSY_URI` resolved and reaches the lab
   - log: 2026-06-13 planned
-- [ ] **System name rebrand** - `JUPYTERLAB_SYSTEM_NAME` injected into the container Env
+- [ ] **Lab name rebrand** - hub knob `JUPYTERHUB_BRANDING_LAB_NAME` injected into the spawned container Env as `JUPYTERLAB_SYSTEM_NAME` (renamed from the old hub-side `JUPYTERLAB_SYSTEM_NAME`); see acc-crit-lab-name-branding-env.md
   - log: 2026-06-13 planned
-- [ ] **System name capitalize / color** - `JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME` and `JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR` injected
+  - log: 2026-06-20 renamed hub knob -> `JUPYTERHUB_BRANDING_LAB_NAME`, injected as `JUPYTERLAB_SYSTEM_NAME`
+- [x] **Header capitalize / color removed** - `JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME` + `JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR` dropped, no longer set on the container (capitalize by typing the name in caps; header colour moves to Settings)
   - log: 2026-06-13 planned
+  - log: 2026-06-20 dropped from Dockerfile/config/compose/settings_dictionary + removed from `c.DockerSpawner.environment`
 - [ ] **Empty = no rebrand** - empty branding env leaves the lab env unset (no rebrand)
   - log: 2026-06-13 planned
 - [ ] **Visual rebrand (real-lab)** - welcome page / MOTD / toolbar header badge reflect the system name
@@ -3038,6 +3040,8 @@ Server start/restart/stop show progress with an INLINE spinner on the control (n
 
 - [x] **No modal** - the restart/stop progress modal (creeping bar + flavour text) is removed; `ServerLifecycle` is a context provider with no popup UI
   - log: 2026-06-17 `app/ServerLifecycle.tsx` rewritten; `loading-messages` dep removed (its only use was the modal)
+- [x] **Decision: no restart progress popup (final)** - the restart action keeps the inline spinner; a progress popup (progress bar + cycling docker-flavour text + autoclose) is deliberately NOT reintroduced on Server Control or anywhere else - the inline UI is cleaner and less cluttered
+  - log: 2026-06-20 operator decision (#388) - investigated the removed popup's history (a single shared `ServerLifecycle` modal driving hero + list/widget, dropped in `b9dec6d` for the inline pattern); operator confirmed inline stays, "UI is cleaner and less clutter"; no code change, criterion records the closed decision
 - [x] **Inline spinner** - while restarting/stopping, the control shows a spinner in place of its icon (hero buttons via antd `loading`; row actions via `IconAction busy`)
   - log: 2026-06-17 `ServerHero.tsx` `loading={busy===...}`, `IconAction` gained a `busy` prop, `Servers.tsx` row actions pass `busy={mode===...}`
 - [x] **Background monitor + immediate refresh** - the op's `run()` toasts + invalidates on POST; `pollUntil` then monitors the real status until the transition lands, then invalidates servers/hero/resources/stats so the views update at once
@@ -4183,12 +4187,14 @@ The hub<->GPU-info sidecar is fully DECLARED in compose (role-labelled networks 
   - log: 2026-06-20 hardened - dropped the `JUPYTERHUB_COMPOSE_PROJECT_NAME` env override; discovery is the only source (no optional fallback)
 - [x] **Lab compose project uses {compose}** - `JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME={compose}_labs`; `{compose}` resolves to the discovered hub project; empty = same project as the hub
   - log: 2026-06-19 implemented (v4.0.7)
-- [x] **Docker-proxy label prefix is static** - `JUPYTERHUB_DOCKER_PROXY_LABEL_PREFIX=duoptimum.docker.proxy` (from the package name); the proxy package `config.py::LABEL_NAMESPACE` default matches
+- [x] **Docker-proxy ownership label is unified** - `JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_KEY=duoptimum-hub.docker.proxy.owner` + `JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_VALUE={username}` ({username} substituted by the proxy); the proxy `config.py` sources both RAW from this env with no hardcoded default (Dockerfile ENV is the single source); redundant `.managed` marker culled (owner presence alone marks a resource proxy-created)
   - log: 2026-06-19 implemented (v4.0.7)
+  - log: 2026-06-20 unified into the JUPYTERHUB_LABEL_* family - prefix env replaced by explicit OWNER_KEY (duoptimum-hub.* namespace) + {username}-templated OWNER_VALUE; `.managed` culled (stamped-but-never-read)
+  - log: 2026-06-20 de-hardcoded: `config.py` literal fallback removed (was duplicating the Dockerfile ENV) -> empty RAW default + `tests/conftest.py`; see "No hardcoded label keys" section
 - [x] **Networks declared in compose with role labels** - `hub_network` carries `duoptimum-hub.network.role: "lab"` and `hub_gpuinfo_network` carries `duoptimum-hub.network.role: "gpuinfo"`; the hub is attached to both in the hub service `networks:`
   - log: 2026-06-19 implemented (v4.0.7)
   - log: 2026-06-19 role model - one key `duoptimum-hub.network.role`, value = role (was per-purpose presence labels `duoptimum-hub.lab.network` / `duoptimum-hub.gpuinfo.network`)
-- [x] **Networks discovered by role** - `resolve_self_network_by_label(key, value)` finds each network among the hub's OWN attachments by `Labels[duoptimum-hub.network.role] == role`; the label key + role values come from env (`JUPYTERHUB_NETWORK_ROLE_LABEL_KEY`, `JUPYTERHUB_LAB_NETWORK_ROLE_LABEL`, `JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL`), baked as Dockerfile defaults; compose literals MUST match
+- [x] **Networks discovered by role** - `resolve_self_network_by_label(key, value)` finds each network among the hub's OWN attachments by `Labels[duoptimum-hub.network.role] == role`; the label key + role values come from env (`JUPYTERHUB_LABEL_NETWORK_ROLE_KEY`, `JUPYTERHUB_LABEL_NETWORK_ROLE_LAB`, `JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO`), baked as Dockerfile defaults; compose literals MUST match
   - log: 2026-06-19 implemented (v4.0.7)
   - log: 2026-06-19 generalized to (key,value) role match; label key + values moved to env vars
 - [x] **Hub never creates the network** - `ensure_gpuinfo_sidecar` only `networks.get()` + joins; it never calls `networks.create()` (that historically clashed with compose's ownership check)
@@ -4263,8 +4269,8 @@ Floating Docker resources the hub references in CODE outside its compose-declare
 
 - [x] **Prefix is `duoptimum-hub.`** - all hub-owned role labels live under `duoptimum-hub.<noun>.<attr>` (`duoptimum-hub.volume.role/.owner/.description`, `duoptimum-hub.network.role`, `duoptimum-hub.container.role`)
   - log: 2026-06-20 renamed prefix `duoptimum.*` -> `duoptimum-hub.*` across compose, Dockerfile, config, hub-services, tests, types, docs (sweep)
-- [x] **docker-proxy namespace unchanged** - `duoptimum.docker.proxy` (the docker-proxy package's own `LABEL_NAMESPACE`, stamped on USER resources, not hub-owned) is deliberately NOT renamed; `-hub` would be semantically wrong for it
-  - log: 2026-06-20 excluded from the prefix rename
+- [x] **docker-proxy ownership label unified into duoptimum-hub.*** - the proxy's user-resource owner label moved from `duoptimum.docker.proxy.owner` to `duoptimum-hub.docker.proxy.owner` (one top namespace for all platform labels), driven by `JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_KEY` + `{username}`-templated `JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_VALUE`; redundant `.managed` marker culled (owner presence alone marks a resource proxy-created)
+  - log: 2026-06-20 initially excluded from the rename, then unified on operator request - per-user resources are recreated on spawn so the namespace move is safe; consistency across the JUPYTERHUB_LABEL_* family wins
 - [x] **Compose literals == baked env** - the role label keys/values stamped in `compose.yml` equal the Dockerfile-baked env defaults; a build/config test asserts the invariant
   - log: 2026-06-20 covered by `test_compose_env_invariants.py`
 
@@ -4327,6 +4333,25 @@ Floating Docker resources the hub references in CODE outside its compose-declare
   - log: 2026-06-20 implemented
 - [x] **Pure + unit-tested** - the validator is pure (dict in, result out; `path_exists` injectable); `test_config_validator.py` covers the clean pass, each required-var error, each consistency error, each warning, and the raise/log behaviour
   - log: 2026-06-20 implemented
+
+### No hardcoded label keys - all sourced from env
+
+Every docker resource label key/value is sourced from env; no `duoptimum-hub.*` (or `duoptimum.docker.proxy.*`) literal appears in code LOGIC (stamping, reading, filtering). The only literals are the single per-config-module env DEFAULTS, Dockerfile-baked and validator-enforced.
+
+- [x] **No literal key in logic** - handlers, hooks and the gpuinfo sidecar reference label keys only through env-sourced config, never a `duoptimum-hub.*` string literal
+  - log: 2026-06-20 `handlers/volumes.py` + `handlers/groups.py` read `volume_role_label_key` / `volume_description_label_key` off `stellars_config`; `hooks.py` `volume_owner_label_key` / `volume_description_label_key` kwarg defaults emptied (config passes the env value); `gpuinfo_sidecar.py` `container_description_label_key` default emptied
+- [x] **Every key has an env** - the two keys that previously had no env (`duoptimum-hub.volume.owner`, `duoptimum-hub.container.description`) now have `JUPYTERHUB_LABEL_VOLUME_OWNER_KEY` and `JUPYTERHUB_LABEL_CONTAINER_DESCRIPTION`; both baked in the Dockerfile and surfaced in the compose common-labels block
+  - log: 2026-06-20 added env reads in `config/jupyterhub_config.py`, threaded into `make_pre_spawn_hook` + `ensure_gpuinfo_sidecar`
+- [x] **Hub reads raw, no Python default** - hub-side label-key env reads carry no inline literal fallback (`os.environ.get(KEY, "").strip()`); the Dockerfile ENV is the only source of defaults
+  - log: 2026-06-20 consistent with the existing role-label reads
+- [x] **Proxy key fully env-sourced, no literal default** - the docker-proxy `config.py` reads `OWNER_LABEL` / `OWNER_VALUE_TEMPLATE` RAW from the env (`os.environ.get(KEY, "").strip()`) with NO hardcoded fallback; filters/quota stamp/read only through the `OWNER_LABEL` symbol. Proxy runs in-process in the hub, so the Dockerfile ENV supplies the value and the hub validator guarantees presence before any proxy code runs; the standalone test suite supplies it via `tests/conftest.py`
+  - log: 2026-06-20 adversarial review caught `config.py:20` hardcoding `"duoptimum-hub.docker.proxy.owner"` as a non-empty fallback (duplicate source of truth, silent-drift risk); fixed -> empty RAW default + `tests/conftest.py`; 65 proxy tests green, empty-when-unset verified
+- [x] **Validator enforces all keys provided** - `validate_hub_config` `_REQUIRED` now includes `volume_description_label_key`, `volume_owner_label_key`, `container_description_label_key`, `docker_proxy_owner_label_key`, `docker_proxy_owner_label_value`; a missing one fails the boot
+  - log: 2026-06-20 `config_validator.py` + `test_config_validator.py` fixture/parametrize updated
+- [x] **Validator: owner value carries {username}** - `JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_VALUE` must contain `{username}` or boot fails (otherwise every user's proxy-created resources share one owner value and ownership filtering collapses)
+  - log: 2026-06-20 consistency check added; unit `test_proxy_owner_value_without_username_is_error`
+- [x] **Adversarial review clean** - a `claude -p` adversarial pass confirms no docker resource label key/value is hardcoded in logic anywhere in the code
+  - log: 2026-06-20 round 1 found 1 violation (`config.py:20` hardcoded owner key fallback duplicating the Dockerfile ENV) - fixed (empty RAW default + `tests/conftest.py`); round 2 re-confirm returned VERDICT: NO VIOLATIONS FOUND, validator requirement MET
 
 ### Edge cases
 
@@ -4471,12 +4496,13 @@ Per-user volume sizes shown on the Servers list + Manage-Volumes table (and the 
 
 ---
 
-## Hub display name (JUPYTERHUB_HUB_NAME)
+## Hub display name (JUPYTERHUB_BRANDING_HUB_NAME)
 
-Configurable platform display name via `JUPYTERHUB_HUB_NAME`. Shown as the portal logo tooltip and as the login/signup screen text. Default "Duoptimum Hub", baked in `Dockerfile.jupyterhub` and as the `config/jupyterhub_config.py` fallback; flows to the SPA via `window.jhdata.hub_name` (`c.JupyterHub.template_vars`).
+Configurable platform display name via `JUPYTERHUB_BRANDING_HUB_NAME`. Shown as the portal logo tooltip and as the login/signup screen text. Default "Duoptimum Hub", baked in `Dockerfile.jupyterhub` and as the `config/jupyterhub_config.py` fallback; flows to the SPA via `window.jhdata.hub_name` (`c.JupyterHub.template_vars`).
 
-- [x] **Env + default** - `JUPYTERHUB_HUB_NAME` read in config (default "Duoptimum Hub"); baked `ENV` in the Dockerfile branding block; listed in `settings_dictionary.yml`
+- [x] **Env + default** - `JUPYTERHUB_BRANDING_HUB_NAME` read in config (default "Duoptimum Hub"); baked `ENV` in the Dockerfile branding block; listed in `settings_dictionary.yml`
   - log: 2026-06-20 implemented (config + Dockerfile + settings dict)
+  - log: 2026-06-20 renamed `JUPYTERHUB_HUB_NAME` -> `JUPYTERHUB_BRANDING_HUB_NAME` to unify under the `JUPYTERHUB_BRANDING_*` family (matches `JUPYTERHUB_BRANDING_LAB_NAME`); pure rename, no behaviour change; `window.jhdata.hub_name` SPA key unchanged; needs rebuild rerun to re-confirm
 - [x] **Shell injection** - `hub_name` added to `c.JupyterHub.template_vars` and to `window.jhdata` in all four shells (portal, home, login, signup) via `{{ hub_name | tojson }}`
   - log: 2026-06-20 implemented
 - [ ] **Hub name as the logo tooltip** - hovering the portal logo shows the configured name (`AppLayout` logo `title` = `hubName()`)
@@ -4567,3 +4593,52 @@ When a server is stopped, the TTL gadget slot under the server control buttons s
   - log: 2026-06-20 criterion added; implemented (guard in `ServerHero.tsx`)
 - [ ] **Functional: stopped-ago readout** - a Playwright test stops the admin's own server, opens Home, asserts the TTL slot shows "stopped ... ago" text and no progress bar
   - log: 2026-06-20 criterion added; `tests/functional/test_ttl_extend.py::test_stopped_server_shows_stopped_ago_readout`; VERIFIED green on v4.0.11 (the stopped-state predicate now defaults `ready=False` so a removed server reads as stopped)
+
+## Hub-unreachable warning indicator
+
+When the portal cannot reach the hub (the `useHubHealth` probe reports down), it surfaces a transient WARNING - never a red system error and never a broken-icon/crash look. The indicator reads in the design language as a warning: a pill-style diode (the same dot used in the "Active" pill) in warning colour, pulsing with a halo. Desktop shows a persistent corner diode plus a dismissable popup; mobile shows an in-flow warning panel at the top of the content, above the Server Controls. Nothing renders while the hub is reachable.
+
+- [ ] **Warning, not error** - down state renders as a warning (warning colour, calm copy), not a red/danger system-error screen and not a broken/disconnect icon
+  - log: 2026-06-20 requirement added (new); replaces the prior `DisconnectOutlined` broken-icon look in `HubConnectionIndicator.tsx`
+- [ ] **Pulsing diode + halo** - the indicator uses a small pill-style diode (`.doh-hub-diode` / `.doh-hub-diode-inline`, 8px, `var(--color-warning)`) that pulses with a halo ring (`doh-hub-pulse` box-shadow keyframes), matching the "Active" pill LED
+  - log: 2026-06-20 requirement added (new); `global.css` diode + `@keyframes doh-hub-pulse` switched from `--color-danger` to `--color-warning`
+- [ ] **Copy** - title "Hub not responding"; body states data may be stale and actions will fail until the connection is restored, and that it is retrying automatically
+  - log: 2026-06-20 requirement added (new); `TITLE`/`BODY` constants in `HubConnectionIndicator.tsx`
+- [ ] **Desktop: corner diode + popup** - desktop shows a persistent corner diode plus a dismissable modal (Dismiss button); the modal title carries the inline diode
+  - log: 2026-06-20 requirement added (new)
+- [ ] **Desktop: popup re-arms** - dismissing the popup hides it; if the hub recovers and later drops again the popup re-opens (re-armed on each new down)
+  - log: 2026-06-20 requirement added (new); `useEffect(() => { if (!down) setDismissed(false) }, [down])`
+- [ ] **Mobile: in-flow panel atop Server Controls** - on mobile the indicator renders as an in-flow warning panel (`.doh-hub-warn-panel`, warning-tinted surface) at the top of the content, above the Server Controls, not as a corner diode/modal
+  - log: 2026-06-20 requirement added (new); `useIsMobile()` branch returns the panel
+- [ ] **Reachable: renders nothing** - while the hub is reachable (`!down`) the component renders null on both desktop and mobile - no diode, no panel, no reserved space
+  - log: 2026-06-20 requirement added (new)
+- [ ] **a11y** - mobile panel is `role="alert" aria-live="assertive"`; desktop corner diode is `role="status"` with an `aria-label`; decorative inline diodes are `aria-hidden`
+  - log: 2026-06-20 requirement added (new)
+- [ ] **Reduced motion** - under `prefers-reduced-motion` the diode halo pulse is disabled (static dot), targeting both `.doh-hub-diode` and `.doh-hub-diode-inline`
+  - log: 2026-06-20 requirement added (new)
+- [ ] **Edge: recovery clears it** - when the probe flips back to up the indicator disappears immediately on both layouts (driven solely by `down`)
+  - log: 2026-06-20 requirement added (new)
+
+## Servers: Vol column dash for no volumes
+
+The Servers table renders the Vol cell as a muted "-" (the same placeholder CPU/Mem/Sys/Time Left use) when a user has no volumes, instead of "0 GB". A user with real volumes still shows "X GB".
+
+- [x] **No volumes -> dash** - a user whose total volume size is 0 (or null) shows "-" in the Vol column, never "0 GB"
+  - log: 2026-06-20 requirement added (new); `Servers.tsx` Vol render + the expanded-row Metric both changed from `== null` to `!volumesGB`, so 0 collapses to the dash
+- [x] **Has volumes -> GB** - a user with real volumes still shows "X GB" (warning style when over quota)
+  - log: 2026-06-20 unchanged branch
+- [ ] **Functional: no "0 GB" cell** - a Playwright test creates a never-spawned user (no volumes), opens Servers, asserts that user's row shows no "0 GB" cell and no row in the table renders a literal "0 GB"
+  - log: 2026-06-20 criterion added; `tests/functional/test_servers_resources.py::test_vol_cell_shows_dash_when_no_volumes`
+- [ ] **Edge: volumesGB null** - an unknown/unmeasured volume size also shows "-" (already the case; preserved)
+  - log: 2026-06-20 preserved
+
+## Release: gpuinfo image versioned with the hub
+
+On a Docker Hub push the gpuinfo-nvidia sidecar image is tagged and pushed with the SAME version tag as the hub image (not only `:latest`), so a pulled `:version` pins a matching hub + sidecar pair.
+
+- [x] **Same version tag** - `make tag` tags `stellars/duoptimum-gpuinfo-nvidia:$(TAG)` with the identical `$(TAG)` applied to `stellars/duoptimum-hub` (`<version>_cuda-<cuda>_jh-<jh>`)
+  - log: 2026-06-20 requirement added (new); `Makefile` `tag:` target adds the gpuinfo `docker tag`
+- [x] **Pushed versioned + latest** - `make push` pushes both `:latest` and `:$(TAG)` for the gpuinfo image, mirroring the hub
+  - log: 2026-06-20 `push:` adds `docker push $(GPUINFO_IMAGE):$(TAG)`; success banner names both images
+- [x] **Verified by dry-run** - `make -n push` emits the gpuinfo `docker tag ...:latest ...:$(TAG)` and the versioned `docker push`
+  - log: 2026-06-20 verified `make -n push` shows both images tagged + pushed at `4.0.12_cuda-13.0.2_jh-5.5.0`

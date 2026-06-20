@@ -97,7 +97,7 @@ def _connect_hub(client, network):
 
 def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', container_name=None,
                            container_role_label_key='', container_role_label_value='',
-                           container_description_label_key='duoptimum-hub.container.description',
+                           container_description_label_key='',
                            container_description=''):
     """Ensure the GPU-info sidecar container is running. Never raises.
 

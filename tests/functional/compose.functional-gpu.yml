@@ -21,4 +21,4 @@ networks:
   hub_gpuinfo_network:
     name: stellars-functest_hub_gpuinfo_network
     labels:
-      duoptimum-hub.network.role: "gpuinfo" # MUST match JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL
+      duoptimum-hub.network.role: "gpuinfo" # MUST match JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO

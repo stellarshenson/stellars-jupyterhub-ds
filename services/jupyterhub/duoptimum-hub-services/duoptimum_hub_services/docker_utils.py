@@ -225,6 +225,27 @@ async def volume_labels_async(volume_name):
     return await loop.run_in_executor(_docker_executor, volume_labels, volume_name)
 
 
+def build_system_volume_rows(specs, description_label_key, read_labels):
+    """Lab Setup system-volume rows from resolved (name, mount, role) specs.
+
+    name '' (volume unresolved this namespace) -> row omitted, never a blank row.
+    description read off description_label_key via read_labels(name) (labels dict
+    or None) - '' when the volume or the label is absent. read_labels injected
+    (volume_labels in prod) so this is pure and unit-testable without docker."""
+    rows = []
+    for name, mount, role in specs:
+        if not name:
+            continue
+        labels = read_labels(name) or {}
+        rows.append({
+            "name": name,
+            "mount": mount,
+            "role": role,
+            "description": labels.get(description_label_key, "") or "",
+        })
+    return rows
+
+
 def resolve_self_mount_volume(destination):
     """The Docker volume name backing a mount inside THIS (hub) container.
 

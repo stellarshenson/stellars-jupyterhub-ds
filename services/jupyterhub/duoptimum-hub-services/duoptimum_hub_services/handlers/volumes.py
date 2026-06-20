@@ -61,6 +61,9 @@ class ManageVolumesHandler(BaseHandler):
         descriptions = {v['suffix']: v.get('description', '') for v in (ui or [])}
         # suffix -> duoptimum-hub.volume.role, so the portal IDs each as a system volume by role
         roles = self.settings['stellars_config'].get('user_volume_roles', {}) or {}
+        # label keys the hub stamped at spawn - read from env-sourced config, never a literal
+        vol_role_key = self.settings['stellars_config'].get('volume_role_label_key', '')
+        vol_desc_key = self.settings['stellars_config'].get('volume_description_label_key', '')
 
         existing = []
         for suffix, template in templates.items():
@@ -78,8 +81,8 @@ class ManageVolumesHandler(BaseHandler):
             existing.append({
                 'suffix': suffix,
                 'name': volume_name,
-                'description': labels.get('duoptimum-hub.volume.description') or descriptions.get(suffix, ''),
-                'role': labels.get('duoptimum-hub.volume.role') or roles.get(suffix, suffix),
+                'description': (labels.get(vol_desc_key) if vol_desc_key else None) or descriptions.get(suffix, ''),
+                'role': (labels.get(vol_role_key) if vol_role_key else None) or roles.get(suffix, suffix),
             })
 
         # Standard shared volume: a policy-controlled row, listed (not resettable)

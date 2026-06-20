@@ -6,12 +6,14 @@ import react from '@vitejs/plugin-react'
 // release (kept in lockstep with the platform via `make increment_version`).
 const pkgVersion = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8')).version
 
-// Build fingerprint: compressed UTC datetime (yymmdd.hhmm) + a short hash of the
+// Build fingerprint: compressed UTC datetime (yymmdd.hhmmZ) + a short hash of the
 // full timestamp, recomputed on every `vite build` (so every docker image build
-// that runs it). Surfaced only as a tooltip on the version line, never permanent.
+// that runs it). The trailing Z marks it UTC unambiguously (the build container
+// runs UTC; without the marker the stamp reads N hours behind a non-UTC wall
+// clock). Surfaced only as a tooltip on the version line, never permanent.
 const _bd = new Date()
 const _p = (n: number) => String(n).padStart(2, '0')
-const _stamp = `${String(_bd.getUTCFullYear()).slice(2)}${_p(_bd.getUTCMonth() + 1)}${_p(_bd.getUTCDate())}.${_p(_bd.getUTCHours())}${_p(_bd.getUTCMinutes())}`
+const _stamp = `${String(_bd.getUTCFullYear()).slice(2)}${_p(_bd.getUTCMonth() + 1)}${_p(_bd.getUTCDate())}.${_p(_bd.getUTCHours())}${_p(_bd.getUTCMinutes())}Z`
 const _iso = _bd.toISOString()
 let _h = 5381
 for (let i = 0; i < _iso.length; i++) _h = ((_h * 33) ^ _iso.charCodeAt(i)) >>> 0

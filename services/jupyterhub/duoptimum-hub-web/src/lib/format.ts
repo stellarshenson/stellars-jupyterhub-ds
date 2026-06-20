@@ -27,6 +27,14 @@ export function timeAgoShort(iso?: string): string {
   return `${now.diff(then, 'year')}y`
 }
 
+// "stopped <when> ago" phrasing for the offline TTL slot. Sub-minute reads
+// "a moment ago" (never the ungrammatical "now ago"); null = "never started".
+export function stoppedAgo(iso?: string | null): string {
+  if (!iso) return 'never started'
+  const short = timeAgoShort(iso)
+  return short === 'now' ? 'stopped a moment ago' : `stopped ${short} ago`
+}
+
 export function exactDate(iso?: string): string {
   if (!iso) return '-'
   return dayjs(iso).format('YYYY-MM-DD HH:mm')

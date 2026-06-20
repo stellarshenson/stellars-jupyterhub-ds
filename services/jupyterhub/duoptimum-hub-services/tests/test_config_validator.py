@@ -30,6 +30,11 @@ def _valid_values(**overrides):
         "docker_proxy_socket_dir": "/var/run/docker-proxy-sockets",
         "docker_proxy_sockets_volume": "duoptimum-hub_hub_docker",
         "user_compose_project_template": "{username}_containers",
+        "volume_description_label_key": "duoptimum-hub.volume.description",
+        "volume_owner_label_key": "duoptimum-hub.volume.owner",
+        "container_description_label_key": "duoptimum-hub.container.description",
+        "docker_proxy_owner_label_key": "duoptimum-hub.docker.proxy.owner",
+        "docker_proxy_owner_label_value": "{username}",
         # optional / resolved-at-runtime (present = no warning)
         "gpuinfo_network_name": "duoptimum-hub_hub_gpuinfo_network",
         "shared_volume_name": "duoptimum-hub_hub_shared",
@@ -74,6 +79,11 @@ class TestRequiredErrors:
             "docker_proxy_socket_dir",
             "docker_proxy_sockets_volume",
             "user_compose_project_template",
+            "volume_description_label_key",
+            "volume_owner_label_key",
+            "container_description_label_key",
+            "docker_proxy_owner_label_key",
+            "docker_proxy_owner_label_value",
         ],
     )
     def test_missing_required_is_error(self, key):
@@ -118,6 +128,11 @@ class TestConsistencyErrors:
         result = validate_hub_config(_valid_values(user_compose_project_template="containers"))
         assert not result.ok
         assert any("per-user docker compose" in e for e in result.errors)
+
+    def test_proxy_owner_value_without_username_is_error(self):
+        result = validate_hub_config(_valid_values(docker_proxy_owner_label_value="owner"))
+        assert not result.ok
+        assert any("{username}" in e for e in result.errors)
 
 
 class TestWarnings:

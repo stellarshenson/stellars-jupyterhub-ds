@@ -48,8 +48,8 @@ def make_pre_spawn_hook(
     api_keys_reconcile_interval=0,
     shared_volume_name='',
     volume_role_label_key='',
-    volume_owner_label_key='duoptimum-hub.volume.owner',
-    volume_description_label_key='duoptimum-hub.volume.description',
+    volume_owner_label_key='',
+    volume_description_label_key='',
     user_volume_label_templates=None,
 ):
     """Create a pre_spawn_hook closure capturing branding + the apply context.
