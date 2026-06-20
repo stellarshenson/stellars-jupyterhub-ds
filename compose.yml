@@ -11,23 +11,15 @@ services:
   traefik:
     image: traefik:latest
     container_name: ${COMPOSE_PROJECT_NAME:-duoptimum-hub}-traefik
-    # =====================================================================
-    #  TRAEFIK DASHBOARD (/traefik on 443) - OPEN by default.
-    #  CLOSE it: set TRAEFIK_DASHBOARD_ENABLED=false in .env (or the shell),
-    #  NOT in a service environment block - compose interpolates ${...} in
-    #  labels from .env/shell at parse time, not from container env.
-    #  The toggle gates the dashboard ROUTER (traefik.enable below): with no
-    #  route, the built-in api@internal has no entrypoint, so UI AND API
-    #  both 404. NOTE: --api.dashboard=false would hide only the UI and leave
-    #  /traefik/api/* open - so we gate the route, not that flag.
-    # =====================================================================
+    # Dashboard at /traefik on 443, open by default. Close: TRAEFIK_DASHBOARD_ENABLED=false in .env
+    # (NOT a container env - labels interpolate ${...} at parse time). Toggle gates the ROUTER below
+    # (traefik.enable); no route -> api@internal unreachable -> UI+API 404. --api.dashboard=false
+    # would hide only the UI, leaving /traefik/api open.
     command:
       - "--entrypoints.websecure.address=:443"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      # NAMESPACE isolation: only read labels from THIS deployment's project. Without it the
-      # docker provider scans the whole host daemon, so another stack's enabled /traefik router
-      # (api@internal) would be served here even with our toggle off - leaking the dashboard.
+      # NAMESPACE isolation: only read labels from THIS deployment's project. 
       - "--providers.docker.constraints=Label(`com.docker.compose.project`,`${COMPOSE_PROJECT_NAME:-duoptimum-hub}`)"
       - "--providers.file.directory=/certs" # load any *.yml here
       - "--providers.file.watch=true" # hot-reload on cert regen
@@ -100,6 +92,7 @@ services:
       - JUPYTERHUB_LOGIN_LOCKOUT_SECONDS=600 # lockout window after fails
 
       # === HUB: branding ===
+      - JUPYTERHUB_HUB_NAME=DuOptimum Hub # portal display name: brand-icon tooltip + login/signup text
       - JUPYTERHUB_BRANDING_STAGE= # stage badge: DEV/STG/TST/PRD or text, empty=none
       - JUPYTERHUB_BRANDING_LOGO_URI= # logo URI (file:// or http(s)://)
       - JUPYTERHUB_BRANDING_FAVICON_URI= # favicon URI (file:// or http(s)://)

@@ -205,8 +205,9 @@ export interface ResourceSnapshot {
 
 export interface SessionInfo {
   timeLeftMin: number
-  baseMin: number // base timeout - the bar's 100% reference (fresh session reads ~full)
+  baseMin: number // base timeout - the bar's 100% reference below base (fresh session reads ~full)
   maxAddHours: number // hours still addable (gap to the ceiling) - for the extend control
+  displayCeilingMin?: number // banked-time high-water mark (remaining last extended TO); the bar's 100% reference while above base
 }
 
 export interface ServerHero {

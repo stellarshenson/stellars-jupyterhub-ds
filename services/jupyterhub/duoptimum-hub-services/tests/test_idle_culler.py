@@ -17,6 +17,7 @@ from duoptimum_hub_services.idle_culler import (
     calc_ceiling,
     calc_extended_remaining,
     calc_progress_pct,
+    calc_progress_pct_extended,
     calc_remaining,
     remaining_seconds_for,
     should_cull,
@@ -117,6 +118,36 @@ def test_calc_progress_pct_pinned_full_while_extended():
     # Drains from ceiling (72h) down to base (24h): bar stays pinned at 100%.
     for remaining in range(BASE, CEILING + 1, 6 * H):
         assert calc_progress_pct(remaining, BASE) == 100.0
+
+
+# ── calc_progress_pct_extended: high-water-mark scale (the React portal bar) ──
+
+@pytest.mark.parametrize("remaining, ceiling, expected", [
+    (BASE, None, 100.0),               # fresh, never extended -> base scale, full
+    (BASE // 2, None, 50.0),           # 12h of 24h, no ceiling -> base scale, half
+    (36 * H, 36 * H, 100.0),           # just extended to 36h (HWM 36h) -> full, NOT 50%
+    (30 * H, 36 * H, pytest.approx(83.33, abs=0.01)),  # banked, draining against HWM
+    (25 * H, 36 * H, pytest.approx(69.44, abs=0.01)),  # just above base, HWM scale
+    (CEILING, CEILING, 100.0),         # extended to absolute ceiling (72h) -> full
+    (23 * H, 36 * H, pytest.approx(95.83, abs=0.01)),  # below base -> rescales to base
+    (BASE, 36 * H, 100.0),             # exactly base -> base scale, full (crossover snap)
+])
+def test_calc_progress_pct_extended_matrix(remaining, ceiling, expected):
+    assert calc_progress_pct_extended(remaining, BASE, ceiling) == expected
+
+
+def test_calc_progress_pct_extended_drains_against_hwm_not_absolute_ceiling():
+    # The regression: a 35h session must NOT read ~50% by measuring against the 72h
+    # absolute ceiling. With its high-water mark (35h) it reads 100% on extend and
+    # drains against 35h, never the far ceiling.
+    hwm = 35 * H
+    assert calc_progress_pct_extended(hwm, BASE, hwm) == 100.0
+    # the buggy absolute-ceiling math would have read ~48.6% (the reported "50%")
+    assert round(35 * H / CEILING * 100, 1) == 48.6
+
+
+def test_calc_progress_pct_extended_zero_base():
+    assert calc_progress_pct_extended(BASE, 0, None) == 0.0
 
 
 # ── calc_extended_remaining: add hours, cap at ceiling, "max means max" ─────

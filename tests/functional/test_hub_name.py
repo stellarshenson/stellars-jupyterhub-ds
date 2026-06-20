@@ -2,7 +2,7 @@
 portal logo tooltip (title) and as the login/signup screen text.
 
 The functest hub sets JUPYTERHUB_HUB_NAME="Functest Hub Name" (compose.functional.yml);
-the shipped default is "Duoptimum Hub" (baked in Dockerfile.jupyterhub). These tests
+the shipped default is "DuOptimum Hub" (baked in Dockerfile.jupyterhub). These tests
 assert the configured value reaches both surfaces - logged-out (login screen) and
 logged-in (logo tooltip).
 """

@@ -569,11 +569,12 @@ export const liveSource: DataSource = {
 
   async getSessionInfo(user: string): Promise<SessionInfo> {
     try {
-      const r = await hubGet<{ time_remaining_seconds?: number | null; timeout_seconds?: number; max_extension_hours?: number; extensions_available_hours?: number }>(`/users/${encodeURIComponent(user)}/session-info`)
+      const r = await hubGet<{ time_remaining_seconds?: number | null; timeout_seconds?: number; max_extension_hours?: number; extensions_available_hours?: number; display_ceiling_seconds?: number | null }>(`/users/${encodeURIComponent(user)}/session-info`)
       return {
         timeLeftMin: r.time_remaining_seconds != null ? Math.round(r.time_remaining_seconds / 60) : 0,
         baseMin: r.timeout_seconds != null ? Math.round(r.timeout_seconds / 60) : 0,
         maxAddHours: r.extensions_available_hours ?? r.max_extension_hours ?? 0,
+        displayCeilingMin: r.display_ceiling_seconds != null ? Math.round(r.display_ceiling_seconds / 60) : undefined,
       }
     } catch {
       // never fabricate a TTL: with no real backend value the gadget shows an empty

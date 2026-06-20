@@ -16,6 +16,7 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
 - [DEF-10: Functest leaks spawned lab containers](#def-10-functest-leaks-spawned-lab-containers) - fixed
 - [DEF-11: Functional UI tests brittle on new frontend](#def-11-functional-ui-tests-brittle-on-new-frontend) - fixed
 - [DEF-12: Live hub 504 Gateway Timeout via Traefik](#def-12-live-hub-504-gateway-timeout-via-traefik) - fixed
+- [DEF-13: TTL bar scaled to absolute ceiling (35h reads 50%)](#def-13-ttl-bar-scaled-to-absolute-ceiling-35h-reads-50) - fixed
 
 ## Open
 
@@ -118,3 +119,12 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
   - log: 2026-06-20 fix: `traefik.docker.network` label pins the backend to hub_network; redeploy (compose-only, no rebuild)
   - log: 2026-06-20 VERIFIED: curl + Playwright real-browser through traefik 200 (`/hub/login` "Sign in - Duoptimum Hub", `/` -> login redirect); was a 10s timeout
   - ref: task #362; DEF/#366 network rename
+
+### DEF-13: TTL bar scaled to absolute ceiling (35h reads 50%)
+
+- [x] **MEDIUM** - the React TTL bar measured banked time against the absolute ceiling (`base + max_extension` = 72h), so a session extended to 35h read ~48.6% the instant it was extended; the glow/blur also read as broken because the bar SHRANK on extend, and the slider defaulted to the (shifting) maximum instead of a stable recommendation; fix: measure against the backend-stored high-water mark `display_ceiling`, default the slider to +4h, restore the glow; `meters.tsx`, `session.py`, `idle_culler.py`, `global.css`, `config.ts`, `types.ts`, `liveSource.ts`
+  - log: 2026-06-20 reported (operator: "extended to 35h, slider at 50%, 35h didn't become 100%"; "doesn't glow when grows"; "blur invisible"; "recommended extra sometimes max, sometimes 11h")
+  - log: 2026-06-20 root cause: `pctFor` used `ceilingMin = timeLeft + maxAddHours*60` = the invariant 72h absolute ceiling, so banked % = remaining/72h; glow played on a shrinking bar; `useState(maxH)` defaulted the slider to the (shrinking) max; a reduced-motion guard had begun suppressing the pulse
+  - log: 2026-06-20 fix: backend stores `display_ceiling` (remaining last extended TO) at extend and returns `display_ceiling_seconds`; bar measures against it (SSOT `calc_progress_pct_extended`, unit-tested); slider default +4h; colour gradual by % of base (`TTL_COLOR`); glow/blur ramp configurable (`ttlGlowMs`) + reduced-motion suppression removed; bar tooltip adds %, +h over standard, cull ETA
+  - log: 2026-06-20 VERIFIED: 71 idle-culler unit tests pass; functional test + live check (below)
+  - ref: task #363; acc-crit "TTL progress bar behaviour matrix" + "TTL extend bar animation"

@@ -23,7 +23,7 @@ export function adminUser(): string {
  * or an empty env value). */
 export function hubName(): string {
   const d = typeof window !== 'undefined' ? window.jhdata : undefined
-  return d?.hub_name || 'Duoptimum Hub'
+  return d?.hub_name || 'DuOptimum Hub'
 }
 
 /** Effective admin: the persistent admin flag OR the platform admin username.

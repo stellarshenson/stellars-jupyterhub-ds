@@ -34,12 +34,15 @@ Cross-document conflicts found during consolidation are tracked in [concerns.md]
 - [Group-Gated File Downloads](#group-gated-file-downloads)
 - [group policy import/export bundle shape](#group-policy-importexport-bundle-shape)
 - [Unified Group Policy Model](#unified-group-policy-model)
+- [Group delete confirmation](#group-delete-confirmation)
 - [Group Sudo Access Control](#group-sudo-access-control)
+- [Group volume mounts](#group-volume-mounts)
 - [Hub connectivity indicator (offline detection)](#hub-connectivity-indicator-offline-detection)
 - [Label capitalisation (Title Case)](#label-capitalisation-title-case)
 - [live data honesty (no mock masquerade)](#live-data-honesty-no-mock-masquerade)
 - [Mobile Responsive Portal](#mobile-responsive-portal)
 - [Navigation patterns (edit pages -> parent + breadcrumbs)](#navigation-patterns-edit-pages---parent-breadcrumbs)
+- [Notifications history range and clear](#notifications-history-range-and-clear)
 - [old portal cleanup](#old-portal-cleanup)
 - [Portal UI Polish (2026-06-17 session)](#portal-ui-polish-2026-06-17-session)
 - [profile name display](#profile-name-display)
@@ -57,6 +60,7 @@ Cross-document conflicts found during consolidation are tracked in [concerns.md]
 - [Servers resource cells](#servers-resource-cells)
 - [dedicated Start-server page with live container-log feed](#dedicated-start-server-page-with-live-container-log-feed)
 - [startup hydration](#startup-hydration)
+- [Stopped-server stopped-ago readout](#stopped-server-stopped-ago-readout)
 - [TTL extend bar animation](#ttl-extend-bar-animation)
 - [TTL progress bar behaviour matrix](#ttl-progress-bar-behaviour-matrix)
 - ["Upgrade available" pill](#upgrade-available-pill)
@@ -798,8 +802,12 @@ The portal's visual conventions, applied consistently across every screen. `[x]`
   - log: 2026-06-17 verified (Icon.tsx filled=false default -> stroke)
 - [x] **Tones** - primary (blue, active/go-to), secondary (gray, neutral), dangerous (red, destructive), warning (yellow, caution)
   - log: 2026-06-17 verified (IconAction tone prop; demoed on /design-language)
-- [x] **List icons wireframe; non-list filled** - list/table action icons stay wireframe (fill only for emphasis e.g. stop); non-list/button icons use the filled glyph when one is available
+- [x] **List icons wireframe; non-list filled** - list/table action icons stay wireframe (fill only for emphasis e.g. stop); non-list/button icons use the filled glyph when one is available, and stay wireframe when no fill exists (e.g. the open warning/caution glyph)
   - log: 2026-06-17 documented + demoed (design-language: non-list filled row + list wireframe row + note)
+  - log: 2026-06-20 operator "filled if a fill exists" - confirmed; warning/caution non-list icon stays open/wireframe (no filled glyph)
+- [x] **Filled icons carry a contrastive stroke** - a filled (solid) glyph also draws a same-hue stroke darkened ~55% (`color-mix(in srgb, currentColor, black 55%)`, `strokeWidth 1`); on complicated shapes (disk, box, gpu) this reveals the contours instead of a flat single-colour blob
+  - log: 2026-06-20 operator "complicated filled icons need contrastive stroke colour" - `Icon.tsx` filled branch; demoed on /design-language
+  - log: 2026-06-20 operator "more contrast please" - darkened the stroke mix 38% -> 55% black
 
 ### Text colours
 
@@ -881,6 +889,34 @@ The group-policy Docker section's enable toggle means "docker access granted". T
   - log: 2026-06-17 `dPriv` unchanged
 - [ ] **Runtime: edit + save round-trips** - on the live hub, a group with docker enabled saves as limited (or standard) and re-opens to the same mode
   - log: 2026-06-17 frontend + build clean; on-screen confirm pends operator rebuild
+
+## Group volume mounts
+
+Per-group Volume Mounts has two parts: (1) grant access to the standard shared volume(s) - for now a single fixed row - and (2) a section to add and grant access to more. The standard shared volume is prepopulated with a fixed name and mountpoint (`/mnt/shared`); the admin can deny it or grant it at an access level, and the hub resolves it by label (`duoptimum-hub.volume.role=shared`) at spawn rather than from a saved name, so a volume rename never strands a group on a stale mount. Additional mounts are fully configurable (arbitrary volume name + mountpoint). Every grant - standard or custom - carries a per-volume access level: Read (`ro`) or Read-Write (`rw`).
+
+- [ ] **Standard row prepopulated** - the Volume Mounts section always lists the standard shared volume as the first row, before any custom mounts
+  - log: 2026-06-20 requirement added (new)
+- [ ] **Standard is fixed** - the standard row's volume name and mountpoint (`/mnt/shared`) are not editable; the only controls are an allow/deny toggle and the access-level selector (Read / Read-Write) per group
+  - log: 2026-06-20 requirement added (new)
+  - log: 2026-06-20 added the access-level control (operator: grant must define Read vs Read-Write)
+- [ ] **Access level per volume** - every granted volume (standard and custom) carries an access level - Read (`ro`) or Read-Write (`rw`) - selected per volume; the hub applies it as the Docker mount mode (`{'bind': mountpoint, 'mode': 'ro'|'rw'}`), default Read-Write
+  - log: 2026-06-20 requirement added (operator "grant access - needs to define access level: Read, Read-Write, volume level")
+- [ ] **Standard resolved by label, not by saved name** - the group config stores only the allow flag for the standard mount; at spawn the hub resolves the role=shared volume fresh and mounts it at the fixed mountpoint, so a volume rename never strands a group on a stale name
+  - log: 2026-06-20 requirement added (new)
+- [ ] **Additional mounts fully configurable** - below the standard row the admin can add more mounts with arbitrary volume name + mountpoint + access level (Read / Read-Write), validated as today (no duplicate mountpoint, no duplicate volume)
+  - log: 2026-06-20 requirement added (new); 2026-06-20 access level added per volume
+- [ ] **Custom cannot shadow the standard** - a custom mount may not reuse the standard mountpoint (`/mnt/shared`) or the standard volume name; the standard row wins, the custom entry is rejected
+  - log: 2026-06-20 requirement added (new)
+- [ ] **Lab Manage Volumes shows shared as policy-controlled** - the per-user Manage Volumes (lab) page lists the standard shared volume as a standard volume row marked policy-controlled - the user sees `/mnt/shared` exists but cannot reset it; its presence is governed by group policy, not the user
+  - log: 2026-06-20 requirement added (new)
+- [ ] **Migration of stale literals** - existing group configs carrying the old literal shared-volume name as a custom mount (e.g. `stellars-tech-ai-lab_jupyterhub_shared`) are recognised and folded into the standard allow toggle, so the stale name stops being mounted
+  - log: 2026-06-20 requirement added (new); motivating live bug: konrad.jelen mounted the stale name
+- [ ] **Edge: standard volume absent** - label discovery returns empty (no role=shared volume) -> the standard row shows unavailable / disabled, allow has no effect, spawn skips it with a warning, never auto-creating a stale volume
+  - log: 2026-06-20 requirement added (new)
+- [ ] **Edge: allowed via multiple groups** - the standard mount is applied once even when several of the user's groups allow it
+  - log: 2026-06-20 requirement added (new)
+- [ ] **Edge: toggle off / leave group** - turning the standard off (or leaving the granting group) unmounts `/mnt/shared` on the next spawn, matching the existing pop-last-keys unmount behaviour
+  - log: 2026-06-20 requirement added (new)
 
 ## drop the `/portal` URL segment
 
@@ -3011,10 +3047,22 @@ Starting or restarting another user's server from the Servers widget or list mus
   - log: 2026-06-17 criterion added (#243)
 - [x] **Background monitor + immediate refresh on ready** - the existing `runOp`/`pollUntil` monitor drives the start too; the row flips to active immediately when the server is up (reuse the start op, add a `start` mode to the lifecycle busy map)
   - log: 2026-06-17 criterion added (#243)
-- [x] **Self-start unchanged** - a user starting their OWN server keeps the start page (this only changes starting someone ELSE's server); confirm the self path still shows progress
+- [x] **Self-start from list/widget - SUPERSEDED by #346** - was: own start keeps the start page even from the list/widget; now own start from the Servers list/widget backgrounds like another user's, and only the home `ServerHero` keeps the foreground start page
   - log: 2026-06-17 criterion added (#243) - clarify scope vs the dedicated start page
+  - log: 2026-06-20 SUPERSEDED by #346 - own start from list/widget now backgrounds (see the #346 subsection below)
 - [ ] **Reflected in the design language** - the "admin start = inline spinner, not a nav" cue is on /design-language
   - log: 2026-06-17 criterion added (#252)
+
+### Own server starts in the background from the Servers list/widget too (#346)
+
+Starting your OWN server from the Servers list or the Home "Active servers" widget starts it in the BACKGROUND (inline spinner, no navigation) - identical to another user's server. Only the home `ServerHero` Start control keeps the foreground navigation to the dedicated Start-server page.
+
+- [x] **List/widget own start = background** - the play button for your own offline server in the Servers list and the Home widget calls `lf.start(user)` (inline spinner + background monitor), never navigates to `/servers/{user}/starting`
+  - log: 2026-06-20 implemented (#346) - `rowActions` (`ServerRowActions.tsx`) drops the `r.user === me ? nav(...)` branch; both surfaces share `rowActions`, so they behave identically
+- [x] **ServerHero unchanged** - the home hero's Start button still navigates to the foreground Start-server page (progress + log tail)
+  - log: 2026-06-20 `ServerHero.tsx` start control untouched
+- [ ] **Runtime confirm** - on the live hub, starting your own server from the list/widget shows the inline play spinner and flips to active without leaving the page
+  - log: 2026-06-20 code + tsc/eslint clean; on-screen confirm pends rebuild
 
 ## server status immediacy
 
@@ -3445,10 +3493,11 @@ Extending the idle-session TTL must move the progress bar immediately on click a
 
 - [x] **Immediate animate to target** - on Extend the bar starts moving on click (optimistic boost) toward the post-extend target %, not 2-3s later
   - log: 2026-06-17 `TtlGadget.apply` sets boost synchronously; `meters.tsx`
-- [x] **Target = computed post-extend %, not 100%** - the boost target is `pctFor(min(ceiling, timeLeft + addedHours))` through the same two-phase formula (base scale below base, ceiling scale when extended), NOT a hard-coded 100%; so an already-extended session animates to its true partial % and never overshoots to full
-  - log: 2026-06-18 FIXED - was `shownPct = boost ? 100 : pct`; overshot to 100% then snapped down to the real ceiling-scaled % (operator: 56h +7h animated to 100% then flickered to 63h). Now `boostPct` captured at click from the optimistic remaining against the invariant ceiling
-- [x] **No snap-back on settle** - because the ceiling is invariant across an extend, the optimistic target equals the refetched %, so when the value lands the bar is already there (no visible jump)
-  - log: 2026-06-18 added with the target-% fix
+- [x] **Target = post-extend % vs the new mark** - boost target `pctFor(targetMin, targetMin)` where `targetMin = timeLeft + addedHours`: a banked extend lands at 100% (remaining equals its own new high-water mark), a still-sub-base extend fills toward base; never a momentary 100%-then-drop
+  - log: 2026-06-18 first fixed an overshoot-to-100%-then-snap by capturing boostPct against the (then) invariant absolute ceiling
+  - log: 2026-06-20 DEF-13 - boost now measures against the NEW high-water mark the extend creates (backend stores it as `display_ceiling`), so optimistic == landed
+- [x] **No snap-back on settle** - the backend stores the same mark the boost targeted, so the optimistic % equals the refetched %; when the value lands the bar is already there (no visible jump)
+  - log: 2026-06-18 added with the target-% fix; 2026-06-20 holds under the high-water-mark model
 - [x] **Hold until refetch** - the boost (bar held at the target) holds until the refetched `timeLeftMin` actually changes, so the bar never snaps back to the old value mid-flight
   - log: 2026-06-17 was a fixed 1s timer that fired before the 2-3s refetch; now gated on the value landing
 - [x] **Minimum fill window** - the boost lasts at least `ANIMATION.ttlExtendMs` so the growth is always visible even if the refetch is fast
@@ -3462,41 +3511,61 @@ Extending the idle-session TTL must move the progress bar immediately on click a
   - log: 2026-06-17 `.catch(() => setBoost(false))`
 - [x] **Edge: value never changes** - a safety cap (`ttlExtendMs + 6s`) ends the boost so it can never stick
   - log: 2026-06-17 safety timeout in `apply`
-- [x] **Edge: extend across the base crossover** - extending a session from below base up past base animates to the post-extend ceiling-scaled % (a one-time scale-switch drop is the operator-chosen two-phase model, not the bug); within the banked regime (both endpoints > base) the bar grows monotonically
-  - log: 2026-06-18 documented - the target-% boost makes the crossover land on the true % with no overshoot
+- [x] **Edge: extend across the base crossover** - extending from below base up past base sets a new high-water mark = the post-extend remaining, so the bar grows to 100% at that mark; no scale-switch drop
+  - log: 2026-06-20 DEF-13 - the old absolute-ceiling model dropped the bar on crossover; the high-water-mark model lands at 100%
 - [x] **Counter always shows minutes** - the TTL readout never collapses to a bare hour ("4h"); it always renders the minute component ("4h 0m"), in the hero gadget and every TTL cell/metric (Home/Servers tables, Servers "Time left")
   - log: 2026-06-20 `fmtMinutes` drops the `m ? ... : ...` branch in `lib/format.ts`, `services/hub/liveSource.ts`, `services/mockSource.ts`
-- [x] **Counter blurs + glows on extend** - during the boost the time readout (`.doh-ttl-val`) gets the same accent glow as the bar plus a slight blur, so the climbing number reads as moving
-  - log: 2026-06-20 `doh-ttl-boost` now added to the counter span; `@keyframes doh-ttl-val-pulse` (`meters.tsx`, `global.css`)
-- [x] **Blur/glow ramps up and down** - the blur and glow ramp from zero to peak at mid-animation and back to zero by the end, over the same `--doh-ttl-anim` window as the fill; filter endpoints are explicit zero values (`blur(0)` / transparent shadow) so they interpolate smoothly rather than snap
-  - log: 2026-06-20 `doh-ttl-val-pulse` 0/50/100% envelope
-- [x] **Effect is extend-only** - the blur/glow fires only while `doh-ttl-boost` is set (an extend in flight) and clears when the new value lands; a normal per-minute countdown tick never triggers it
+- [x] **Bar glows on extend; counter blurs (no counter glow)** - during the boost the bar (`.doh-ttl-bar`) gets a bright tint glow over its fill; the time readout (`.doh-ttl-val`) does NOT glow - it only blurs .75px at the peak
+  - log: 2026-06-20 first the counter blurred + glowed (`doh-ttl-val-pulse`); operator "no blur visible" / "counter needs glow" - dropped the blur, both shared the glow-only `doh-ttl-pulse`
+  - log: 2026-06-20 reversed after visual calibration (operator "no counter glow" + "0.75 blur on the counter is also perfect"): bar keeps the glow, counter is blur-only at .75px (`doh-ttl-blur` peak)
+- [x] **Glow is a bright tint over the fill (no drop-shadow)** - the bar glow is a tint layer (`.doh-ttl-bar.doh-ttl-boost::after`) in the bar's own tone brightened toward white (`color-mix(in srgb, currentColor, white 60%)`), painted OVER the antd fill (`z-index: 2`), ramping opacity 0 -> 50% -> 0; no `box-shadow`/`drop-shadow`
+  - log: 2026-06-20 operator "glow either invisible or same colour as std; needs to be much brighter and semi-transparent" - was `drop-shadow(... var(--color-accent))` (same as the fill)
+  - log: 2026-06-20 replaced the drop-shadow halo with a tint overlay (operator "no shadows ... not in the ttl"), then brightened it (operator "more white, brighter") to a 60% white mix; the old `--doh-ttl-glow-color` var is gone
+- [x] **Standard colour slightly darker** - the standard bar + counter blue is `--doh-ttl-blue` = the accent darkened ~16%, so the bright glow stands out against it
+  - log: 2026-06-20 operator "make the standard colour slightly darker"; `ttlTone` blue anchor -> `--doh-ttl-blue`
+- [x] **Glow ramps up and down** - the bar glow ramps opacity from 0 to peak (50% at the 45% mark) and back to 0 over the GLOW window (`--doh-ttl-glow`), independent of the bar-fill window (`@keyframes doh-ttl-glow`)
+  - log: 2026-06-20 `doh-ttl-pulse` 0/45/100% envelope on `--doh-ttl-glow`
+  - log: 2026-06-20 drop-shadow envelope replaced by an opacity envelope on the tint overlay
+- [x] **Glow ramp time configurable** - the pulse duration is `ANIMATION.ttlGlowMs` (`config.ts`, default 1200ms), threaded to CSS via `--doh-ttl-glow`, tunable apart from the bar-fill duration
+  - log: 2026-06-20 operator: "configure the ramp up and ramp down time for glow"
+- [x] **Effect is extend-only** - the glow fires only while `doh-ttl-boost` is set (an extend in flight) and clears when the new value lands; a normal per-minute countdown tick never triggers it
   - log: 2026-06-20 boost state drives the class; confirmed with operator
-- [x] **Bar glow scoped, not doubled** - the bar keeps its accent glow on extend, now scoped to `.doh-ttl-bar.doh-ttl-boost` so it does not also apply the counter's blur pulse
-  - log: 2026-06-20 split `doh-ttl-pulse` (bar) from `doh-ttl-val-pulse` (counter)
-- [x] **Edge: reduced motion** - under `prefers-reduced-motion: reduce` both the bar and counter pulses are disabled (`animation: none`); the value still updates, without blur/glow
-  - log: 2026-06-20 added to the existing reduced-motion block in `global.css`
+- [x] **Glow visible (not killed by reduced motion)** - the extend glow plays for everyone; the reduced-motion guard that disabled the boost is removed (operator wants the cue)
+  - log: 2026-06-20 operator "the blur is invisible" / "doesn't glow when grows" - three causes: (1) reduced-motion guard suppressed the boost; (2) the absolute-ceiling scaling made the bar SHRINK on extend; (3) the glow used the same colour as the bar. All fixed: guard removed, high-water-mark scaling makes the bar GROW, glow recoloured bright + distinct
+- [x] **Glow/blur calibration on /design-language** - a static calibration row shows the counter at stepped blur and the bar at stepped glow opacity, so the colours and amounts can be tuned by eye
+  - log: 2026-06-20 operator "show static bar and counter at different steps of blur and glow ... so we can calibrate"
+  - log: 2026-06-20 retuned to opacity/blur steps (was px glow radii); dropped the counter-glow row after the no-counter-glow decision
 
 ## TTL progress bar behaviour matrix
 
-The idle-session TTL bar (`TtlGadget`, `components/meters.tsx`) reads ~100% when time is ample and drains as the session is used, shifting blue -> orange -> red as the cull nears; the used-up remainder is the gray trail. Extend opens a popover to type the hours to add, capped at the configured ceiling. A fresh session reads ~100% and drains; an EXTENDED session (time banked above base) drains against the extension ceiling (base + max_extension) so the user sees it running out, then rescales to full at the standard baseline. Verified against the code 2026-06-17, warn threshold = 60 min (`THRESHOLDS.timeLeftWarnMin`).
+The idle-session TTL bar (`TtlGadget`, `components/meters.tsx`) reads ~100% when time is ample and drains as the cull nears, the used-up remainder showing as the gray trail. The bar's 100% reference is two-phase: below the standard TTL (base) it measures against base, so a fresh or active session reads full; banked above base it measures against the **high-water mark** the session was last extended TO (`display_ceiling`, stored by the backend at extend), so a just-extended session reads 100% and the banked time visibly drains against THAT mark - never the far absolute ceiling. Colour is keyed separately to the % of the standard TTL (base) remaining and blends gradually from blue. SSOT for the fill model: `idle_culler.calc_progress_pct_extended`, mirrored verbatim in `TtlGadget.pctFor`. Verified against the code 2026-06-20.
+
+The previous model measured the extended bar against the absolute ceiling (`base + max_extension`), so a 35h session of a 72h ceiling read ~50% the instant it was extended - the operator-reported regression. See DEF-13.
 
 ### Rules (verified in meters.tsx)
 
 - [x] **No flicker / width change at max** - the bar renders identically at 99% and 100%; reaching max must NOT flicker or read a different length
   - log: 2026-06-18 BUG (operator: "ttl max has different length than almost max ... flickers and is little wider") - first suspected antd `Progress` auto-success at `percent>=100` and pinned `status="normal"` as hardening, but a Playwright measurement on `/design-language` DISPROVED it. ROOT CAUSE is layout: the bar is `flex:1` beside the time label, and the label width varies with the text ("4h" = 37.3px vs "3h 58m" = 73.5px), so the flex bar absorbed the exact 36px delta - widest at the round max value, jittering every minute as the label length changed. FIXED by giving `.oh-ttl-val` a fixed `min-width: 84px` (right-aligned, tabular-nums); re-measured both the 99% and 100% bars at an identical 139px. `status="normal"` kept as a minor hardening
-- [x] **Two-phase pct** - below base: `min(100, timeLeft/base)`; extended (timeLeft > base): `timeLeft / ceiling` where `ceiling = timeLeft + maxAddHours*60` (= base + max_extension), so the extended bar drains instead of pinning at 100%
-  - log: 2026-06-17 reworked (operator: extended must visibly drain) - was `min(100, timeLeft/base)` capped
+- [x] **Counter left-pinned in a fixed slot** - layout is `[bar fixed width] [counter |< left-aligned in its slot]`: the counter slot keeps its fixed `min-width` (bar width stays stable) but is LEFT-aligned, so the clock icon + left edge stay put as the number's width changes; only the number's right side varies, into the reserved slot
+  - log: 2026-06-20 operator: "the clock icon and left part of counter changes position"; `.doh-ttl-val` `justify-content` flex-end -> flex-start
+- [x] **Two-phase pct (high-water mark)** - below base: `min(100, timeLeft/base)`; banked (timeLeft > base): `timeLeft / displayCeiling` where `displayCeiling` = the remaining last extended TO, so a just-extended session reads 100% and drains against that mark, NOT the absolute ceiling
+  - log: 2026-06-17 first reworked to drain against the absolute ceiling (operator: extended must visibly drain)
+  - log: 2026-06-20 DEF-13 FIXED - the absolute ceiling read 35h of 72h as ~50%; now the bar measures against the backend-stored high-water mark `display_ceiling` (`session.py` stores it at extend, `session-info` returns `display_ceiling_seconds`); SSOT `calc_progress_pct_extended`
 - [x] **Rescale to base at the baseline** - the moment timeLeft falls to base the scale switches to base (full again), then drains normally below; a visible snap-to-full at the baseline crossover (operator-chosen model)
-  - log: 2026-06-17 implemented (meters.tsx ceilingMin branch)
-- [x] **Colour bands** - danger (red) at `timeLeftMin <= 20` (warn/3); warning (amber) at `<= 60`; accent (blue) above
-  - log: 2026-06-17 verified (color ternary, warn=60)
+  - log: 2026-06-17 implemented; 2026-06-20 unchanged - the mark is ignored once `timeLeft <= base`
+- [x] **Colour: gradual, by % of base left** - colour keyed to `timeLeft/base` (the standard TTL fraction), NOT the bar scale and NOT absolute minutes: full blue at/above `warnFrac` (30%), blending blue -> amber down to `dangerFrac` (10%, full amber), then amber -> red to empty; banked time (fraction > 1) reads full blue
+  - log: 2026-06-17 first a 3-band step (red <=20m, amber <=60m, blue above)
+  - log: 2026-06-20 operator: gradual blend keyed to % of standard TTL - red <10% base, amber <30% base, blue above, blending continuously; `meters.ttlTone` via `color-mix`; thresholds in `config.ts` `TTL_COLOR` (visual-only)
 - [x] **Readout matches the bar tone** - the remaining-time text and the clock icon take the SAME colour the bar shows at that moment (accent / warning / danger), driven by one shared `barTone` so the readout and the bar can never disagree
   - log: 2026-06-18 added (operator: "time and clock icon -> use the same colour that the ttl progressbar has at the same time"); `barTone` set on `.oh-ttl-val` (icon inherits via currentColor) and the time `<b>` (overrides the `.oh-ttl-val b` text-colour rule); colour transitions over .4s
 - [x] **Readout follows the boost** - during an extend boost the bar is forced accent; the readout is too (same `barTone`), so the whole gadget reads accent while the optimistic fill plays
   - log: 2026-06-18 `barTone = boost ? accent : color`, the exact strokeColor expression
-- [x] **Extend = hours input** - Extend opens a popover with an InputNumber (min 1, max = round(maxAddHours)); apply clamps and calls onExtend
-  - log: 2026-06-17 verified (Popover + InputNumber + apply clamp)
+- [x] **Extend = hours slider** - Extend opens a popover with an hours Slider (min 1, max = round(maxAddHours), last tick "max"); apply clamps and calls onExtend
+  - log: 2026-06-17 verified (Popover + Slider + apply clamp)
+- [x] **Slider default = stable +4h** - the slider defaults to +4h (clamped to available), a steady recommendation - NOT the maximum
+  - log: 2026-06-20 operator ("recommended extra should be +4h, changeable to max ... sometimes max, sometimes 11h wtf"): default was `useState(maxH)` (always the max, which shrinks as time banks); now `useState(min(4, maxH))` (`RECOMMENDED_ADD_H`)
+- [x] **Bar tooltip (native, two lines)** - hovering the bar shows fill %, hours banked over the standard TTL (only when extended), and the wall-clock ETA the server is culled if left idle
+  - log: 2026-06-20 operator: "show %, how much over standard (+h), ETA cull, two lines"; `barTip` in `meters.tsx` (line 1 `Idle timer - {pct}% left[ · +{X}h over standard TTL]`, line 2 `Auto-stops ~{day HH:MM} if left idle`); `\n` two-line native title
 - [x] **At ceiling disables Extend** - `atCeiling = maxAddHours <= 0` -> Extend button disabled
   - log: 2026-06-17 verified (atCeiling)
 - [x] **Hidden when stopped** - the gadget is only rendered for a running server
@@ -3506,20 +3575,39 @@ The idle-session TTL bar (`TtlGadget`, `components/meters.tsx`) reads ~100% when
 
 Each row is demonstrated live on `/design-language` (TTL behaviour matrix row).
 
-- [x] **Full** - timeLeft 240, maxAdd 12 -> pct 100, blue, Extend enabled (max 12h)
-  - log: 2026-06-17 verified by code + design-language demo
-- [x] **Ample** - timeLeft 180, maxAdd 12 -> pct 75, blue, Extend enabled
-  - log: 2026-06-17 verified
-- [x] **Warn** - timeLeft 45, maxAdd 12 -> pct 19, amber, Extend enabled
-  - log: 2026-06-17 verified (45 <= 60, > 20)
-- [x] **Low / danger** - timeLeft 12, maxAdd 12 -> pct 5, red, Extend enabled
-  - log: 2026-06-17 verified (12 <= 20)
-- [x] **Extended-drains** - timeLeft 300 (> base 240), maxAdd 6 -> ceiling 300+360=660, pct 45 (drains against the ceiling, NOT capped at 100), blue, Extend enabled (max 6h)
-  - log: 2026-06-17 reworked (operator: extended must visibly drain) - was pct 100 capped
-- [x] **At ceiling** - timeLeft 180, maxAdd 0 -> pct 75, blue, Extend DISABLED
-  - log: 2026-06-17 verified (atCeiling true)
+- [x] **Full** - timeLeft 240, maxAdd 12 -> pct 100, blue (frac 100%), Extend enabled (max 12h)
+  - log: 2026-06-20 verified by code + design-language demo
+- [x] **Ample** - timeLeft 180, maxAdd 12 -> pct 75, blue (frac 75%), Extend enabled
+  - log: 2026-06-20 verified
+- [x] **Warn** - timeLeft 45, maxAdd 12 -> pct 19, amber (frac 19% < 30%), Extend enabled
+  - log: 2026-06-20 verified (colour blends ~56% toward amber)
+- [x] **Danger** - timeLeft 6, maxAdd 12 -> pct 3, red (frac 2.5% < 10%), Extend enabled
+  - log: 2026-06-20 verified (colour blends ~75% toward red)
+- [x] **Banked-draining** - timeLeft 300 (banked > base 240), displayCeiling 360 (HWM), maxAdd 6 -> pct 83 (drains against the 6h high-water mark, NOT the 72h ceiling), blue (frac 125%), Extend enabled (max 6h)
+  - log: 2026-06-20 DEF-13 - was pct 45 against the absolute ceiling
+- [x] **At ceiling** - timeLeft 360, displayCeiling 360, maxAdd 0 -> pct 100 (at the mark), blue, Extend DISABLED
+  - log: 2026-06-20 verified (atCeiling true; reads 100% at the mark, not a partial against the absolute ceiling)
 - [x] **Stopped** - server offline -> gadget not rendered at all
   - log: 2026-06-17 verified (running-gate)
+
+### Scenarios (live config: base 24h, max extension 48h, absolute ceiling 72h)
+
+The bar's 100% reference is base below the standard TTL and the high-water mark (the remaining last extended TO) while banked above it; colour is keyed to the fraction of base remaining (blue >= 30%, amber < 30%, red < 10%, blending continuously).
+
+| State | remaining | 100% reference | bar % | colour | Extend |
+|---|---|---|---|---|---|
+| Fresh / active | 24h | base 24h | 100% | blue | +Xh (max 48) |
+| Idle, half drained | 12h | base 24h | 50% | blue | enabled |
+| Warn (< 30% base) | 6h | base 24h | 25% | amber | enabled |
+| Danger (< 10% base) | 2h | base 24h | 8% | red | enabled |
+| Just extended to 36h | 36h | HWM 36h | 100% | blue | +Xh (max 36) |
+| Banked, draining | 30h | HWM 36h | 83% | blue | enabled |
+| Banked, near base | 25h | HWM 36h | 69% | blue | enabled |
+| Crossed below base | 23h | base 24h (rescaled) | 96% | blue | enabled |
+| At absolute ceiling | 72h | HWM 72h | 100% | blue | DISABLED |
+
+- [x] **Scenario table holds** - the bar reference, %, colour and Extend state match the table above
+  - log: 2026-06-20 model confirmed by operator ("table is good"); fill SSOT `calc_progress_pct_extended` unit-tested (`test_calc_progress_pct_extended_matrix`)
 
 ### Extension flow
 
@@ -3541,12 +3629,12 @@ Each row is demonstrated live on `/design-language` (TTL behaviour matrix row).
 - [x] **Ceiling cap** - no extend sequence banks lifetime past base + max_extension; the deadline never sits more than ceiling ahead of now
   - log: 2026-06-17 verified (test_remaining_clamped_to_ceiling, test_extend_caps_at_ceiling)
 
-### Extended TTL must visibly drain (operator 2026-06-17)
+### Extended TTL must visibly drain (operator 2026-06-17, model corrected 2026-06-20)
 
-The backend already drains banked extension down to base; the BAR now shows it. Operator-chosen model: scale the extended bar to the extension ceiling so it drains (gray trail growing), then rescale to the standard baseline at the crossover (snaps full again, against the standard baseline not the extended scale).
+The backend drains banked extension down to base; the BAR shows it. Model: scale the banked bar to the HIGH-WATER MARK the session was last extended TO (NOT the far absolute ceiling), so it reads 100% on extend and drains (gray trail growing) against that mark, then rescales to base at the crossover (full again, against base).
 
-- [x] **Drains while extended** - when remaining > base the bar shrinks against the ceiling as time passes (the user sees time running out), no longer pinned at 100%
-  - log: 2026-06-17 implemented (meters.tsx `ceilingMin` two-phase pct)
+- [x] **Drains while extended** - when remaining > base the bar shrinks against the high-water mark as time passes (the user sees time running out), starting from 100% at extend
+  - log: 2026-06-17 first implemented against the absolute ceiling; 2026-06-20 DEF-13 - now against the stored high-water mark (`display_ceiling`)
 - [x] **Gray leftover** - the drained portion above the current remaining shows as the standard gray trail (antd Progress trailColor)
   - log: 2026-06-17 implemented
 - [x] **Full again at the standard TTL** - at the standard baseline the bar rescales to base and reads full again (against the standard baseline, not the extended scale); below base it drains normally
@@ -4386,3 +4474,40 @@ NOTE (corrected 2026-06-20): the toggle gates the ROUTER, not the `--api.dashboa
   - log: 2026-06-20 criterion added; functional test `test_traefik_dashboard.py::test_insecure_8080_absent`
 - [ ] **TLS via hub-provisioned certs** - dashboard served with the same `hub_certs` file-provider cert chain as the hub routes, no separate cert
   - log: 2026-06-20 criterion added
+
+## Group delete confirmation
+
+Deleting a group from the Groups admin page requires an explicit confirmation, like the volume-reset and remove-user flows - a single click on the row delete icon must not destroy a group's config outright.
+
+- [ ] **Confirm before delete** - the Groups list delete row action opens a confirmation popup naming the group; the group is removed only on confirm
+  - log: 2026-06-20 requirement added (new); gap found - `Groups.tsx:138` calls `deleteGroup(g.name)` directly, no confirm
+- [ ] **Cancel is a no-op** - dismissing the popup leaves the group and its config untouched
+  - log: 2026-06-20 requirement added (new)
+- [ ] **Destructive styling** - the confirm action is styled danger (red), consistent with the other destructive confirms
+  - log: 2026-06-20 requirement added (new)
+
+## Notifications history range and clear
+
+The Notifications page gains the same history controls the Events page already has: a time-range filter (24h / 7d / 30d) and a Clear, with 24h the default range. Mirror the Events implementation (`Events.tsx` `Range` / `RANGE_MS`, `clearEvents`).
+
+- [ ] **Range filter** - Notifications shows a 24h / 7d / 30d range control; the list filters to the chosen window
+  - log: 2026-06-20 requirement added (new)
+- [ ] **24h default** - the range defaults to 24h (Events defaults to 7d; Notifications starts at 24h)
+  - log: 2026-06-20 requirement added (new)
+- [ ] **Clear** - a Clear action empties the notifications history, mirroring `clearEvents`
+  - log: 2026-06-20 requirement added (new)
+- [ ] **Parity with Events** - identical control set and behaviour to the Events page (same range values, same clear semantics)
+  - log: 2026-06-20 requirement added (new)
+
+## Stopped-server stopped-ago readout
+
+When a server is stopped, the TTL gadget slot under the server control buttons shows plain text stating how long ago the server was stopped, instead of an idle-timer bar - there is no live timer on a stopped server. A server that was never started states that explicitly rather than leaving the slot blank.
+
+- [ ] **Stopped-ago text** - a stopped server renders, in the TTL slot beneath the control buttons, normal text like "stopped 3h ago" (relative time), not a progress bar
+  - log: 2026-06-20 requirement added (new)
+- [ ] **Never-started text** - a server that has never been started (no prior activity / no last-stop time) shows plain text stating it was never started (e.g. "never started"), not a blank slot
+  - log: 2026-06-20 requirement added (new)
+- [ ] **Running unchanged** - a running server still shows the live TTL gadget (bar + counter + Extend) as today
+  - log: 2026-06-20 requirement added (new)
+- [ ] **Edge: stopped, stop time unknown** - a server that was started before but has no recoverable stop time falls back to the never-started text rather than a bogus "stopped 0m ago"
+  - log: 2026-06-20 requirement added (new)

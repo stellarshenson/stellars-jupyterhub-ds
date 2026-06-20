@@ -1,7 +1,7 @@
 /* Per-row server lifecycle actions, shared by the Servers list and the Home
- * "Active servers" widget so both behave IDENTICALLY (start own vs other, enter,
- * restart, stop, manage volumes, spawning cancel). `from` (optional) tags the
- * navigation origin so the sub-screens it opens (Start, Manage volumes) and their
+ * "Active servers" widget so both behave IDENTICALLY (background start for own +
+ * other, enter, restart, stop, manage volumes, spawning cancel). `from` (optional)
+ * tags the navigation origin so the sub-screen it opens (Manage volumes) and its
  * breadcrumb return to where the action was invoked, not a hardcoded parent. */
 import { Modal, Spin } from 'antd'
 import type { NavigateFunction } from 'react-router-dom'
@@ -48,12 +48,13 @@ export function rowActions(r: ServerRow, navigate: NavigateFunction, lf: Lifecyc
     )
   }
   if (r.status === 'offline') {
-    // starting your OWN server opens the dedicated Start page (progress + log);
-    // starting someone ELSE's runs inline with a spinner on the play button (no
-    // navigation), monitored + refreshed like restart/stop
+    // start runs inline in the BACKGROUND here (spinner on the play button, no
+    // navigation), monitored + refreshed like restart/stop - for OWN and other
+    // servers alike. The foreground Start page (progress + log) is reached only
+    // from the home ServerHero, never from this shared list/widget row.
     return (
       <div className="doh-row doh-actions" style={{ justifyContent: 'flex-end' }}>
-        <IconAction icon="play" title={r.user === me ? 'Start server' : `Start ${r.user}'s server`} busy={mode === 'start'} disabled={busy} onClick={() => (r.user === me ? nav(`/servers/${r.user}/starting`) : lf.start(r.user))} />
+        <IconAction icon="play" title={r.user === me ? 'Start server' : `Start ${r.user}'s server`} busy={mode === 'start'} disabled={busy} onClick={() => lf.start(r.user)} />
         <IconAction icon="disk" title="Manage volumes" disabled={busy} onClick={() => nav(`/servers/${r.user}/volumes`)} />
       </div>
     )

@@ -230,7 +230,7 @@ JUPYTERHUB_BRANDING_FAVICON_BUSY_URI = os.environ.get("JUPYTERHUB_BRANDING_FAVIC
 JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI = os.environ.get("JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI", "")        # JupyterLab main area icon
 JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI = os.environ.get("JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI", "")    # JupyterLab splash screen icon
 JUPYTERHUB_BRANDING_STAGE = os.environ.get("JUPYTERHUB_BRANDING_STAGE", "")                                # environment-stage header badge (DEV/STG/TST/PRD or custom); empty = no badge
-JUPYTERHUB_HUB_NAME = os.environ.get("JUPYTERHUB_HUB_NAME", "Duoptimum Hub")                                # display name: portal logo tooltip + login/signup screen text; default baked in Dockerfile
+JUPYTERHUB_HUB_NAME = os.environ.get("JUPYTERHUB_HUB_NAME", "DuOptimum Hub")                                # display name: portal logo tooltip + login/signup screen text; default baked in Dockerfile
 
 # User environment customization - paths passed through to spawned containers
 JUPYTERLAB_AUX_SCRIPTS_PATH = os.environ.get("JUPYTERLAB_AUX_SCRIPTS_PATH", "")             # admin startup scripts executed on container launch
