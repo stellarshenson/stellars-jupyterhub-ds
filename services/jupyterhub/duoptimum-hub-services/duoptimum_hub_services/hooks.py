@@ -144,8 +144,8 @@ def make_pre_spawn_hook(
 
         # Per-user volume role/owner/description labels. DockerSpawner creates
         # home/workspace/cache volumes lazily WITHOUT labels; pre-create them here carrying
-        # duoptimum-hub.volume.role=lab-*, duoptimum-hub.volume.owner={username} and
-        # duoptimum-hub.volume.description so the portal IDs them by role+owner and reads the
+        # hub.volume.role=lab-*, hub.volume.owner={username} and
+        # hub.volume.description so the portal IDs them by role+owner and reads the
         # description off the label - not by name, not from settings. Create-if-absent only
         # (never relabel/remove - data safety); best-effort, a docker error never blocks spawn.
         if volume_role_label_key and user_volume_label_templates:

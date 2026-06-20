@@ -1,8 +1,8 @@
 """Functional: role labels the hub discovers by, verified live over the docker socket.
 
 Gated to the GPU stack (`make test-functional-gpu`) where hub_gpuinfo_network + the
-hub-started gpuinfo sidecar exist. Asserts the net carries duoptimum-hub.network.role=gpuinfo
-and the hub-created sidecar carries duoptimum-hub.container.role=gpuinfo - discovery-by-role +
+hub-started gpuinfo sidecar exist. Asserts the net carries hub.network.role=gpuinfo
+and the hub-created sidecar carries hub.container.role=gpuinfo - discovery-by-role +
 the container role label, end-to-end.
 """
 
@@ -21,7 +21,7 @@ def _net_by_suffix(client, suffix):
 def test_gpuinfo_network_carries_role_label(docker_client):
     net = _net_by_suffix(docker_client, "_hub_gpuinfo_network")
     assert net is not None, "hub_gpuinfo_network not found in the GPU stack"
-    assert (net.attrs.get("Labels") or {}).get("duoptimum-hub.network.role") == "gpuinfo"
+    assert (net.attrs.get("Labels") or {}).get("hub.network.role") == "gpuinfo"
 
 
 @pytest.mark.gpu
@@ -29,7 +29,7 @@ def test_gpuinfo_network_carries_role_label(docker_client):
 def test_sidecar_container_carries_role_label(docker_client):
     # the hub stamps the container role label on the sidecar it creates
     sidecar = docker_client.containers.get("gpuinfo-nvidia")
-    assert (sidecar.labels or {}).get("duoptimum-hub.container.role") == "gpuinfo"
+    assert (sidecar.labels or {}).get("hub.container.role") == "gpuinfo"
 
 
 @pytest.mark.gpu

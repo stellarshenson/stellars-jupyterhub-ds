@@ -275,7 +275,7 @@ def resolve_self_mount_volume(destination):
 
 def resolve_self_mount_volume_by_label(label_key, label_value):
     """Volume mounted in THIS (hub) container carrying label_key=label_value (the
-    duoptimum-hub.volume.role). Discover by role, not reconstructed name (name drifts on
+    hub.volume.role). Discover by role, not reconstructed name (name drifts on
     rename). Scoped to hub's OWN mounts - second stack's volume never picked. One volume
     per role -> Name. Zero (or socket down) -> None, caller falls back. >1 -> ValueError
     (ambiguous, hub must not guess)."""
@@ -372,7 +372,7 @@ def resolve_self_network_by_label(label_key, label_value=None):
     not name via env (name would drift).
 
     Both hub<->lab and hub<->sidecar nets DECLARED in compose.yml with role label
-    (duoptimum-hub.network.role = lab / gpuinfo); hub attached there. label_value given ->
+    (hub.network.role = lab / gpuinfo); hub attached there. label_value given ->
     match equality (Labels[label_key]==label_value, the role); None -> match key presence.
     Scoped to hub's OWN attachments (not host-wide scan), so a second stack on the host with
     the same label never picked by mistake. Compose owns/creates the net; hub only discovers

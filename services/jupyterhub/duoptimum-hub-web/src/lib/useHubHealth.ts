@@ -11,8 +11,11 @@ const POLL_MS = 15_000 // well under the hub's 1 req/s health rate limit
 const TIMEOUT_MS = 8_000 // a probe slower than this counts as a failure
 const FAILS_TO_DOWN = 2 // consecutive failures before raising the indicator
 
-export function useHubHealth(): { down: boolean } {
+export function useHubHealth(): { down: boolean; downSince: number | null } {
   const [down, setDown] = useState(false)
+  // timestamp (ms) the hub first went down, null while up - drives the "not
+  // responding for XXXX" elapsed readout (the pill / mobile panel tick off it)
+  const [downSince, setDownSince] = useState<number | null>(null)
   const downRef = useRef(false)
   const fails = useRef(0)
   const qc = useQueryClient()
@@ -27,6 +30,7 @@ export function useHubHealth(): { down: boolean } {
       if (next === downRef.current) return
       downRef.current = next
       setDown(next)
+      setDownSince(next ? Date.now() : null)
       if (!next) void qc.invalidateQueries()
     }
 
@@ -54,5 +58,5 @@ export function useHubHealth(): { down: boolean } {
     return () => { stopped = true; clearTimeout(timer) }
   }, [qc])
 
-  return { down }
+  return { down, downSince }
 }

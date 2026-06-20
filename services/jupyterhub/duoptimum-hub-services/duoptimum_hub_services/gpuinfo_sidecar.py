@@ -13,11 +13,10 @@ unreachable sidecar). The sidecar runs on a dedicated network that the hub joins
 so spawned user labs cannot reach it.
 """
 
-import logging
 import socket
 from urllib.parse import urlparse
 
-log = logging.getLogger('jupyterhub')
+from .logging_setup import log
 
 # Sidecar runtime env (NVIDIA_VISIBLE_DEVICES, NVIDIA_DRIVER_CAPABILITIES, GPUINFO_PORT),
 # port + command baked into sidecar IMAGE (services/jupyterhub/gpuinfo-nvidia/Dockerfile).
@@ -30,6 +29,21 @@ def container_name_from_url(url):
     """Sidecar DNS host parsed from its URL - the fallback name only when no
     explicit container name is configured (no hardcoded default)."""
     return urlparse(url).hostname if url else None
+
+
+def _compose_container_name(service, compose_project, number=1):
+    """Replicate compose's auto-generated container name for the hub-instantiated sidecar.
+
+    Compose names a service container ``<project>-<service>-<number>`` (hyphen-separated,
+    v2). The sidecar is hub-run (``docker run`` over the socket), NOT a compose service, so
+    nothing prefixes it for us - the hub must reproduce that exact convention itself, or the
+    sidecar stands out as a bare ``<project>-<service>`` with no ordinal, unlike every
+    compose-managed container, AND two deployments - or a functional-test stack beside the
+    live one - collide on the unscoped name (both `docker run --name` and the find-by-name
+    teardown cut across the project boundary because container names are a flat per-daemon
+    namespace, unscoped by the com.docker.compose.project label). No project (hub not
+    compose-managed) -> the bare service name, nothing to mirror."""
+    return f"{compose_project}-{service}-{number}" if compose_project and service else service
 
 
 def resolve_gpuinfo_url(url, hostname):
@@ -110,29 +124,37 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', contain
     state). ``url`` is the template (e.g. ``http://{hostname}:8000``); a literal URL
     with no placeholder is returned unchanged.
 
-    ``container_name`` is the name the hub gives the sidecar it creates (and finds /
-    removes it by); it falls back to the URL host only when not supplied, and the
-    sidecar is skipped (GPU off) if neither yields a name - never a hardcoded one.
+    ``container_name`` is the SIMPLE service name the hub gives the sidecar it creates (and
+    finds / removes it by); the hub replicates compose's ``<project>-<service>-<number>``
+    auto-naming at instantiation so the running container is named exactly like a
+    compose-managed one and cannot collide across deployments. It falls back to the URL host
+    only when not supplied, and the sidecar is skipped (GPU off) if neither yields a name -
+    never a hardcoded one.
 
     Dedicated net DECLARED in compose.yml (compose owns/creates it; hub discovers it by
-    duoptimum-hub.network.role=gpuinfo and only joins - never creates here). Container stamped
+    hub.network.role=gpuinfo and only joins - never creates here). Container stamped
     with the same compose-project labels spawned user containers get (see hooks.py) plus
     its container-role label (container_role_label_key/_value, e.g.
-    duoptimum-hub.container.role=gpuinfo) and an informational description label
-    (duoptimum-hub.container.description) - sidecar belongs to the compose project (shows in
+    hub.container.role=gpuinfo) and an informational description label
+    (hub.container.description) - sidecar belongs to the compose project (shows in
     `docker compose ps`), discoverable by role. Sidecar's own runtime spec (NVIDIA env,
     port, command) comes from the image, not here.
     """
     import docker
 
-    name = container_name or container_name_from_url(url)
-    if not name:
+    service = container_name or container_name_from_url(url)
+    if not service:
         log.warning(
             "[GPUInfo] no sidecar container name configured "
             "(JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME) and none derivable from the URL; "
             "sidecar not started - GPU off"
         )
         return ""
+    # The hub replicates compose's <project>-<service>-<number> auto-naming for the sidecar
+    # it instantiates (see _compose_container_name) - the sidecar is hub-run, not a compose
+    # service, so nothing else prefixes it; this keeps it indistinguishable from a
+    # compose-managed container and stops two deployments colliding on the name.
+    name = _compose_container_name(service, compose_project)
     if not network_name:
         log.warning(
             "[GPUInfo] no hub<->sidecar network resolved (the labelled network declared "
@@ -143,15 +165,15 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', contain
     container_labels = dict(project_labels)
     if compose_project:
         container_labels.update({
-            'com.docker.compose.service': name,
+            'com.docker.compose.service': service,  # SIMPLE service name, exactly as compose stamps it
             'com.docker.compose.container-number': '1',
             'com.docker.compose.oneoff': 'False',
         })
-    # Container role label (e.g. duoptimum-hub.container.role=gpuinfo), mirrored from the
+    # Container role label (e.g. hub.container.role=gpuinfo), mirrored from the
     # compose service decl - lets future code discover gpuinfo containers by role.
     if container_role_label_key and container_role_label_value:
         container_labels[container_role_label_key] = container_role_label_value
-    # Human description label (duoptimum-hub.container.description) - informational only,
+    # Human description label (hub.container.description) - informational only,
     # shown in `docker inspect`; mirrors the volume/network .description convention.
     if container_description_label_key and container_description:
         container_labels[container_description_label_key] = container_description
@@ -235,7 +257,7 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', contain
     return resolved
 
 
-def stop_gpuinfo_sidecar(url, container_name=None):
+def stop_gpuinfo_sidecar(url, container_name=None, compose_project=''):
     """Stop + remove the GPU-info sidecar. Never raises.
 
     Registered as the hub's at-exit cleanup so the hub-managed sidecar does not
@@ -249,7 +271,9 @@ def stop_gpuinfo_sidecar(url, container_name=None):
     """
     import docker
 
-    name = container_name or container_name_from_url(url)
+    # same compose-style name the create path computed, so teardown finds the exact container
+    service = container_name or container_name_from_url(url)
+    name = _compose_container_name(service, compose_project)
     if not name:
         return
     try:

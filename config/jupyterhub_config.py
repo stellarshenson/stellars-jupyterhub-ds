@@ -12,6 +12,7 @@
 #   5. Services & Callbacks    - background services, startup hooks
 
 import logging                  # validator warnings -> hub log stream
+from duoptimum_hub_services.logging_setup import log  # platform loguru sink for our own log lines
 import os                       # env var reads
 import socket                   # gethostname() -> container short id (rename-proof hub address)
 
@@ -31,7 +32,7 @@ from duoptimum_hub_services import (
     get_services_and_roles,                 # builds JupyterHub services list (activity sampler)
     schedule_idle_culler,                   # in-hub idle culler (honours per-user session extensions)
     get_user_volume_name_templates,         # maps suffix -> full volume-name template (with {username} placeholder)
-    get_user_volume_roles,                  # maps suffix -> duoptimum-hub.volume.role value (lab-home/lab-workspace/lab-cache)
+    get_user_volume_roles,                  # maps suffix -> hub.volume.role value (lab-home/lab-workspace/lab-cache)
     get_user_volume_suffixes,               # extracts ['home', 'workspace', 'cache'] from volumes dict
     gpu_summary_lines,                      # readable per-GPU capabilities + health snapshot for the startup log
     is_wsl2,                                # host is WSL2 -> per-GPU isolation not enforceable (advisory)
@@ -46,7 +47,7 @@ from duoptimum_hub_services import (
     setup_branding,                         # processes logo/favicon/icon URIs, copies file:// to static dir
 )
 
-from duoptimum_hub_services.docker_utils import resolve_self_mount_volume_by_label  # exact volume discovery by duoptimum-hub.volume.role among hub's own mounts (rename-safe; raises on duplicate role)
+from duoptimum_hub_services.docker_utils import resolve_self_mount_volume_by_label  # exact volume discovery by hub.volume.role among hub's own mounts (rename-safe; raises on duplicate role)
 from duoptimum_hub_services.docker_utils import resolve_self_compose_project  # runtime discovery of the hub's own compose project from its own container label (no env needed)
 from duoptimum_hub_services.docker_utils import volume_labels  # read a named volume's labels (injected into build_system_volume_rows)
 from duoptimum_hub_services.docker_utils import build_system_volume_rows  # pure builder: Lab Setup system-volume rows (shared + docker-proxy)
@@ -197,7 +198,7 @@ JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME = (
 # desyncs spawn from lookup. Baked ENV (jupyterlab-{username}); validator requires it
 # present + carrying {username}.
 JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE = os.environ.get("JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE", "").strip()
-JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME", "")  # name the hub gives the sidecar it creates (and finds/removes it by); baked as a Dockerfile ENV (project-prefixed)
+JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME", "")  # SIMPLE service name (e.g. gpuinfo-nvidia); the hub replicates compose's <project>-<service>-<number> auto-naming at instantiation (see gpuinfo_sidecar._compose_container_name), so the running container is named like a compose-managed one
 JUPYTERHUB_GPUINFO_NVIDIA_URL = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_URL", "")  # GPU-info sidecar base URL TEMPLATE; the {hostname} placeholder is filled at runtime by ensure_gpuinfo_sidecar with the address it discovers for the running sidecar - no hardcoded host
 # Container role label on hub-created sidecar (mirrored on compose gpuinfo-nvidia service).
 # Future code finds gpuinfo containers by role. Key + value baked ENV (MUST match compose);
@@ -291,7 +292,7 @@ USER_VOLUMES = load_merged_user_volumes(
 )
 
 # DockerSpawner needs the flat {name: mount} shape. Built from USER_VOLUMES only.
-# The shared volume (role duoptimum-hub.volume.role=shared) is NO LONGER
+# The shared volume (role hub.volume.role=shared) is NO LONGER
 # auto-mounted into every container - it is granted per group via the Volume
 # Mounts section of the Groups admin page (applied in pre_spawn_hook).
 DOCKER_SPAWNER_VOLUMES = {
@@ -305,9 +306,9 @@ user_volume_suffixes = get_user_volume_suffixes(DOCKER_SPAWNER_VOLUMES, JUPYTERH
 # UI labels, deletion handler, DockerSpawner, and the activity-monitor sizes
 # cache all read from this map.
 user_volume_name_templates = get_user_volume_name_templates(DOCKER_SPAWNER_VOLUMES, JUPYTERHUB_COMPOSE_PROJECT_NAME)
-# Derived: suffix -> duoptimum-hub.volume.role label value (lab-home/lab-workspace/lab-cache).
-# Stamped on each per-user volume at spawn (with duoptimum-hub.volume.owner={username} and
-# duoptimum-hub.volume.description) so the portal identifies it as a system volume by role,
+# Derived: suffix -> hub.volume.role label value (lab-home/lab-workspace/lab-cache).
+# Stamped on each per-user volume at spawn (with hub.volume.owner={username} and
+# hub.volume.description) so the portal identifies it as a system volume by role,
 # not by name, and reads its description off the label. Sourced from USER_VOLUMES (the
 # volumes-dictionary role field; defaults to the suffix).
 user_volume_roles = get_user_volume_roles(USER_VOLUMES, JUPYTERHUB_COMPOSE_PROJECT_NAME)
@@ -331,7 +332,7 @@ user_volumes_for_ui = [
     for pattern, data in USER_VOLUMES.items()
 ]
 # name-template -> {role, description} for the spawn-time labelling step. pre_spawn_hook
-# stamps duoptimum-hub.volume.role/.owner/.description on each per-user volume so it
+# stamps hub.volume.role/.owner/.description on each per-user volume so it
 # self-describes - the portal reads role + description off the volume, not from settings.
 user_volume_label_templates = {
     v['name_template']: {'role': v['role'], 'description': v['description']}
@@ -554,7 +555,7 @@ _gpuinfo_url = (
         JUPYTERHUB_COMPOSE_PROJECT_NAME, container_name=JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME,
         container_role_label_key=JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY,
         container_role_label_value=JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO,
-        container_description_label_key=JUPYTERHUB_LABEL_CONTAINER_DESCRIPTION,  # duoptimum-hub.container.description key (env-sourced, not hardcoded in the sidecar code)
+        container_description_label_key=JUPYTERHUB_LABEL_CONTAINER_DESCRIPTION,  # hub.container.description key (env-sourced, not hardcoded in the sidecar code)
         container_description="GPU-info sidecar - GPU detection, utilisation and per-GPU processes",
     )
     if JUPYTERHUB_GPU_ENABLED != 0 else ""
@@ -567,7 +568,7 @@ configure_gpu_cache(_gpuinfo_url)
 # image). Best-effort - skipped on a hard SIGKILL.
 if _gpuinfo_sidecar_up:
     import atexit
-    atexit.register(stop_gpuinfo_sidecar, _gpuinfo_url, JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME)
+    atexit.register(stop_gpuinfo_sidecar, _gpuinfo_url, JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME, JUPYTERHUB_COMPOSE_PROJECT_NAME)
 # probe only when the sidecar is actually up; otherwise skip straight to
 # last-known/off so a missing sidecar never stalls boot on DNS/connect
 gpu_enabled, nvidia_detected, gpu_list = resolve_gpu_mode(JUPYTERHUB_GPU_ENABLED, probe_sidecar=_gpuinfo_sidecar_up)
@@ -576,14 +577,15 @@ gpu_enabled, nvidia_detected, gpu_list = resolve_gpu_mode(JUPYTERHUB_GPU_ENABLED
 # on WSL2 (/dev/dxg) per-GPU selection is advisory, not enforced.
 GPU_UUID_BY_INDEX = {str(g.get('index')): g.get('uuid', '') for g in gpu_list if g.get('uuid')}
 GPU_ISOLATION_ENFORCED = bool(gpu_list) and not is_wsl2()
-print(f"[GPU debug] enabled={gpu_enabled} detected={nvidia_detected} "
-      f"isolation_enforced={GPU_ISOLATION_ENFORCED} gpus={gpu_list}", flush=True)
+log.info(
+    f"[GPU] enabled={gpu_enabled} detected={nvidia_detected} "
+    f"isolation_enforced={GPU_ISOLATION_ENFORCED} gpus={gpu_list}")
 # operator-facing per-card inventory: capabilities (name, total memory) + a live
 # health snapshot (utilisation, used memory, temperature, power) from the sidecar.
-# The raw dict line above is for debugging; these are the readable lines.
+# The raw inventory line above is the machine-readable summary; these are the readable per-card lines.
 if _gpuinfo_sidecar_up:
     for _gpu_line in gpu_summary_lines():
-        print(f"[GPU] {_gpu_line}", flush=True)
+        log.info(f"[GPU] {_gpu_line}")
 # The background GPU-utilisation sampler queries the same sidecar periodically
 # (gated on a non-empty inventory) so the portal's GPU bar shows real per-device
 # utilisation, used memory and the processes holding each device.
@@ -705,7 +707,7 @@ c.JupyterHub.tornado_settings = {
     'stellars_config': {
         'user_volume_suffixes': user_volume_suffixes,        # for ManageVolumesHandler validation
         'user_volume_name_templates': user_volume_name_templates,  # for ManageVolumesHandler to construct correct on-disk volume names
-        'user_volume_roles': user_volume_roles,              # suffix -> duoptimum-hub.volume.role; ManageVolumesHandler GET tags each volume so the portal IDs system volumes by role
+        'user_volume_roles': user_volume_roles,              # suffix -> hub.volume.role; ManageVolumesHandler GET tags each volume so the portal IDs system volumes by role
         'volume_role_label_key': JUPYTERHUB_LABEL_VOLUME_ROLE_KEY,           # handlers read a volume's role off this label key (env-sourced, never a hardcoded literal)
         'volume_description_label_key': JUPYTERHUB_LABEL_VOLUME_DESCRIPTION,  # handlers read a volume's human description off this label key (env-sourced)
         'user_volumes': user_volumes_for_ui,                 # for ManageVolumesHandler GET to attach descriptions to existing volumes
@@ -720,7 +722,7 @@ c.JupyterHub.tornado_settings = {
         'memory_max_usage_mb': JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning
         'reserved_env_var_names': RESERVED_ENV_VAR_NAMES,                              # names groups cannot override
         'reserved_env_var_prefixes': RESERVED_ENV_VAR_PREFIXES,                        # prefixes reserved for JupyterHub/platform
-        'shared_volume_name': JUPYTERHUB_SHARED_VOLUME_NAME,                          # shared volume for groups volume-mounts UI; discovered by duoptimum-hub.volume.role=shared
+        'shared_volume_name': JUPYTERHUB_SHARED_VOLUME_NAME,                          # shared volume for groups volume-mounts UI; discovered by hub.volume.role=shared
         'lab_image': JUPYTERHUB_LAB_IMAGE,                                             # image every lab spawns from (for the Lab Container page)
         'lab_volumes': [                                                              # standard per-user volumes mounted into every lab
             {'suffix': v['suffix'], 'mount': DOCKER_SPAWNER_VOLUMES.get(v['name_template'], ''), 'description': v['description'], 'role': v['role']}
@@ -818,9 +820,9 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     lab_sudo_enable_default=JUPYTERHUB_LAB_SUDO_ENABLE,  # default JUPYTERLAB_SUDO_ENABLE when no group configures sudo
     api_keys_reconcile_interval=JUPYTERHUB_IDLE_CULLER_INTERVAL,  # periodic api-keys-pool reconcile cadence (reuses the cull interval, default 600s)
     shared_volume_name=JUPYTERHUB_SHARED_VOLUME_NAME,  # role=shared volume the group "standard shared" mount resolves to at spawn (label-resolved, rename-safe; '' = absent)
-    volume_role_label_key=JUPYTERHUB_LABEL_VOLUME_ROLE_KEY,  # duoptimum-hub.volume.role key stamped on per-user volumes at spawn
-    volume_owner_label_key=JUPYTERHUB_LABEL_VOLUME_OWNER_KEY,  # duoptimum-hub.volume.owner key; value = the username, stamped per-user at spawn (env-sourced)
-    volume_description_label_key=JUPYTERHUB_LABEL_VOLUME_DESCRIPTION,  # duoptimum-hub.volume.description key stamped per-user at spawn (env-sourced)
+    volume_role_label_key=JUPYTERHUB_LABEL_VOLUME_ROLE_KEY,  # hub.volume.role key stamped on per-user volumes at spawn
+    volume_owner_label_key=JUPYTERHUB_LABEL_VOLUME_OWNER_KEY,  # hub.volume.owner key; value = the username, stamped per-user at spawn (env-sourced)
+    volume_description_label_key=JUPYTERHUB_LABEL_VOLUME_DESCRIPTION,  # hub.volume.description key stamped per-user at spawn (env-sourced)
     user_volume_label_templates=user_volume_label_templates,  # name-template -> {role, description}; hook pre-creates each labelled per-user volume (role/owner/description)
 )
 
@@ -961,7 +963,7 @@ if JUPYTERHUB_IDLE_CULLER_ENABLED == 1:
 #   - survivor CHP favicon routes (pre_spawn_hook only fires on new spawns)
 #   - every policy model's on_hub_startup (docker-proxy re-bind, download-block
 #     route re-registration, api-keys reconcile + periodic) for survivors
-print(f"[Config] File-download policy: {'BLOCK (per-group downloads_active grants)' if JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS else 'ALLOW (dormant)'}")
+log.info(f"[Config] File-download policy: {'BLOCK (per-group downloads_active grants)' if JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS else 'ALLOW (dormant)'}")
 schedule_startup_hydration(
     stellars_config=c.JupyterHub.tornado_settings['stellars_config'],
     favicon_uri=JUPYTERHUB_BRANDING_FAVICON_URI,

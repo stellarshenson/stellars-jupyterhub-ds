@@ -26,8 +26,8 @@ def test_owner_value_substitutes_username(monkeypatch):
 
 
 def test_default_owner_label_key_is_hub_namespaced():
-    # unified family: ownership labels live under the duoptimum-hub.* namespace
-    assert OWNER_LABEL == "duoptimum-hub.docker.proxy.owner"
+    # unified family: ownership labels live under the hub.* namespace
+    assert OWNER_LABEL == "hub.docker.proxy.owner"
 
 
 def test_inject_labels_preserves_existing_and_does_not_mutate_input():

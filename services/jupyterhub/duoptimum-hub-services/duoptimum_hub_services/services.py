@@ -2,6 +2,8 @@
 
 import sys
 
+from .logging_setup import log
+
 
 def get_services_and_roles(sample_interval):
     """Build services and roles lists. Returns (services, roles).
@@ -27,6 +29,6 @@ def get_services_and_roles(sample_interval):
         "name": "activity-sampler",
         "command": [sys.executable, "-m", "duoptimum_hub_services.activity.service"],
     })
-    print(f"[Activity Sampler] Enabled - interval={sample_interval}s")
+    log.info(f"[Activity Sampler] Enabled - interval={sample_interval}s")
 
     return services, roles

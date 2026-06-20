@@ -76,12 +76,12 @@ networks:
 volumes:
   certs:
   data:
-  # role labels - hub finds these by duoptimum-hub.volume.role (exact, no name/fallback)
+  # role labels - hub finds these by hub.volume.role (exact, no name/fallback)
   shared:
     labels:
-      duoptimum-hub.volume.role: "shared"
-      duoptimum-hub.volume.description: "Platform-wide shared storage for all users"  # Lab Setup system-volumes panel reads this
+      hub.volume.role: "shared"
+      hub.volume.description: "Platform-wide shared storage for all users"  # Lab Setup system-volumes panel reads this
   docker_sockets:
     labels:
-      duoptimum-hub.volume.role: "docker-proxy"
-      duoptimum-hub.volume.description: "Per-user docker-proxy sockets"  # Lab Setup system-volumes panel reads this
+      hub.volume.role: "docker-proxy"
+      hub.volume.description: "Per-user docker-proxy sockets"  # Lab Setup system-volumes panel reads this

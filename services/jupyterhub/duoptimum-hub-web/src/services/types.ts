@@ -82,7 +82,7 @@ export interface GroupConfig {
   members: string[]
   sections: PolicySection[]
   config: PolicyConfig // the real flat policy config (read + write)
-  sharedVolume?: { name: string; exists: boolean; description?: string } // the standard /mnt/shared volume (label-resolved); name '' / exists false = absent; description from the duoptimum-hub.volume.description label
+  sharedVolume?: { name: string; exists: boolean; description?: string } // the standard /mnt/shared volume (label-resolved); name '' / exists false = absent; description from the hub.volume.description label
 }
 
 export interface PolicySection {
@@ -237,7 +237,7 @@ export interface Volume {
   description?: string
   sizeGB?: number
   standard: boolean // platform-managed core volume vs custom mount
-  role?: string // duoptimum-hub.volume.role (lab-home/lab-workspace/lab-cache); marks a system volume by role, not name
+  role?: string // hub.volume.role (lab-home/lab-workspace/lab-cache); marks a system volume by role, not name
   policyControlled?: boolean // governed by group policy (the shared volume) - listed but never user-resettable
 }
 
@@ -247,7 +247,7 @@ export interface LabMount {
   name: string // lab volume suffix (home/workspace/cache) or resolved system-volume name
   mount: string // /home, /home/lab/workspace, /home/lab/.cache
   description?: string
-  role?: string // duoptimum-hub.volume.role (lab-*, shared, docker-proxy)
+  role?: string // hub.volume.role (lab-*, shared, docker-proxy)
 }
 
 export interface LabContainerInfo {

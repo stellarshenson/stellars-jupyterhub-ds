@@ -69,7 +69,7 @@ def get_user_volume_name_templates(volumes_dict, compose_project="jupyterhub"):
 
 
 def get_user_volume_roles(volumes_dict, compose_project="jupyterhub"):
-    """Map suffix -> duoptimum-hub.volume.role value. Role marks a per-user volume a
+    """Map suffix -> hub.volume.role value. Role marks a per-user volume a
     platform system volume so the portal identifies it by role, not name (name
     drifts on rename). Defaults to the suffix when the entry has no explicit `role`.
 

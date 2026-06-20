@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { DragSortTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
 import { Button, Input, InputNumber, Modal, Popover, Space, Tooltip } from 'antd'
+import { COL_HELP } from '../services/config'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { CappedTags } from '../components/CappedTags'
@@ -91,7 +92,7 @@ export default function Groups() {
 
   const columns: ProColumns<GroupRow>[] = [
     {
-      title: '#',
+      title: <Tooltip title={COL_HELP.groups.priority}><span>#</span></Tooltip>,
       dataIndex: 'priority',
       width: 56,
       // Row rank, not the stored priority value: the backend normalises stored
@@ -100,7 +101,7 @@ export default function Groups() {
       render: (_, g, i) => <PositionCell rank={i + 1} total={rows.length} disabled={!!q} onSet={(p) => setPosition(g.name, p)} />,
     },
     {
-      title: 'Group',
+      title: <Tooltip title={COL_HELP.groups.group}><span>Group</span></Tooltip>,
       dataIndex: 'name',
       width: 180,
       ellipsis: true,
@@ -110,9 +111,9 @@ export default function Groups() {
         </Link>
       ),
     },
-    { title: 'Description', dataIndex: 'description', render: (_, g) => <span className="doh-muted">{g.description}</span> },
+    { title: <Tooltip title={COL_HELP.groups.description}><span>Description</span></Tooltip>, dataIndex: 'description', render: (_, g) => <span className="doh-muted">{g.description}</span> },
     {
-      title: 'Members',
+      title: <Tooltip title={COL_HELP.groups.members}><span>Members</span></Tooltip>,
       dataIndex: 'members',
       align: 'right',
       sorter: (a, b) => a.members - b.members,
@@ -131,7 +132,7 @@ export default function Groups() {
       },
     },
     {
-      title: 'Policies',
+      title: <Tooltip title={COL_HELP.groups.policies}><span>Policies</span></Tooltip>,
       dataIndex: 'policies',
       render: (_, g) => <CappedTags items={g.policies.map((p) => ({ key: p.key, label: p.label, detail: p.detail }))} cap={4} />,
     },
@@ -167,6 +168,7 @@ export default function Groups() {
       />
       <DragSortTable<GroupRow>
         rowKey="name"
+        showSorterTooltip={false}
         columns={columns}
         dataSource={filtered}
         loading={isLoading}

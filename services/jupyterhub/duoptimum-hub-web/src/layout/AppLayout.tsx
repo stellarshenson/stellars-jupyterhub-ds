@@ -28,6 +28,7 @@ import { MessageBinder } from './MessageBinder'
 import { ReadonlyBanner } from './ReadonlyBanner'
 import { StageBadge } from '../components/StageBadge'
 import { HubConnectionIndicator } from '../components/HubConnectionIndicator'
+import { ConnectionStatusPill } from '../components/ConnectionStatusPill'
 
 const THEME_MODES: Array<{ mode: ThemeMode; icon: IconKey; label: string }> = [
   { mode: 'light', icon: 'sun', label: 'Light' },
@@ -207,6 +208,7 @@ export function AppLayout() {
           <div className="doh-header-actions" style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
             <LanguageControl />
             <ThemeControl />
+            <ConnectionStatusPill />
             <StageBadge />
           </div>
         </div>

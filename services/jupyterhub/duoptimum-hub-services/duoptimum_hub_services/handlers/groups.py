@@ -69,7 +69,7 @@ class GroupsDataHandler(BaseHandler):
                 g['priority'] = desired[g['name']]
 
         # Standard shared volume: the UI shows its resolved name + a human
-        # description (read from the volume's duoptimum-hub.volume.description label)
+        # description (read from the volume's hub.volume.description label)
         # and offers the grant only when the volume actually exists on the host.
         # Docker errors fail safe (exists=False -> grant disabled; manual rows still work).
         stellars_config = self.settings.get('stellars_config') or {}

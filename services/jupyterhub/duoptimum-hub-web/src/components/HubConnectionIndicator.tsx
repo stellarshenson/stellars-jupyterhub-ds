@@ -1,53 +1,39 @@
-/* Global hub-unreachable indicator, driven by the single useHubHealth probe.
- * Reads as a transient WARNING (pill-style diode in warning colour, pulsing with a
- * halo), never a red system error. Desktop: a persistent corner diode plus a
- * dismissable popup (re-armed each time the hub drops again). Mobile: an in-flow
- * warning panel at the top of the content, above the Server Controls. Renders
- * nothing while the hub is reachable. */
-import { Modal } from 'antd'
+/* Mobile hub-unreachable panel - the in-flow warning shown at the top of the content
+ * below the breakpoint (desktop uses the header ConnectionStatusPill instead). Pale
+ * warning surface so it never washes out the text, a soft slowly-pulsing diode and the
+ * elapsed "for XXXX". Driven by the shared useHubHealth probe; renders nothing while
+ * the hub is reachable or on desktop. */
 import { useEffect, useState } from 'react'
 import { useHubHealth } from '../lib/useHubHealth'
 import { useIsMobile } from '../lib/useIsMobile'
+import { elapsedShort } from '../lib/format'
 
 const TITLE = 'Hub not responding'
 const BODY =
   'The Duoptimum Hub is not responding. Shown data may be stale and actions will fail until the connection is restored - retrying automatically.'
 
 export function HubConnectionIndicator() {
-  const { down } = useHubHealth()
+  const { down, downSince } = useHubHealth()
   const isMobile = useIsMobile()
-  const [dismissed, setDismissed] = useState(false)
+  const [, setTick] = useState(0)
 
-  // re-arm the popup whenever the hub recovers and later drops again
-  useEffect(() => { if (!down) setDismissed(false) }, [down])
+  // tick each second while down so the elapsed readout advances
+  useEffect(() => {
+    if (!down) return
+    const id = setInterval(() => setTick((n) => n + 1), 1000)
+    return () => clearInterval(id)
+  }, [down])
 
-  if (!down) return null
+  if (!isMobile || !down) return null
 
-  if (isMobile) {
-    return (
-      <div className="doh-hub-warn-panel" role="alert" aria-live="assertive">
-        <span className="doh-hub-diode-inline" aria-hidden="true" />
-        <div>
-          <div className="doh-hub-warn-title">{TITLE}</div>
-          <div className="doh-hub-warn-body">{BODY}</div>
-        </div>
-      </div>
-    )
-  }
-
+  const elapsed = downSince ? elapsedShort(Date.now() - downSince) : ''
   return (
-    <>
-      <span className="doh-hub-diode" role="status" aria-label={TITLE} title={TITLE} />
-      <Modal
-        open={!dismissed}
-        onOk={() => setDismissed(true)}
-        onCancel={() => setDismissed(true)}
-        okText="Dismiss"
-        cancelButtonProps={{ style: { display: 'none' } }}
-        title={<><span className="doh-hub-diode-inline" aria-hidden="true" />{TITLE}</>}
-      >
-        {BODY}
-      </Modal>
-    </>
+    <div className="doh-hub-warn-panel" role="alert" aria-live="assertive">
+      <span className="doh-hub-warn-diode" aria-hidden="true" />
+      <div>
+        <div className="doh-hub-warn-title">{TITLE}{elapsed ? ` · for ${elapsed}` : ''}</div>
+        <div className="doh-hub-warn-body">{BODY}</div>
+      </div>
+    </div>
   )
 }

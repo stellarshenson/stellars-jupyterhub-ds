@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
 import { Button, Card, Input, Switch, Tag, Tooltip } from 'antd'
+import { COL_HELP } from '../services/config'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { ScopeFilterPills } from '../components/ScopeFilterPills'
@@ -96,7 +97,7 @@ export default function Users() {
 
   const columns: ProColumns<UserRow>[] = [
     {
-      title: 'User',
+      title: <Tooltip title={COL_HELP.users.user}><span>User</span></Tooltip>,
       dataIndex: 'name',
       sorter: (a, b) => a.name.localeCompare(b.name),
       render: (_, u) => (
@@ -112,7 +113,7 @@ export default function Users() {
       ),
     },
     {
-      title: 'Authorised',
+      title: <Tooltip title={COL_HELP.users.authorised}><span>Authorised</span></Tooltip>,
       dataIndex: 'authorized',
       width: 110,
       // admins are always authorised -> no switch for them (just a muted state);
@@ -128,26 +129,26 @@ export default function Users() {
         ),
     },
     {
-      title: 'Created',
+      title: <Tooltip title={COL_HELP.users.created}><span>Created</span></Tooltip>,
       dataIndex: 'createdISO',
       sorter: (a, b) => a.createdISO.localeCompare(b.createdISO),
       render: (_, u) => <span title={exactDate(u.createdISO)}>{timeAgoShort(u.createdISO)}</span>,
     },
     {
-      title: 'Last Seen',
+      title: <Tooltip title={COL_HELP.users.lastSeen}><span>Last Seen</span></Tooltip>,
       dataIndex: 'lastSeenISO',
       sorter: (a, b) => (a.lastSeenISO ?? '').localeCompare(b.lastSeenISO ?? ''),
       render: (_, u) =>
         u.lastSeenISO ? <span title={exactDate(u.lastSeenISO)}>{timeAgoShort(u.lastSeenISO)}</span> : <span className="doh-muted" title="never signed in">-</span>,
     },
     {
-      title: 'Activity',
+      title: <Tooltip title={COL_HELP.users.activity}><span>Activity</span></Tooltip>,
       dataIndex: 'activity',
       sorter: (a, b) => a.activity - b.activity,
       render: (_, u) => <ActivityMeter value={u.activity} hours={u.activityHours} pct={u.activityPct} />,
     },
     {
-      title: 'Groups',
+      title: <Tooltip title={COL_HELP.users.groups}><span>Groups</span></Tooltip>,
       dataIndex: 'groups',
       render: (_, u) => <CappedTags items={u.groups.map((g) => ({ key: g, label: g }))} cap={5} />,
     },
@@ -168,6 +169,7 @@ export default function Users() {
       <PendingSection users={pending} />
       <ProTable<UserRow>
         rowKey="name"
+        showSorterTooltip={false}
         columns={columns}
         dataSource={filtered}
         loading={isLoading}

@@ -4596,28 +4596,40 @@ When a server is stopped, the TTL gadget slot under the server control buttons s
 
 ## Hub-unreachable warning indicator
 
-When the portal cannot reach the hub (the `useHubHealth` probe reports down), it surfaces a transient WARNING - never a red system error and never a broken-icon/crash look. The indicator reads in the design language as a warning: a pill-style diode (the same dot used in the "Active" pill) in warning colour, pulsing with a halo. Desktop shows a persistent corner diode plus a dismissable popup; mobile shows an in-flow warning panel at the top of the content, above the Server Controls. Nothing renders while the hub is reachable.
+When the portal cannot reach the hub (`useHubHealth` reports down), it surfaces a transient WARNING - never a red system error, never a broken-icon/crash look, never a blocking full-screen modal. Desktop: a persistent connection-status PILL in the header chrome, between the theme/language controls and the stage badge, status-pill style with a softly pulsing diode - calm "Connected" while healthy, warning "Not responding" plus elapsed time while down. Mobile: an in-flow warning panel at the top of the content, pale warning surface, the same soft diode + elapsed. The page is never blocked; the pill sits quietly when healthy. Redesign supersedes the 2026-06-20 corner-diode + modal build (DEF-18).
 
-- [ ] **Warning, not error** - down state renders as a warning (warning colour, calm copy), not a red/danger system-error screen and not a broken/disconnect icon
-  - log: 2026-06-20 requirement added (new); replaces the prior `DisconnectOutlined` broken-icon look in `HubConnectionIndicator.tsx`
-- [ ] **Pulsing diode + halo** - the indicator uses a small pill-style diode (`.doh-hub-diode` / `.doh-hub-diode-inline`, 8px, `var(--color-warning)`) that pulses with a halo ring (`doh-hub-pulse` box-shadow keyframes), matching the "Active" pill LED
-  - log: 2026-06-20 requirement added (new); `global.css` diode + `@keyframes doh-hub-pulse` switched from `--color-danger` to `--color-warning`
-- [ ] **Copy** - title "Hub not responding"; body states data may be stale and actions will fail until the connection is restored, and that it is retrying automatically
-  - log: 2026-06-20 requirement added (new); `TITLE`/`BODY` constants in `HubConnectionIndicator.tsx`
-- [ ] **Desktop: corner diode + popup** - desktop shows a persistent corner diode plus a dismissable modal (Dismiss button); the modal title carries the inline diode
-  - log: 2026-06-20 requirement added (new)
-- [ ] **Desktop: popup re-arms** - dismissing the popup hides it; if the hub recovers and later drops again the popup re-opens (re-armed on each new down)
-  - log: 2026-06-20 requirement added (new); `useEffect(() => { if (!down) setDismissed(false) }, [down])`
-- [ ] **Mobile: in-flow panel atop Server Controls** - on mobile the indicator renders as an in-flow warning panel (`.doh-hub-warn-panel`, warning-tinted surface) at the top of the content, above the Server Controls, not as a corner diode/modal
-  - log: 2026-06-20 requirement added (new); `useIsMobile()` branch returns the panel
-- [ ] **Reachable: renders nothing** - while the hub is reachable (`!down`) the component renders null on both desktop and mobile - no diode, no panel, no reserved space
-  - log: 2026-06-20 requirement added (new)
-- [ ] **a11y** - mobile panel is `role="alert" aria-live="assertive"`; desktop corner diode is `role="status"` with an `aria-label`; decorative inline diodes are `aria-hidden`
-  - log: 2026-06-20 requirement added (new)
-- [ ] **Reduced motion** - under `prefers-reduced-motion` the diode halo pulse is disabled (static dot), targeting both `.doh-hub-diode` and `.doh-hub-diode-inline`
-  - log: 2026-06-20 requirement added (new)
-- [ ] **Edge: recovery clears it** - when the probe flips back to up the indicator disappears immediately on both layouts (driven solely by `down`)
-  - log: 2026-06-20 requirement added (new)
+- [ ] **Warning, not error** - down state renders as a warning (warning colour, calm copy), never a red/danger error screen, broken/disconnect icon, or blocking modal
+  - log: 2026-06-21 redesign (operator: corner diode "not right" abandon it; modal "looks quite terrible")
+- [ ] **Header status pill** - desktop shows a persistent pill in `.doh-header-actions`, BETWEEN the theme/language controls and the StageBadge, at the StageBadge's visual weight (`.doh-pill` + `.doh-dot`)
+  - log: 2026-06-21 requirement added (operator: "similar style to stage... status pill style with diode")
+- [ ] **Aligned + prominent** - the pill matches the StageBadge height exactly (same vertical metrics, no row mismatch) and is large enough to draw attention in the down state
+  - log: 2026-06-21 requirement added (operator: "aligned height-wise with stage indicator... large enough to draw attention")
+- [ ] **Soft pulsing halo** - the pill diode carries a halo that slowly fades off slightly and back in over a 3s cycle (calm, not the harsh expanding ring); the period is config-driven (`ANIMATION.statusPulseMs`, `services/config.ts`) and threaded to CSS via `--doh-status-pulse`
+  - log: 2026-06-21 requirement added (operator: "PULSATING SOFTLY... slowly fading off slightly and back in in 3s pulses - config in config.ts")
+- [ ] **Healthy state** - while reachable the pill is calm and quiet (success tone, "Connected"), not attention-grabbing
+  - log: 2026-06-21 requirement added
+- [ ] **Down state + elapsed** - while down the pill turns warning and shows how long the hub has been unreachable ("not responding for XXXX"), ticking ~every second from `downSince`
+  - log: 2026-06-21 requirement added (operator: "not responding for xxxx time")
+- [ ] **Copy** - down state states (pill label and/or tooltip) that the hub is not responding, data may be stale, actions will fail until restored, retrying automatically
+  - log: 2026-06-21 requirement carried from prior `TITLE`/`BODY`
+- [ ] **Mobile: in-flow panel** - below 768px (`useIsMobile`) the indicator renders as an in-flow warning panel (`.doh-hub-warn-panel`, pale warning surface that does not wash out the text) at the top of the content, with the soft diode + elapsed; no header pill on mobile
+  - log: 2026-06-21 requirement updated (operator: "the warning home panel is exactly what will also be shown on the mobile screen"; pale bg "so it won't wash out over the text")
+- [ ] **Desktop home panel dropped** - the originally-requested desktop home-wide banner is superseded by the header pill (operator: "maybe this is better than the panel on top of the home page... takes less space"); re-add only on operator request
+  - log: 2026-06-21 decision recorded
+- [ ] **Reachable: pill calm, panel absent** - while reachable the mobile panel renders nothing and the desktop pill stays in its calm healthy state (no warning, no layout jump)
+  - log: 2026-06-21 requirement added
+- [ ] **a11y** - mobile panel is `role="alert" aria-live="assertive"`; the header pill is `role="status"` with an `aria-label`; decorative diodes are `aria-hidden`
+  - log: 2026-06-21 requirement carried
+- [ ] **Reduced motion** - under `prefers-reduced-motion` the diode halo pulse is disabled (static dot)
+  - log: 2026-06-21 requirement carried
+- [ ] **Edge: recovery clears it** - when the probe flips back to up, the pill returns to healthy and the mobile panel disappears immediately (driven by `down` / `downSince`)
+  - log: 2026-06-21 requirement carried
+- [ ] **Visual sign-off** - desktop + mobile screenshots of the down state reviewed against the above (warning-not-error, unobtrusive pill, soft slow pulse, elapsed present, pale mobile bg); operator sign-off recorded
+  - log: 2026-06-21 requirement added (operator: "you must test how the server unreachable appears... and how does that appear on the mobile")
+- [ ] **Pedantic UX review** - the design passes an adversarial "20-year UX designer" review (claude -p) on friction, intent clarity, visual hierarchy, attention-without-alarm, stage-badge consistency, motion comfort, a11y, mobile parity; warranted findings applied
+  - log: 2026-06-21 requirement added (operator: "use adversarial UX Expert, pedantic UX designer claude -p")
+- [ ] **Functional** - `test_hub_unreachable.py` asserts the header pill down state + elapsed on desktop and the panel at mobile viewport; corner-diode/modal assertions removed
+  - log: 2026-06-21 requirement added
 
 ## Servers: Vol column dash for no volumes
 
