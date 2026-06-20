@@ -245,6 +245,7 @@ def test_ensure_stamps_container_description_label(monkeypatch):
     ensure_gpuinfo_sidecar(
         "img:latest", "gpuinfo-net", "http://{hostname}:8000",
         compose_project="proj", container_name="gpuinfo-nvidia",
+        container_description_label_key="duoptimum-hub.container.description",
         container_description="GPU-info sidecar",
     )
     assert client.containers.last_run_kwargs["labels"]["duoptimum-hub.container.description"] == "GPU-info sidecar"

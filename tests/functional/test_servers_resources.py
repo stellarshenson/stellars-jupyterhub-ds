@@ -128,3 +128,26 @@ def test_cpu_mem_cells_report_cores_and_gb(admin_portal, base_url, admin_api):
     finally:
         _delete(admin_api, base_url, f"/hub/api/users/{user}/server")
         _delete(admin_api, base_url, f"/hub/api/users/{user}")
+
+
+@pytest.mark.acc_crit(
+    "servers-vol-dash::No volumes shows dash",
+    "servers-vol-dash::Never zero GB",
+)
+def test_vol_cell_shows_dash_when_no_volumes(admin_portal, base_url, admin_api):
+    """A user with no volumes (created but never spawned) shows '-' in the Vol
+    column, never '0 GB'. Regression: volumesGB==0 rendered '0 GB' instead of the
+    muted dash the other empty metrics use."""
+    user = "novol-user"
+    _delete(admin_api, base_url, f"/hub/api/users/{user}")
+    assert _post(admin_api, base_url, f"/hub/api/users/{user}").status_code < 400
+    try:
+        page = admin_portal.goto("/servers", ready=".ant-table")
+        row = page.locator("tr.ant-table-row").filter(has_text=user).first
+        expect(row).to_be_visible()
+        # 0 volumes collapses to the muted dash - the row must not render a "0 GB" Vol cell
+        expect(row.get_by_text("0 GB", exact=True)).to_have_count(0)
+        # and no row anywhere shows a literal "0 GB" cell
+        expect(page.get_by_text("0 GB", exact=True)).to_have_count(0)
+    finally:
+        _delete(admin_api, base_url, f"/hub/api/users/{user}")

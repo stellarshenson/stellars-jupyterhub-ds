@@ -19,8 +19,26 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
 - [DEF-13: TTL bar scaled to absolute ceiling (35h reads 50%)](#def-13-ttl-bar-scaled-to-absolute-ceiling-35h-reads-50) - fixed
 - [DEF-14: TTL extend glow stuck at full opacity, no blur](#def-14-ttl-extend-glow-stuck-at-full-opacity-no-blur) - fixed
 - [DEF-15: TTL extend bar flips to 100% instead of growing](#def-15-ttl-extend-bar-flips-to-100-instead-of-growing) - open
+- [DEF-16: Stopped-server readout shows "stopped now ago"](#def-16-stopped-server-readout-shows-stopped-now-ago) - open
+- [DEF-17: Role-label keys/values baked only in Dockerfile, not in compose.yml](#def-17-role-label-keysvalues-baked-only-in-dockerfile-not-in-composeyml) - open
 
 ## Open
+
+### DEF-17: Role-label keys/values baked only in Dockerfile, not in compose.yml
+
+- [ ] **LOW** - the 8 resource role-label envs (3 KEYS + 5 per-role VALUES: `JUPYTERHUB_LABEL_NETWORK_ROLE_KEY`, `JUPYTERHUB_LABEL_NETWORK_ROLE_LAB`, `JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO`, `JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY`, `JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO`, `JUPYTERHUB_LABEL_VOLUME_ROLE_KEY`, `JUPYTERHUB_LABEL_VOLUME_ROLE_SHARED`, `JUPYTERHUB_LABEL_VOLUME_ROLE_DOCKER_PROXY`) were baked only as Dockerfile ENV and never surfaced in `compose.yml`, even though compose stamps the MATCHING labels on the networks/volumes/sidecar - the discovery contract (env value MUST equal the stamped label) was split across two files with the env half invisible, a silent drift risk; fix: surface all 8 in a "HUB: role-label discovery contract" section of the hub `environment:` block, values identical to the Dockerfile defaults (no behaviour change), beside the resource labels they must match; `compose.yml`
+  - log: 2026-06-20 reported (operator: "why aren't the volume, container, network keys and labels envs in compose.yml? I have asked you to put them there"); had been parked on an ambiguous "unsurface" wording instead of acted on - that was the miss
+  - log: 2026-06-20 fix applied - 8 envs added to compose.yml role-label section; verify on next redeploy (no-op: values == Dockerfile defaults, hub already validated them)
+  - open: `settings_dictionary.yml` carries 5 of the 8 (network + container) but not the 3 volume role labels - pending operator call on "unsurface": remove all role labels from the admin Settings page (infra-only) vs add the 3 missing for completeness
+
+### DEF-16: Stopped-server readout shows "stopped now ago"
+
+### DEF-16: Stopped-server readout shows "stopped now ago"
+
+- [ ] **LOW** - the offline TTL-slot readout built `stopped ${timeAgoShort(iso)} ago`, and `timeAgoShort` returns `now` for the sub-minute case, yielding the ungrammatical "stopped now ago" right after a stop; fix: new `stoppedAgo(iso)` helper renders "stopped a moment ago" for sub-minute (and "never started" for null), used by the hero; `format.ts`, `ServerHero.tsx`
+  - log: 2026-06-20 reported (operator: "'stopped now ago' is not a good message; if now, it should say 'stopped a moment ago'")
+  - log: 2026-06-20 fixed - `stoppedAgo()` helper; typecheck + lint clean; functional regex `(stopped .+ ago|never started)` still matches; visual + functional verify pending next rebuild (task #382)
+  - log: 2026-06-20 functional test added - `test_ttl_extend.py::test_stopped_server_reads_a_moment_ago` (start -> stop own server, assert "stopped a moment ago" visible + "now ago" never rendered); verify on rebuild run
 
 ### DEF-15: TTL extend bar flips to 100% instead of growing
 

@@ -9,7 +9,7 @@ import { NotificationPill } from './NotificationPill'
 import { ActivityMeterFill, ResourceBars, TtlGadget } from './meters'
 import { extendSession } from '../services/ops'
 import { userServerUrl } from '../services/hub/client'
-import { timeAgoShort } from '../lib/format'
+import { timeAgoShort, stoppedAgo } from '../lib/format'
 import { useRole } from '../app/RoleContext'
 import { usePref } from '../app/PrefsContext'
 import { useServerLifecycle } from '../app/ServerLifecycle'
@@ -74,7 +74,7 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
           // stopped: no live idle timer - state how long ago it stopped, or that it
           // was never started (no recoverable last-activity time). not a bar.
           <div className="doh-muted" style={{ marginTop: 20, fontSize: 'var(--text-sm)' }}>
-            {hero.lastActivityISO ? `stopped ${timeAgoShort(hero.lastActivityISO)} ago` : 'never started'}
+            {stoppedAgo(hero.lastActivityISO)}
           </div>
         ) : null}
       </Card>

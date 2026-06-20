@@ -241,6 +241,7 @@ class ActivityDataHandler(BaseHandler):
         # granted per group via the volume-mounts policy, not platform-wide here.
         lab_image = stellars_config.get('lab_image', '')
         lab_volumes = stellars_config.get('lab_volumes', []) or []
+        system_volumes = stellars_config.get('system_volumes', []) or []  # shared + docker-proxy (Lab Setup panel)
 
         response = {
             "users": users_data,
@@ -257,6 +258,7 @@ class ActivityDataHandler(BaseHandler):
             "gpu_connected": gpu_sidecar_connected() if gpu_list else False,
             "lab_image": lab_image,
             "lab_volumes": lab_volumes,
+            "system_volumes": system_volumes,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "sampling_status": get_activity_sampling_status(),
             "inactive_after_seconds": get_inactive_after_seconds(),

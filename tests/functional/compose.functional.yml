@@ -23,7 +23,8 @@ services:
     environment:
       - JUPYTERHUB_ADMIN=functestadmin                   # dedicated test admin (no clash with real 'admin')
       - JUPYTERHUB_BASE_URL=/jupyterhub
-      - JUPYTERHUB_HUB_NAME=Functest Hub Name            # exercise the configurable display name (logo tooltip + login/signup text)
+      - JUPYTERHUB_BRANDING_HUB_NAME=Functest Hub Name   # exercise the configurable hub display name (logo tooltip + login/signup text)
+      - JUPYTERHUB_BRANDING_LAB_NAME=Functest Lab Name   # exercise the lab display name (injected into labs as JUPYTERLAB_SYSTEM_NAME)
       - JUPYTERHUB_SSL_ENABLED=0                        # http; no Traefik in the test stack
       # Bootstrap-by-signup: signup off + no admin password + fresh DB opens the
       # one-shot admin bootstrap window, so the harness creates the first admin
@@ -79,6 +80,8 @@ volumes:
   shared:
     labels:
       duoptimum-hub.volume.role: "shared"
+      duoptimum-hub.volume.description: "Platform-wide shared storage for all users"  # Lab Setup system-volumes panel reads this
   docker_sockets:
     labels:
       duoptimum-hub.volume.role: "docker-proxy"
+      duoptimum-hub.volume.description: "Per-user docker-proxy sockets"  # Lab Setup system-volumes panel reads this

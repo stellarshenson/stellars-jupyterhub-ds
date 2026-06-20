@@ -77,7 +77,8 @@ class GroupsDataHandler(BaseHandler):
         from ..docker_utils import volume_labels_async
         labels = await volume_labels_async(shared_name) if shared_name else None
         shared_exists = labels is not None  # one inspect: None means absent / docker error
-        shared_desc = (labels or {}).get('duoptimum-hub.volume.description', '')
+        vol_desc_key = stellars_config.get('volume_description_label_key', '')
+        shared_desc = ((labels or {}).get(vol_desc_key, '') if vol_desc_key else '')
 
         self.log.info(f"[Groups Data] Returning {len(result)} group(s)")
         self.finish({

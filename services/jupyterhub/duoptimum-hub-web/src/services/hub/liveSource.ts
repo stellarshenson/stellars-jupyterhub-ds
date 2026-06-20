@@ -94,6 +94,7 @@ interface RawActivity {
   gpu_connected?: boolean // gpuinfo sidecar is live (fresh sample); false = inventory is stale, hide GPU widgets
   lab_image?: string // spawn image (Lab Container page)
   lab_volumes?: Array<{ suffix: string; mount: string; description?: string; role?: string }> // standard per-user volumes (role = duoptimum-hub.volume.role)
+  system_volumes?: Array<{ name: string; mount: string; description?: string; role?: string }> // shared + docker-proxy system volumes (name = resolved docker volume name)
 }
 interface RawPolicySummary {
   key: string
@@ -698,9 +699,10 @@ export const liveSource: DataSource = {
       return {
         image: a.lab_image ?? '',
         volumes: (a.lab_volumes ?? []).map((v) => ({ name: v.suffix, mount: v.mount, description: v.description, role: v.role })),
+        systemVolumes: (a.system_volumes ?? []).map((v) => ({ name: v.name, mount: v.mount, description: v.description, role: v.role })),
       }
     } catch {
-      return { image: '', volumes: [] } // honest empty, not the mock lab image
+      return { image: '', volumes: [], systemVolumes: [] } // honest empty, not the mock lab image
     }
   },
 

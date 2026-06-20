@@ -8,7 +8,7 @@ to the real daemon.
 
 import json
 
-from .config import OWNER_LABEL, MANAGED_LABEL, BYTES_PER_GB, NANO_PER_CORE
+from .config import OWNER_LABEL, owner_value, BYTES_PER_GB, NANO_PER_CORE
 
 # Docker Compose / Docker Desktop group containers by this label.
 COMPOSE_PROJECT_LABEL = "com.docker.compose.project"
@@ -42,20 +42,20 @@ def inject_compose_project(body, project, *, allow_override=True):
 
 
 def owner_labels(owner):
-    """Labels stamped on every created resource."""
-    return {OWNER_LABEL: owner, MANAGED_LABEL: "true"}
+    """The owner label stamped on every created resource (value = {username}-substituted)."""
+    return {OWNER_LABEL: owner_value(owner)}
 
 
 def inject_labels(body, owner):
-    """Return a copy of a create body with owner+managed labels attached.
+    """Return a copy of a create body with the owner label attached.
 
     Container, volume and network create bodies all carry a top-level ``Labels``
-    map, so the same injection works for all three.
+    map, so the same injection works for all three. Owner presence is what marks a
+    resource proxy-managed - there is no separate managed flag.
     """
     out = dict(body or {})
     labels = dict(out.get("Labels") or {})
-    labels[OWNER_LABEL] = owner
-    labels[MANAGED_LABEL] = "true"
+    labels[OWNER_LABEL] = owner_value(owner)
     out["Labels"] = labels
     return out
 
@@ -87,7 +87,7 @@ def merge_label_filter(filters_param, owner):
     except (json.JSONDecodeError, TypeError):
         current = {}
     labels = [v for v in (current.get("label") or []) if isinstance(v, str)]
-    constraint = f"{OWNER_LABEL}={owner}"
+    constraint = f"{OWNER_LABEL}={owner_value(owner)}"
     if constraint not in labels:
         labels.append(constraint)
     current["label"] = labels
@@ -111,7 +111,7 @@ def _labels_of(inspect_json):
 
 def is_owned(inspect_json, owner):
     """True if an inspect payload is owned by ``owner`` (by owner label)."""
-    return _labels_of(inspect_json).get(OWNER_LABEL) == owner
+    return _labels_of(inspect_json).get(OWNER_LABEL) == owner_value(owner)
 
 
 def caps_violation(body, cpu_cap_cores, mem_cap_gb):

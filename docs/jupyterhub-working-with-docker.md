@@ -8,7 +8,7 @@ How a user's JupyterLab container ends up with (or without) Docker access. Three
 |---|---|---|
 | none | no docker socket inside the container | safest |
 | `docker_access` | raw `/var/run/docker.sock` mounted - user sees every container/volume/network on the host, can `docker run` anything except `--privileged` from outside | wide |
-| `docker_limited` | per-user proxy socket at `/run/dockersock/docker.sock` (`DOCKER_HOST` set) - user sees only resources labelled `jupyterhub.docker.proxy.owner=<them>`, creates are quota-bounded and stamped with the owner label, dangerous flags rejected (host bind, host net, cap-add, `--privileged`) | tight |
+| `docker_limited` | per-user proxy socket at `/run/dockersock/docker.sock` (`DOCKER_HOST` set) - user sees only resources labelled `duoptimum-hub.docker.proxy.owner=<them>`, creates are quota-bounded and stamped with the owner label, dangerous flags rejected (host bind, host net, cap-add, `--privileged`) | tight |
 | `docker_privileged` standalone | the user's JupyterLab container itself runs with `--privileged` (kernel-root inside it) but **no Docker socket of any kind** - they can install host modules, mount loop devices, etc., from within their lab but cannot talk to dockerd | wide-inside-container |
 | any access + `docker_privileged` | as above plus a docker socket (limited or raw). Does **not** change which socket they reach: limited stays limited, normal stays normal. Privileged is escalation, not bypass | wide |
 

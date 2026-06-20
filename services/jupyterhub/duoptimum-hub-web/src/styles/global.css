@@ -242,17 +242,23 @@ body { margin: 0; font-family: var(--font-sans); }
 .doh-mock-switch a:hover { color: var(--color-text); }
 .doh-mock-switch a.on { background: var(--color-accent-soft); color: var(--color-accent); font-weight: 600; }
 
-/* ---- hub-unreachable indicator: pulsating diode (desktop) + top panel (mobile) ---- */
-.doh-hub-diode { position: fixed; top: 14px; right: 16px; z-index: 1001; width: 12px; height: 12px; border-radius: 50%; background: var(--color-danger); animation: doh-hub-pulse 1.5s ease-out infinite; }
-.doh-hub-offline-bar { position: fixed; inset: 0 0 auto 0; z-index: 1001; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; font-size: 14px; font-weight: 600; color: var(--color-danger-fg); background: var(--color-danger); box-shadow: var(--shadow-md); }
-.doh-hub-offline-bar .doh-hub-dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; animation: doh-hub-pulse 1.5s ease-out infinite; }
+/* ---- hub-unreachable indicator: warning diode (desktop popup + corner) + in-flow panel (mobile) ----
+   reads as a transient WARNING - a pill-style diode in warning colour, pulsing with a halo - never a red system error */
+.doh-hub-diode { position: fixed; top: 14px; right: 16px; z-index: 1001; width: 8px; height: 8px; border-radius: 50%; background: var(--color-warning); animation: doh-hub-pulse 1.5s ease-out infinite; }
+/* inline pill-style diode for the desktop popup title + the mobile panel */
+.doh-hub-diode-inline { display: inline-block; flex: none; width: 8px; height: 8px; margin-inline-end: 10px; border-radius: 50%; background: var(--color-warning); vertical-align: middle; animation: doh-hub-pulse 1.5s ease-out infinite; }
+/* mobile: an in-flow warning panel at the top of the content, above Server Controls */
+.doh-hub-warn-panel { display: flex; align-items: flex-start; margin: 12px 0; padding: 12px 14px; border-radius: var(--radius-md); color: var(--color-text); background: color-mix(in srgb, var(--color-warning) 12%, var(--color-surface)); border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent); }
+.doh-hub-warn-panel .doh-hub-diode-inline { margin-top: 5px; }
+.doh-hub-warn-title { font-weight: 600; }
+.doh-hub-warn-body { font-size: var(--text-sm); color: var(--color-text-muted); margin-top: 2px; }
 @keyframes doh-hub-pulse {
-  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-danger) 65%, transparent); }
-  70%  { box-shadow: 0 0 0 9px color-mix(in srgb, var(--color-danger) 0%, transparent); }
-  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-danger) 0%, transparent); }
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-warning) 65%, transparent); }
+  70%  { box-shadow: 0 0 0 9px color-mix(in srgb, var(--color-warning) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-warning) 0%, transparent); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .doh-hub-diode, .doh-hub-offline-bar .doh-hub-dot { animation: none; }
+  .doh-hub-diode, .doh-hub-diode-inline { animation: none; }
   /* extend glow kept under reduced motion - operator wants the cue visible */
 }
 

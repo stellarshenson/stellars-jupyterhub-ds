@@ -15,8 +15,6 @@ no tokens, no standalone mode - the caller embeds it.
 
 from . import filters, quota
 from .config import (
-    LABEL_NAMESPACE,
-    MANAGED_LABEL,
     OWNER_LABEL,
     ProxyConfig,
 )
@@ -28,8 +26,6 @@ __version__ = "0.4.0"
 __all__ = [
     "ProxyConfig",
     "OWNER_LABEL",
-    "MANAGED_LABEL",
-    "LABEL_NAMESPACE",
     "create_app",
     "Manager",
     "run",

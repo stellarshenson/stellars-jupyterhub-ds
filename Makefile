@@ -128,7 +128,7 @@ PRINT_BUILD_SUCCESS = @IMG="$(HUB_IMAGE):latest"; \
 	else \
 		printf '\n%s%sBuild step done, but image %s not found to inspect%s\n\n' "$(RED)" "$(BOLD)" "$$IMG" "$(RESET)"; \
 	fi
-PRINT_PUSH_SUCCESS  = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sPush successful:  stellars/duoptimum-hub:%s (also :latest)%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$(RESET)"
+PRINT_PUSH_SUCCESS  = @V=$$($(RUNTIME_TAG_PYTHON_CMD)); printf '\n%s%sPush successful:  stellars/duoptimum-hub:%s + stellars/duoptimum-gpuinfo-nvidia:%s (both also :latest)%s\n\n' "$(GREEN)" "$(BOLD)" "$$V" "$$V" "$(RESET)"
 
 # Build options (e.g., BUILD_OPTS='--no-cache' or BUILD_OPTS='--no-version-increment')
 BUILD_OPTS ?=
@@ -215,6 +215,7 @@ push: preflight tag
 	docker push $(HUB_IMAGE):latest
 	docker push $(HUB_IMAGE):$(TAG)
 	docker push $(GPUINFO_IMAGE):latest
+	docker push $(GPUINFO_IMAGE):$(TAG)
 	$(PRINT_PUSH_SUCCESS)
 
 tag: preflight
@@ -226,6 +227,7 @@ tag: preflight
 	fi
 	@echo "Creating docker tag: $(TAG)"
 	@docker tag stellars/duoptimum-hub:latest stellars/duoptimum-hub:$(TAG)
+	@docker tag $(GPUINFO_IMAGE):latest $(GPUINFO_IMAGE):$(TAG)
 
 ## start jupyterhub (fg)
 start: preflight

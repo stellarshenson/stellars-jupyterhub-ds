@@ -18,7 +18,7 @@ export function adminUser(): string {
   return d?.admin_user ?? ''
 }
 
-/** Configurable display name (JUPYTERHUB_HUB_NAME) - the logo tooltip and the
+/** Configurable hub display name (JUPYTERHUB_BRANDING_HUB_NAME) - the logo tooltip and the
  * login/signup screen text. Falls back to the product default when unset (mock/dev
  * or an empty env value). */
 export function hubName(): string {

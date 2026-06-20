@@ -11,14 +11,21 @@ import os
 from dataclasses import dataclass, field
 from typing import Tuple
 
-# Label namespace; mirrors this package's name (duoptimum-docker-proxy ->
-# duoptimum.docker.proxy). Overridable via env to dodge clashes with host labels.
-LABEL_NAMESPACE = os.environ.get(
-    "JUPYTERHUB_DOCKER_PROXY_LABEL_PREFIX",
-    "duoptimum.docker.proxy",
-)
-OWNER_LABEL = f"{LABEL_NAMESPACE}.owner"
-MANAGED_LABEL = f"{LABEL_NAMESPACE}.managed"
+# Ownership label stamped on every proxy-created resource (container/volume/network). Proxy only
+# stamps OWNER on resources it creates, so OWNER presence already means "proxy-managed" - separate
+# .managed marker redundant, not stamped. Key+value sourced RAW from the unified
+# JUPYTERHUB_LABEL_DOCKER_PROXY_* env family - NO hardcoded fallback (that duplicated the source of
+# truth and risked drift). Single source = Dockerfile ENV; proxy runs in-process in the hub, so the
+# hub config validator guarantees both are present (and VALUE carries {username}) before any proxy
+# code runs. Standalone tests supply them via tests/conftest.py. VALUE is a template - {username}
+# substituted with the resource owner at stamp time.
+OWNER_LABEL = os.environ.get("JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_KEY", "").strip()
+OWNER_VALUE_TEMPLATE = os.environ.get("JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_VALUE", "").strip()
+
+
+def owner_value(owner):
+    """Owner-label VALUE for ``owner``: the configured template with {username} substituted."""
+    return OWNER_VALUE_TEMPLATE.replace("{username}", owner)
 
 BYTES_PER_GB = 1024 ** 3
 NANO_PER_CORE = 1_000_000_000

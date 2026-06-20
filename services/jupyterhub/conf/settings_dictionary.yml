@@ -66,9 +66,13 @@ Docker Proxy (limited-docker users):
     description: Python str.format template for per-user `com.docker.compose.project` label stamped on ad-hoc `docker run` containers when a docker-limited group enables it. Placeholders - {compose} (hub project), {username}. User's own `docker compose -p` is still respected when the group's allow-override is on
     default: "{username}_containers"
 
-  - name: JUPYTERHUB_DOCKER_PROXY_LABEL_PREFIX
-    description: Label namespace (from the duoptimum-docker-proxy package); proxy stamps `<prefix>.owner` and `<prefix>.managed` on its resources. All filtering keys off `<prefix>.owner`
-    default: duoptimum.docker.proxy
+  - name: JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_KEY
+    description: Owner label key the docker-proxy stamps on every container/volume/network it creates; all ownership filtering keys off it (owner presence alone marks a resource proxy-managed)
+    default: duoptimum-hub.docker.proxy.owner
+
+  - name: JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_VALUE
+    description: Owner label value template; {username} is substituted with the resource owner at stamp time
+    default: "{username}"
 
 Docker Spawner:
   - name: JUPYTERHUB_LAB_IMAGE
@@ -79,12 +83,12 @@ Docker Spawner:
     description: Hub<->lab network spawned labs join. Defaults to the `{network}` token, resolved at boot to the hub's attached net carrying `duoptimum-hub.network.role=lab`. WARNING - do not change unless you know what you are doing; a literal value bypasses role discovery and must name an existing hub-attached network, else labs cannot spawn
     default: "{network}"
 
-  - name: JUPYTERHUB_NETWORK_ROLE_LABEL_KEY
+  - name: JUPYTERHUB_LABEL_NETWORK_ROLE_KEY
     description: Label key the hub matches to discover its networks by role; compose stamps it on the networks
     default: duoptimum-hub.network.role
 
-  - name: JUPYTERHUB_LAB_NETWORK_ROLE_LABEL
-    description: Role value identifying the hub<->lab network (matched against JUPYTERHUB_NETWORK_ROLE_LABEL_KEY)
+  - name: JUPYTERHUB_LABEL_NETWORK_ROLE_LAB
+    description: Role value identifying the hub<->lab network (matched against JUPYTERHUB_LABEL_NETWORK_ROLE_KEY)
     default: lab
 
   - name: JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE
@@ -108,16 +112,16 @@ GPU:
     description: Hub<->sidecar network. Defaults to the `{network}` token, resolved at boot to the hub's attached net carrying `duoptimum-hub.network.role=gpuinfo`. WARNING - do not change unless you know what you are doing; a literal value bypasses role discovery, empty = sidecar unplaceable, GPU off
     default: "{network}"
 
-  - name: JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL
-    description: Role value identifying the hub<->sidecar network (matched against JUPYTERHUB_NETWORK_ROLE_LABEL_KEY)
+  - name: JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO
+    description: Role value identifying the hub<->sidecar network (matched against JUPYTERHUB_LABEL_NETWORK_ROLE_KEY)
     default: gpuinfo
 
-  - name: JUPYTERHUB_CONTAINER_ROLE_LABEL_KEY
+  - name: JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY
     description: Label key stamped on hub-managed containers to mark their role; enables discovery by role
     default: duoptimum-hub.container.role
 
-  - name: JUPYTERHUB_GPUINFO_CONTAINER_ROLE_LABEL
-    description: Role value stamped on the gpuinfo sidecar container (matched against JUPYTERHUB_CONTAINER_ROLE_LABEL_KEY)
+  - name: JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO
+    description: Role value stamped on the gpuinfo sidecar container (matched against JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY)
     default: gpuinfo
 
 Services:
@@ -246,20 +250,12 @@ User Environment:
     default: "1"
 
 Branding:
-  - name: JUPYTERLAB_SYSTEM_NAME
-    description: Rebrand stellars-jupyterlab-ds mentions in welcome page, MOTD and toolbar header badge; empty = no rebrand
+  - name: JUPYTERHUB_BRANDING_LAB_NAME
+    description: Lab display name shown in the spawned lab's header, welcome page and MOTD; injected into each lab as JUPYTERLAB_SYSTEM_NAME; empty = no rebrand
     default: ""
 
-  - name: JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME
-    description: Uppercase the toolbar header badge (0/1)
-    default: "1"
-
-  - name: JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR
-    description: CSS color for the toolbar header badge text; empty = --jp-ui-font-color2
-    default: ""
-
-  - name: JUPYTERHUB_HUB_NAME
-    description: Display name - portal logo tooltip + login/signup screen text; empty = "DuOptimum Hub"
+  - name: JUPYTERHUB_BRANDING_HUB_NAME
+    description: Hub display name - portal logo tooltip + login/signup screen text; empty = "DuOptimum Hub"
     default: "DuOptimum Hub"
 
   - name: JUPYTERHUB_BRANDING_STAGE

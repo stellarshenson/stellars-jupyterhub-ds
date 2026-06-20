@@ -180,3 +180,25 @@ def test_stopped_server_shows_stopped_ago_readout(admin_portal, admin_api, base_
     expect(page.locator(".doh-ttl-bar")).to_have_count(0)
     # the TTL slot reads "stopped ... ago" or "never started", never a bar
     expect(page.get_by_text(re.compile(r"(stopped .+ ago|never started)"))).to_be_visible()
+
+
+@pytest.mark.acc_crit(
+    "duoptimumhub::Stopped sub-minute reads 'a moment ago' (DEF-16)",
+)
+def test_stopped_server_reads_a_moment_ago(admin_portal, admin_api, base_url):
+    """DEF-16: a server stopped within the last minute reads "stopped a moment ago",
+    never the ungrammatical "stopped now ago". Start then immediately stop the admin's
+    own server so the last activity is sub-minute, then assert the Server Control
+    readout. The "now ago" guard is timing-independent (it must never render)."""
+    me = admin_api.get(f"{base_url}/hub/api/user", timeout=30).json()["name"]
+    # fresh recent activity: start -> ready -> stop, so lastActivity is sub-minute
+    _post(admin_api, base_url, f"/hub/api/users/{me}/server")
+    assert _wait(lambda: _server_state(admin_api, base_url, me).get("", {}).get("ready")), \
+        "own server never became ready"
+    _delete(admin_api, base_url, f"/hub/api/users/{me}/server")
+    assert _wait(lambda: not _server_state(admin_api, base_url, me).get("", {}).get("ready", False)), \
+        "own server never stopped"
+    page = admin_portal.goto("/home")
+    # the DEF-16 fix: sub-minute reads "a moment ago", and "now ago" never renders
+    expect(page.get_by_text("stopped a moment ago", exact=False)).to_be_visible()
+    expect(page.get_by_text(re.compile(r"now ago"))).to_have_count(0)

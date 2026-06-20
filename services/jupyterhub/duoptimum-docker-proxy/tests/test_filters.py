@@ -5,16 +5,29 @@ import json
 from duoptimum_docker_proxy import filters as F
 from duoptimum_docker_proxy.config import (
     BYTES_PER_GB,
-    MANAGED_LABEL,
     NANO_PER_CORE,
     OWNER_LABEL,
+    owner_value,
 )
 
 
-def test_inject_labels_adds_owner_and_managed():
+def test_inject_labels_adds_owner():
     out = F.inject_labels({}, "alice")
-    assert out["Labels"][OWNER_LABEL] == "alice"
-    assert out["Labels"][MANAGED_LABEL] == "true"
+    assert out["Labels"][OWNER_LABEL] == "alice"  # owner value = {username} template -> "alice"
+    assert len(out["Labels"]) == 1  # owner only; no separate managed marker
+
+
+def test_owner_value_substitutes_username(monkeypatch):
+    # default template is the bare {username} placeholder -> the owner verbatim
+    assert owner_value("alice") == "alice"
+    # a custom template has {username} replaced, surrounding text preserved
+    monkeypatch.setattr("duoptimum_docker_proxy.config.OWNER_VALUE_TEMPLATE", "user-{username}-x")
+    assert owner_value("alice") == "user-alice-x"
+
+
+def test_default_owner_label_key_is_hub_namespaced():
+    # unified family: ownership labels live under the duoptimum-hub.* namespace
+    assert OWNER_LABEL == "duoptimum-hub.docker.proxy.owner"
 
 
 def test_inject_labels_preserves_existing_and_does_not_mutate_input():

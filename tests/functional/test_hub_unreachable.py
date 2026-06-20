@@ -52,7 +52,7 @@ def test_hub_unreachable_indicator(admin_portal, docker_client, base_url):
 
     # healthy: no indicator in any form
     expect(page.locator(".doh-hub-diode")).to_have_count(0)
-    expect(page.locator(".doh-hub-offline-bar")).to_have_count(0)
+    expect(page.locator(".doh-hub-warn-panel")).to_have_count(0)
 
     hub = docker_client.containers.get(HUB_CONTAINER)
     try:
@@ -66,7 +66,7 @@ def test_hub_unreachable_indicator(admin_portal, docker_client, base_url):
 
         # mobile: top panel instead, no diode/popup (same outage, just resize)
         page.set_viewport_size(MOBILE)
-        expect(page.locator(".doh-hub-offline-bar")).to_be_visible(timeout=DETECT_TIMEOUT)
+        expect(page.locator(".doh-hub-warn-panel")).to_be_visible(timeout=DETECT_TIMEOUT)
         expect(page.locator(".doh-hub-diode")).to_have_count(0)
         page.set_viewport_size(DESKTOP)
     finally:
@@ -75,4 +75,4 @@ def test_hub_unreachable_indicator(admin_portal, docker_client, base_url):
 
     # recovery: indicator clears on the next successful poll
     expect(page.locator(".doh-hub-diode")).to_have_count(0, timeout=CLEAR_TIMEOUT)
-    expect(page.locator(".doh-hub-offline-bar")).to_have_count(0, timeout=CLEAR_TIMEOUT)
+    expect(page.locator(".doh-hub-warn-panel")).to_have_count(0, timeout=CLEAR_TIMEOUT)

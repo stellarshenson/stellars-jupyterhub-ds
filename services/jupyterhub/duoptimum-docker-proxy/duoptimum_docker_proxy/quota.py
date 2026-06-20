@@ -5,7 +5,7 @@ length is the count). Storage is summed from a ``/system/df`` payload. No I/O
 here; the server fetches the payloads and calls these.
 """
 
-from .config import OWNER_LABEL, BYTES_PER_GB
+from .config import OWNER_LABEL, owner_value, BYTES_PER_GB
 
 
 def list_count(list_json):
@@ -38,12 +38,12 @@ def storage_used_bytes(system_df, owner):
     total = 0
     df = system_df or {}
     for vol in (df.get("Volumes") or []):
-        if _labels_of(vol).get(OWNER_LABEL) == owner:
+        if _labels_of(vol).get(OWNER_LABEL) == owner_value(owner):
             size = ((vol.get("UsageData") or {}).get("Size")) or 0
             if size > 0:
                 total += size
     for cont in (df.get("Containers") or []):
-        if (cont.get("Labels") or {}).get(OWNER_LABEL) == owner:
+        if (cont.get("Labels") or {}).get(OWNER_LABEL) == owner_value(owner):
             size = cont.get("SizeRw") or 0
             if size > 0:
                 total += size

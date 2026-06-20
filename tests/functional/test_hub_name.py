@@ -1,7 +1,7 @@
-"""JUPYTERHUB_HUB_NAME branding: the configurable display name must surface as the
-portal logo tooltip (title) and as the login/signup screen text.
+"""JUPYTERHUB_BRANDING_HUB_NAME branding: the configurable hub display name must surface
+as the portal logo tooltip (title) and as the login/signup screen text.
 
-The functest hub sets JUPYTERHUB_HUB_NAME="Functest Hub Name" (compose.functional.yml);
+The functest hub sets JUPYTERHUB_BRANDING_HUB_NAME="Functest Hub Name" (compose.functional.yml);
 the shipped default is "DuOptimum Hub" (baked in Dockerfile.jupyterhub). These tests
 assert the configured value reaches both surfaces - logged-out (login screen) and
 logged-in (logo tooltip).

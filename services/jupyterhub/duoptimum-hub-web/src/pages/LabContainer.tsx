@@ -12,6 +12,7 @@ import type { LabMount } from '../services/types'
 export default function LabContainer() {
   const { data } = useLabContainer()
   const volumes = data?.volumes ?? []
+  const systemVolumes = data?.systemVolumes ?? []
 
   return (
     <>
@@ -39,8 +40,25 @@ export default function LabContainer() {
         />
       </Card>
 
+      {systemVolumes.length > 0 && (
+        <Card styles={{ body: { padding: 0 } }} style={{ marginBottom: 16 }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-subtle)', fontWeight: 600 }}>System Volumes</div>
+          <Table<LabMount>
+            rowKey="name"
+            pagination={false}
+            dataSource={systemVolumes}
+            rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
+            columns={[
+              { title: 'Name', dataIndex: 'name', render: (v) => <span className="doh-mono">{v}</span> },
+              { title: 'Mount Point', dataIndex: 'mount', render: (v) => <span className="doh-mono">{v}</span> },
+              { title: 'Description', dataIndex: 'description', render: (v) => <span className="doh-muted">{v}</span> },
+            ]}
+          />
+        </Card>
+      )}
+
       <div style={{ maxWidth: 760 }}>
-        <Notice type="info">Shared and extra volumes are granted per group - configure them in the Volume mounts section of a <Link to="/groups">group</Link>.</Notice>
+        <Notice type="info">System volumes are granted by group policy - the shared volume via a shared-volume grant, the docker-proxy socket via a docker-access grant. Grant shared and extra volumes per group in a <Link to="/groups">group</Link>'s Volume mounts section.</Notice>
       </div>
     </>
   )

@@ -16,7 +16,6 @@ from aiohttp.test_utils import TestClient, TestServer
 
 from duoptimum_docker_proxy.config import (
     BYTES_PER_GB,
-    MANAGED_LABEL,
     NANO_PER_CORE,
     OWNER_LABEL,
 )
@@ -98,7 +97,6 @@ async def test_create_injects_labels_caps_name_and_project():
         rec = daemon.find("POST", "/containers/create")[0]
         body = rec["body"]
         assert body["Labels"][OWNER_LABEL] == "alice"
-        assert body["Labels"][MANAGED_LABEL] == "true"
         assert body["Labels"][COMPOSE_PROJECT_LABEL] == "jhub"
         assert body["HostConfig"]["NanoCpus"] == int(2.0 * NANO_PER_CORE)
         assert body["HostConfig"]["Memory"] == int(8.0 * BYTES_PER_GB)

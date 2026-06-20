@@ -8,7 +8,7 @@ and serves the bundled static assets. Wire it into ``jupyterhub_config.py``::
     import duoptimum_hub_web
     from duoptimum_hub_web import portal_handlers, PORTAL_URL
 
-    c.JupyterHub.extra_handlers += portal_handlers()
+    c.DuoptimumHub.registered_handlers += portal_handlers()
     c.JupyterHub.template_paths = [duoptimum_hub_web.template_dir(), *c.JupyterHub.template_paths]
     c.JupyterHub.default_url = JUPYTERHUB_BASE_URL_PREFIX + PORTAL_URL
 
@@ -45,23 +45,23 @@ ASSETS_ROUTE = r"/assets/(.*)"
 # login/signup pages can show the logo; matched before the @authenticated catch-all.
 BRAND_ROUTE = r"/brand/(.*)"
 # Tornado catch-all, relative to the hub prefix -> serves the SPA shell for every
-# /hub/<path> not already claimed by a JupyterHub built-in. extra_handlers run
-# AFTER the built-ins (app.py registers default_handlers first, first-match-wins),
-# so /hub/login, /hub/logout, /hub/static/*, /hub/spawn*, /hub/token etc. are
-# served by the hub; only leftover SPA routes (/servers, /users, ...) fall through
-# here. /hub/home and /hub/admin are also stock built-ins, but their templates are
-# shadowed by this package's template_dir: home.html renders the SPA shell (so the
-# portal OWNS the /home landing route) and admin.html redirects into it. The legacy
-# server-page handlers (/notifications, /settings, /activity, /groups) were
-# unregistered so they no longer shadow the matching SPA routes.
+# /hub/<path> not already claimed by a JupyterHub built-in. registered_handlers are
+# spliced into self.handlers AFTER the built-ins (DuoptimumHub.init_handlers,
+# first-match-wins), so /hub/login, /hub/logout, /hub/static/*, /hub/spawn*,
+# /hub/token etc. are served by the hub; only leftover SPA routes (/servers,
+# /users, ...) fall through here. /hub/home and /hub/admin are also stock built-ins,
+# but their templates are shadowed by this package's template_dir: home.html renders
+# the SPA shell (so the portal OWNS the /home landing route) and admin.html redirects
+# into it. The legacy server-page handlers (/notifications, /settings, /activity,
+# /groups) were unregistered so they no longer shadow the matching SPA routes.
 #
-# The negative lookahead is load-bearing: TWO built-ins are appended AFTER
-# extra_handlers (jupyterhub/app.py: `/logo` -> LogoHandler and `/api/(.*)` ->
-# API404), so a bare /(.*) shadowed both - the lab logo (<img src=.../hub/logo>)
+# The negative lookahead is load-bearing: the splice places registered_handlers
+# BEFORE JupyterHub's trailing `/logo` -> LogoHandler and `/api/(.*)` -> API404
+# catch-alls, so a bare /(.*) shadowed both - the lab logo (<img src=.../hub/logo>)
 # rendered the SPA HTML instead of the PNG, and an unknown /hub/api/* returned the
 # shell instead of a JSON 404. Excluding `logo` and `api/` lets them fall through
-# to those late built-ins (the custom /api/* data handlers register earlier in
-# extra_handlers, so they still win).
+# to those late built-ins (the custom /api/* data handlers are ordered earlier in
+# registered_handlers, so they still win).
 PORTAL_ROUTE = r"/(?!logo(?:/|$)|api/)(.*)"
 # Full hub path (the caller prefixes the deploy base_url) for default_url. The SPA
 # landing is /home: the stock /hub/home built-in renders this package's home.html,
@@ -84,7 +84,7 @@ __all__ = [
 
 
 def portal_handlers():
-    """``extra_handlers`` tuples registering the portal (auto-prefixed with /hub).
+    """``registered_handlers`` tuples registering the portal (auto-prefixed with /hub).
 
     Order matters - Tornado matches first: the hashed-assets and public brand
     routes come before the SPA catch-all so ``/hub/assets/*`` and

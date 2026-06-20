@@ -28,14 +28,19 @@ _REQUIRED = [
     ("lab_image", "JUPYTERHUB_LAB_IMAGE (lab image to spawn)"),
     ("namespace", "namespace (compose project) - discovered from the hub's own com.docker.compose.project label; run the hub under docker compose"),
     ("lab_network_name", "JUPYTERHUB_NETWORK_NAME (hub<->lab network)"),
-    ("network_role_label_key", "JUPYTERHUB_NETWORK_ROLE_LABEL_KEY"),
-    ("volume_role_label_key", "JUPYTERHUB_VOLUME_ROLE_LABEL_KEY"),
-    ("container_role_label_key", "JUPYTERHUB_CONTAINER_ROLE_LABEL_KEY"),
-    ("lab_network_role_label", "JUPYTERHUB_LAB_NETWORK_ROLE_LABEL"),
-    ("gpuinfo_network_role_label", "JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL"),
-    ("shared_volume_role_label", "JUPYTERHUB_SHARED_VOLUME_ROLE_LABEL"),
-    ("docker_proxy_volume_role_label", "JUPYTERHUB_DOCKER_PROXY_VOLUME_ROLE_LABEL"),
-    ("gpuinfo_container_role_label", "JUPYTERHUB_GPUINFO_CONTAINER_ROLE_LABEL"),
+    ("network_role_label_key", "JUPYTERHUB_LABEL_NETWORK_ROLE_KEY"),
+    ("volume_role_label_key", "JUPYTERHUB_LABEL_VOLUME_ROLE_KEY"),
+    ("container_role_label_key", "JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY"),
+    ("lab_network_role_label", "JUPYTERHUB_LABEL_NETWORK_ROLE_LAB"),
+    ("gpuinfo_network_role_label", "JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO"),
+    ("shared_volume_role_label", "JUPYTERHUB_LABEL_VOLUME_ROLE_SHARED"),
+    ("docker_proxy_volume_role_label", "JUPYTERHUB_LABEL_VOLUME_ROLE_DOCKER_PROXY"),
+    ("gpuinfo_container_role_label", "JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO"),
+    ("volume_description_label_key", "JUPYTERHUB_LABEL_VOLUME_DESCRIPTION"),
+    ("volume_owner_label_key", "JUPYTERHUB_LABEL_VOLUME_OWNER_KEY"),
+    ("container_description_label_key", "JUPYTERHUB_LABEL_CONTAINER_DESCRIPTION"),
+    ("docker_proxy_owner_label_key", "JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_KEY"),
+    ("docker_proxy_owner_label_value", "JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_VALUE"),
     ("lab_container_name_template", "JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE"),
     ("gpuinfo_nvidia_image", "JUPYTERHUB_GPUINFO_NVIDIA_IMAGE"),
     ("gpuinfo_nvidia_container_name", "JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME"),
@@ -109,7 +114,7 @@ def validate_hub_config(values, *, path_exists=os.path.exists):
     gpuinfo_role = (values.get("gpuinfo_network_role_label") or "").strip()
     if lab_role and gpuinfo_role and lab_role == gpuinfo_role:
         errors.append(
-            "JUPYTERHUB_LAB_NETWORK_ROLE_LABEL and JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL are both "
+            "JUPYTERHUB_LABEL_NETWORK_ROLE_LAB and JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO are both "
             f"'{lab_role}' - the lab and gpuinfo networks would be indistinguishable on key "
             f"'{values.get('network_role_label_key')}'; give them distinct role values"
         )
@@ -120,7 +125,7 @@ def validate_hub_config(values, *, path_exists=os.path.exists):
     dp_vrole = (values.get("docker_proxy_volume_role_label") or "").strip()
     if shared_vrole and dp_vrole and shared_vrole == dp_vrole:
         errors.append(
-            "JUPYTERHUB_SHARED_VOLUME_ROLE_LABEL and JUPYTERHUB_DOCKER_PROXY_VOLUME_ROLE_LABEL are both "
+            "JUPYTERHUB_LABEL_VOLUME_ROLE_SHARED and JUPYTERHUB_LABEL_VOLUME_ROLE_DOCKER_PROXY are both "
             f"'{shared_vrole}' - the shared and docker-proxy volumes would be indistinguishable on key "
             f"'{values.get('volume_role_label_key')}'; give them distinct role values"
         )
@@ -137,6 +142,14 @@ def validate_hub_config(values, *, path_exists=os.path.exists):
         errors.append(
             f"JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE ('{proj_tmpl}') must contain "
             "'{username}' - per-user docker compose projects would otherwise collide"
+        )
+    # consistency: the proxy owner VALUE is a per-user template; without {username} every user's
+    # proxy-created resources would carry one shared owner value (ownership filtering collapses)
+    dp_owner_val = values.get("docker_proxy_owner_label_value")
+    if dp_owner_val and "{username}" not in dp_owner_val:
+        errors.append(
+            f"JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_VALUE ('{dp_owner_val}') must contain '{{username}}' - "
+            "without it every user's proxy-created resources would carry the same owner value"
         )
 
     # warnings: degraded-but-bootable - features silently off unless the operator is told

@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------------
 #   duoptimum-hub.* RESOURCE LABELS - stamped on volumes, networks and hub-managed containers:
 #     .role        - discovery key; hub finds the resource by role not by name (rename-safe). Must
-#                    match the JUPYTERHUB_*_ROLE_LABEL env. One resource per role or the hub won't start.
+#                    match the JUPYTERHUB_LABEL_*_ROLE_* env. One resource per role or the hub won't start.
 #                      volumes  : shared, docker-proxy (+ per-user lab-home/lab-workspace/lab-cache at spawn)
 #                      networks : lab (hub<->lab), gpuinfo (hub<->sidecar)
 #                      container: gpuinfo (the sidecar the hub self-starts)
@@ -19,7 +19,7 @@ services:
   # Dashboard now on 443 at /traefik/dashboard/ (api.basePath), open/close via TRAEFIK_DASHBOARD_ENABLED (see banner).
   traefik:
     image: traefik:latest
-    container_name: ${COMPOSE_PROJECT_NAME:-duoptimum-hub}-traefik
+    container_name: traefik
     # Dashboard at /traefik on 443, open by default. Close: TRAEFIK_DASHBOARD_ENABLED=false in .env
     # (NOT a container env - labels interpolate ${...} at parse time). Toggle gates the ROUTER below
     # (traefik.enable); no route -> api@internal unreachable -> UI+API 404. --api.dashboard=false
@@ -65,7 +65,7 @@ services:
         - VERSION=${VERSION:-dev}
     image: stellars/duoptimum-hub:latest
     pull_policy: build
-    container_name: ${COMPOSE_PROJECT_NAME:-duoptimum-hub}-hub
+    container_name: hub
     volumes:
       - hub_certs:/certs # runtime cert dir Traefik watches
       - ./certs:/user-certs:ro # operator cert overlay (missing/empty -> auto-generate)
@@ -101,7 +101,7 @@ services:
       - JUPYTERHUB_LOGIN_LOCKOUT_SECONDS=600 # lockout window after fails
 
       # === HUB: branding ===
-      - JUPYTERHUB_HUB_NAME=DuOptimum Hub # portal display name: brand-icon tooltip + login/signup text
+      - JUPYTERHUB_BRANDING_HUB_NAME=DuOptimum Hub # hub display name: brand-icon tooltip + login/signup text
       - JUPYTERHUB_BRANDING_STAGE= # stage badge: DEV/STG/TST/PRD or text, empty=none
       - JUPYTERHUB_BRANDING_LOGO_URI= # logo URI (file:// or http(s)://)
       - JUPYTERHUB_BRANDING_FAVICON_URI= # favicon URI (file:// or http(s)://)
@@ -123,8 +123,29 @@ services:
 
       # === HUB: docker proxy (limited-docker groups) ===
       - JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE={username}_containers # per-user compose label when docker-limited group enforces it ({compose},{username}), overrides Dockerfile default
-      - JUPYTERHUB_DOCKER_PROXY_LABEL_PREFIX=duoptimum.docker.proxy # label namespace, proxy stamps <prefix>.owner/.managed; override to dodge host-label clashes
       - JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR=/var/run/docker-proxy-sockets # in-hub path for per-user sockets, backed by hub_docker volume, not host bind
+
+      # === HUB: labels (discovery contract) ===
+      # The hub's duoptimum-hub.* label family: it finds its networks/volumes/managed containers by
+      # these keys+values, not by name (rename-safe). Naming JUPYTERHUB_LABEL_<DIMENSION>_<ASPECT>[_<ROLE>]
+      # - KEY = the label key, a trailing role word = a role VALUE, DESCRIPTION = the human-phrase key.
+      # All label envs live HERE in one place; MUST match the labels stamped on the networks/volumes/
+      # sidecar below. Baked as Dockerfile ENV defaults; values here are identical (no behaviour change).
+      # Value spelling is the literal label, NOT the env-name spelling (DOCKER_PROXY env -> "docker-proxy").
+      - JUPYTERHUB_LABEL_NETWORK_ROLE_KEY=duoptimum-hub.network.role # label key on hub networks
+      - JUPYTERHUB_LABEL_NETWORK_ROLE_LAB=lab # hub<->lab network role value
+      - JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO=gpuinfo # hub<->sidecar network role value
+      - JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY=duoptimum-hub.container.role # label key on hub-managed containers
+      - JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO=gpuinfo # gpuinfo sidecar container role value
+      - JUPYTERHUB_LABEL_CONTAINER_DESCRIPTION=duoptimum-hub.container.description # label key for the gpuinfo sidecar's human description
+      - JUPYTERHUB_LABEL_VOLUME_ROLE_KEY=duoptimum-hub.volume.role # label key on hub volumes
+      - JUPYTERHUB_LABEL_VOLUME_ROLE_SHARED=shared # shared volume role value
+      - JUPYTERHUB_LABEL_VOLUME_ROLE_DOCKER_PROXY=docker-proxy # docker-proxy sockets volume role value (value keeps the hyphen)
+      - JUPYTERHUB_LABEL_VOLUME_DESCRIPTION=duoptimum-hub.volume.description # label key the hub reads a volume's human description from (Lab Setup panel)
+      - JUPYTERHUB_LABEL_VOLUME_OWNER_KEY=duoptimum-hub.volume.owner # label key on per-user volumes; value = the username
+      # docker-proxy ownership labels - stamped on every proxy-created container/volume/network:
+      - JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_KEY=duoptimum-hub.docker.proxy.owner # owner label key; all proxy ownership filtering keys off this (owner presence alone = proxy-managed)
+      - JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_VALUE={username} # owner label value template; {username} substituted with the resource owner
 
       # === LAB: image + naming ===
       - JUPYTERHUB_LAB_IMAGE=stellars/stellars-jupyterlab-ds:latest # user container image
@@ -155,9 +176,7 @@ services:
       - JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS=0 # default only - downloads (0=allow, 1=block)
 
       # === LAB: branding / icons ===
-      - JUPYTERLAB_SYSTEM_NAME=Duoptimum Hub # rebrand stellars-jupyterlab-ds (welcome, MOTD, header badge), empty=none
-      - JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME=1 # uppercase header badge (0/1)
-      - JUPYTERLAB_HEADER_SYSTEM_NAME_COLOR= # header badge text color, empty=--jp-ui-font-color2
+      - JUPYTERHUB_BRANDING_LAB_NAME=Duoptimum Hub # lab display name (injected into labs as JUPYTERLAB_SYSTEM_NAME: header/welcome/MOTD), empty=none
       - JUPYTERHUB_BRANDING_FAVICON_BUSY_URI= # kernel-busy favicon (file:// or URL), empty=JupyterLab default
       - JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI= # JupyterLab main icon (file:// or URL)
       - JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI= # JupyterLab splash icon (file:// or URL)
@@ -225,11 +244,11 @@ services:
       target: target
     image: stellars/duoptimum-gpuinfo-nvidia:latest
     pull_policy: build
-    container_name: gpuinfo-nvidia # MUST match JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME (name hub gives the sidecar)
+    container_name: gpuinfo-nvidia 
     profiles:
       - gpuinfo # not in any default profile -> never auto-started; hub-managed
     labels:
-      duoptimum-hub.container.role: "gpuinfo" # MUST match JUPYTERHUB_GPUINFO_CONTAINER_ROLE_LABEL; hub mirrors it on the sidecar it creates
+      duoptimum-hub.container.role: "gpuinfo" # MUST match JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO 
     # runtime env (NVIDIA_*, GPUINFO_PORT), port + cmd baked in the image - not redeclared here
     runtime: nvidia # GPU access via nvidia runtime (host must register it)
     networks:
@@ -238,7 +257,7 @@ services:
 
   ## Watchtower - daily image refresh (monitor-only); single instance via port
   watchtower:
-    container_name: ${COMPOSE_PROJECT_NAME:-duoptimum-hub}-watchtower
+    container_name: watchtower
     image: nickfedor/watchtower:latest
     labels:
       - "com.centurylinklabs.watchtower.enable=false" # exclude from self-updates
@@ -282,16 +301,18 @@ networks:
   # at boot (resolve_self_network_by_label, scoped to hub's own attachments) - no name to drift.
   # The .description label is a human phrase shown in `docker inspect` (informational only).
   hub_network:
-    name: ${COMPOSE_PROJECT_NAME:-duoptimum-hub}_hub_network  # namespaced hub net name
+    #name: ${COMPOSE_PROJECT_NAME:-duoptimum-hub}_hub_network  # namespaced hub net name
     labels:
-      duoptimum-hub.network.role: "lab" # MUST match JUPYTERHUB_NETWORK_ROLE_LABEL_KEY=JUPYTERHUB_LAB_NETWORK_ROLE_LABEL
+      duoptimum-hub.network.role: "lab" # MUST match JUPYTERHUB_LABEL_NETWORK_ROLE_*
       duoptimum-hub.network.description: "Hub to user-lab network (spawned labs join here)"
 
   # hub<->GPU-info sidecar net. Compose OWNS/creates it (driver + attachments managed here);
   # role label lets hub DISCOVER its real name at boot. Hub joins it + runs the sidecar on it;
   # labs are on hub_network only, so they cannot reach it.
   hub_gpuinfo_network:
-    name: ${COMPOSE_PROJECT_NAME:-duoptimum-hub}_hub_gpuinfo_network
+    #name: ${COMPOSE_PROJECT_NAME:-duoptimum-hub}_hub_gpuinfo_network
     labels:
-      duoptimum-hub.network.role: "gpuinfo" # MUST match JUPYTERHUB_NETWORK_ROLE_LABEL_KEY=JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL
+      duoptimum-hub.network.role: "gpuinfo" # MUST match JUPYTERHUB_LABEL_NETWORK_ROLE_*
       duoptimum-hub.network.description: "Hub to GPU-info sidecar network (labs cannot reach it)"
+
+# EOF

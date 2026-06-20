@@ -555,6 +555,10 @@ export const mockSource: DataSource = {
         { name: 'workspace', mount: '/home/lab/workspace', description: 'Project files, notebooks, code' },
         { name: 'cache', mount: '/home/lab/.cache', description: 'Temporary files, pip cache, conda cache' },
       ],
+      systemVolumes: [
+        { name: 'hub_shared', mount: '/mnt/shared', description: 'Platform-wide shared storage for all users', role: 'shared' },
+        { name: 'hub_docker', mount: '/run/dockersock', description: 'Per-user docker-proxy sockets', role: 'docker-proxy' },
+      ],
     })
   },
 

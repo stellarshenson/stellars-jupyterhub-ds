@@ -8,14 +8,16 @@ for file in $START_PLATFORM_DIR/*; do
     fi
 done
 
-# run jupyterhub, env params are configured in Dockerfile and docker-compose yml
+# run the hub via the DuoptimumHub subclass (duoptimum-hub console script, shipped
+# by duoptimum-hub-services) instead of the stock `jupyterhub` command - same CLI,
+# plus our registered_handlers trait. env params configured in Dockerfile + compose.
 # config path is /srv/config/jupyterhub_config.py - populated every boot by
 # 01_provision_config.sh from /mnt/user_config (operator) or /srv/jupyterhub (built-in)
-# exec so jupyterhub becomes PID 1 and receives docker's SIGTERM directly on
+# exec so the hub becomes PID 1 and receives docker's SIGTERM directly on
 # `docker stop` / compose down/restart - without exec the signal hits this shell
-# (which does not forward it), jupyterhub is SIGKILLed after the grace period and
+# (which does not forward it), the hub is SIGKILLed after the grace period and
 # its atexit cleanup (e.g. stop_gpuinfo_sidecar) never runs.
-exec jupyterhub -f /srv/config/jupyterhub_config.py "$@"
+exec duoptimum-hub -f /srv/config/jupyterhub_config.py "$@"
 
 # EOF
 

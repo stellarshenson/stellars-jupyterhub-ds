@@ -244,15 +244,16 @@ export interface Volume {
 // Lab Container page: the spawn image + the standard per-user volumes every lab
 // gets (read-only deployment facts; shared/extra volumes are granted per group)
 export interface LabMount {
-  name: string // home | workspace | cache
+  name: string // lab volume suffix (home/workspace/cache) or resolved system-volume name
   mount: string // /home, /home/lab/workspace, /home/lab/.cache
   description?: string
-  role?: string // duoptimum-hub.volume.role (lab-home/lab-workspace/lab-cache)
+  role?: string // duoptimum-hub.volume.role (lab-*, shared, docker-proxy)
 }
 
 export interface LabContainerInfo {
   image: string
   volumes: LabMount[]
+  systemVolumes: LabMount[] // shared + docker-proxy system volumes (name = resolved docker volume name)
 }
 
 export interface EffectiveGrant {
