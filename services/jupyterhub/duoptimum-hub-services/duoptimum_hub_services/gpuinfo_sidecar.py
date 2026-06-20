@@ -113,10 +113,10 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', contain
     sidecar is skipped (GPU off) if neither yields a name - never a hardcoded one.
 
     Dedicated net DECLARED in compose.yml (compose owns/creates it; hub discovers it by
-    duoptimum.network.role=gpuinfo and only joins - never creates here). Container stamped
+    duoptimum-hub.network.role=gpuinfo and only joins - never creates here). Container stamped
     with the same compose-project labels spawned user containers get (see hooks.py) plus
     its container-role label (container_role_label_key/_value, e.g.
-    duoptimum.container.role=gpuinfo) - sidecar belongs to the compose project (shows in
+    duoptimum-hub.container.role=gpuinfo) - sidecar belongs to the compose project (shows in
     `docker compose ps`), discoverable by role. Sidecar's own runtime spec (NVIDIA env,
     port, command) comes from the image, not here.
     """
@@ -144,7 +144,7 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', contain
             'com.docker.compose.container-number': '1',
             'com.docker.compose.oneoff': 'False',
         })
-    # Container role label (e.g. duoptimum.container.role=gpuinfo), mirrored from the
+    # Container role label (e.g. duoptimum-hub.container.role=gpuinfo), mirrored from the
     # compose service decl - lets future code discover gpuinfo containers by role.
     if container_role_label_key and container_role_label_value:
         container_labels[container_role_label_key] = container_role_label_value

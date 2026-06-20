@@ -7,24 +7,32 @@
 services:
 
   # Traefik: routes traffic, TLS, one instance (443 only - secure ingress). HTTP :80 + insecure :8080 dashboard removed.
-  # Dashboard now on 443 at /traefik/dashboard/ (api.basePath), open/close via TRAEFIK_DASHBOARD_ENABLED.
+  # Dashboard now on 443 at /traefik/dashboard/ (api.basePath), open/close via TRAEFIK_DASHBOARD_ENABLED (see banner).
   traefik:
     image: traefik:latest
     container_name: ${COMPOSE_PROJECT_NAME:-duoptimum-hub}-traefik
     # =====================================================================
     #  TRAEFIK DASHBOARD (/traefik on 443) - OPEN by default.
-    #  Set TRAEFIK_DASHBOARD_ENABLED=false to fully close it (UI + API gone).
+    #  CLOSE it: set TRAEFIK_DASHBOARD_ENABLED=false in .env (or the shell),
+    #  NOT in a service environment block - compose interpolates ${...} in
+    #  labels from .env/shell at parse time, not from container env.
+    #  The toggle gates the dashboard ROUTER (traefik.enable below): with no
+    #  route, the built-in api@internal has no entrypoint, so UI AND API
+    #  both 404. NOTE: --api.dashboard=false would hide only the UI and leave
+    #  /traefik/api/* open - so we gate the route, not that flag.
     # =====================================================================
-    environment:
-      - TRAEFIK_DASHBOARD_ENABLED=true # dashboard open/close toggle (see banner)
     command:
       - "--entrypoints.websecure.address=:443"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
+      # NAMESPACE isolation: only read labels from THIS deployment's project. Without it the
+      # docker provider scans the whole host daemon, so another stack's enabled /traefik router
+      # (api@internal) would be served here even with our toggle off - leaking the dashboard.
+      - "--providers.docker.constraints=Label(`com.docker.compose.project`,`${COMPOSE_PROJECT_NAME:-duoptimum-hub}`)"
       - "--providers.file.directory=/certs" # load any *.yml here
       - "--providers.file.watch=true" # hot-reload on cert regen
       - "--serverstransport.insecureskipverify=true" # https passthrough
-      - "--api.dashboard=${TRAEFIK_DASHBOARD_ENABLED:-true}" # the toggle - false closes the dashboard
+      - "--api.dashboard=true" # enable dashboard+API; exposure is gated by the router toggle below
       - "--api.basePath=/traefik" # serve dashboard+API under /traefik (no stripprefix, no white page)
     ports:
       - "443:443"
@@ -38,8 +46,9 @@ services:
       - hub_network
     labels:
       # Dashboard router: /traefik -> built-in api@internal (UI at /traefik/dashboard/, API at /traefik/api/).
-      # Toggle is the --api.dashboard flag above; when false api@internal is absent and this route 404s.
-      - "traefik.enable=true"
+      # THE TOGGLE: traefik.enable gates this whole route. =false (set in .env) means the docker provider
+      # never creates it, so api@internal is unreachable and /traefik 404s - UI and API both gone. Open by default.
+      - "traefik.enable=${TRAEFIK_DASHBOARD_ENABLED:-true}"
       - "traefik.http.routers.traefik-dashboard.rule=PathPrefix(`/traefik`)"
       - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
       - "traefik.http.routers.traefik-dashboard.service=api@internal"
@@ -158,7 +167,11 @@ services:
       # Enable Traefik proxy
       - "traefik.enable=true"
 
-      # hub service (8000), canonical /hub; /jupyterhub + /duoptimum-hub aliases 
+      # hub on 2 nets (hub_network + hub_gpuinfo_network); traefik only on hub_network.
+      # pin backend net - else traefik may pick the unreachable gpuinfo IP -> 504 gateway timeout.
+      - "traefik.docker.network=${COMPOSE_PROJECT_NAME:-duoptimum-hub}_hub_network"
+
+      # hub service (8000), canonical /hub; /jupyterhub + /duoptimum-hub aliases
       # -> redirected by hub-alias-redirect below
       - "traefik.http.routers.duoptimum-hub-rtr.rule=Path(`/hub`)
          || PathPrefix(`/hub/`)
@@ -214,7 +227,7 @@ services:
     profiles:
       - gpuinfo # not in any default profile -> never auto-started; hub-managed
     labels:
-      duoptimum.container.role: "gpuinfo" # MUST match JUPYTERHUB_GPUINFO_CONTAINER_ROLE_LABEL; hub mirrors it on the sidecar it creates
+      duoptimum-hub.container.role: "gpuinfo" # MUST match JUPYTERHUB_GPUINFO_CONTAINER_ROLE_LABEL; hub mirrors it on the sidecar it creates
     # runtime env (NVIDIA_*, GPUINFO_PORT), port + cmd baked in the image - not redeclared here
     runtime: nvidia # GPU access via nvidia runtime (host must register it)
     networks:
@@ -243,10 +256,17 @@ services:
     privileged: true
 
 volumes:
+  # Role labels let the hub DISCOVER these by duoptimum-hub.volume.role (rename-safe), not by
+  # name. Key + role values baked as hub env (Dockerfile); literals here MUST match. One
+  # volume per role - duplicate role makes the hub fail to start.
   hub_data:   # hub users, config, activity
   hub_certs:  # platform certs (autogenerated or provisioned)
   hub_shared: # shared volume for users (can map to s3/cifs)
+    labels:
+      duoptimum-hub.volume.role: "shared"
   hub_docker: # in-process docker-proxy per-user sockets; subpath-mounted per lab
+    labels:
+      duoptimum-hub.volume.role: "docker-proxy"
 
 networks:
   # hub_network = hub<->lab net spawned labs join. Role label lets hub DISCOVER its real name
@@ -254,7 +274,7 @@ networks:
   hub_network:
     name: ${COMPOSE_PROJECT_NAME:-duoptimum-hub}_hub_network  # namespaced hub net name
     labels:
-      duoptimum.network.role: "lab" # MUST match JUPYTERHUB_NETWORK_ROLE_LABEL_KEY=JUPYTERHUB_LAB_NETWORK_ROLE_LABEL
+      duoptimum-hub.network.role: "lab" # MUST match JUPYTERHUB_NETWORK_ROLE_LABEL_KEY=JUPYTERHUB_LAB_NETWORK_ROLE_LABEL
 
   # hub<->GPU-info sidecar net. Compose OWNS/creates it (driver + attachments managed here);
   # role label lets hub DISCOVER its real name at boot. Hub joins it + runs the sidecar on it;
@@ -262,4 +282,4 @@ networks:
   hub_gpuinfo_network:
     name: ${COMPOSE_PROJECT_NAME:-duoptimum-hub}_hub_gpuinfo_network
     labels:
-      duoptimum.network.role: "gpuinfo" # MUST match JUPYTERHUB_NETWORK_ROLE_LABEL_KEY=JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL
+      duoptimum-hub.network.role: "gpuinfo" # MUST match JUPYTERHUB_NETWORK_ROLE_LABEL_KEY=JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL

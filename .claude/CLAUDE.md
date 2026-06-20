@@ -85,8 +85,8 @@ This Python configuration file controls all JupyterHub behavior:
 **Environment Variables** (set in compose.yml or compose_override.yml):
 - `JUPYTERHUB_ADMIN`: Admin username (default: `admin`)
 - `JUPYTERHUB_LAB_IMAGE`: JupyterLab image to spawn (default: `stellars/stellars-jupyterlab-ds:latest`)
-- `JUPYTERHUB_NETWORK_NAME`: Hub<->lab network for spawned containers - default `{network}`, resolved at boot to the `duoptimum.network.role=lab` net; set a literal name to override
-- `JUPYTERHUB_NETWORK_ROLE_LABEL_KEY`: Label key the hub matches to discover its networks by role (default: `duoptimum.network.role`); compose stamps it on the networks
+- `JUPYTERHUB_NETWORK_NAME`: Hub<->lab network for spawned containers - default `{network}`, resolved at boot to the `duoptimum-hub.network.role=lab` net; set a literal name to override
+- `JUPYTERHUB_NETWORK_ROLE_LABEL_KEY`: Label key the hub matches to discover its networks by role (default: `duoptimum-hub.network.role`); compose stamps it on the networks
 - `JUPYTERHUB_LAB_NETWORK_ROLE_LABEL`: Role value for the hub<->lab network (default: `lab`)
 - `JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL`: Role value for the hub<->sidecar network (default: `gpuinfo`)
 - `JUPYTERHUB_BASE_URL`: URL prefix (default: `/jupyterhub`)
@@ -98,8 +98,8 @@ This Python configuration file controls all JupyterHub behavior:
 - `JUPYTERHUB_GPUINFO_NVIDIA_IMAGE`: GPU-info sidecar image - detection, utilisation and per-GPU processes (default: `stellars/duoptimum-gpuinfo-nvidia:latest`; CUDA base pinned in its Dockerfile)
 - `JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME`: name the hub gives the sidecar it creates (and finds/removes it by) (default: `gpuinfo-nvidia`)
 - `JUPYTERHUB_GPUINFO_NVIDIA_URL`: GPU-info sidecar base URL template; `{hostname}` is filled at boot with the address the hub discovers for the running sidecar - never a hardcoded host (default: `http://{hostname}:8000`)
-- `JUPYTERHUB_GPUINFO_NETWORK_NAME`: Hub-to-sidecar network - default `{network}`, resolved at boot to the compose-declared `hub_gpuinfo_network` carrying `duoptimum.network.role=gpuinfo`; set a literal name to override, empty = sidecar unplaceable so GPU off
-- `JUPYTERHUB_CONTAINER_ROLE_LABEL_KEY`: Label key stamped on hub-managed containers to mark their role (default: `duoptimum.container.role`)
+- `JUPYTERHUB_GPUINFO_NETWORK_NAME`: Hub-to-sidecar network - default `{network}`, resolved at boot to the compose-declared `hub_gpuinfo_network` carrying `duoptimum-hub.network.role=gpuinfo`; set a literal name to override, empty = sidecar unplaceable so GPU off
+- `JUPYTERHUB_CONTAINER_ROLE_LABEL_KEY`: Label key stamped on hub-managed containers to mark their role (default: `duoptimum-hub.container.role`)
 - `JUPYTERHUB_GPUINFO_CONTAINER_ROLE_LABEL`: Role value stamped on the gpuinfo sidecar the hub creates (default: `gpuinfo`); the sidecar's runtime spec (NVIDIA env, port, command) is baked in its image, the hub only orchestrates and applies the nvidia runtime conditionally
 - `JUPYTERHUB_BRANDING_STAGE`: Environment-stage header badge - DEV/STG/TST/PRD or custom text; empty = no badge (default: empty)
 - `JUPYTERHUB_BRANDING_LOGO_URI`: Custom logo - `file://` for local files, URL for external (default: empty)

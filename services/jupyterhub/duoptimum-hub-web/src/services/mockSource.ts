@@ -504,9 +504,9 @@ export const mockSource: DataSource = {
 
   getUserVolumes(user: string) {
     const vols: Volume[] = [
-      { suffix: 'home', name: `jupyterlab-${user}_home`, mount: '/home', description: 'User home directory, configs', standard: true },
-      { suffix: 'workspace', name: `jupyterlab-${user}_workspace`, mount: '/home/lab/workspace', description: 'Project files, notebooks, code', standard: true },
-      { suffix: 'cache', name: `jupyterlab-${user}_cache`, mount: '/home/lab/.cache', description: 'pip / conda cache', standard: true },
+      { suffix: 'home', name: `jupyterlab-${user}_home`, mount: '/home', description: 'User home directory, configs', standard: true, role: 'lab-home' },
+      { suffix: 'workspace', name: `jupyterlab-${user}_workspace`, mount: '/home/lab/workspace', description: 'Project files, notebooks, code', standard: true, role: 'lab-workspace' },
+      { suffix: 'cache', name: `jupyterlab-${user}_cache`, mount: '/home/lab/.cache', description: 'pip / conda cache', standard: true, role: 'lab-cache' },
     ]
     return delay(vols)
   },

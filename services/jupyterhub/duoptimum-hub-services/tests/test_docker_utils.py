@@ -3,11 +3,15 @@
 import sys
 from types import SimpleNamespace
 
+import pytest
+
 from duoptimum_hub_services.docker_utils import (
     encode_username_for_docker,
     encoded_username_from_lab_container,
+    ensure_volumes_labeled,
     lab_container_name,
     resolve_network_placeholder,
+    resolve_self_mount_volume_by_label,
     resolve_self_network_by_label,
 )
 
@@ -116,10 +120,10 @@ class TestResolveSelfNetworkByLabel:
             attached={"hub_net": {"NetworkID": "id-hub"}, "gpu_net": {"NetworkID": "id-gpu"}},
             networks={
                 "id-hub": ("duoptimum-hub_hub_network", {}),
-                "id-gpu": ("duoptimum-hub_hub_gpuinfo_network", {"duoptimum.gpuinfo.network": "true"}),
+                "id-gpu": ("duoptimum-hub_hub_gpuinfo_network", {"duoptimum-hub.gpuinfo.network": "true"}),
             },
         )
-        assert resolve_self_network_by_label("duoptimum.gpuinfo.network") == "duoptimum-hub_hub_gpuinfo_network"
+        assert resolve_self_network_by_label("duoptimum-hub.gpuinfo.network") == "duoptimum-hub_hub_gpuinfo_network"
 
     def test_none_when_no_attached_network_has_label(self, monkeypatch):
         self._install_fake_docker(
@@ -127,11 +131,11 @@ class TestResolveSelfNetworkByLabel:
             attached={"hub_net": {"NetworkID": "id-hub"}},
             networks={"id-hub": ("duoptimum-hub_hub_network", {})},
         )
-        assert resolve_self_network_by_label("duoptimum.gpuinfo.network") is None
+        assert resolve_self_network_by_label("duoptimum-hub.gpuinfo.network") is None
 
     def test_none_when_self_container_undeterminable(self, monkeypatch):
         self._install_fake_docker(monkeypatch, get_raises=True)
-        assert resolve_self_network_by_label("duoptimum.gpuinfo.network") is None
+        assert resolve_self_network_by_label("duoptimum-hub.gpuinfo.network") is None
 
     def test_role_value_match_selects_the_right_net(self, monkeypatch):
         # both nets share the key; the value (role) picks the right one
@@ -139,29 +143,210 @@ class TestResolveSelfNetworkByLabel:
             monkeypatch,
             attached={"lab": {"NetworkID": "id-lab"}, "gpu": {"NetworkID": "id-gpu"}},
             networks={
-                "id-lab": ("proj_hub_network", {"duoptimum.network.role": "lab"}),
-                "id-gpu": ("proj_hub_gpuinfo_network", {"duoptimum.network.role": "gpuinfo"}),
+                "id-lab": ("proj_hub_network", {"duoptimum-hub.network.role": "lab"}),
+                "id-gpu": ("proj_hub_gpuinfo_network", {"duoptimum-hub.network.role": "gpuinfo"}),
             },
         )
-        assert resolve_self_network_by_label("duoptimum.network.role", "lab") == "proj_hub_network"
-        assert resolve_self_network_by_label("duoptimum.network.role", "gpuinfo") == "proj_hub_gpuinfo_network"
+        assert resolve_self_network_by_label("duoptimum-hub.network.role", "lab") == "proj_hub_network"
+        assert resolve_self_network_by_label("duoptimum-hub.network.role", "gpuinfo") == "proj_hub_gpuinfo_network"
 
     def test_none_when_role_value_no_match(self, monkeypatch):
         self._install_fake_docker(
             monkeypatch,
             attached={"lab": {"NetworkID": "id-lab"}},
-            networks={"id-lab": ("proj_hub_network", {"duoptimum.network.role": "lab"})},
+            networks={"id-lab": ("proj_hub_network", {"duoptimum-hub.network.role": "lab"})},
         )
-        assert resolve_self_network_by_label("duoptimum.network.role", "gpuinfo") is None
+        assert resolve_self_network_by_label("duoptimum-hub.network.role", "gpuinfo") is None
 
     def test_value_none_keeps_presence_match(self, monkeypatch):
         # legacy presence behaviour preserved when no value is given
         self._install_fake_docker(
             monkeypatch,
             attached={"lab": {"NetworkID": "id-lab"}},
-            networks={"id-lab": ("proj_hub_network", {"duoptimum.network.role": "lab"})},
+            networks={"id-lab": ("proj_hub_network", {"duoptimum-hub.network.role": "lab"})},
         )
-        assert resolve_self_network_by_label("duoptimum.network.role") == "proj_hub_network"
+        assert resolve_self_network_by_label("duoptimum-hub.network.role") == "proj_hub_network"
+
+    def test_duplicate_role_raises(self, monkeypatch):
+        # inconsistency must fail hard: two attached nets carry the same role value
+        self._install_fake_docker(
+            monkeypatch,
+            attached={"a": {"NetworkID": "id-a"}, "b": {"NetworkID": "id-b"}},
+            networks={
+                "id-a": ("proj_hub_network", {"duoptimum-hub.network.role": "lab"}),
+                "id-b": ("proj_hub_network_dup", {"duoptimum-hub.network.role": "lab"}),
+            },
+        )
+        with pytest.raises(ValueError, match="Ambiguous network role"):
+            resolve_self_network_by_label("duoptimum-hub.network.role", "lab")
+
+    def test_duplicate_presence_raises(self, monkeypatch):
+        # presence mode (no value) also rejects >1 net carrying the key
+        self._install_fake_docker(
+            monkeypatch,
+            attached={"a": {"NetworkID": "id-a"}, "b": {"NetworkID": "id-b"}},
+            networks={
+                "id-a": ("net_a", {"duoptimum-hub.gpuinfo.network": "true"}),
+                "id-b": ("net_b", {"duoptimum-hub.gpuinfo.network": "true"}),
+            },
+        )
+        with pytest.raises(ValueError, match="Ambiguous network role"):
+            resolve_self_network_by_label("duoptimum-hub.gpuinfo.network")
+
+
+class TestResolveSelfMountVolumeByLabel:
+    """A hub-mounted volume is DISCOVERED by its duoptimum-hub.volume.role label among the hub's
+    OWN mounts - so its namespaced name can never drift (the jupyterhub_shared -> hub_shared
+    bug), and a duplicate role is rejected rather than silently picking one."""
+
+    @staticmethod
+    def _install_fake_docker(monkeypatch, *, mounts=None, volumes=None, get_raises=False):
+        # mounts: list of {Type, Name, Destination}; volumes: name -> labels dict
+        volumes = volumes or {}
+
+        class _Vol:
+            def __init__(self, labels):
+                self.attrs = {"Labels": labels}
+
+        class _Volumes:
+            def get(self, name):
+                return _Vol(volumes[name])
+
+        class _Containers:
+            def get(self, host):
+                if get_raises:
+                    raise RuntimeError("not found")
+                return SimpleNamespace(attrs={"Mounts": mounts or []})
+
+        class _Client:
+            def __init__(self, *a, **k):
+                self.containers = _Containers()
+                self.volumes = _Volumes()
+
+            def close(self):
+                pass
+
+        monkeypatch.setitem(sys.modules, "docker", SimpleNamespace(DockerClient=_Client))
+
+    def test_returns_volume_carrying_role(self, monkeypatch):
+        self._install_fake_docker(
+            monkeypatch,
+            mounts=[
+                {"Type": "volume", "Name": "proj_hub_data", "Destination": "/data"},
+                {"Type": "volume", "Name": "proj_hub_shared", "Destination": "/mnt/shared"},
+            ],
+            volumes={
+                "proj_hub_data": {},
+                "proj_hub_shared": {"duoptimum-hub.volume.role": "shared"},
+            },
+        )
+        assert resolve_self_mount_volume_by_label("duoptimum-hub.volume.role", "shared") == "proj_hub_shared"
+
+    def test_none_when_no_volume_has_role(self, monkeypatch):
+        self._install_fake_docker(
+            monkeypatch,
+            mounts=[{"Type": "volume", "Name": "proj_hub_data", "Destination": "/data"}],
+            volumes={"proj_hub_data": {}},
+        )
+        assert resolve_self_mount_volume_by_label("duoptimum-hub.volume.role", "shared") is None
+
+    def test_bind_mounts_ignored(self, monkeypatch):
+        # a bind at the same path must not be mistaken for the named volume
+        self._install_fake_docker(
+            monkeypatch,
+            mounts=[{"Type": "bind", "Source": "/host", "Destination": "/mnt/shared"}],
+            volumes={},
+        )
+        assert resolve_self_mount_volume_by_label("duoptimum-hub.volume.role", "shared") is None
+
+    def test_raises_on_duplicate_role(self, monkeypatch):
+        # two DISTINCT volumes carrying the same role - hub must not guess
+        self._install_fake_docker(
+            monkeypatch,
+            mounts=[
+                {"Type": "volume", "Name": "vol_a", "Destination": "/mnt/a"},
+                {"Type": "volume", "Name": "vol_b", "Destination": "/mnt/b"},
+            ],
+            volumes={
+                "vol_a": {"duoptimum-hub.volume.role": "shared"},
+                "vol_b": {"duoptimum-hub.volume.role": "shared"},
+            },
+        )
+        with pytest.raises(ValueError):
+            resolve_self_mount_volume_by_label("duoptimum-hub.volume.role", "shared")
+
+    def test_same_volume_two_paths_is_one_match(self, monkeypatch):
+        # one volume mounted at two destinations is still ONE volume - no false duplicate
+        self._install_fake_docker(
+            monkeypatch,
+            mounts=[
+                {"Type": "volume", "Name": "vol_a", "Destination": "/mnt/a"},
+                {"Type": "volume", "Name": "vol_a", "Destination": "/mnt/b"},
+            ],
+            volumes={"vol_a": {"duoptimum-hub.volume.role": "shared"}},
+        )
+        assert resolve_self_mount_volume_by_label("duoptimum-hub.volume.role", "shared") == "vol_a"
+
+    def test_none_when_self_container_undeterminable(self, monkeypatch):
+        self._install_fake_docker(monkeypatch, get_raises=True)
+        assert resolve_self_mount_volume_by_label("duoptimum-hub.volume.role", "shared") is None
+
+
+class TestEnsureVolumesLabeled:
+    """DockerSpawner creates per-user volumes unlabelled; the hub pre-creates them with
+    duoptimum-hub.volume.role + .owner. Create-if-absent ONLY - an existing volume is never
+    relabelled or removed (data safety)."""
+
+    @staticmethod
+    def _install_fake_docker(monkeypatch, *, existing=(), create_raises=False):
+        created = {}  # name -> labels
+        existing = set(existing)
+
+        class _NotFound(Exception):
+            pass
+
+        class _Volumes:
+            def get(self, name):
+                if name in existing:
+                    return SimpleNamespace(name=name)
+                raise _NotFound()
+
+            def create(self, name=None, labels=None):
+                if create_raises:
+                    raise RuntimeError("create failed")
+                created[name] = labels
+                return SimpleNamespace(name=name)
+
+        class _Client:
+            def __init__(self, *a, **k):
+                self.volumes = _Volumes()
+
+            def close(self):
+                pass
+
+        monkeypatch.setitem(
+            sys.modules, "docker",
+            SimpleNamespace(DockerClient=_Client, errors=SimpleNamespace(NotFound=_NotFound)),
+        )
+        return created
+
+    def test_creates_absent_volume_with_labels(self, monkeypatch):
+        created = self._install_fake_docker(monkeypatch)
+        labels = {"duoptimum-hub.volume.role": "lab-home", "duoptimum-hub.volume.owner": "alice"}
+        out = ensure_volumes_labeled({"proj_jupyterlab_alice_home": labels})
+        assert out == {"proj_jupyterlab_alice_home": "created"}
+        assert created["proj_jupyterlab_alice_home"] == labels
+
+    def test_existing_volume_not_relabelled(self, monkeypatch):
+        created = self._install_fake_docker(monkeypatch, existing={"proj_jupyterlab_alice_home"})
+        out = ensure_volumes_labeled({"proj_jupyterlab_alice_home": {"duoptimum-hub.volume.role": "lab-home"}})
+        assert out == {"proj_jupyterlab_alice_home": "exists"}
+        assert created == {}  # never touched - data safety
+
+    def test_create_error_is_recorded_not_raised(self, monkeypatch):
+        self._install_fake_docker(monkeypatch, create_raises=True)
+        out = ensure_volumes_labeled({"v": {"duoptimum-hub.volume.role": "lab-cache"}})
+        assert out["v"].startswith("error:")
 
 
 class TestResolveNetworkPlaceholder:

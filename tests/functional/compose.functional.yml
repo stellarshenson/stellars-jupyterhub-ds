@@ -37,6 +37,7 @@ services:
       - JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR=0
       - JUPYTERHUB_LAB_SERVICE_TENSORBOARD=0
       - JUPYTERHUB_NETWORK_NAME=stellars-functest_network            # spawned labs join the test network only
+      - JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME=                          # keep labs in THIS project (not {compose}_labs) so clean() reaps them by project label
       - COMPOSE_PROJECT_NAME=stellars-functest
     networks:
       - jupyterhub_network
@@ -73,5 +74,10 @@ networks:
 volumes:
   certs:
   data:
+  # role labels - hub finds these by duoptimum-hub.volume.role (exact, no name/fallback)
   shared:
+    labels:
+      duoptimum-hub.volume.role: "shared"
   docker_sockets:
+    labels:
+      duoptimum-hub.volume.role: "docker-proxy"

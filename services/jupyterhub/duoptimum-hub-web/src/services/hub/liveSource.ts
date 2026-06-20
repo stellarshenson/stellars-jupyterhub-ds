@@ -93,7 +93,7 @@ interface RawActivity {
   gpus?: Array<{ index: string; name: string; uuid?: string; memory_mb?: number; utilization?: number; memory_used_mb?: number; temperature_c?: number; power_w?: number }> // host GPU inventory + live load
   gpu_connected?: boolean // gpuinfo sidecar is live (fresh sample); false = inventory is stale, hide GPU widgets
   lab_image?: string // spawn image (Lab Container page)
-  lab_volumes?: Array<{ suffix: string; mount: string; description?: string }> // standard per-user volumes
+  lab_volumes?: Array<{ suffix: string; mount: string; description?: string; role?: string }> // standard per-user volumes (role = duoptimum-hub.volume.role)
 }
 interface RawPolicySummary {
   key: string
@@ -587,13 +587,14 @@ export const liveSource: DataSource = {
       // Names only - the fast /manage-volumes call, decoupled from the slow
       // /activity sizes (getUserVolumeSizes) so the table paints at once and the
       // size cells fill in when the docker-stats sample lands.
-      const resp = await hubGet<{ volumes: Array<{ suffix: string; name: string; description?: string }> }>(`/users/${encodeURIComponent(user)}/manage-volumes`)
+      const resp = await hubGet<{ volumes: Array<{ suffix: string; name: string; description?: string; role?: string }> }>(`/users/${encodeURIComponent(user)}/manage-volumes`)
       return resp.volumes.map((v) => ({
         suffix: v.suffix,
         name: v.name,
         mount: MOUNT_BY_SUFFIX[v.suffix] ?? '',
         description: v.description,
-        standard: true,
+        role: v.role,
+        standard: !!v.role, // system volume iff it carries a platform role (identify by role, not name)
       }))
     } catch {
       return [] // honest empty - no fabricated volume list
@@ -691,7 +692,7 @@ export const liveSource: DataSource = {
       const a = await fetchActivity()
       return {
         image: a.lab_image ?? '',
-        volumes: (a.lab_volumes ?? []).map((v) => ({ name: v.suffix, mount: v.mount, description: v.description })),
+        volumes: (a.lab_volumes ?? []).map((v) => ({ name: v.suffix, mount: v.mount, description: v.description, role: v.role })),
       }
     } catch {
       return { image: '', volumes: [] } // honest empty, not the mock lab image
