@@ -88,7 +88,7 @@ export default function DesignLanguage() {
         </div>
       </Card>
 
-      <Card title="Palette (named, dim / normal / intense)" style={{ marginBottom: 16 }}>
+      <Card title="Palette (named, dim / normal / bright)" style={{ marginBottom: 16 }}>
         {[
           { v: 'green', label: 'green' },
           { v: 'cyan', label: 'cyan (blue)' },
@@ -99,11 +99,11 @@ export default function DesignLanguage() {
           <Row key={c.v} label={c.label}>
             <Swatch token={`--doh-${c.v}-dim`} name="dim" />
             <Swatch token={`--doh-${c.v}`} name="normal" />
-            <Swatch token={`--doh-${c.v}-intense`} name="intense" />
+            <Swatch token={`--doh-${c.v}-bright`} name="bright" />
           </Row>
         ))}
         <div className="doh-note" style={{ marginTop: 4 }}>
-          <b>Palette:</b> borrowed from the defined tokens (green = success, cyan/blue = accent, red = danger, orange = warning, gray = text-subtle), each <code>--doh-&lt;name&gt;</code> with <code>-dim</code> (toward surface) and <code>-intense</code> (toward text) variants - refer to them by name. Magenta is not in the current tokens.
+          <b>Palette:</b> borrowed from the defined tokens (green = success, cyan/blue = accent, red = danger, orange = warning, gray = text-subtle), each <code>--doh-&lt;name&gt;</code> with <code>-dim</code> (toward surface) and <code>-bright</code> (toward text) variants - refer to them by name. Magenta is not in the current tokens.
         </div>
       </Card>
 
@@ -128,7 +128,15 @@ export default function DesignLanguage() {
           <IconAction icon="play" title="primary - blue (active / go-to)" tone="primary" filled />
           <IconAction icon="disk" title="secondary - gray (neutral)" tone="secondary" filled />
           <IconAction icon="stop" title="dangerous - red (destructive)" tone="danger" filled />
-          <IconAction icon="activity" title="warning - yellow (caution)" tone="warning" filled />
+          <IconAction icon="activity" title="warning - yellow (caution)" tone="warning" />
+        </Row>
+        <Row label="primary icon sizes (small / medium / large - the sizes the UI uses)">
+          {[{ z: 'small', px: 14 }, { z: 'medium', px: 16 }, { z: 'large', px: 18 }].map((s) => (
+            <div key={s.z} style={{ textAlign: 'center' }}>
+              <Icon name="play" size={s.px} filled style={{ color: 'var(--color-accent)' }} />
+              <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{s.z} {s.px}px</div>
+            </div>
+          ))}
         </Row>
         <Row label="list icons - wireframe (filled on demand)">
           <IconAction icon="play" title="list-primary - blue" tone="primary" />
@@ -216,16 +224,46 @@ export default function DesignLanguage() {
           <div style={{ width: 160 }}><GpuMeter gpus={[82, 40]} /></div>
           <div style={{ width: 220 }}><GpuMeter gpus={[62, 41, 18, 9]} /></div>
         </Row>
-        <Row label="TTL gadget - behaviour matrix (full / ample / warn / low / extended-capped / at-ceiling)">
+        <Row label="TTL gadget - behaviour matrix (full / ample / warn / danger / banked-draining / at-ceiling)">
           <div style={{ width: 320 }}><TtlGadget timeLeftMin={240} baseMin={240} maxAddHours={12} /></div>
           <div style={{ width: 320 }}><TtlGadget timeLeftMin={180} baseMin={240} maxAddHours={12} /></div>
           <div style={{ width: 320 }}><TtlGadget timeLeftMin={45} baseMin={240} maxAddHours={12} /></div>
-          <div style={{ width: 320 }}><TtlGadget timeLeftMin={12} baseMin={240} maxAddHours={12} /></div>
-          <div style={{ width: 320 }}><TtlGadget timeLeftMin={300} baseMin={240} maxAddHours={6} /></div>
-          <div style={{ width: 320 }}><TtlGadget timeLeftMin={180} baseMin={240} maxAddHours={0} /></div>
+          <div style={{ width: 320 }}><TtlGadget timeLeftMin={6} baseMin={240} maxAddHours={12} /></div>
+          <div style={{ width: 320 }}><TtlGadget timeLeftMin={300} baseMin={240} maxAddHours={6} displayCeilingMin={360} /></div>
+          <div style={{ width: 320 }}><TtlGadget timeLeftMin={360} baseMin={240} maxAddHours={0} displayCeilingMin={360} /></div>
+        </Row>
+        <Row label="TTL glow/blur calibration (static steps - tune colours + amounts)">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, width: '100%' }}>
+            {/* counter BLUR steps - the counter ships blur-only (no glow); shipped default .75px at the peak */}
+            <div style={{ display: 'flex', gap: 28, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <span style={{ width: 92, fontSize: 12, color: 'var(--color-text-muted)' }}>counter blur</span>
+              {[0.1, 0.25, 0.5, 0.75, 1].map((px) => (
+                <div key={px} style={{ textAlign: 'center' }}>
+                  <span className="doh-ttl-val" style={{ minWidth: 'auto', color: 'var(--doh-ttl-blue)', filter: px ? `blur(${px}px)` : 'none' }}>
+                    <Icon name="clock" size={14} /><b style={{ color: 'var(--doh-ttl-blue)' }}>9h 58m</b>
+                  </span>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{px}px</div>
+                </div>
+              ))}
+            </div>
+            {/* bar GLOW steps - a brightened tint (currentColor mixed toward white) over the fill, by opacity (target 50%) */}
+            <div style={{ display: 'flex', gap: 28, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <span style={{ width: 92, fontSize: 12, color: 'var(--color-text-muted)' }}>bar glow</span>
+              {[0, 0.25, 0.5, 0.75, 1].map((op) => (
+                <div key={op} style={{ textAlign: 'center' }}>
+                  <span className="doh-ttl-bar" style={{ display: 'inline-block', width: 150, position: 'relative', color: 'var(--doh-ttl-blue)' }}>
+                    <Progress percent={80} status="normal" showInfo={false} strokeColor="var(--doh-ttl-blue)" trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
+                    {op > 0 && <span style={{ position: 'absolute', inset: 0, background: 'color-mix(in srgb, currentColor, white 60%)', opacity: op, borderRadius: 'var(--radius-full)', zIndex: 2, pointerEvents: 'none' }} />}
+                  </span>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{Math.round(op * 100)}%</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </Row>
         <div className="doh-note" style={{ marginTop: 4 }}>
-          <b>Progress bars:</b> the standard bar (antd Progress) is base-relative and drains blue -&gt; amber -&gt; red toward the cull; the resource bars are the same family. The <b>alternative striped bars</b> (one per GPU) are for multi-device load - a labelled bar per device rather than a single aggregate. The TTL extend is an hours slider whose last tick "max" tops the session to the ceiling.
+          <b>Colour thresholds (fixed rule):</b> resource / usage bars (high = bad) - normal accent below 70%, full warning (amber) at &gt;= 70%, full danger (red) at &gt;= 90%. TTL bar (reverse, low time = the end) - blue above 30% of base left, full warning at &lt;= 30%, dim red at &lt;= 10% (a low timer is the normal end state, not an alarm). Warning is ALWAYS the normal warning colour - never dimmed by blending with the accent; only the warn-&gt;danger span blends (warm hues, stays saturated).
+          <br /><b>Progress bars:</b> the standard bar (antd Progress) is base-relative; the resource bars are the same family. The <b>alternative striped bars</b> (one per GPU) are for multi-device load - a labelled bar per device rather than a single aggregate. The TTL extend is an hours slider whose last tick "max" tops the session to the ceiling.
           <br /><b>Tooltips, not static text:</b> precise values (exact GB, %, dates, breakdowns) live in a tooltip on hover, never as wasteful static text under the control - the control shows the glanceable shape, the tooltip the precise number.
         </div>
       </Card>

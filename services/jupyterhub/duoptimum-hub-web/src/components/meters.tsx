@@ -6,7 +6,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { Button, Popover, Progress, Slider } from 'antd'
 import { Icon } from './Icon'
 import { fmtMinutes } from '../lib/format'
-import { THRESHOLDS, ANIMATION, BAR_COLOR } from '../services/config'
+import { ANIMATION, BAR_COLOR, TTL_COLOR } from '../services/config'
 import { gpuSupported } from '../app/capabilities'
 import { useTheme } from '../theme/ThemeProvider'
 import { PALETTES } from '../theme/tokens'
@@ -166,21 +166,16 @@ export interface ResourceRow {
   error?: boolean // readout unavailable - show an explicit "unavailable", never a fabricated bar
 }
 
-// Resource-bar fill colour: the calm accent up to `calmMaxPct`, then a ramp
-// accent -> warning -> danger that reaches full danger at `dangerPct` so a
-// near-full bar reads as a strong, saturated red (not a pale orange-red).
-// color-mix keeps the shift smooth and reuses the design tokens (no hardcoded
-// RGB). Thresholds live in `BAR_COLOR` (services/config.ts) so they tune in one
-// place. Returns undefined at or below `calmMaxPct` so the CSS default accent applies.
+// Resource-bar fill colour rule (fixed bands, no accent muddying): normal accent
+// below `warnPct`, full (normal) warning at/above `warnPct`, full danger at/above
+// `dangerPct`. Only the warn..danger span blends - and that's warm warning -> red
+// (adjacent hues) so it stays saturated, never the dim brown that warning-mixed-
+// with-blue produced. Thresholds in `BAR_COLOR`; stated on /design-language.
 export function barColor(pct: number): string | undefined {
-  const { calmMaxPct, midPct, dangerPct } = BAR_COLOR
-  if (pct <= calmMaxPct) return undefined
-  if (pct <= midPct) {
-    const k = Math.round(((pct - calmMaxPct) / (midPct - calmMaxPct)) * 100) // 0 -> 100 across calm..mid
-    return `color-mix(in srgb, var(--color-warning) ${k}%, var(--color-accent))`
-  }
-  if (pct >= dangerPct) return 'var(--color-danger)' // saturate to full danger near the top
-  const k = Math.round(((pct - midPct) / (dangerPct - midPct)) * 100) // 0 -> 100 across mid..danger
+  const { warnPct, dangerPct } = BAR_COLOR
+  if (pct < warnPct) return undefined // calm: CSS default accent, no tint
+  if (pct >= dangerPct) return 'var(--color-danger)' // full danger
+  const k = Math.round(((pct - warnPct) / (dangerPct - warnPct)) * 100) // full warning at warnPct -> red toward dangerPct
   return `color-mix(in srgb, var(--color-danger) ${k}%, var(--color-warning))`
 }
 
@@ -256,44 +251,56 @@ function EASE(x: number): number {
   return sy(t)
 }
 
+// TTL colour by fraction of base left (reverse of the resource bars; fixed bands).
+// Blue (info) above warnFrac; full (normal) warning at/below warnFrac; dim red
+// (--doh-ttl-red, not the bright alarm danger - a low timer is the normal end
+// state) at/below dangerFrac. Only the warn..danger span blends, warm warning ->
+// dim red. Thresholds in config.ts (visual only).
+function ttlTone(frac: number): string {
+  const { warnFrac, dangerFrac } = TTL_COLOR
+  if (frac >= warnFrac) return 'var(--doh-ttl-blue)'
+  if (frac <= dangerFrac) return 'var(--doh-ttl-red)'
+  const k = Math.round(((warnFrac - frac) / (warnFrac - dangerFrac)) * 100) // full warning at warnFrac -> dim red toward dangerFrac
+  return `color-mix(in srgb, var(--doh-ttl-red) ${k}%, var(--color-warning))`
+}
+
 // idle-session timer: a standard progress bar that reads 100% (blue) when time
 // is ample and drains down, shifting blue -> orange -> red as the cull nears; the
 // used-up remainder shows as the gray trail. The whole gadget spans the row
 // (bar + time + Extend). Extend opens an hours slider whose last tick is "max",
 // which tops the session up to the configured ceiling (old-JupyterHub style).
-export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, onExtend }: { timeLeftMin: number; baseMin: number; maxAddHours?: number; uptimeLabel?: string; onExtend?: (hours: number) => void | Promise<unknown> }) {
-  // Below base: measure against the BASE timeout (fresh session ~100%, drains).
-  // Extended (time banked above base): measure against the extension ceiling
-  // (base + max_extension, derived from the remaining headroom maxAddHours) so the
-  // bar visibly shrinks as the banked time burns down - the user sees it running
-  // out. The instant it falls to the standard baseline it rescales to base and
-  // reads full again (against the standard baseline, not the extended one).
-  const ceilingMin = timeLeftMin + maxAddHours * 60
-  // two-phase scale: below base, against base (fresh ~100%, drains); banked above
-  // base, against the extension ceiling (so banked time visibly drains). The
-  // ceiling is invariant across an extend (timeLeft+maxAdd*60 = base+max_extension),
-  // so this same function gives the correct optimistic target for the extend boost.
-  const pctFor = (min: number) =>
-    min > baseMin && ceilingMin > 0
-      ? Math.round((min / ceilingMin) * 100)
-      : baseMin
-        ? Math.min(100, Math.round((min / baseMin) * 100))
-        : 0
+export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, displayCeilingMin, uptimeLabel, onExtend }: { timeLeftMin: number; baseMin: number; maxAddHours?: number; displayCeilingMin?: number; uptimeLabel?: string; onExtend?: (hours: number) => void | Promise<unknown> }) {
+  // bar 100% ref. below base: base (fresh ~full, drains in last base window). banked
+  // above base: high-water mark = remaining last extended TO (displayCeilingMin), so
+  // just-extended reads 100% and drains vs THAT mark, not the far 72h ceiling (old bug:
+  // 35h of 72h = ~50%). below base: ignore mark, use base. ceilMin arg = boost's new
+  // mark. SSOT: idle_culler.calc_progress_pct_extended.
+  const pctFor = (min: number, ceilMin?: number) => {
+    const c = ceilMin ?? displayCeilingMin
+    const ceil = c && c > baseMin ? c : 0
+    if (min > baseMin && ceil > 0) return Math.min(100, Math.round((min / ceil) * 100))
+    return baseMin ? Math.max(0, Math.min(100, Math.round((min / baseMin) * 100))) : 0
+  }
   const pct = pctFor(timeLeftMin)
-  const warn = THRESHOLDS.timeLeftWarnMin
-  const color = timeLeftMin <= warn / 3 ? 'var(--color-danger)' : timeLeftMin <= warn ? 'var(--color-warning)' : 'var(--color-accent)'
+  // colour vs % of base left (not bar scale): blue, blending amber then red as it empties
+  const color = ttlTone(baseMin > 0 ? timeLeftMin / baseMin : 1)
+  // native 2-line tooltip: fill %, banked hours over base (if extended), wall-clock cull ETA
+  const overH = Math.floor((timeLeftMin - baseMin) / 60)
+  const cullAt = new Date(Date.now() + timeLeftMin * 60000)
+  const cullLabel = cullAt.toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })
+  const barTip = `Idle timer - ${pct}% left${overH > 0 ? ` · +${overH}h over standard TTL` : ''}\nAuto-stops ~${cullLabel} if left idle`
   const maxH = Math.max(1, Math.round(maxAddHours))
   const [open, setOpen] = useState(false)
-  const [hours, setHours] = useState(maxH)
+  // slider default = stable +4h (clamped to available), NOT max - max shrinks as time
+  // banks, so defaulting to it gave a jumpy "+48h ... +11h" offer
+  const RECOMMENDED_ADD_H = 4
+  const [hours, setHours] = useState(Math.min(RECOMMENDED_ADD_H, maxH))
   const atCeiling = maxAddHours <= 0
-  // Extend animation: on click the bar animates (slow CSS fill) to the COMPUTED
-  // post-extend target % - boostPct, captured at click from the optimistic
-  // remaining against the invariant ceiling - while the time text holds its old
-  // value. The boost holds until the refetched timeLeftMin actually lands (a
-  // changed value), with a minimum fill window so the growth is always seen and a
-  // safety cap so the boost can never stick. Because the ceiling is invariant the
-  // landed % equals boostPct, so the settle is seamless (no overshoot-to-100%
-  // then snap-back). displayMin freezes the shown time during the fill.
+  // extend boost: bar fills (slow CSS) to boostPct - the target vs the NEW high-water
+  // mark - while time text holds. holds until refetch lands a changed value (min-fill
+  // window so growth is seen, safety cap so it can't stick). backend stores same mark,
+  // so landed % == boostPct: seamless grow, never a momentary 100% then drop. displayMin
+  // freezes shown time during fill.
   const [boost, setBoost] = useState(false)
   const [boostPct, setBoostPct] = useState(0)
   const [displayMin, setDisplayMin] = useState(timeLeftMin)
@@ -340,10 +347,10 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
   const apply = () => {
     setOpen(false)
     const add = Math.max(1, Math.min(maxH, hours))
-    // optimistic post-extend target: the new remaining clamped to the ceiling,
-    // through the same two-phase formula (never a blanket 100%)
-    const targetMin = Math.min(ceilingMin, timeLeftMin + add * 60)
-    setBoostPct(pctFor(targetMin))
+    // optimistic post-extend remaining = new high-water mark; bar measured vs it
+    // (banked extend -> 100%, sub-base extend -> fills toward base). grows, no flash.
+    const targetMin = timeLeftMin + add * 60
+    setBoostPct(pctFor(targetMin, targetMin))
     baselineMin.current = timeLeftMin
     boostTargetMin.current = targetMin // counter count-up target, in lockstep with the bar
     minFillDone.current = false
@@ -360,8 +367,8 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
   const marks: Record<number, ReactNode> = { 1: '1h', [maxH]: 'max' }
   const atMax = hours >= maxH
   return (
-    <div className="doh-ttl" style={{ '--doh-ttl-anim': `${ANIMATION.ttlExtendMs}ms` } as CSSProperties}>
-      <span className={boost ? 'doh-ttl-bar doh-ttl-boost' : 'doh-ttl-bar'} style={{ flex: 1, minWidth: 0 }} title="Idle session timer - your server is stopped automatically when this runs out">
+    <div className="doh-ttl" style={{ '--doh-ttl-anim': `${ANIMATION.ttlExtendMs}ms`, '--doh-ttl-glow': `${ANIMATION.ttlGlowMs}ms` } as CSSProperties}>
+      <span className={boost ? 'doh-ttl-bar doh-ttl-boost' : 'doh-ttl-bar'} style={{ flex: 1, minWidth: 0, color: barTone }} title={barTip}>
         {/* status="normal" pins the status: antd otherwise auto-switches to "success"
          * at percent>=100 (progress.js), toggling .ant-progress-status-success exactly
          * at max - which re-animates/restyles the fill (the flicker + slightly-wider

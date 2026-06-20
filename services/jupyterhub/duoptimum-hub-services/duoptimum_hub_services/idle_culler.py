@@ -99,6 +99,28 @@ def calc_progress_pct(remaining_seconds, base_seconds):
     return 100.0 if pct > 100 else pct
 
 
+def calc_progress_pct_extended(remaining_seconds, base_seconds, display_ceiling_seconds):
+    """Bar fill % (React portal). Below base: vs base (fresh = full). Banked above
+    base: vs display_ceiling = remaining last extended TO, so just-extended = 100%
+    and drains vs THAT mark, not the far 72h ceiling (old bug: 35h of 72h = ~50%).
+    Mark ignored below base. Clamped [0,100]; base <= 0 -> 0. Mirrored in
+    meters.tsx TtlGadget.pctFor.
+    """
+    if (
+        remaining_seconds > base_seconds
+        and display_ceiling_seconds
+        and display_ceiling_seconds > base_seconds
+    ):
+        pct = remaining_seconds / display_ceiling_seconds * 100
+    elif base_seconds > 0:
+        pct = remaining_seconds / base_seconds * 100
+    else:
+        return 0.0
+    if pct < 0:
+        return 0.0
+    return 100.0 if pct > 100 else pct
+
+
 def calc_extended_remaining(remaining_seconds, hours, ceiling_seconds, maxed):
     """Remaining after applying an extension of `hours`, capped at the ceiling.
 

@@ -259,8 +259,8 @@ Branding:
     default: ""
 
   - name: JUPYTERHUB_HUB_NAME
-    description: Display name - portal logo tooltip + login/signup screen text; empty = "Duoptimum Hub"
-    default: "Duoptimum Hub"
+    description: Display name - portal logo tooltip + login/signup screen text; empty = "DuOptimum Hub"
+    default: "DuOptimum Hub"
 
   - name: JUPYTERHUB_BRANDING_STAGE
     description: Environment-stage header badge (DEV/STG/TST/PRD or custom text); empty = no badge

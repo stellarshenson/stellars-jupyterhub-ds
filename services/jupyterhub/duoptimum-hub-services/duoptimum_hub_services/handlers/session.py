@@ -68,10 +68,15 @@ class SessionInfoHandler(BaseHandler):
             )
             response["time_remaining_seconds"] = remaining
             response["extensions_available_hours"] = calc_available_hours(remaining, ceiling)
+            # bar high-water mark = remaining last extended TO. only meaningful while
+            # banked above base; below base the bar uses base, so report it only then.
+            dc = (spawner.orm_spawner.state or {}).get('display_ceiling') if spawner.orm_spawner else None
+            response["display_ceiling_seconds"] = dc if (dc and remaining > timeout_seconds) else None
         else:
             response["last_activity"] = None
             response["time_remaining_seconds"] = None
             response["extensions_available_hours"] = max_extension_hours
+            response["display_ceiling_seconds"] = None
 
         self.finish(response)
 
@@ -146,6 +151,9 @@ class ExtendSessionHandler(BaseHandler):
         # the deadline model from now on.
         new_state = dict(spawner.orm_spawner.state or {})
         new_state['cull_at'] = (now + timedelta(seconds=new_remaining)).isoformat()
+        # bar high-water mark = remaining now extended TO: bar reads 100% on extend,
+        # drains vs this, not the far ceiling
+        new_state['display_ceiling'] = new_remaining
         new_state.pop('extension_hours_used', None)
         spawner.orm_spawner.state = new_state
         self.db.commit()

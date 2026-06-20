@@ -61,7 +61,7 @@ export function Icon({
   size?: number
   className?: string
   style?: CSSProperties
-  filled?: boolean // solid fill instead of line stroke - used for emphasised controls (play / stop)
+  filled?: boolean // solid fill instead of line stroke (play / stop / disk); filled glyphs also carry a darker same-hue stroke so complex shapes show contour, not a flat blob
 }) {
   return (
     <svg
@@ -70,8 +70,8 @@ export function Icon({
       height={size}
       viewBox="0 0 24 24"
       fill={filled ? 'currentColor' : 'none'}
-      stroke={filled ? 'none' : 'currentColor'}
-      strokeWidth={1.7}
+      stroke={filled ? 'color-mix(in srgb, currentColor, black 55%)' : 'currentColor'}
+      strokeWidth={filled ? 1 : 1.7}
       strokeLinecap="round"
       strokeLinejoin="round"
       style={{ flex: 'none', ...style }}

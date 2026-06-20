@@ -23,26 +23,26 @@ body { margin: 0; font-family: var(--font-sans); }
 .doh-text-danger { color: var(--color-danger); }
 
 /* Named colour palette (design language) - borrowed from the defined tokens, each
-   in three intensities so they can be referred to by name: --doh-<name>{,-dim,-intense}.
+   in three tiers, referred to by name: --doh-<name>{,-dim,-bright}.
    normal = the token; dim = mixed toward the surface (softer, lower contrast);
-   intense = mixed toward the text colour (stronger, higher contrast). Both adapt per
+   bright = mixed toward the text colour (stronger, higher contrast). Both adapt per
    theme because the source vars do. (cyan is the accent - we call it "blue".) */
 :root {
   --doh-green: var(--color-success);
   --doh-green-dim: color-mix(in srgb, var(--color-success) 45%, var(--color-surface));
-  --doh-green-intense: color-mix(in srgb, var(--color-success) 80%, var(--color-text));
+  --doh-green-bright: color-mix(in srgb, var(--color-success) 80%, var(--color-text));
   --doh-cyan: var(--color-accent);
   --doh-cyan-dim: color-mix(in srgb, var(--color-accent) 45%, var(--color-surface));
-  --doh-cyan-intense: color-mix(in srgb, var(--color-accent) 80%, var(--color-text));
+  --doh-cyan-bright: color-mix(in srgb, var(--color-accent) 80%, var(--color-text));
   --doh-red: var(--color-danger);
   --doh-red-dim: color-mix(in srgb, var(--color-danger) 45%, var(--color-surface));
-  --doh-red-intense: color-mix(in srgb, var(--color-danger) 80%, var(--color-text));
+  --doh-red-bright: color-mix(in srgb, var(--color-danger) 80%, var(--color-text));
   --doh-orange: var(--color-warning);
   --doh-orange-dim: color-mix(in srgb, var(--color-warning) 45%, var(--color-surface));
-  --doh-orange-intense: color-mix(in srgb, var(--color-warning) 80%, var(--color-text));
+  --doh-orange-bright: color-mix(in srgb, var(--color-warning) 80%, var(--color-text));
   --doh-gray: var(--color-text-subtle);
   --doh-gray-dim: color-mix(in srgb, var(--color-text-subtle) 45%, var(--color-surface));
-  --doh-gray-intense: color-mix(in srgb, var(--color-text-subtle) 80%, var(--color-text));
+  --doh-gray-bright: color-mix(in srgb, var(--color-text-subtle) 80%, var(--color-text));
 }
 .doh-name-hint { display: block; color: var(--color-text-subtle); font-size: 10px; line-height: 1; margin-top: 1px; }
 /* user cell: reserve a constant height so rows with a full name match rows without */
@@ -131,35 +131,36 @@ body { margin: 0; font-family: var(--font-sans); }
 .doh-termlog-wait { color: #5b6675; font-style: italic; }
 
 /* ---- TTL (idle-session timer) gadget ---- */
+:root {
+  /* standard bar/counter blue (info) - slightly darker than the accent */
+  --doh-ttl-blue: color-mix(in srgb, var(--color-accent) 84%, black);
+  /* low-TTL red: dim/muted, NOT the bright alarm danger - a low timer is the normal end state, not an emergency */
+  --doh-ttl-red: color-mix(in srgb, var(--color-danger) 70%, var(--color-text-muted));
+}
 .doh-ttl { display: flex; align-items: center; gap: var(--space-4); }
 .doh-ttl > .doh-spark { flex: 1; height: 8px; }
-/* fixed-width, right-aligned time slot: the bar is flex:1 beside this label, so a
-   varying label ("4h" vs "3h 58m") would otherwise resize the bar as minutes tick
-   (a maxed bar reading wider than an almost-maxed one, and jitter every minute).
-   The min-width holds the bar width stable; tabular-nums keeps digits uniform. */
-.doh-ttl-val { display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; white-space: nowrap; min-width: 84px; font-size: var(--text-sm); color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+/* fixed-width, LEFT-aligned time slot: the bar is flex:1 beside this slot, so the
+   slot's fixed min-width holds the bar width stable as minutes tick; flex-start pins
+   the clock icon + left edge so they don't shift as the number's width changes
+   ("9h 0m" vs "9h 58m"); tabular-nums keeps digits uniform. */
+.doh-ttl-val { display: inline-flex; align-items: center; justify-content: flex-start; gap: 5px; white-space: nowrap; min-width: 84px; font-size: var(--text-sm); color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .doh-ttl-val b { color: var(--color-text); }
-/* extend animation: on extend the bar fills to the new limit over the boost window
-   (override antd's quick default transition). The bar glows; the counter (readout)
-   glows AND blurs, both ramping up then back down over the same window - so the
-   number reads as "moving" while it climbs. Fires ONLY on extend (doh-ttl-boost
-   added at the click, removed when the new value lands) - never on a countdown tick.
-   Filter endpoints are explicit zero values (not `none`) so blur/glow interpolate
-   smoothly in and out instead of snapping. */
-.doh-ttl-bar { display: inline-block; }
+/* extend animation. bar fills over FILL window (--doh-ttl-anim). on extend the BAR glows:
+   a brightened tint (currentColor mixed toward white) over its fill, opacity 0 -> 50% -> 0,
+   NO drop/box shadow. the COUNTER does not glow - it only blurs .75px at the peak. fires only
+   on extend (doh-ttl-boost, off when value lands), never on a tick. */
+.doh-ttl-bar { display: inline-block; position: relative; }
 .doh-ttl-boost .ant-progress-bg { transition: width var(--doh-ttl-anim, 1s) ease !important; }
-.doh-ttl-bar.doh-ttl-boost { animation: doh-ttl-pulse var(--doh-ttl-anim, 1s) ease; }
-.doh-ttl-val.doh-ttl-boost { animation: doh-ttl-val-pulse var(--doh-ttl-anim, 1s) ease; }
-@keyframes doh-ttl-pulse {
-  0% { filter: drop-shadow(0 0 0 transparent); }
-  50% { filter: drop-shadow(0 0 5px var(--color-accent)); }
-  100% { filter: drop-shadow(0 0 0 transparent); }
+.doh-ttl-bar.doh-ttl-boost::after {
+  content: ''; position: absolute; inset: 0;
+  background: color-mix(in srgb, currentColor, white 60%);
+  border-radius: var(--radius-full); pointer-events: none;
+  z-index: 2; /* over the antd progress fill (it is positioned, else the tint hides under it) */
+  animation: doh-ttl-glow var(--doh-ttl-glow, 1.2s) ease;
 }
-@keyframes doh-ttl-val-pulse {
-  0% { filter: blur(0) drop-shadow(0 0 0 transparent); }
-  50% { filter: blur(1.5px) drop-shadow(0 0 5px var(--color-accent)); }
-  100% { filter: blur(0) drop-shadow(0 0 0 transparent); }
-}
+.doh-ttl-val.doh-ttl-boost { animation: doh-ttl-blur var(--doh-ttl-glow, 1.2s) ease; }
+@keyframes doh-ttl-glow { 0%, 100% { opacity: 0; } 45% { opacity: .5; } }
+@keyframes doh-ttl-blur { 0%, 100% { filter: blur(0); } 45% { filter: blur(.75px); } }
 
 /* ---- metric card ---- */
 .doh-m-top { display: flex; align-items: center; gap: var(--space-2); color: var(--color-text-muted); font-size: var(--text-sm); }
@@ -244,7 +245,7 @@ body { margin: 0; font-family: var(--font-sans); }
 }
 @media (prefers-reduced-motion: reduce) {
   .doh-hub-diode, .doh-hub-offline-bar .doh-hub-dot { animation: none; }
-  .doh-ttl-bar.doh-ttl-boost, .doh-ttl-val.doh-ttl-boost { animation: none; }
+  /* extend glow kept under reduced motion - operator wants the cue visible */
 }
 
 /* ---- command palette ---- */

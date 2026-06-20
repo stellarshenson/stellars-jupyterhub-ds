@@ -14,16 +14,15 @@ export const IDLE_CULLER = {
   maxExtensionH: 12,
 }
 
-// Resource-bar (CPU / memory) fill-colour ramp, in percent. The fill is the calm
-// accent up to `calmMaxPct`, ramps accent -> warning across to `midPct`, then
-// warning -> danger, reaching full saturated red at `dangerPct`. Tune here
-// without touching the component: lower `dangerPct` to make a near-full bar read
-// red sooner. Drives meters.barColor for every CPU/memory bar (host status,
-// server hero, servers table).
+// Resource-bar (CPU / memory) fill-colour rule, in percent. Fixed bands, NOT a
+// blend through the accent (blending warning with the blue accent muddied it into
+// a dim brown): normal accent below `warnPct`, full (normal) warning at/above
+// `warnPct`, full danger at/above `dangerPct`; only the warn..danger span blends
+// (warm warning -> red). Drives meters.barColor for every CPU/memory bar (host
+// status, server hero, servers table). Stated as a rule on /design-language.
 export const BAR_COLOR = {
-  calmMaxPct: 50, // at or below: default accent, no tint
-  midPct: 75, // accent -> warning ramp ends here; warning -> danger begins
-  dangerPct: 85, // at or above: full danger (red)
+  warnPct: 70, // at or above (and below danger): full warning (amber)
+  dangerPct: 90, // at or above: full danger (red)
 }
 
 // Servers-list CPU/MEM counter COLOUR by the server's usage as a % of its ASSIGNED
@@ -33,6 +32,16 @@ export const BAR_COLOR = {
 export const QUOTA_COLOR = {
   warnPct: 75, // at or above (and below danger): warning (amber)
   dangerPct: 100, // at or above: danger (red) - the assigned quota is reached/exceeded
+}
+
+// TTL bar/readout COLOUR by fraction of base left (the reverse of the resource
+// bars). Blue (info) above `warnFrac`; full (normal) warning at/below `warnFrac`;
+// dim red at/below `dangerFrac` (a low timer is the normal end state, not an
+// alarm); only the warn..danger span blends (warm warning -> dim red). Banked
+// (frac > 1) = blue. Visual only. Drives meters.ttlTone.
+export const TTL_COLOR = {
+  warnFrac: 0.30, // at or below this fraction of base left: full warning (amber)
+  dangerFrac: 0.10, // at or below: full dim-red
 }
 
 // Servers-list column-header explanatory tooltips (CPU/MEM), shared by the Servers
@@ -48,6 +57,7 @@ export const SERVERS_COL_HELP = {
 // CSS bar-fill/glow (threaded to global.css via the `--doh-ttl-anim` variable).
 export const ANIMATION = {
   ttlExtendMs: 3000, // TTL extend: bar fills to the new limit over this duration
+  ttlGlowMs: 1200, // TTL extend: bar glow + counter glow/blur pulse ramps up then back down over this (threaded to CSS via --doh-ttl-glow)
 }
 
 // Mock-mode display fixtures only. Live mode never reads jupyterhubVersion or
