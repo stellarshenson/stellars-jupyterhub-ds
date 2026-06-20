@@ -9,5 +9,5 @@ at conftest module top; pytest imports conftest before the test modules that imp
 """
 import os
 
-os.environ.setdefault("JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_KEY", "duoptimum-hub.docker.proxy.owner")
+os.environ.setdefault("JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_KEY", "hub.docker.proxy.owner")
 os.environ.setdefault("JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_VALUE", "{username}")

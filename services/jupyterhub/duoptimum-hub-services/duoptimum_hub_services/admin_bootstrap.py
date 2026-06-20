@@ -18,6 +18,8 @@ fast); this module is the data layer.
 import os
 import sqlite3
 
+from .logging_setup import log
+
 DEFAULT_DB_PATH = os.environ.get('STELLARS_JUPYTERHUB_DB_PATH', '/data/jupyterhub.sqlite')
 
 
@@ -66,20 +68,18 @@ def provision_admin_userinfo(db, admin_username, admin_password):
         return
     user = UserInfo.find(db, admin_username)
     if user is None:
-        print(
+        log.info(
             f"[Admin Bootstrap] JUPYTERHUB_ADMIN_PASSWORD provided; "
-            f"creating admin '{admin_username}' (initial password)",
-            flush=True,
+            f"creating admin '{admin_username}' (initial password)"
         )
         hashed = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt())
         db.add(UserInfo(username=admin_username, password=hashed, is_authorized=True))
         db.commit()
         return
     if not user.is_valid_password(admin_password):
-        print(
+        log.info(
             f"[Admin Bootstrap] '{admin_username}' has changed their password; "
-            f"JUPYTERHUB_ADMIN_PASSWORD ignored",
-            flush=True,
+            f"JUPYTERHUB_ADMIN_PASSWORD ignored"
         )
 
 

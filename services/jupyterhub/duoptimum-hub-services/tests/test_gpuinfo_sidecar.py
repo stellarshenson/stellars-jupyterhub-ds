@@ -11,7 +11,12 @@ degrade path (docker down, image absent, no name, undiscoverable address).
 import sys
 from types import SimpleNamespace
 
-from duoptimum_hub_services.gpuinfo_sidecar import _sidecar_host, ensure_gpuinfo_sidecar
+from duoptimum_hub_services.gpuinfo_sidecar import (
+    _compose_container_name,
+    _sidecar_host,
+    ensure_gpuinfo_sidecar,
+    stop_gpuinfo_sidecar,
+)
 
 
 # ── _sidecar_host: read the address from the LIVE container ───────────────────
@@ -227,17 +232,17 @@ def test_ensure_stamps_container_role_label_and_passes_no_env(monkeypatch):
     out = ensure_gpuinfo_sidecar(
         "img:latest", "gpuinfo-net", "http://{hostname}:8000",
         compose_project="proj", container_name="gpuinfo-nvidia",
-        container_role_label_key="duoptimum-hub.container.role",
+        container_role_label_key="hub.container.role",
         container_role_label_value="gpuinfo",
     )
     assert out == "http://172.20.0.7:8000"
     kw = client.containers.last_run_kwargs
-    assert kw["labels"]["duoptimum-hub.container.role"] == "gpuinfo"
+    assert kw["labels"]["hub.container.role"] == "gpuinfo"
     assert "environment" not in kw
 
 
 def test_ensure_stamps_container_description_label(monkeypatch):
-    # the hub stamps an informational duoptimum-hub.container.description label when a
+    # the hub stamps an informational hub.container.description label when a
     # description is supplied (mirrors the volume/network .description convention)
     container = _Container(name="gpuinfo-nvidia", networks={"gpuinfo-net": {"IPAddress": "172.20.0.7"}})
     client = _FakeClient(run_container=container)
@@ -245,10 +250,10 @@ def test_ensure_stamps_container_description_label(monkeypatch):
     ensure_gpuinfo_sidecar(
         "img:latest", "gpuinfo-net", "http://{hostname}:8000",
         compose_project="proj", container_name="gpuinfo-nvidia",
-        container_description_label_key="duoptimum-hub.container.description",
+        container_description_label_key="hub.container.description",
         container_description="GPU-info sidecar",
     )
-    assert client.containers.last_run_kwargs["labels"]["duoptimum-hub.container.description"] == "GPU-info sidecar"
+    assert client.containers.last_run_kwargs["labels"]["hub.container.description"] == "GPU-info sidecar"
 
 
 def test_ensure_omits_description_label_when_blank(monkeypatch):
@@ -260,4 +265,84 @@ def test_ensure_omits_description_label_when_blank(monkeypatch):
         "img:latest", "gpuinfo-net", "http://{hostname}:8000",
         compose_project="proj", container_name="gpuinfo-nvidia",
     )
-    assert "duoptimum-hub.container.description" not in client.containers.last_run_kwargs["labels"]
+    assert "hub.container.description" not in client.containers.last_run_kwargs["labels"]
+
+
+# ── compose-style naming: the hub replicates <project>-<service>-<number> ──────
+
+def test_compose_container_name_matches_compose_convention():
+    # exactly like compose auto-names a service container: <project>-<service>-<number>
+    assert _compose_container_name("gpuinfo-nvidia", "proj") == "proj-gpuinfo-nvidia-1"
+
+
+def test_compose_container_name_bare_without_project():
+    # no project (hub not compose-managed) -> the bare service name, nothing to mirror
+    assert _compose_container_name("gpuinfo-nvidia", "") == "gpuinfo-nvidia"
+
+
+def test_ensure_runs_with_compose_qualified_name_and_simple_service_label(monkeypatch):
+    # the created container's NAME is the compose-style FQN (<project>-<service>-1), while
+    # com.docker.compose.service carries the SIMPLE service name and container-number the
+    # ordinal - so it is indistinguishable from a compose-managed container
+    container = _Container(name="proj-gpuinfo-nvidia-1", networks={"gpuinfo-net": {"IPAddress": "172.20.0.7"}})
+    client = _FakeClient(run_container=container)
+    _install_fake_docker(monkeypatch, client=client)
+    ensure_gpuinfo_sidecar(
+        "img:latest", "gpuinfo-net", "http://{hostname}:8000",
+        compose_project="proj", container_name="gpuinfo-nvidia",
+    )
+    kw = client.containers.last_run_kwargs
+    assert kw["name"] == "proj-gpuinfo-nvidia-1"
+    assert kw["labels"]["com.docker.compose.service"] == "gpuinfo-nvidia"
+    assert kw["labels"]["com.docker.compose.container-number"] == "1"
+    assert kw["labels"]["com.docker.compose.project"] == "proj"
+
+
+def test_ensure_bare_name_without_project(monkeypatch):
+    # no project -> bare service name, no compose.* identity labels stamped
+    container = _Container(name="gpuinfo-nvidia", networks={"gpuinfo-net": {"IPAddress": "172.20.0.7"}})
+    client = _FakeClient(run_container=container)
+    _install_fake_docker(monkeypatch, client=client)
+    ensure_gpuinfo_sidecar(
+        "img:latest", "gpuinfo-net", "http://{hostname}:8000",
+        container_name="gpuinfo-nvidia",
+    )
+    kw = client.containers.last_run_kwargs
+    assert kw["name"] == "gpuinfo-nvidia"
+    assert "com.docker.compose.service" not in kw["labels"]
+
+
+class _StopContainer:
+    def __init__(self):
+        self.removed = False
+
+    def remove(self, force=False):
+        self.removed = True
+
+
+class _StopContainers:
+    def __init__(self):
+        self.got = None
+        self.container = _StopContainer()
+
+    def get(self, name):
+        self.got = name
+        return self.container
+
+
+class _StopClient:
+    def __init__(self):
+        self.containers = _StopContainers()
+
+    def close(self):
+        pass
+
+
+def test_stop_removes_the_compose_qualified_name(monkeypatch):
+    # teardown must compute the SAME compose-style name the create path used, so it finds
+    # and removes the exact container (not the bare service name)
+    client = _StopClient()
+    _install_fake_docker(monkeypatch, client=client)
+    stop_gpuinfo_sidecar("http://{hostname}:8000", container_name="gpuinfo-nvidia", compose_project="proj")
+    assert client.containers.got == "proj-gpuinfo-nvidia-1"
+    assert client.containers.container.removed is True

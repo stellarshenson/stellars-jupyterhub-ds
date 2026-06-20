@@ -52,12 +52,46 @@ export const SERVERS_COL_HELP = {
   mem: 'Memory used, in GB',
 }
 
+// Terse column-header description tooltips for the Servers, Users and Groups tables -
+// shown on hover so each column's meaning is clear on a skim. The antd "click to sort"
+// tooltip is disabled on these tables (showSorterTooltip={false}) so only these show.
+export const COL_HELP = {
+  servers: {
+    user: 'Username and full name; links to the user',
+    status: 'Server state - running, idle or offline',
+    lastActivity: 'Time since the last recorded activity',
+    activity: 'Recent activity as a percent of the target',
+    cpu: SERVERS_COL_HELP.cpu,
+    mem: SERVERS_COL_HELP.mem,
+    gpu: 'GPU assigned to the server',
+    vol: 'Total size of the user volumes',
+    sys: 'Extra space used by the container writable layer',
+    timeLeft: 'Time before idle-culling stops the server',
+  },
+  users: {
+    user: 'Username and full name',
+    authorised: 'Whether the user may sign in',
+    created: 'When the account was created',
+    lastSeen: 'Time since the user last signed in',
+    activity: 'Recent activity as a percent of the target',
+    groups: 'Groups the user belongs to',
+  },
+  groups: {
+    priority: 'Apply order - lower number wins on conflict',
+    group: 'Group name',
+    description: 'What the group is for',
+    members: 'Number of members',
+    policies: 'Policies the group grants',
+  },
+}
+
 // UI animation timings (milliseconds) - tunable here without touching the
 // components or CSS. The TTL extend value drives the rAF bar-fill + count-up
 // hold timer; the glow ramp is threaded to global.css via `--doh-ttl-glow`.
 export const ANIMATION = {
   ttlExtendMs: 3000, // TTL extend: bar grows (rAF) from current fill to the new limit over this duration
   ttlGlowMs: 100, // TTL extend: glow/blur RAMP duration (each of ramp-on and ramp-off); the glow holds at 50% in between for the whole fill, never a pulse (threaded to CSS via --doh-ttl-glow)
+  statusPulseMs: 3000, // connection-status diode: soft halo pulse period - the halo fades off slightly and back in over this span (calm, not an expanding ring); threaded to CSS via --doh-status-pulse
 }
 
 // Mock-mode display fixtures only. Live mode never reads jupyterhubVersion or

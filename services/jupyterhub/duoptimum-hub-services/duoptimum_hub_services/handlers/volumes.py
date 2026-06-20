@@ -59,7 +59,7 @@ class ManageVolumesHandler(BaseHandler):
         # description text rather than re-parsing the templates dict.
         ui = self.settings['stellars_config'].get('user_volumes', None)
         descriptions = {v['suffix']: v.get('description', '') for v in (ui or [])}
-        # suffix -> duoptimum-hub.volume.role, so the portal IDs each as a system volume by role
+        # suffix -> hub.volume.role, so the portal IDs each as a system volume by role
         roles = self.settings['stellars_config'].get('user_volume_roles', {}) or {}
         # label keys the hub stamped at spawn - read from env-sourced config, never a literal
         vol_role_key = self.settings['stellars_config'].get('volume_role_label_key', '')

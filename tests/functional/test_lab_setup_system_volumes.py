@@ -2,7 +2,7 @@
 
 The Lab Setup page shows a second panel for the platform system volumes - the
 shared volume and the docker-proxy sockets volume - resolved by their
-duoptimum-hub.volume.role labels and described by their duoptimum-hub.volume.
+hub.volume.role labels and described by their hub.volume.
 description labels (NOT volumes_dictionary.yml, which stays lab-only).
 
 End-to-end on the rebuilt image:

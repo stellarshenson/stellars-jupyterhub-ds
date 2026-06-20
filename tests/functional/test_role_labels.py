@@ -1,4 +1,4 @@
-"""Functional: hub-owned volumes carry duoptimum-hub.volume.role labels, discovered live
+"""Functional: hub-owned volumes carry hub.volume.role labels, discovered live
 over the docker socket. Default regime.
 
 Verifies the role-label discovery the hub relies on (no name reconstruction, no fallback):
@@ -11,7 +11,7 @@ volume is NOT picked up. A healthy hub also proves the central config validator 
 import pytest
 
 HUB = "stellars-functest-duoptimum-hub"
-ROLE_KEY = "duoptimum-hub.volume.role"
+ROLE_KEY = "hub.volume.role"
 
 
 def _hub_volume_roles(client):
@@ -56,7 +56,7 @@ def test_role_unique_per_namespace(docker_client):
 
 @pytest.mark.acc_crit("duoptimumhub::Functional: live role labels per namespace")
 def test_role_label_prefix_is_duoptimum_hub(docker_client):
-    # hub-owned volume role labels use the duoptimum-hub. prefix (renamed from bare duoptimum.)
+    # hub-owned volume role labels use the hub. prefix (renamed from bare duoptimum.)
     hub = docker_client.containers.get(HUB)
     for m in (hub.attrs.get("Mounts") or []):
         if m.get("Type") != "volume":

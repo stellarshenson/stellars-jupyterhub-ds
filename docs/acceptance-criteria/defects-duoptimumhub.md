@@ -21,8 +21,14 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
 - [DEF-15: TTL extend bar flips to 100% instead of growing](#def-15-ttl-extend-bar-flips-to-100-instead-of-growing) - open
 - [DEF-16: Stopped-server readout shows "stopped now ago"](#def-16-stopped-server-readout-shows-stopped-now-ago) - open
 - [DEF-17: Role-label keys/values baked only in Dockerfile, not in compose.yml](#def-17-role-label-keysvalues-baked-only-in-dockerfile-not-in-composeyml) - open
+- [DEF-18: Hub-unreachable display (corner diode + full-screen modal) looks bad](#def-18-hub-unreachable-display-corner-diode--full-screen-modal-looks-bad) - open
 
 ## Open
+
+### DEF-18: Hub-unreachable display (corner diode + full-screen modal) looks bad
+
+- [ ] **MEDIUM** - the hub-unreachable presentation - a fixed top-right corner diode plus a blocking full-screen "Hub not responding" modal - reads as poor UX: the corner diode is "not right", the modal "looks quite terrible" (washes the screen, demands a dismiss). Fix: replace with a quiet persistent header connection-status pill (between the theme/language controls and the stage badge) carrying a softly pulsing diode + elapsed "for XXXX", plus a single pale in-flow warning panel on mobile; drop the corner diode and the modal; `HubConnectionIndicator.tsx`, `AppLayout.tsx`, `global.css`, `services/config.ts`, `lib/useHubHealth.ts`
+  - log: 2026-06-21 reported (operator: corner diode "not right" - "abandon it"; modal "looks quite terrible"; wants a soft slowly-pulsating halo and a header status pill that "takes less space and still communicates"); redesign tracked in acc-crit "Hub-unreachable warning indicator" + tasks #396-#400, #404
 
 ### DEF-17: Role-label keys/values baked only in Dockerfile, not in compose.yml
 

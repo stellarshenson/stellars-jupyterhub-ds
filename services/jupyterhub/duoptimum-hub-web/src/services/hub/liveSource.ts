@@ -93,7 +93,7 @@ interface RawActivity {
   gpus?: Array<{ index: string; name: string; uuid?: string; memory_mb?: number; utilization?: number; memory_used_mb?: number; temperature_c?: number; power_w?: number }> // host GPU inventory + live load
   gpu_connected?: boolean // gpuinfo sidecar is live (fresh sample); false = inventory is stale, hide GPU widgets
   lab_image?: string // spawn image (Lab Container page)
-  lab_volumes?: Array<{ suffix: string; mount: string; description?: string; role?: string }> // standard per-user volumes (role = duoptimum-hub.volume.role)
+  lab_volumes?: Array<{ suffix: string; mount: string; description?: string; role?: string }> // standard per-user volumes (role = hub.volume.role)
   system_volumes?: Array<{ name: string; mount: string; description?: string; role?: string }> // shared + docker-proxy system volumes (name = resolved docker volume name)
 }
 interface RawPolicySummary {

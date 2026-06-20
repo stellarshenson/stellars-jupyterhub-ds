@@ -8,7 +8,7 @@ label-less volume, description passthrough, order.
 
 from duoptimum_hub_services.docker_utils import build_system_volume_rows
 
-DESC_KEY = "duoptimum-hub.volume.description"
+DESC_KEY = "hub.volume.description"
 
 SHARED = ("hub_shared", "/mnt/shared", "shared")
 PROXY = ("hub_docker", "/run/dockersock", "docker-proxy")
@@ -77,7 +77,7 @@ def test_volume_present_but_label_missing_blank_description():
 
 def test_other_labels_present_description_absent():
     rows = build_system_volume_rows(
-        [SHARED], DESC_KEY, _labels({"hub_shared": {"duoptimum-hub.volume.role": "shared"}}),
+        [SHARED], DESC_KEY, _labels({"hub_shared": {"hub.volume.role": "shared"}}),
     )
     assert rows[0]["description"] == ""
 

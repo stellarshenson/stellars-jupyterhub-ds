@@ -57,7 +57,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
   const gpuDevices = resources?.gpuDevices ?? []
   // the standard shared volume exists on this host (label-resolved by the hub); when
   // absent the standard-mount controls are disabled (grant has no effect at spawn).
-  // name = the resolved docker volume; description = its duoptimum-hub.volume.description label
+  // name = the resolved docker volume; description = its hub.volume.description label
   const sharedVolExists = !!cfg?.sharedVolume?.exists
   const sharedName = cfg?.sharedVolume?.name ?? ''
   const sharedDesc = cfg?.sharedVolume?.description ?? ''

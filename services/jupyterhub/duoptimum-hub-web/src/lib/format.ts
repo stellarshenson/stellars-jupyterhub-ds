@@ -27,6 +27,19 @@ export function timeAgoShort(iso?: string): string {
   return `${now.diff(then, 'year')}y`
 }
 
+// compact elapsed duration from a millisecond span ("5s", "2m", "1h 3m") - used
+// by the connection indicator's "not responding for XXXX" readout, which ticks
+// each second from the moment the hub went down (seconds granularity, unlike the
+// minute-floored timeAgoShort)
+export function elapsedShort(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000))
+  if (s < 60) return `${s}s`
+  const m = Math.floor(s / 60)
+  if (m < 60) return `${m}m`
+  const h = Math.floor(m / 60)
+  return `${h}h ${m % 60}m`
+}
+
 // "stopped <when> ago" phrasing for the offline TTL slot. Sub-minute reads
 // "a moment ago" (never the ungrammatical "now ago"); null = "never started".
 export function stoppedAgo(iso?: string | null): string {

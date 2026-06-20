@@ -26,7 +26,7 @@ import { useIsMobile } from '../lib/useIsMobile'
 import { useServerLifecycle } from '../app/ServerLifecycle'
 import type { ServerRow, ServerStatus } from '../services/types'
 import { quotaColor } from '../services/hub/serverMetrics'
-import { SERVERS_COL_HELP } from '../services/config'
+import { COL_HELP } from '../services/config'
 
 type Lifecycle = ReturnType<typeof useServerLifecycle>
 
@@ -158,7 +158,7 @@ export default function Servers() {
 
   const columns: ProColumns<ServerRow>[] = [
     {
-      title: 'User',
+      title: <Tooltip title={COL_HELP.servers.user}><span>User</span></Tooltip>,
       dataIndex: 'user',
       width: 200,
       sorter: (a, b) => a.user.localeCompare(b.user),
@@ -175,14 +175,14 @@ export default function Servers() {
       ),
     },
     {
-      title: 'Status',
+      title: <Tooltip title={COL_HELP.servers.status}><span>Status</span></Tooltip>,
       dataIndex: 'status',
       width: 104,
       sorter: (a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status],
       render: (_, r) => <StatusPill status={r.status} label={statusWord(r.status)} />,
     },
     {
-      title: 'Last Activity',
+      title: <Tooltip title={COL_HELP.servers.lastActivity}><span>Last Activity</span></Tooltip>,
       dataIndex: 'lastActivityISO',
       width: 128,
       sorter: (a, b) => (a.lastActivityISO ?? '').localeCompare(b.lastActivityISO ?? ''),
@@ -190,18 +190,18 @@ export default function Servers() {
         r.lastActivityISO ? <span title={exactDate(r.lastActivityISO)}>{timeAgoShort(r.lastActivityISO)}</span> : <span className="doh-muted">-</span>,
     },
     {
-      title: 'Activity',
+      title: <Tooltip title={COL_HELP.servers.activity}><span>Activity</span></Tooltip>,
       dataIndex: 'activity',
       align: 'center',
       sorter: (a, b) => (a.activity ?? -1) - (b.activity ?? -1),
       render: (_, r) => <ActivityMeter value={r.activity} hours={r.activityHours} pct={r.activityPct} />,
     },
     {
-      title: <Tooltip title={SERVERS_COL_HELP.cpu}><span>CPU</span></Tooltip>, dataIndex: 'cpu', align: 'right', sorter: (a, b) => (a.cpu ?? -1) - (b.cpu ?? -1),
+      title: <Tooltip title={COL_HELP.servers.cpu}><span>CPU</span></Tooltip>, dataIndex: 'cpu', align: 'right', sorter: (a, b) => (a.cpu ?? -1) - (b.cpu ?? -1),
       render: (_, r) => (r.cpu == null ? <span className="doh-muted">-</span> : <span className="doh-num" title={r.cpuTip} style={{ color: quotaColor(r.cpuQuotaPct) }}>{listCpuMode === 'cores' ? r.cpu : (r.cpuAssignedPct ?? r.cpu)}%</span>),
     },
     {
-      title: <Tooltip title={SERVERS_COL_HELP.mem}><span>Mem</span></Tooltip>,
+      title: <Tooltip title={COL_HELP.servers.mem}><span>Mem</span></Tooltip>,
       dataIndex: 'mem',
       align: 'right',
       sorter: (a, b) => (a.mem ?? -1) - (b.mem ?? -1),
@@ -211,14 +211,14 @@ export default function Servers() {
     // GPU column only when the platform has GPU AND some row actually carries a
     // per-server GPU value (live never collects it -> all-null -> column hidden)
     ...(gpuSupported() && data.some((r) => r.gpu) ? [{
-      title: 'GPU',
+      title: <Tooltip title={COL_HELP.servers.gpu}><span>GPU</span></Tooltip>,
       dataIndex: 'gpu',
       align: 'center' as const,
       width: 96,
       render: (_: unknown, r: ServerRow) => (r.gpu ? <Tag bordered={false} style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4, marginInlineEnd: 0 }}>{r.gpu}</Tag> : <span className="doh-muted">-</span>),
     }] as ProColumns<ServerRow>[] : []),
     {
-      title: 'Vol',
+      title: <Tooltip title={COL_HELP.servers.vol}><span>Vol</span></Tooltip>,
       dataIndex: 'volumesGB',
       align: 'right',
       sorter: (a, b) => (a.volumesGB ?? -1) - (b.volumesGB ?? -1),
@@ -226,7 +226,7 @@ export default function Servers() {
         !r.volumesGB ? <span className="doh-muted">-</span> : <span className={r.volumesOver ? 'doh-cell-warn' : 'doh-num'} title={r.volumesTip}>{r.volumesGB} GB</span>,
     },
     {
-      title: 'Sys',
+      title: <Tooltip title={COL_HELP.servers.sys}><span>Sys</span></Tooltip>,
       dataIndex: 'systemGB',
       align: 'right',
       sorter: (a, b) => (a.systemGB ?? -1) - (b.systemGB ?? -1),
@@ -234,7 +234,7 @@ export default function Servers() {
         r.systemGB == null ? <span className="doh-muted">-</span> : <span className={r.systemOver ? 'doh-cell-warn' : 'doh-num'} title={r.systemTip}>+{r.systemGB} GB</span>,
     },
     {
-      title: 'Time Left',
+      title: <Tooltip title={COL_HELP.servers.timeLeft}><span>Time Left</span></Tooltip>,
       dataIndex: 'timeLeftMin',
       align: 'right',
       sorter: (a, b) => (a.timeLeftMin ?? -1) - (b.timeLeftMin ?? -1),
@@ -297,6 +297,7 @@ export default function Servers() {
       ) : (
         <ProTable<ServerRow>
           rowKey="user"
+          showSorterTooltip={false}
           columns={columns}
           dataSource={filtered}
           loading={isLoading}

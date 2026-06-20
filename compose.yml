@@ -3,7 +3,7 @@
 #   Home: https://github.com/stellarshenson/stellars-jupyterhub-ds
 #   Supports GPU + non-GPU hosts. Hub: https://localhost/hub
 # --------------------------------------------------------------------------------------------------
-#   duoptimum-hub.* RESOURCE LABELS - stamped on volumes, networks and hub-managed containers:
+#   hub.* RESOURCE LABELS - stamped on volumes, networks and hub-managed containers:
 #     .role        - discovery key; hub finds the resource by role not by name (rename-safe). Must
 #                    match the JUPYTERHUB_LABEL_*_ROLE_* env. One resource per role or the hub won't start.
 #                      volumes  : shared, docker-proxy (+ per-user lab-home/lab-workspace/lab-cache at spawn)
@@ -19,7 +19,6 @@ services:
   # Dashboard now on 443 at /traefik/dashboard/ (api.basePath), open/close via TRAEFIK_DASHBOARD_ENABLED (see banner).
   traefik:
     image: traefik:latest
-    container_name: traefik
     # Dashboard at /traefik on 443, open by default. Close: TRAEFIK_DASHBOARD_ENABLED=false in .env
     # (NOT a container env - labels interpolate ${...} at parse time). Toggle gates the ROUTER below
     # (traefik.enable); no route -> api@internal unreachable -> UI+API 404. --api.dashboard=false
@@ -41,7 +40,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro # docker socket for service labels
       - hub_certs:/certs # certs (hub-provisioned)
     depends_on:
-      duoptimum-hub:
+      hub:
         condition: service_healthy
     networks:
       - hub_network
@@ -57,7 +56,7 @@ services:
     restart: unless-stopped
 
   # Hub: manages users + their jupyterlab envs; proxies each user to their own env.
-  duoptimum-hub:
+  hub:
     build:
       context: .
       dockerfile: services/jupyterhub/Dockerfile.jupyterhub
@@ -65,7 +64,6 @@ services:
         - VERSION=${VERSION:-dev}
     image: stellars/duoptimum-hub:latest
     pull_policy: build
-    container_name: hub
     volumes:
       - hub_certs:/certs # runtime cert dir Traefik watches
       - ./certs:/user-certs:ro # operator cert overlay (missing/empty -> auto-generate)
@@ -126,25 +124,25 @@ services:
       - JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR=/var/run/docker-proxy-sockets # in-hub path for per-user sockets, backed by hub_docker volume, not host bind
 
       # === HUB: labels (discovery contract) ===
-      # The hub's duoptimum-hub.* label family: it finds its networks/volumes/managed containers by
+      # The hub's hub.* label family: it finds its networks/volumes/managed containers by
       # these keys+values, not by name (rename-safe). Naming JUPYTERHUB_LABEL_<DIMENSION>_<ASPECT>[_<ROLE>]
       # - KEY = the label key, a trailing role word = a role VALUE, DESCRIPTION = the human-phrase key.
       # All label envs live HERE in one place; MUST match the labels stamped on the networks/volumes/
       # sidecar below. Baked as Dockerfile ENV defaults; values here are identical (no behaviour change).
       # Value spelling is the literal label, NOT the env-name spelling (DOCKER_PROXY env -> "docker-proxy").
-      - JUPYTERHUB_LABEL_NETWORK_ROLE_KEY=duoptimum-hub.network.role # label key on hub networks
+      - JUPYTERHUB_LABEL_NETWORK_ROLE_KEY=hub.network.role # label key on hub networks
       - JUPYTERHUB_LABEL_NETWORK_ROLE_LAB=lab # hub<->lab network role value
       - JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO=gpuinfo # hub<->sidecar network role value
-      - JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY=duoptimum-hub.container.role # label key on hub-managed containers
+      - JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY=hub.container.role # label key on hub-managed containers
       - JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO=gpuinfo # gpuinfo sidecar container role value
-      - JUPYTERHUB_LABEL_CONTAINER_DESCRIPTION=duoptimum-hub.container.description # label key for the gpuinfo sidecar's human description
-      - JUPYTERHUB_LABEL_VOLUME_ROLE_KEY=duoptimum-hub.volume.role # label key on hub volumes
+      - JUPYTERHUB_LABEL_CONTAINER_DESCRIPTION=hub.container.description # label key for the gpuinfo sidecar's human description
+      - JUPYTERHUB_LABEL_VOLUME_ROLE_KEY=hub.volume.role # label key on hub volumes
       - JUPYTERHUB_LABEL_VOLUME_ROLE_SHARED=shared # shared volume role value
       - JUPYTERHUB_LABEL_VOLUME_ROLE_DOCKER_PROXY=docker-proxy # docker-proxy sockets volume role value (value keeps the hyphen)
-      - JUPYTERHUB_LABEL_VOLUME_DESCRIPTION=duoptimum-hub.volume.description # label key the hub reads a volume's human description from (Lab Setup panel)
-      - JUPYTERHUB_LABEL_VOLUME_OWNER_KEY=duoptimum-hub.volume.owner # label key on per-user volumes; value = the username
+      - JUPYTERHUB_LABEL_VOLUME_DESCRIPTION=hub.volume.description # label key the hub reads a volume's human description from (Lab Setup panel)
+      - JUPYTERHUB_LABEL_VOLUME_OWNER_KEY=hub.volume.owner # label key on per-user volumes; value = the username
       # docker-proxy ownership labels - stamped on every proxy-created container/volume/network:
-      - JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_KEY=duoptimum-hub.docker.proxy.owner # owner label key; all proxy ownership filtering keys off this (owner presence alone = proxy-managed)
+      - JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_KEY=hub.docker.proxy.owner # owner label key; all proxy ownership filtering keys off this (owner presence alone = proxy-managed)
       - JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_VALUE={username} # owner label value template; {username} substituted with the resource owner
 
       # === LAB: image + naming ===
@@ -194,17 +192,17 @@ services:
 
       # hub service (8000), canonical /hub; /jupyterhub + /duoptimum-hub aliases
       # -> redirected by hub-alias-redirect below
-      - "traefik.http.routers.duoptimum-hub-rtr.rule=Path(`/hub`)
+      - "traefik.http.routers.hub-rtr.rule=Path(`/hub`)
          || PathPrefix(`/hub/`)
          || Path(`/jupyterhub`)
          || PathPrefix(`/jupyterhub/`)
          || Path(`/duoptimum-hub`)
          || PathPrefix(`/duoptimum-hub/`)"
-      - "traefik.http.routers.duoptimum-hub-rtr.entrypoints=websecure"
-      - "traefik.http.routers.duoptimum-hub-rtr.service=duoptimum-hub-svc"
-      - "traefik.http.routers.duoptimum-hub-rtr.tls=true"
-      - "traefik.http.services.duoptimum-hub-svc.loadbalancer.server.scheme=http"
-      - "traefik.http.services.duoptimum-hub-svc.loadbalancer.server.port=8000"
+      - "traefik.http.routers.hub-rtr.entrypoints=websecure"
+      - "traefik.http.routers.hub-rtr.service=hub-svc"
+      - "traefik.http.routers.hub-rtr.tls=true"
+      - "traefik.http.services.hub-svc.loadbalancer.server.scheme=http"
+      - "traefik.http.services.hub-svc.loadbalancer.server.port=8000"
 
       # Aliases - /jupyterhub, /duoptimum-hub 302 to canonical base_url (/hub). Subpath kept.
       - "traefik.http.middlewares.hub-alias-redirect.redirectregex.regex\
@@ -214,12 +212,12 @@ services:
 
       # Abuse protection - per-IP rate limit for hub + all labs (all ingress via CHP :8000).
       # WebSocket-safe: upgrade counts once at open; held connections not re-counted.
-      - "traefik.http.middlewares.duoptimum-hub-ratelimit.ratelimit.average=${JUPYTERHUB_RATELIMIT_AVERAGE:-100}"
-      - "traefik.http.middlewares.duoptimum-hub-ratelimit.ratelimit.burst=${JUPYTERHUB_RATELIMIT_BURST:-200}"
-      - "traefik.http.middlewares.duoptimum-hub-ratelimit.ratelimit.period=${JUPYTERHUB_RATELIMIT_PERIOD:-1s}"
-      - "traefik.http.middlewares.duoptimum-hub-ratelimit.ratelimit.sourcecriterion.ipstrategy.depth\
+      - "traefik.http.middlewares.hub-ratelimit.ratelimit.average=${JUPYTERHUB_RATELIMIT_AVERAGE:-100}"
+      - "traefik.http.middlewares.hub-ratelimit.ratelimit.burst=${JUPYTERHUB_RATELIMIT_BURST:-200}"
+      - "traefik.http.middlewares.hub-ratelimit.ratelimit.period=${JUPYTERHUB_RATELIMIT_PERIOD:-1s}"
+      - "traefik.http.middlewares.hub-ratelimit.ratelimit.sourcecriterion.ipstrategy.depth\
         =${JUPYTERHUB_RATELIMIT_XFF_DEPTH:-1}"
-      - "traefik.http.routers.duoptimum-hub-rtr.middlewares=hub-alias-redirect,duoptimum-hub-ratelimit"
+      - "traefik.http.routers.hub-rtr.middlewares=hub-alias-redirect,hub-ratelimit"
     networks:
       - hub_network
       - hub_gpuinfo_network # hub<->sidecar; hub attaches, sidecar joins too
@@ -244,11 +242,10 @@ services:
       target: target
     image: stellars/duoptimum-gpuinfo-nvidia:latest
     pull_policy: build
-    container_name: gpuinfo-nvidia 
     profiles:
       - gpuinfo # not in any default profile -> never auto-started; hub-managed
     labels:
-      duoptimum-hub.container.role: "gpuinfo" # MUST match JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO 
+      hub.container.role: "gpuinfo" # MUST match JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO 
     # runtime env (NVIDIA_*, GPUINFO_PORT), port + cmd baked in the image - not redeclared here
     runtime: nvidia # GPU access via nvidia runtime (host must register it)
     networks:
@@ -257,7 +254,6 @@ services:
 
   ## Watchtower - daily image refresh (monitor-only); single instance via port
   watchtower:
-    container_name: watchtower
     image: nickfedor/watchtower:latest
     labels:
       - "com.centurylinklabs.watchtower.enable=false" # exclude from self-updates
@@ -267,7 +263,7 @@ services:
     security_opt:
       - seccomp:unconfined #optional
     depends_on:
-      duoptimum-hub:
+      hub:
         condition: service_healthy
       traefik:
         condition: service_started
@@ -277,42 +273,40 @@ services:
     privileged: true
 
 volumes:
-  # Role labels let the hub DISCOVER these by duoptimum-hub.volume.role (rename-safe), not by
+  # Role labels let the hub DISCOVER these by hub.volume.role (rename-safe), not by
   # name. Key + role values baked as hub env (Dockerfile); literals here MUST match. One
   # volume per role - duplicate role makes the hub fail to start. The .description label is a
   # human phrase the portal shows beside the volume (e.g. the group "standard shared volume" row).
   hub_data:   # hub users, config, activity
     labels:
-      duoptimum-hub.volume.description: "Hub database, config and activity history"
+      hub.volume.description: "Hub database, config and activity history"
   hub_certs:  # platform certs (autogenerated or provisioned)
     labels:
-      duoptimum-hub.volume.description: "Platform TLS certificates"
+      hub.volume.description: "Platform TLS certificates"
   hub_shared: # shared volume for users (can map to s3/cifs)
     labels:
-      duoptimum-hub.volume.role: "shared"
-      duoptimum-hub.volume.description: "Platform-wide shared storage for all users"
+      hub.volume.role: "shared"
+      hub.volume.description: "Platform-wide shared storage for all users"
   hub_docker: # in-process docker-proxy per-user sockets; subpath-mounted per lab
     labels:
-      duoptimum-hub.volume.role: "docker-proxy"
-      duoptimum-hub.volume.description: "Per-user docker-proxy sockets"
+      hub.volume.role: "docker-proxy"
+      hub.volume.description: "Per-user docker-proxy sockets"
 
 networks:
   # hub_network = hub<->lab net spawned labs join. Role label lets hub DISCOVER its real name
   # at boot (resolve_self_network_by_label, scoped to hub's own attachments) - no name to drift.
   # The .description label is a human phrase shown in `docker inspect` (informational only).
   hub_network:
-    #name: ${COMPOSE_PROJECT_NAME:-duoptimum-hub}_hub_network  # namespaced hub net name
     labels:
-      duoptimum-hub.network.role: "lab" # MUST match JUPYTERHUB_LABEL_NETWORK_ROLE_*
-      duoptimum-hub.network.description: "Hub to user-lab network (spawned labs join here)"
+      hub.network.role: "lab" # MUST match JUPYTERHUB_LABEL_NETWORK_ROLE_*
+      hub.network.description: "Hub to user-lab network (spawned labs join here)"
 
   # hub<->GPU-info sidecar net. Compose OWNS/creates it (driver + attachments managed here);
   # role label lets hub DISCOVER its real name at boot. Hub joins it + runs the sidecar on it;
   # labs are on hub_network only, so they cannot reach it.
   hub_gpuinfo_network:
-    #name: ${COMPOSE_PROJECT_NAME:-duoptimum-hub}_hub_gpuinfo_network
     labels:
-      duoptimum-hub.network.role: "gpuinfo" # MUST match JUPYTERHUB_LABEL_NETWORK_ROLE_*
-      duoptimum-hub.network.description: "Hub to GPU-info sidecar network (labs cannot reach it)"
+      hub.network.role: "gpuinfo" # MUST match JUPYTERHUB_LABEL_NETWORK_ROLE_*
+      hub.network.description: "Hub to GPU-info sidecar network (labs cannot reach it)"
 
 # EOF

@@ -242,24 +242,31 @@ body { margin: 0; font-family: var(--font-sans); }
 .doh-mock-switch a:hover { color: var(--color-text); }
 .doh-mock-switch a.on { background: var(--color-accent-soft); color: var(--color-accent); font-weight: 600; }
 
-/* ---- hub-unreachable indicator: warning diode (desktop popup + corner) + in-flow panel (mobile) ----
-   reads as a transient WARNING - a pill-style diode in warning colour, pulsing with a halo - never a red system error */
-.doh-hub-diode { position: fixed; top: 14px; right: 16px; z-index: 1001; width: 8px; height: 8px; border-radius: 50%; background: var(--color-warning); animation: doh-hub-pulse 1.5s ease-out infinite; }
-/* inline pill-style diode for the desktop popup title + the mobile panel */
-.doh-hub-diode-inline { display: inline-block; flex: none; width: 8px; height: 8px; margin-inline-end: 10px; border-radius: 50%; background: var(--color-warning); vertical-align: middle; animation: doh-hub-pulse 1.5s ease-out infinite; }
-/* mobile: an in-flow warning panel at the top of the content, above Server Controls */
+/* ---- hub-connection status: header pill (desktop) + in-flow warning panel (mobile) ----
+   reads as a WARNING when down, never a red system error. The diode carries a SOFT halo that
+   slowly fades off slightly and back in (doh-soft-pulse, period from --doh-status-pulse set by
+   services/config.ts ANIMATION.statusPulseMs) - calm, not an expanding ring. */
+
+/* desktop header pill - sized to the StageBadge's vertical metrics (1px pad, 1.6 line, 1px
+   border) so the two sit level; the down state fills with warning to draw attention */
+.doh-conn-pill { display: inline-flex; align-items: center; gap: 7px; font-size: var(--text-xs); font-weight: 600; letter-spacing: .02em; padding: 1px 9px; border: 1px solid currentColor; border-radius: var(--radius-sm); line-height: 1.6; white-space: nowrap; }
+.doh-conn-pill .doh-conn-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; animation: doh-soft-pulse var(--doh-status-pulse, 3s) ease-in-out infinite; }
+.doh-conn-pill.ok { color: var(--color-success); }                                                            /* healthy: calm outlined success pill */
+.doh-conn-pill.down { color: var(--color-warning); background: color-mix(in srgb, var(--color-warning) 14%, transparent); } /* down: warning fill */
+
+/* mobile: in-flow warning panel at the top of the content; pale warning surface so it never washes out the text */
 .doh-hub-warn-panel { display: flex; align-items: flex-start; margin: 12px 0; padding: 12px 14px; border-radius: var(--radius-md); color: var(--color-text); background: color-mix(in srgb, var(--color-warning) 12%, var(--color-surface)); border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent); }
-.doh-hub-warn-panel .doh-hub-diode-inline { margin-top: 5px; }
+.doh-hub-warn-diode { display: inline-block; flex: none; width: 8px; height: 8px; margin-top: 5px; margin-inline-end: 10px; border-radius: 50%; color: var(--color-warning); background: currentColor; animation: doh-soft-pulse var(--doh-status-pulse, 3s) ease-in-out infinite; }
 .doh-hub-warn-title { font-weight: 600; }
 .doh-hub-warn-body { font-size: var(--text-sm); color: var(--color-text-muted); margin-top: 2px; }
-@keyframes doh-hub-pulse {
-  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-warning) 65%, transparent); }
-  70%  { box-shadow: 0 0 0 9px color-mix(in srgb, var(--color-warning) 0%, transparent); }
-  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-warning) 0%, transparent); }
+
+/* soft halo pulse: a same-size ring whose intensity gently dips then returns (never expands) */
+@keyframes doh-soft-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 38%, transparent); }
+  50%      { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 10%, transparent); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .doh-hub-diode, .doh-hub-diode-inline { animation: none; }
-  /* extend glow kept under reduced motion - operator wants the cue visible */
+  .doh-conn-pill .doh-conn-dot, .doh-hub-warn-diode { animation: none; }
 }
 
 /* ---- command palette ---- */

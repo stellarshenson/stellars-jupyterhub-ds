@@ -16,6 +16,7 @@ dependencies = [
     "xkcdpass",
     "aiohttp",
     "escapism",
+    "loguru",
 ]
 
 [project.optional-dependencies]

@@ -133,7 +133,7 @@ export default function Events() {
             onChange={(e) => setQ(e.target.value)}
             style={{ width: 220 }}
           />,
-          <Button key="clear" danger icon={<Icon name="close" size={14} />} disabled={!data.length} onClick={clearLog}>Clear Events</Button>,
+          <Button key="clear" danger icon={<Icon name="close" size={14} />} disabled={!data.length} onClick={clearLog}>Clear</Button>,
         ]}
       />
     </>
