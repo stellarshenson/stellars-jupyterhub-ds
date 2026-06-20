@@ -86,14 +86,15 @@ class TestConfigureVolumeCache:
 
 
 class TestEmptyConfigBehaviour:
-    def test_unconfigured_cache_returns_empty(self):
-        """Calling _fetch_volume_sizes without templates short-circuits to {}."""
+    def test_unconfigured_cache_returns_incomplete(self):
+        """Without templates _fetch_volume_sizes short-circuits to ({}, complete=False)."""
         vc.configure_volume_cache({})  # explicit reset
-        assert vc._fetch_volume_sizes() == {}
+        assert vc._fetch_volume_sizes() == ({}, False)
 
 
-# DEF-7: the targeted-du path measures only the user volumes by walking the
-# bind-mounted host volumes dir, deterministically (no partial/cold-boot snapshot).
+# DEF-7: df hands back sizes mid-computation on a cold daemon (uncomputed volumes
+# carry Size=-1). A pass with any -1 among our volumes is PARTIAL and must never be
+# cached; the refresh waits for a complete pass instead.
 TEMPLATES = {
     "home": "proj_jupyterlab_{username}_home",
     "workspace": "proj_jupyterlab_{username}_workspace",
@@ -101,66 +102,126 @@ TEMPLATES = {
 }
 
 
-def _mkvol(root, name, payload_bytes):
-    data = root / name / "_data"
-    data.mkdir(parents=True)
-    if payload_bytes:
-        (data / "blob").write_bytes(b"x" * payload_bytes)
+def _mb(n):
+    return n * 1024 * 1024
 
 
-class TestDuFetch:
-    def test_du_measures_only_matching_user_volumes(self, tmp_path, monkeypatch):
-        root = tmp_path / "volumes"
-        _mkvol(root, "proj_jupyterlab_alice_home", 2 * 1024 * 1024)      # ~2 MB
-        _mkvol(root, "proj_jupyterlab_alice_workspace", 0)              # empty -> ~0
-        _mkvol(root, "proj_jupyterlab_bob_cache", 1024 * 1024)         # ~1 MB
-        _mkvol(root, "proj_other_volume", 9 * 1024 * 1024)            # non-matching -> ignored
-        _mkvol(root, "some_system_volume", 7 * 1024 * 1024)          # non-matching -> ignored
+class _FakeResp:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def json(self):
+        return self._payload
+
+
+class _FakeAPIClient:
+    """Stands in for docker.APIClient: _get(...).json() returns a canned df payload."""
+    payload = {"Volumes": []}
+
+    def __init__(self, *a, **k):
+        pass
+
+    def _url(self, path):
+        return path
+
+    def _get(self, *a, **k):
+        return _FakeResp(type(self).payload)
+
+    def close(self):
+        pass
+
+
+def _patch_df(monkeypatch, volumes):
+    import docker
+    _FakeAPIClient.payload = {"Volumes": volumes}
+    monkeypatch.setattr(docker, "APIClient", _FakeAPIClient)
+
+
+class TestDfCompleteness:
+    def test_all_computed_is_complete(self, monkeypatch):
         vc.configure_volume_cache(TEMPLATES)
-        monkeypatch.setenv("JUPYTERHUB_DOCKER_VOLUMES_DIR", str(root))
+        _patch_df(monkeypatch, [
+            {"Name": "proj_jupyterlab_alice_home", "UsageData": {"Size": _mb(2)}},
+            {"Name": "proj_jupyterlab_alice_workspace", "UsageData": {"Size": 0}},   # empty -> 0, not pending
+            {"Name": "proj_jupyterlab_bob_cache", "UsageData": {"Size": _mb(1)}},
+            {"Name": "proj_other_volume", "UsageData": {"Size": _mb(9)}},            # non-matching -> ignored
+        ])
         try:
-            data = vc._fetch_volume_sizes()
+            data, complete = vc._fetch_via_df()
         finally:
             vc.configure_volume_cache({})
-
+        assert complete is True
         assert set(data) == {"alice", "bob"}, "only templated user volumes counted, orphans ignored"
-        assert data["alice"]["volumes"]["home"] >= 1.9          # ~2 MB
-        assert data["alice"]["volumes"]["workspace"] == 0.0     # empty volume reports 0, not an error
-        assert 1.9 <= data["alice"]["total"] <= 2.2
-        assert data["bob"]["volumes"]["cache"] >= 0.9           # ~1 MB
+        assert data["alice"]["volumes"]["home"] == 2.0
+        assert data["alice"]["volumes"]["workspace"] == 0.0   # empty distinguishable from pending
+        assert data["bob"]["volumes"]["cache"] == 1.0
 
-    def test_empty_volume_reports_zero_not_error(self, tmp_path, monkeypatch):
-        root = tmp_path / "volumes"
-        _mkvol(root, "proj_jupyterlab_carol_home", 0)
+    def test_minus_one_sentinel_marks_partial_and_is_skipped(self, monkeypatch):
         vc.configure_volume_cache(TEMPLATES)
-        monkeypatch.setenv("JUPYTERHUB_DOCKER_VOLUMES_DIR", str(root))
+        _patch_df(monkeypatch, [
+            {"Name": "proj_jupyterlab_alice_home", "UsageData": {"Size": _mb(2)}},
+            {"Name": "proj_jupyterlab_bob_cache", "UsageData": {"Size": -1}},        # not-yet-computed
+        ])
         try:
-            data = vc._fetch_volume_sizes()
+            data, complete = vc._fetch_via_df()
         finally:
             vc.configure_volume_cache({})
-        assert data["carol"]["volumes"]["home"] == 0.0
+        assert complete is False, "any -1 among our volumes makes the pass partial"
+        assert "bob" not in data, "pending volume is skipped, never recorded as 0 (DEF-7)"
+        assert data["alice"]["volumes"]["home"] == 2.0
 
+    def test_error_is_incomplete(self, monkeypatch):
+        vc.configure_volume_cache(TEMPLATES)
+        import docker
 
-class TestFetchDispatch:
-    def test_uses_du_when_volume_root_present(self, tmp_path, monkeypatch):
-        root = tmp_path / "vols"
-        root.mkdir()
-        vc.configure_volume_cache({"home": "p_jupyterlab_{username}_home"})
-        monkeypatch.setenv("JUPYTERHUB_DOCKER_VOLUMES_DIR", str(root))
-        monkeypatch.setattr(vc, "_fetch_via_df", lambda: {"_df": True})
-        monkeypatch.setattr(vc, "_fetch_via_du", lambda r: {"_du": r})
+        class _Boom(_FakeAPIClient):
+            def _get(self, *a, **k):
+                raise RuntimeError("docker down")
+
+        monkeypatch.setattr(docker, "APIClient", _Boom)
         try:
-            out = vc._fetch_volume_sizes()
+            assert vc._fetch_via_df() == ({}, False)
         finally:
             vc.configure_volume_cache({})
-        assert out == {"_du": str(root)}, "bind-mount present -> du path, never df"
 
-    def test_falls_back_to_df_when_root_absent(self, tmp_path, monkeypatch):
-        vc.configure_volume_cache({"home": "p_jupyterlab_{username}_home"})
-        monkeypatch.setenv("JUPYTERHUB_DOCKER_VOLUMES_DIR", str(tmp_path / "does-not-exist"))
-        monkeypatch.setattr(vc, "_fetch_via_df", lambda: {"_df": True})
-        try:
-            out = vc._fetch_volume_sizes()
-        finally:
-            vc.configure_volume_cache({})
-        assert out == {"_df": True}, "no bind-mount -> df fallback"
+
+class TestRefreshCachesOnlyComplete:
+    def _reset(self):
+        vc._volume_sizes_cache['data'] = {}
+        vc._volume_sizes_cache['timestamp'] = None
+        vc._volume_sizes_cache['refreshing'] = False
+
+    def test_partial_then_complete_caches_complete(self, monkeypatch):
+        self._reset()
+        monkeypatch.setattr(vc, "_get_df_retry_delay", lambda: 0)
+        monkeypatch.setattr(vc, "_get_df_max_attempts", lambda: 5)
+        monkeypatch.setattr(vc, "save_cached", lambda *a, **k: None)
+        passes = iter([
+            ({"alice": {"total": 1.0, "volumes": {"home": 1.0}}}, False),  # partial -> not cached
+            ({"alice": {"total": 2.0, "volumes": {"home": 2.0}}}, True),   # complete -> cached
+        ])
+        monkeypatch.setattr(vc, "_fetch_volume_sizes", lambda: next(passes))
+        vc._refresh_volume_sizes_sync()
+        assert vc._volume_sizes_cache['data'] == {"alice": {"total": 2.0, "volumes": {"home": 2.0}}}
+        assert vc._volume_sizes_cache['timestamp'] is not None
+        assert vc._volume_sizes_cache['refreshing'] is False
+
+    def test_all_partial_keeps_previous_and_does_not_cache(self, monkeypatch):
+        self._reset()
+        prev = {"bob": {"total": 5.0, "volumes": {"cache": 5.0}}}
+        vc._volume_sizes_cache['data'] = dict(prev)
+        monkeypatch.setattr(vc, "_get_df_retry_delay", lambda: 0)
+        monkeypatch.setattr(vc, "_get_df_max_attempts", lambda: 3)
+        monkeypatch.setattr(vc, "save_cached", lambda *a, **k: None)
+        calls = {"n": 0}
+
+        def _always_partial():
+            calls["n"] += 1
+            return ({"bob": {"total": 0.0, "volumes": {}}}, False)
+
+        monkeypatch.setattr(vc, "_fetch_volume_sizes", _always_partial)
+        vc._refresh_volume_sizes_sync()
+        assert calls["n"] == 3, "retries up to the safety-net cap"
+        assert vc._volume_sizes_cache['data'] == prev, "partial never overwrites the previous cache (DEF-7)"
+        assert vc._volume_sizes_cache['timestamp'] is None
+        assert vc._volume_sizes_cache['refreshing'] is False

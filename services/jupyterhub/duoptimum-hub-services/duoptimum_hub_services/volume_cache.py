@@ -1,20 +1,26 @@
 """Background volume sizes cache with periodic refresh.
 
-Uses docker system df to get volume usage data. This is a slow API call
-(can take minutes) but runs in a background thread - the activity page
-returns cached data immediately and never blocks on this.
+Uses `docker system df` (type=volume) to get volume usage. A cold daemon hands back
+sizes mid-computation (uncomputed volumes carry Size=-1); caching that partial
+snapshot was DEF-7 (zeros stuck for the whole refresh interval). So the refresh
+caches ONLY a COMPLETE pass - one where every matched user volume has a computed
+size - retrying on a short delay until df has gathered them all, bounded by a
+safety-net attempt cap. The df call is slow (can take minutes) but runs in a
+background executor thread, so the activity page returns cached data immediately
+and never blocks on it.
 
 Volume-name parsing is driven by templates configured at hub startup via
-set_volume_name_templates() - the same map used by ManageVolumesHandler so
-both code paths agree on what an on-disk volume is called. Each template
-(e.g. "stellars-tech-ai-lab_jupyterlab_{username}_home") is compiled to a
-regex with a capturing username group; disk volumes are matched against
-all templates and the first hit wins.
+configure_volume_cache() - the same map used by ManageVolumesHandler so both code
+paths agree on what an on-disk volume is called. Each template (e.g.
+"stellars-tech-ai-lab_jupyterlab_{username}_home") is compiled to a regex with a
+capturing username group; disk volumes are matched against all templates and the
+first hit wins.
 """
 
 import logging
 import os
 import re
+import time
 from datetime import datetime, timezone
 
 from .docker_utils import get_executor
@@ -51,6 +57,18 @@ def _get_volumes_update_interval():
 
 def _get_docker_timeout():
     return int(os.environ.get('JUPYTERHUB_DOCKER_TIMEOUT', 360))
+
+
+def _get_df_retry_delay():
+    # cold-daemon df returns sizes mid-computation; wait this long between passes
+    # until a complete one lands (DEF-7), instead of caching a partial snapshot.
+    return int(os.environ.get('JUPYTERHUB_ACTIVITYMON_VOLUMES_DF_RETRY_DELAY', 15))
+
+
+def _get_df_max_attempts():
+    # safety net: cap the wait-for-complete passes so a permanently-degraded df
+    # cannot pin a worker of the shared 4-worker executor forever.
+    return int(os.environ.get('JUPYTERHUB_ACTIVITYMON_VOLUMES_DF_MAX_ATTEMPTS', 12))
 
 
 def _load_persisted_volume_sizes():
@@ -99,116 +117,34 @@ def configure_volume_cache(templates):
     _load_persisted_volume_sizes()
 
 
-def _volume_mount_root():
-    """Read-only host bind-mount of the Docker volumes dir, or '' to use df.
-
-    When set (and present) the cache measures only the user volumes by walking
-    `<root>/<volume>/_data` directly - deterministic and fast. Absent (e.g. Docker
-    Desktop, where the path lives in the VM) -> fall back to `docker system df`.
-    """
-    return os.environ.get('JUPYTERHUB_DOCKER_VOLUMES_DIR', '/host-docker-volumes')
-
-
-def _du_bytes(path):
-    """Apparent size of `path` in bytes via `du -sb`. Returns 0 for a genuinely
-    empty/absent data dir, None on an error (so the caller can SKIP it rather than
-    poison the total with a fake 0 - the partial-result bug DEF-7)."""
-    import subprocess
-    if not os.path.isdir(path):
-        return 0  # volume exists but no _data yet -> genuinely empty, not an error
-    try:
-        out = subprocess.run(
-            ['du', '-sb', path], capture_output=True, text=True, timeout=_get_docker_timeout()
-        )
-        if out.returncode != 0 or not out.stdout.strip():
-            return None
-        return int(out.stdout.split()[0])
-    except Exception:
-        return None
-
-
-def _fetch_via_du(root):
-    """Measure ONLY the user volumes by du-ing their `_data` dirs in parallel.
-
-    Discovers volumes by listing `root` and matching the configured templates (same
-    rule as the df path), then du's each match concurrently. A du that errors is
-    SKIPPED, never recorded as 0, so a partial/incomplete pass is detectable (fewer
-    users) instead of silently reporting zeros. Deterministic: du blocks until done.
-    """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
-    try:
-        names = os.listdir(root)
-    except OSError as e:
-        _get_logger().error(f"[Volume Sizes] Cannot list volume root {root}: {e}")
-        return {}
-
-    matched = []  # (encoded_username, suffix, data_path)
-    for name in names:
-        for suffix, regex in _template_regexes:
-            m = regex.match(name)
-            if m:
-                matched.append((m.group(1), suffix, os.path.join(root, name, '_data')))
-                break  # first matching template wins
-
-    if not matched:
-        _get_logger().info(f"[Volume Sizes] No user volumes found under {root}")
-        return {}
-
-    user_data = {}
-    skipped = 0
-    with ThreadPoolExecutor(max_workers=min(8, len(matched)), thread_name_prefix="vol-du") as ex:
-        futs = {ex.submit(_du_bytes, p): (u, s) for (u, s, p) in matched}
-        for fut in as_completed(futs):
-            encoded_username, suffix = futs[fut]
-            size_bytes = fut.result()
-            if size_bytes is None:
-                skipped += 1
-                continue
-            size_mb = round(size_bytes / (1024 * 1024), 1)
-            d = user_data.setdefault(encoded_username, {"total": 0.0, "volumes": {}})
-            d["total"] += size_mb
-            d["volumes"][suffix] = size_mb
-
-    for u in user_data:
-        user_data[u]["total"] = round(user_data[u]["total"], 1)
-
-    total_size = sum(u["total"] for u in user_data.values())
-    _get_logger().info(
-        f"[Volume Sizes] Measured (du): {len(user_data)} users, {total_size:.1f} MB"
-        + (f" ({skipped} volume(s) skipped on error)" if skipped else "")
-    )
-    return user_data
-
-
 def _fetch_volume_sizes():
-    """Fetch sizes of all user volumes. Targeted parallel du when the volume root is
-    bind-mounted (deterministic + fast); else fall back to docker system df."""
+    """Fetch all user-volume sizes via `docker system df`. Returns (data, complete);
+    `complete` is False when any matched volume is still mid-computation (df -1) or the
+    call errored, so the caller never caches a partial snapshot (DEF-7)."""
     if not _template_regexes:
         _get_logger().warning(
             "[Volume Sizes] No volume-name templates configured; cache will be empty. "
             "Call configure_volume_cache(user_volume_name_templates) at hub startup."
         )
-        return {}
-
-    root = _volume_mount_root()
-    if root and os.path.isdir(root):
-        return _fetch_via_du(root)
+        return {}, False
     return _fetch_via_df()
 
 
 def _fetch_via_df():
-    """Fallback: fetch sizes via docker system df (blocking, slow, scans ALL volumes;
-    can return a PARTIAL mid-scan snapshot - DEF-7 - so used only without the bind-mount)."""
+    """Read user-volume sizes from `docker system df` (type=volume, skips the slow
+    image/container calc). Returns (data, complete). `complete` is False if any matched
+    volume carries the lazy-df -1 sentinel (not yet computed) or the call errors - the
+    caller waits for a complete pass instead of caching the partial result (DEF-7)."""
     try:
         import docker
         api_client = docker.APIClient(base_url='unix://var/run/docker.sock', timeout=_get_docker_timeout())
         try:
-            # type=volume skips slow image/container calculations (~10s vs ~360s)
             df_data = api_client._get(api_client._url('/system/df'), params={'type': 'volume'}).json()
             volumes_data = df_data.get('Volumes', []) or []
 
             user_data = {}
+            complete = True
+            pending = 0
             for vol in volumes_data:
                 name = vol.get('Name', '')
                 for suffix, regex in _template_regexes:
@@ -219,7 +155,9 @@ def _fetch_via_df():
                     usage_data = vol.get('UsageData', {}) or {}
                     size_bytes = usage_data.get('Size', 0) or 0
                     if size_bytes < 0:
-                        continue  # lazy-df sentinel (-1) for not-yet-computed; skip, don't record garbage (DEF-7)
+                        complete = False  # not-yet-computed (-1); skip + mark pass partial (DEF-7)
+                        pending += 1
+                        break
                     size_mb = round(size_bytes / (1024 * 1024), 1)
 
                     if encoded_username not in user_data:
@@ -232,17 +170,27 @@ def _fetch_via_df():
                 user_data[user]["total"] = round(user_data[user]["total"], 1)
 
             total_size = sum(u["total"] for u in user_data.values())
-            _get_logger().info(f"[Volume Sizes] Fetched: {len(user_data)} users, {total_size:.1f} MB")
-            return user_data
+            if complete:
+                _get_logger().info(f"[Volume Sizes] Fetched (complete): {len(user_data)} users, {total_size:.1f} MB")
+            else:
+                _get_logger().info(
+                    f"[Volume Sizes] df still computing: {pending} user volume(s) pending (-1); "
+                    "not caching this partial pass"
+                )
+            return user_data, complete
         finally:
             api_client.close()
     except Exception as e:
         _get_logger().error(f"[Volume Sizes] Error fetching: {e}")
-        return {}
+        return {}, False
 
 
 def _refresh_volume_sizes_sync():
-    """Synchronous refresh of volume sizes cache."""
+    """Refresh the cache from df in a background executor thread (off the event loop).
+    Caches ONLY a complete df pass; a cold daemon returns sizes mid-computation and
+    caching that partial snapshot was DEF-7 (zeros stuck for the whole interval). Retries
+    on a short delay until df has gathered every volume, bounded by a safety-net attempt
+    cap so a degraded df cannot pin a worker of the shared executor forever."""
     global _volume_sizes_cache
     logger = _get_logger()
 
@@ -252,14 +200,23 @@ def _refresh_volume_sizes_sync():
 
     _volume_sizes_cache['refreshing'] = True
     try:
-        data = _fetch_volume_sizes()
-        if data:
-            _volume_sizes_cache['data'] = data
-            _volume_sizes_cache['timestamp'] = datetime.now(timezone.utc)
-            save_cached('volume_sizes', data)  # survive restarts: replace last-known on disk
-            logger.info(f"[Volume Sizes] Cache updated: {len(data)} users")
-        else:
-            logger.warning("[Volume Sizes] Refresh returned empty - keeping previous cache")
+        max_attempts = _get_df_max_attempts()
+        retry_delay = _get_df_retry_delay()
+        for attempt in range(1, max_attempts + 1):
+            data, complete = _fetch_volume_sizes()
+            if complete:
+                _volume_sizes_cache['data'] = data
+                _volume_sizes_cache['timestamp'] = datetime.now(timezone.utc)
+                save_cached('volume_sizes', data)  # survive restarts: replace last-known on disk
+                logger.info(f"[Volume Sizes] Cache updated: {len(data)} users")
+                return
+            if attempt >= max_attempts:
+                logger.warning(
+                    f"[Volume Sizes] df still partial after {max_attempts} attempts; "
+                    "keeping previous cache, retrying at next interval"
+                )
+                return
+            time.sleep(retry_delay)
     finally:
         _volume_sizes_cache['refreshing'] = False
 
