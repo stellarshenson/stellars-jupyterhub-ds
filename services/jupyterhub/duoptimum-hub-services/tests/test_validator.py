@@ -199,14 +199,20 @@ class TestValidateVolumeMounts:
         assert self._check([])[0] is True
 
     def test_valid_single_mount(self):
-        assert self._check([{'volume': 'proj_shared', 'mountpoint': '/mnt/shared'}])[0] is True
+        assert self._check([{'volume': 'proj_team', 'mountpoint': '/mnt/team'}])[0] is True
 
     def test_valid_multi_mount(self):
         mounts = [
-            {'volume': 'proj_shared', 'mountpoint': '/mnt/shared'},
+            {'volume': 'proj_team', 'mountpoint': '/mnt/team'},
             {'volume': 'datasets', 'mountpoint': '/data/sets'},
         ]
         assert self._check(mounts)[0] is True
+
+    def test_custom_mount_cannot_shadow_standard_shared(self):
+        # /mnt/shared is the standard shared mount - granted via the toggle, never a
+        # custom row; a custom mount there is rejected
+        valid, msg = self._check([{'volume': 'anything', 'mountpoint': '/mnt/shared'}])
+        assert valid is False and 'shared' in msg.lower()
 
     def test_missing_volume_name_is_invalid(self):
         valid, msg = self._check([{'volume': '', 'mountpoint': '/mnt/x'}])

@@ -111,6 +111,7 @@ interface RawGroup {
 }
 interface RawGroupsResp {
   groups: RawGroup[]
+  shared_volume?: { name: string; exists: boolean; description?: string }
 }
 
 // event type -> icon key (the hub records type; the portal picks the icon)
@@ -135,6 +136,7 @@ const MOUNT_BY_SUFFIX: Record<string, string> = {
   home: '/home',
   workspace: '/home/lab/workspace',
   cache: '/home/lab/.cache',
+  shared: '/mnt/shared',
 }
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
@@ -428,7 +430,8 @@ export const liveSource: DataSource = {
       })
       // the real flat policy config drives the editor (read); save PUTs it back
       const config = (g.config ?? {}) as GroupConfig['config']
-      return { name: g.name, description: g.description ?? '', priority: g.priority ?? 0, members: g.members ?? [], sections, config }
+      return { name: g.name, description: g.description ?? '', priority: g.priority ?? 0, members: g.members ?? [], sections, config,
+               sharedVolume: resp.shared_volume ?? { name: '', exists: false } }
     } catch {
       return undefined // honest - never feed a fabricated policy config into the editor (it would PUT back)
     }
@@ -479,7 +482,7 @@ export const liveSource: DataSource = {
     // include the time-ago suffix so the hero status pill reads "Active 1m" like
     // the Servers list, not a bare "Active"
     const statusLabel = `${cap(status)}${a?.last_activity ? ` ${timeAgoShort(a.last_activity)}` : ''}`
-    return { user, status, statusLabel, activity: clampPct(a?.activity_score ?? 0), activityHours: a?.activity_hours ?? null, activityPct, startedISO: a?.server_started ?? srv?.started ?? null, upgradeAvailable: !!a?.lab_image_upgrade_available, ttl, resources }
+    return { user, status, statusLabel, activity: clampPct(a?.activity_score ?? 0), activityHours: a?.activity_hours ?? null, activityPct, startedISO: a?.server_started ?? srv?.started ?? null, lastActivityISO: a?.last_activity ?? null, upgradeAvailable: !!a?.lab_image_upgrade_available, ttl, resources }
   },
 
   async getTotalResources(): Promise<ResourceSnapshot> {
@@ -588,7 +591,7 @@ export const liveSource: DataSource = {
       // Names only - the fast /manage-volumes call, decoupled from the slow
       // /activity sizes (getUserVolumeSizes) so the table paints at once and the
       // size cells fill in when the docker-stats sample lands.
-      const resp = await hubGet<{ volumes: Array<{ suffix: string; name: string; description?: string; role?: string }> }>(`/users/${encodeURIComponent(user)}/manage-volumes`)
+      const resp = await hubGet<{ volumes: Array<{ suffix: string; name: string; description?: string; role?: string; policy_controlled?: boolean }> }>(`/users/${encodeURIComponent(user)}/manage-volumes`)
       return resp.volumes.map((v) => ({
         suffix: v.suffix,
         name: v.name,
@@ -596,6 +599,7 @@ export const liveSource: DataSource = {
         description: v.description,
         role: v.role,
         standard: !!v.role, // system volume iff it carries a platform role (identify by role, not name)
+        policyControlled: !!v.policy_controlled, // group-policy shared volume - shown, not resettable
       }))
     } catch {
       return [] // honest empty - no fabricated volume list

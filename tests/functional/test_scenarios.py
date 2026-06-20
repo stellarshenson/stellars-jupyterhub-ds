@@ -53,8 +53,10 @@ def test_group_create_badge_delete(admin_portal, base_url, admin_api):
     page = admin_portal.goto("/groups")
     expect(_row(page, name).locator(".ant-tag").first).to_be_visible()
 
-    # Delete through the UI (the icon deletes directly - no confirm modal).
+    # Delete through the UI: the icon opens a danger confirm modal (destructive),
+    # only the modal's "Delete" removes the group.
     _row(page, name).get_by_role("button", name="Delete Group").click()
+    page.locator(".ant-modal-confirm-btns").get_by_role("button", name="Delete", exact=True).click()
     expect(_row(page, name)).to_have_count(0)
 
 

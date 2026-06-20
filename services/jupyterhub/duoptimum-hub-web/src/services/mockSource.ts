@@ -188,6 +188,14 @@ function iso(daysAgo: number, minAgo = 0): string {
   return new Date(NOW.getTime() - daysAgo * 86400000 - minAgo * 60000).toISOString()
 }
 
+// "2d" / "6h" / "30m" -> ISO that far in the past (mock offline/stopped time)
+function sinceISO(since: string): string {
+  const n = parseInt(since, 10) || 0
+  if (since.endsWith('d')) return iso(n)
+  if (since.endsWith('h')) return iso(0, n * 60)
+  return iso(0, n)
+}
+
 function fmtMinutes(min: number): string {
   if (min >= 60) {
     const h = Math.floor(min / 60)
@@ -363,6 +371,9 @@ export const mockSource: DataSource = {
       activityPct: p.activity,
       activityHours: Math.round((p.activity / 100) * 8 * 10) / 10,
       startedISO: s ? new Date(Date.now() - 3 * 3600_000).toISOString() : null,
+      // stopped readout: a previously-offline person shows "stopped Xh ago"; one with
+      // no offline history reads "never started" (null)
+      lastActivityISO: s ? iso(0, 3) : p.offlineSince ? sinceISO(p.offlineSince) : null,
       upgradeAvailable: false,
       ttl: { timeLeftMin: s ? s.timeLeftMin : 0, baseMin: IDLE_CULLER.timeoutH * 60, maxAddHours: IDLE_CULLER.maxExtensionH },
       // per-user GPU is not collected live (only host inventory), so the hero
@@ -465,9 +476,12 @@ export const mockSource: DataSource = {
         credentials: has('api_keys') ? [{ slot: 'mock-1', id: 'org-3xK', secret: 'sk-live-9f2a', description: 'seat 1' }] : [],
       },
       volume_mounts_active: has('volume_mounts'),
-      volume_mounts: has('volume_mounts') ? [{ volume: 'jupyterhub_shared', mountpoint: '/mnt/shared' }] : [],
+      shared_mount_allow: has('volume_mounts'), // grant the standard shared volume
+      shared_mount_mode: 'rw',
+      volume_mounts: has('volume_mounts') ? [{ volume: 'datasets', mountpoint: '/mnt/datasets', mode: 'ro' }] : [],
     }
-    return delay({ name: g.name, description: g.description, priority: g.priority, members, sections, config })
+    return delay({ name: g.name, description: g.description, priority: g.priority, members, sections, config,
+                   sharedVolume: { name: 'hub_shared', exists: true, description: 'Platform-wide shared storage for all users' } })
   },
 
   getEvents() {
@@ -507,6 +521,7 @@ export const mockSource: DataSource = {
       { suffix: 'home', name: `jupyterlab-${user}_home`, mount: '/home', description: 'User home directory, configs', standard: true, role: 'lab-home' },
       { suffix: 'workspace', name: `jupyterlab-${user}_workspace`, mount: '/home/lab/workspace', description: 'Project files, notebooks, code', standard: true, role: 'lab-workspace' },
       { suffix: 'cache', name: `jupyterlab-${user}_cache`, mount: '/home/lab/.cache', description: 'pip / conda cache', standard: true, role: 'lab-cache' },
+      { suffix: 'shared', name: 'hub_shared', mount: '/mnt/shared', description: 'Shared across all users (group policy, read-write)', standard: true, role: 'shared', policyControlled: true },
     ]
     return delay(vols)
   },

@@ -234,3 +234,29 @@ def test_ensure_stamps_container_role_label_and_passes_no_env(monkeypatch):
     kw = client.containers.last_run_kwargs
     assert kw["labels"]["duoptimum-hub.container.role"] == "gpuinfo"
     assert "environment" not in kw
+
+
+def test_ensure_stamps_container_description_label(monkeypatch):
+    # the hub stamps an informational duoptimum-hub.container.description label when a
+    # description is supplied (mirrors the volume/network .description convention)
+    container = _Container(name="gpuinfo-nvidia", networks={"gpuinfo-net": {"IPAddress": "172.20.0.7"}})
+    client = _FakeClient(run_container=container)
+    _install_fake_docker(monkeypatch, client=client)
+    ensure_gpuinfo_sidecar(
+        "img:latest", "gpuinfo-net", "http://{hostname}:8000",
+        compose_project="proj", container_name="gpuinfo-nvidia",
+        container_description="GPU-info sidecar",
+    )
+    assert client.containers.last_run_kwargs["labels"]["duoptimum-hub.container.description"] == "GPU-info sidecar"
+
+
+def test_ensure_omits_description_label_when_blank(monkeypatch):
+    # no description supplied -> no description label (the default value is empty)
+    container = _Container(name="gpuinfo-nvidia", networks={"gpuinfo-net": {"IPAddress": "172.20.0.7"}})
+    client = _FakeClient(run_container=container)
+    _install_fake_docker(monkeypatch, client=client)
+    ensure_gpuinfo_sidecar(
+        "img:latest", "gpuinfo-net", "http://{hostname}:8000",
+        compose_project="proj", container_name="gpuinfo-nvidia",
+    )
+    assert "duoptimum-hub.container.description" not in client.containers.last_run_kwargs["labels"]

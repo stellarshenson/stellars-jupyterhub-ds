@@ -130,6 +130,19 @@ class SentNotificationLogManager:
         finally:
             db.close()
 
+    def clear(self):
+        """Delete every sent notification (the admin "Clear" action). Returns count removed."""
+        db = self._get_db()
+        try:
+            n = db.query(SentNotification).delete()
+            db.commit()
+            return n
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
     def recent(self, limit=100):
         """Most recent sent notifications, newest first, in the portal's row shape."""
         db = self._get_db()

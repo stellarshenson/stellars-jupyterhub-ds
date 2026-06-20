@@ -81,10 +81,57 @@ class ManageVolumesHandler(BaseHandler):
                 'description': labels.get('duoptimum-hub.volume.description') or descriptions.get(suffix, ''),
                 'role': labels.get('duoptimum-hub.volume.role') or roles.get(suffix, suffix),
             })
+
+        # Standard shared volume: a policy-controlled row, listed (not resettable)
+        # only when this user's group policy grants it and the volume exists. Its
+        # presence is governed by group policy, not the user - never user-deletable.
+        shared_row = self._shared_volume_row(username, client)
+        if shared_row:
+            existing.append(shared_row)
+
         client.close()
         self.log.info(f"[Manage Volumes] {username} has {len(existing)} volume(s) on disk")
         self.set_status(200)
         self.finish({'volumes': existing})
+
+    def _shared_volume_row(self, username, client):
+        """The policy-controlled /mnt/shared row, or None when not granted/absent.
+
+        Resolves this user's group policy to learn whether the standard shared mount
+        is granted; shows it as a non-resettable row so the user sees it exists but
+        cannot reset it. Fail-safe: any error -> no row (never breaks the list)."""
+        try:
+            cfg = self.settings.get('stellars_config') or {}
+            shared_name = cfg.get('shared_volume_name', '')
+            if not shared_name:
+                return None
+            from ..groups_config import GroupsConfigManager
+            from ..policy import resolve_policies
+            user = self.find_user(username)
+            group_names = [g.name for g in user.groups] if user else []
+            resolved = resolve_policies(
+                user_group_names=group_names,
+                all_group_configs=GroupsConfigManager.get_instance().get_all_configs(),
+                gpu_available=False, reserved_names=frozenset(), reserved_prefixes=(),
+            )
+            shared = resolved.get('shared_mount')
+            if not (shared and shared.get('allow')):
+                return None
+            try:
+                client.volumes.get(shared_name)  # only list it when it really exists
+            except docker.errors.NotFound:
+                return None
+            mode = shared.get('mode') or 'rw'
+            return {
+                'suffix': 'shared',
+                'name': shared_name,
+                'description': f'Shared across all users (group policy, {"read-only" if mode == "ro" else "read-write"})',
+                'role': 'shared',
+                'policy_controlled': True,  # not user-resettable
+            }
+        except Exception as e:  # pragma: no cover - defensive, never break the list
+            self.log.warning(f"[Manage Volumes] shared-volume row skipped for {username}: {e}")
+            return None
 
     async def delete(self, username):
         """Delete selected user volumes (only when server is stopped).

@@ -296,17 +296,19 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, displayCeilin
   const RECOMMENDED_ADD_H = 4
   const [hours, setHours] = useState(Math.min(RECOMMENDED_ADD_H, maxH))
   const atCeiling = maxAddHours <= 0
-  // extend boost: bar fills (slow CSS) to boostPct - the target vs the NEW high-water
-  // mark - while time text holds. holds until refetch lands a changed value (min-fill
-  // window so growth is seen, safety cap so it can't stick). backend stores same mark,
-  // so landed % == boostPct: seamless grow, never a momentary 100% then drop. displayMin
-  // freezes shown time during fill.
+  // extend boost: bar fill (displayPct) grows by rAF from the current fill to the target
+  // vs the NEW high-water mark, in lockstep with the count-up text. holds until refetch
+  // lands a changed value (min-fill window so growth is seen, safety cap so it can't
+  // stick). backend stores the same mark, so the landed % == the target: seamless grow,
+  // never a momentary 100% then drop. displayMin freezes shown time during fill.
   const [boost, setBoost] = useState(false)
-  const [boostPct, setBoostPct] = useState(0)
   const [displayMin, setDisplayMin] = useState(timeLeftMin)
+  const [displayPct, setDisplayPct] = useState(0) // bar fill driven by rAF during a boost
   const baselineMin = useRef(timeLeftMin) // time-left captured at extend click
   const boostTargetMin = useRef(timeLeftMin) // post-extend time-left captured at click
-  const rafRef = useRef<number | null>(null) // counter count-up animation frame
+  const baselinePct = useRef(0)  // bar fill % at extend click - grow FROM here
+  const boostTargetPct = useRef(0) // post-extend fill % - grow TO here (vs the new mark)
+  const rafRef = useRef<number | null>(null) // count-up animation frame (bar + counter)
   const minFillDone = useRef(false)       // minimum fill window elapsed
   const valueLanded = useRef(false)       // refetch delivered a changed value
   // while NOT boosting, the shown time tracks the live value; once the boost ends
@@ -319,14 +321,20 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, displayCeilin
   // number climbs in lockstep with the bar (CSS `ease` = cubic-bezier(.25,.1,.25,1))
   useEffect(() => {
     if (!boost) return
-    const from = baselineMin.current
-    const to = boostTargetMin.current
-    if (to === from) return
+    const fromMin = baselineMin.current
+    const toMin = boostTargetMin.current
+    const fromPct = baselinePct.current
+    const toPct = boostTargetPct.current
+    if (toMin === fromMin && toPct === fromPct) return
     let startTs: number | null = null
     const step = (ts: number) => {
       if (startTs === null) startTs = ts
       const p = Math.min(1, (ts - startTs) / ANIMATION.ttlExtendMs)
-      setDisplayMin(Math.round(from + (to - from) * EASE(p)))
+      const e = EASE(p)
+      setDisplayMin(Math.round(fromMin + (toMin - fromMin) * e))
+      // bar grows FROM the current fill TO the target, frame by frame, in lockstep
+      // with the counter - never a flip straight to 100% (DEF-15)
+      setDisplayPct(Math.round(fromPct + (toPct - fromPct) * e))
       if (p < 1) rafRef.current = requestAnimationFrame(step)
     }
     rafRef.current = requestAnimationFrame(step)
@@ -339,7 +347,7 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, displayCeilin
       if (minFillDone.current) setBoost(false)
     }
   }, [boost, timeLeftMin])
-  const shownPct = boost ? boostPct : pct
+  const shownPct = boost ? displayPct : pct
   // the bar's tone, shared by the readout: the time number + clock icon take the
   // SAME colour the bar shows at this moment (accent normally, warning/danger as
   // the cull nears, accent during an extend boost) so the gadget reads as one cue
@@ -350,9 +358,11 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, displayCeilin
     // optimistic post-extend remaining = new high-water mark; bar measured vs it
     // (banked extend -> 100%, sub-base extend -> fills toward base). grows, no flash.
     const targetMin = timeLeftMin + add * 60
-    setBoostPct(pctFor(targetMin, targetMin))
     baselineMin.current = timeLeftMin
     boostTargetMin.current = targetMin // counter count-up target, in lockstep with the bar
+    baselinePct.current = pct          // bar grows FROM the current fill...
+    boostTargetPct.current = pctFor(targetMin, targetMin) // ...UP TO the target vs the new mark
+    setDisplayPct(pct)                 // seat the first boost frame at the current fill (no flip)
     minFillDone.current = false
     valueLanded.current = false
     setBoost(true)
@@ -367,7 +377,7 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, displayCeilin
   const marks: Record<number, ReactNode> = { 1: '1h', [maxH]: 'max' }
   const atMax = hours >= maxH
   return (
-    <div className="doh-ttl" style={{ '--doh-ttl-anim': `${ANIMATION.ttlExtendMs}ms`, '--doh-ttl-glow': `${ANIMATION.ttlGlowMs}ms` } as CSSProperties}>
+    <div className="doh-ttl" style={{ '--doh-ttl-glow': `${ANIMATION.ttlGlowMs}ms` } as CSSProperties}>
       <span className={boost ? 'doh-ttl-bar doh-ttl-boost' : 'doh-ttl-bar'} style={{ flex: 1, minWidth: 0, color: barTone }} title={barTip}>
         {/* status="normal" pins the status: antd otherwise auto-switches to "success"
          * at percent>=100 (progress.js), toggling .ant-progress-status-success exactly
@@ -375,7 +385,7 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, displayCeilin
          * look at max vs almost-max). Pinned, the bar renders identically at 99 and 100. */}
         <Progress percent={shownPct} status="normal" showInfo={false} strokeColor={barTone} trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
       </span>
-      <span className={boost ? 'doh-ttl-val doh-ttl-boost' : 'doh-ttl-val'} style={{ color: barTone, transition: 'color .4s ease' }}>
+      <span className={boost ? 'doh-ttl-val doh-ttl-boost' : 'doh-ttl-val'} style={{ color: barTone, transition: 'color .4s ease, filter var(--doh-ttl-glow, 100ms) ease' }}>
         <Icon name="clock" size={14} />
         <b style={{ color: barTone }}>{fmtMinutes(displayMin)}</b>
       </span>
@@ -392,6 +402,7 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, displayCeilin
         content={
           <div style={{ width: 240 }}>
             <Slider
+              className="doh-ttl-slider"
               min={1}
               max={maxH}
               step={1}

@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DragSortTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
-import { Button, Input, InputNumber, Popover, Space, Tooltip } from 'antd'
+import { Button, Input, InputNumber, Modal, Popover, Space, Tooltip } from 'antd'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { CappedTags } from '../components/CappedTags'
@@ -78,6 +78,16 @@ export default function Groups() {
     const from = rows.findIndex((r) => r.name === name)
     move(from, Math.max(0, Math.min(rows.length - 1, pos - 1)))
   }
+  // deleting a group drops its config permanently -> confirm first, danger-styled,
+  // matching the event-clear / remove-user destructive confirms
+  const confirmDelete = (name: string) =>
+    Modal.confirm({
+      title: 'Delete group',
+      content: `Delete "${name}"? Its configuration is removed permanently; members are not deleted. This cannot be undone.`,
+      okText: 'Delete',
+      okButtonProps: { danger: true },
+      onOk: () => deleteGroup(name),
+    })
 
   const columns: ProColumns<GroupRow>[] = [
     {
@@ -135,7 +145,7 @@ export default function Groups() {
           <div className="doh-row" style={{ justifyContent: 'flex-end' }}>
             <IconAction icon="arrowup" title="Move up" disabled={!!q || i <= 0} onClick={() => move(i, i - 1)} />
             <IconAction icon="arrowdown" title="Move down" disabled={!!q || i < 0 || i >= rows.length - 1} onClick={() => move(i, i + 1)} />
-            <IconAction icon="close" title="Delete group" tone="danger" onClick={() => deleteGroup(g.name)} />
+            <IconAction icon="close" title="Delete group" tone="danger" onClick={() => confirmDelete(g.name)} />
           </div>
         )
       },

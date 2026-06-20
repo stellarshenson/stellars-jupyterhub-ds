@@ -9,6 +9,7 @@ now stores `display_ceiling` (remaining last extended TO) and returns
 reads ~100%.
 """
 
+import re
 import time
 
 import pytest
@@ -79,6 +80,31 @@ def test_extend_bar_reads_full_against_high_water_mark(admin_api, base_url):
         _wait(lambda: not _server_state(admin_api, base_url, user))
 
 
+@pytest.mark.acc_crit("duoptimumhub::Session extend is audited")
+def test_extend_records_event(admin_api, base_url):
+    """Extending a session records a 'server' audit event naming the user + amount,
+    so the Events feed shows who bought more idle time."""
+    user = "ttl-evt-user"
+    _delete(admin_api, base_url, f"/hub/api/users/{user}")  # clean slate
+    assert _post(admin_api, base_url, f"/hub/api/users/{user}").status_code < 400, "create user failed"
+    try:
+        _post(admin_api, base_url, f"/hub/api/users/{user}/server")
+        assert _wait(lambda: _server_state(admin_api, base_url, user).get("", {}).get("ready")), \
+            "server never became ready"
+        r = _post(admin_api, base_url, f"/hub/api/users/{user}/extend-session", json={"hours": 2})
+        assert r.status_code < 400 and r.json().get("success"), f"extend failed: {r.status_code} {r.text}"
+
+        # the extend is recorded synchronously before the POST returns -> the feed has it now
+        events = admin_api.get(f"{base_url}/hub/api/events", timeout=30).json().get("events", [])
+        texts = [e.get("text", "") for e in events]
+        assert any(user in t and "session extended" in t for t in texts), \
+            f"extend must record an audit event naming the user; recent events={texts[:5]}"
+    finally:
+        _delete(admin_api, base_url, f"/hub/api/users/{user}/server")
+        _delete(admin_api, base_url, f"/hub/api/users/{user}")
+        _wait(lambda: not _server_state(admin_api, base_url, user))
+
+
 @pytest.mark.acc_crit("duoptimumhub::Slider default = stable +4h")
 def test_extend_slider_defaults_to_plus_4h(admin_portal, admin_api, base_url):
     me = admin_api.get(f"{base_url}/hub/api/user", timeout=30).json()["name"]
@@ -95,3 +121,62 @@ def test_extend_slider_defaults_to_plus_4h(admin_portal, admin_api, base_url):
     finally:
         _delete(admin_api, base_url, f"/hub/api/users/{me}/server")
         _wait(lambda: not _server_state(admin_api, base_url, me))
+
+
+@pytest.mark.acc_crit(
+    "duoptimumhub::Glow is a drop-shadow halo (not a covering overlay)",
+    "duoptimumhub::Glow is HELD, not pulsed (trapezoid envelope)",
+    "duoptimumhub::Bar glows on extend; counter blurs (no counter glow)",
+)
+def test_extend_glow_is_held_drop_shadow_halo(admin_portal, admin_api, base_url):
+    """DEF-14: on extend the bar gets a drop-shadow HALO (held, not a covering tint
+    overlay) and the counter blurs - never a full-opacity white wash. Asserts the DOM
+    contract: the boost class lands, the bar's computed filter carries `drop-shadow`,
+    the counter's carries `blur`, and neither paints a covering `::after` overlay."""
+    me = admin_api.get(f"{base_url}/hub/api/user", timeout=30).json()["name"]
+    _post(admin_api, base_url, f"/hub/api/users/{me}/server")
+    assert _wait(lambda: _server_state(admin_api, base_url, me).get("", {}).get("ready")), \
+        "own server never became ready"
+    try:
+        page = admin_portal.goto("/home")
+        page.get_by_role("button", name="Extend", exact=True).click()
+        page.get_by_role("button", name="Extend +4h", exact=True).click()
+        # boost holds >= ttlExtendMs (3s); the bar gains doh-ttl-boost and a drop-shadow halo
+        bar = page.locator(".doh-ttl-bar").first
+        expect(bar).to_have_class(re.compile(r"doh-ttl-boost"))
+        bar_filter = bar.evaluate("el => getComputedStyle(el).filter")
+        assert "drop-shadow" in bar_filter, f"bar glow must be a drop-shadow halo, got filter={bar_filter!r}"
+        # the halo never covers the fill: no painted ::after overlay on the bar
+        after_bg = bar.evaluate("el => getComputedStyle(el, '::after').backgroundColor")
+        assert after_bg in ("", "rgba(0, 0, 0, 0)", "transparent"), \
+            f"bar must not paint a covering ::after overlay (DEF-14 wash), got {after_bg!r}"
+        # the counter blurs but does NOT glow (no drop-shadow on the readout)
+        val = page.locator(".doh-ttl-val").first
+        val_filter = val.evaluate("el => getComputedStyle(el).filter")
+        assert "blur" in val_filter, f"counter must blur on extend, got filter={val_filter!r}"
+        assert "drop-shadow" not in val_filter, f"counter must NOT glow (no halo), got filter={val_filter!r}"
+    finally:
+        _delete(admin_api, base_url, f"/hub/api/users/{me}/server")
+        _wait(lambda: not _server_state(admin_api, base_url, me))
+
+
+@pytest.mark.acc_crit(
+    "duoptimumhub::Stopped-ago text",
+    "duoptimumhub::Running unchanged",
+)
+def test_stopped_server_shows_stopped_ago_readout(admin_portal, admin_api, base_url):
+    """A stopped server shows plain "stopped Xh ago" / "never started" text in the TTL
+    slot, never a live idle-timer bar. Starts then stops the admin's own server so the
+    Server Control hero renders the stopped state."""
+    me = admin_api.get(f"{base_url}/hub/api/user", timeout=30).json()["name"]
+    # ensure stopped (clean state) - the readout replaces the bar only when not running.
+    # default ready=False so a fully-removed server entry ({}) reads as stopped, not running.
+    _delete(admin_api, base_url, f"/hub/api/users/{me}/server")
+    assert _wait(lambda: not _server_state(admin_api, base_url, me).get("", {}).get("ready", False)), \
+        "own server never stopped"
+    page = admin_portal.goto("/home")
+    # the Server Control card shows Start Server (stopped) and no live TTL bar
+    expect(page.get_by_role("button", name="Start Server", exact=True)).to_be_visible()
+    expect(page.locator(".doh-ttl-bar")).to_have_count(0)
+    # the TTL slot reads "stopped ... ago" or "never started", never a bar
+    expect(page.get_by_text(re.compile(r"(stopped .+ ago|never started)"))).to_be_visible()

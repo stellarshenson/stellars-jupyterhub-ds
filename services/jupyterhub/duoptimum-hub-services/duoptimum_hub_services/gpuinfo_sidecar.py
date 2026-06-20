@@ -96,7 +96,9 @@ def _connect_hub(client, network):
 
 
 def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', container_name=None,
-                           container_role_label_key='', container_role_label_value=''):
+                           container_role_label_key='', container_role_label_value='',
+                           container_description_label_key='duoptimum-hub.container.description',
+                           container_description=''):
     """Ensure the GPU-info sidecar container is running. Never raises.
 
     Returns the sidecar base URL with the ``{hostname}`` placeholder filled in from the
@@ -116,7 +118,8 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', contain
     duoptimum-hub.network.role=gpuinfo and only joins - never creates here). Container stamped
     with the same compose-project labels spawned user containers get (see hooks.py) plus
     its container-role label (container_role_label_key/_value, e.g.
-    duoptimum-hub.container.role=gpuinfo) - sidecar belongs to the compose project (shows in
+    duoptimum-hub.container.role=gpuinfo) and an informational description label
+    (duoptimum-hub.container.description) - sidecar belongs to the compose project (shows in
     `docker compose ps`), discoverable by role. Sidecar's own runtime spec (NVIDIA env,
     port, command) comes from the image, not here.
     """
@@ -148,6 +151,10 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', contain
     # compose service decl - lets future code discover gpuinfo containers by role.
     if container_role_label_key and container_role_label_value:
         container_labels[container_role_label_key] = container_role_label_value
+    # Human description label (duoptimum-hub.container.description) - informational only,
+    # shown in `docker inspect`; mirrors the volume/network .description convention.
+    if container_description_label_key and container_description:
+        container_labels[container_description_label_key] = container_description
     try:
         client = docker.DockerClient('unix://var/run/docker.sock')
     except Exception as e:

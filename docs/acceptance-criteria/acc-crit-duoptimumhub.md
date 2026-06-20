@@ -894,29 +894,49 @@ The group-policy Docker section's enable toggle means "docker access granted". T
 
 Per-group Volume Mounts has two parts: (1) grant access to the standard shared volume(s) - for now a single fixed row - and (2) a section to add and grant access to more. The standard shared volume is prepopulated with a fixed name and mountpoint (`/mnt/shared`); the admin can deny it or grant it at an access level, and the hub resolves it by label (`duoptimum-hub.volume.role=shared`) at spawn rather than from a saved name, so a volume rename never strands a group on a stale mount. Additional mounts are fully configurable (arbitrary volume name + mountpoint). Every grant - standard or custom - carries a per-volume access level: Read (`ro`) or Read-Write (`rw`).
 
-- [ ] **Standard row prepopulated** - the Volume Mounts section always lists the standard shared volume as the first row, before any custom mounts
+- [x] **Standard row prepopulated** - the Volume Mounts section always lists the standard shared volume as the first row, before any custom mounts
   - log: 2026-06-20 requirement added (new)
-- [ ] **Standard is fixed** - the standard row's volume name and mountpoint (`/mnt/shared`) are not editable; the only controls are an allow/deny toggle and the access-level selector (Read / Read-Write) per group
+  - log: 2026-06-20 `GroupPolicyTab.tsx` renders a fixed "Standard shared volume" row (grant toggle + access select) above the custom-mounts table
+- [x] **Standard is fixed** - the standard row's mountpoint (`/mnt/shared`) and resolved volume name are display-only (not editable); the only controls are an allow/deny toggle and the access-level selector (Read / Read-Write) per group
   - log: 2026-06-20 requirement added (new)
   - log: 2026-06-20 added the access-level control (operator: grant must define Read vs Read-Write)
-- [ ] **Access level per volume** - every granted volume (standard and custom) carries an access level - Read (`ro`) or Read-Write (`rw`) - selected per volume; the hub applies it as the Docker mount mode (`{'bind': mountpoint, 'mode': 'ro'|'rw'}`), default Read-Write
+  - log: 2026-06-20 the standard row has only a Grant checkbox + Read/Read-Write select; name/mountpoint are display-only text
+- [x] **Standard row shows resolved name + description** - the standard row displays the RESOLVED docker volume name (label-resolved, never stored in the config) next to the fixed `/mnt/shared` mountpoint, plus a human description read from the volume's `duoptimum-hub.volume.description` label (falls back to a static phrase when the label is absent)
+  - log: 2026-06-20 operator "standard volumes must also appear with name ... also read description from volume duoptimum-hub.volume.description if available"
+  - log: 2026-06-20 `groups.py` shared_volume response gains `description` from `volume_labels_async` (one inspect, fail-safe None = absent); `GroupPolicyTab.tsx` renders `name -> /mnt/shared` + the description hint; `types.ts`/`liveSource.ts`/`mockSource.ts` carry `sharedVolume.description`; unit `test_docker_utils::TestVolumeLabels`
+- [x] **Access level per volume** - every granted volume (standard and custom) carries an access level - Read (`ro`) or Read-Write (`rw`) - selected per volume; the hub applies it as the Docker mount mode (`{'bind': mountpoint, 'mode': 'ro'|'rw'}`), default Read-Write
   - log: 2026-06-20 requirement added (operator "grant access - needs to define access level: Read, Read-Write, volume level")
-- [ ] **Standard resolved by label, not by saved name** - the group config stores only the allow flag for the standard mount; at spawn the hub resolves the role=shared volume fresh and mounts it at the fixed mountpoint, so a volume rename never strands a group on a stale name
+  - log: 2026-06-20 `mode` added to each mount (coerce/validate/resolve/apply in `policy/registry.py`); apply uses `{'bind','mode':'ro'}` for ro, bare string for rw; unit `test_policy_apply::test_read_only_uses_bind_mode_form`; functional asserts `RW` on the container
+- [x] **Standard resolved by label, not by saved name** - the group config stores only the allow flag for the standard mount; at spawn the hub resolves the role=shared volume fresh and mounts it at the fixed mountpoint, so a volume rename never strands a group on a stale name
   - log: 2026-06-20 requirement added (new)
-- [ ] **Additional mounts fully configurable** - below the standard row the admin can add more mounts with arbitrary volume name + mountpoint + access level (Read / Read-Write), validated as today (no duplicate mountpoint, no duplicate volume)
+  - log: 2026-06-20 config stores `shared_mount_allow`/`shared_mount_mode` only; `apply` reads `actx.shared_volume_name` (label-resolved at boot, `config.py:212`); unit `test_shared_mount_resolves_name_by_label`; functional asserts `/mnt/shared` Name resolves the role=shared volume
+- [x] **Additional mounts fully configurable** - below the standard row the admin can add more mounts with arbitrary volume name + mountpoint + access level (Read / Read-Write), validated as today (no duplicate mountpoint, no duplicate volume)
   - log: 2026-06-20 requirement added (new); 2026-06-20 access level added per volume
-- [ ] **Custom cannot shadow the standard** - a custom mount may not reuse the standard mountpoint (`/mnt/shared`) or the standard volume name; the standard row wins, the custom entry is rejected
+  - log: 2026-06-20 custom table gains an Access column; validate keeps no-dup-mountpoint / no-dup-volume
+- [x] **Custom cannot shadow the standard** - a custom mount may not reuse the standard mountpoint (`/mnt/shared`) - rejected at save; a custom row that reuses the standard volume NAME (knowable only once resolved at spawn) is skipped at spawn so it can never clobber the shared mount or bypass its `ro` mode - the standard grant wins
   - log: 2026-06-20 requirement added (new)
-- [ ] **Lab Manage Volumes shows shared as policy-controlled** - the per-user Manage Volumes (lab) page lists the standard shared volume as a standard volume row marked policy-controlled - the user sees `/mnt/shared` exists but cannot reset it; its presence is governed by group policy, not the user
+  - log: 2026-06-20 `validate` rejects a custom mount at `/mnt/shared`; `resolve` folds any such legacy row into the standard allow; unit `test_validator::test_custom_mount_cannot_shadow_standard_shared`
+  - log: 2026-06-20 adversarial review (HIGH): a custom row reusing the resolved shared volume NAME would clobber `/mnt/shared` (`spawner.volumes` is keyed by name) and force rw over a ro grant; `apply` now skips such a row; unit `test_policy_apply::test_custom_reusing_shared_name_cannot_clobber_or_bypass_ro`
+- [x] **Lab Manage Volumes shows shared as policy-controlled** - the per-user Manage Volumes (lab) page lists the standard shared volume as a standard volume row marked policy-controlled - the user sees `/mnt/shared` exists but cannot reset it; its presence is governed by group policy, not the user
   - log: 2026-06-20 requirement added (new)
-- [ ] **Migration of stale literals** - existing group configs carrying the old literal shared-volume name as a custom mount (e.g. `stellars-tech-ai-lab_jupyterhub_shared`) are recognised and folded into the standard allow toggle, so the stale name stops being mounted
+  - log: 2026-06-20 `volumes.py` GET resolves the user's group policy and appends a `policy_controlled` shared row when granted + present; `VolumeReset.tsx` disables its checkbox and reads "policy-controlled"; DELETE already rejects non-user suffixes; verify pending rebuild
+- [x] **Migration of stale literals** - existing group configs carrying the old literal shared-volume name as a custom mount (e.g. `stellars-tech-ai-lab_jupyterhub_shared`) are recognised and folded into the standard allow toggle, so the stale name stops being mounted
   - log: 2026-06-20 requirement added (new); motivating live bug: konrad.jelen mounted the stale name
-- [ ] **Edge: standard volume absent** - label discovery returns empty (no role=shared volume) -> the standard row shows unavailable / disabled, allow has no effect, spawn skips it with a warning, never auto-creating a stale volume
+  - log: 2026-06-20 `resolve` folds a custom mount at `/mnt/shared` into the standard allow (stale literal dropped, label-resolved name mounted); `GroupPolicyTab` folds it for display so a re-save normalises; unit `test_legacy_custom_at_shared_mountpoint_folds_into_shared`
+- [x] **Edge: standard volume absent** - label discovery returns empty (no role=shared volume) -> the standard row shows unavailable / disabled, allow has no effect, spawn skips it with a warning, never auto-creating a stale volume
   - log: 2026-06-20 requirement added (new)
-- [ ] **Edge: allowed via multiple groups** - the standard mount is applied once even when several of the user's groups allow it
+  - log: 2026-06-20 `apply` logs a warning + skips when `shared_volume_name` is '' (never invents a volume); UI disables the controls when `sharedVolume.exists` is false; unit `test_shared_mount_skipped_when_no_volume_resolved`
+- [x] **Edge: allowed via multiple groups** - the standard mount is applied once even when several of the user's groups allow it
   - log: 2026-06-20 requirement added (new)
-- [ ] **Edge: toggle off / leave group** - turning the standard off (or leaving the granting group) unmounts `/mnt/shared` on the next spawn, matching the existing pop-last-keys unmount behaviour
+  - log: 2026-06-20 `resolve` collapses to a single `shared_mount` (highest-priority mode wins); unit `test_shared_applied_once_across_groups_first_mode_wins`
+- [x] **Edge: toggle off / leave group** - turning the standard off (or leaving the granting group) unmounts `/mnt/shared` on the next spawn, matching the existing pop-last-keys unmount behaviour
   - log: 2026-06-20 requirement added (new)
+  - log: 2026-06-20 the shared volume key is tracked in `_stellars_group_volume_keys` and popped on the next spawn like any group mount; unit `test_unmounts_on_leave` covers the pop path
+- [x] **Functional: access levels + label-resolved shared on the container** - `test_container_policy.py` spawns with a rw custom mount, a ro custom mount and the standard shared mount (ro), asserts each `RW` flag and that `/mnt/shared` resolves the role=shared volume by label
+  - log: 2026-06-20 criterion added; extended `test_policies_applied_to_container`
+  - log: 2026-06-20 VERIFIED green on v4.0.11 (signup regime, 98/98 criteria met)
+- [ ] **Unit: shared mount + migration + access level** - resolver/apply/coerce/validate unit tests cover the shared allow/mode, the legacy fold, the ro/rw mount form, and the custom-cannot-shadow rejection
+  - log: 2026-06-20 criterion added; `test_group_resolver.py`, `test_policy_apply.py`, `test_policy_coerce.py`, `test_validator.py`; 831 backend unit tests green; golden regenerated
 
 ## drop the `/portal` URL segment
 
@@ -1083,6 +1103,9 @@ The portal's audit feed (Overview "Recent events" + the Events page) is backed b
   - log: 2026-06-18 `_MAX_ROWS = 1000`, prune-on-record
 - [x] **Override path** - `STELLARS_EVENT_LOG_DB_PATH` overrides the DB location (tests point it at a temp file)
   - log: 2026-06-18 env override
+- [x] **Session extend is audited** - extending a user's idle session records a `server` event ("<user> session extended by Nh", or "...to maximum" when topped to the ceiling), so the feed shows who bought more time and how much (actor may be an admin acting on another user)
+  - log: 2026-06-20 operator "log event ... when user requested additional time"; `ExtendSessionHandler` calls `record_event('server', ...)` on the success path; `handlers/session.py`
+  - log: 2026-06-20 functional `test_extend_records_event` VERIFIED green on v4.0.11
 
 ### Clear action
 
@@ -3502,11 +3525,14 @@ Extending the idle-session TTL must move the progress bar immediately on click a
   - log: 2026-06-17 was a fixed 1s timer that fired before the 2-3s refetch; now gated on the value landing
 - [x] **Minimum fill window** - the boost lasts at least `ANIMATION.ttlExtendMs` so the growth is always visible even if the refetch is fast
   - log: 2026-06-17 `minFillDone` ref
-- [x] **3s duration** - the fill/glow animation runs over 3s
-  - log: 2026-06-17 `ANIMATION.ttlExtendMs` 1000 -> 3000 (`services/config.ts`), threaded to CSS via `--oh-ttl-anim`
+- [x] **3s duration** - the bar fill (rAF) and glow ramp run over 3s
+  - log: 2026-06-17 `ANIMATION.ttlExtendMs` 1000 -> 3000 (`services/config.ts`)
+  - log: 2026-06-20 DEF-15 - the bar fill is now driven by `requestAnimationFrame` over `ttlExtendMs`, no CSS `--doh-ttl-anim` width transition
 - [x] **Time counter climbs with the bar** - during the boost the shown minutes count UP from the captured baseline to the post-extend target over the SAME `ttlExtendMs` duration and CSS-`ease` easing as the bar fill, so the number climbs in lockstep with the bar; on settle it lands on the live refetched value
   - log: 2026-06-17 originally the shown minutes FROZE during the boost and revealed the new value only on settle (`displayMin` held)
   - log: 2026-06-18 changed to a synchronized count-up (operator "animate the time-left counter to climb alongside the bar"): a `requestAnimationFrame` tween in `TtlGadget` drives `displayMin` from `baselineMin` to `boostTargetMin` via `EASE` (cubic-bezier(.25,.1,.25,1), matching the bar's CSS `ease`); cancels on reject/unmount; `meters.tsx`
+- [x] **Bar grows from the current fill (never flips)** - on extend the bar fill grows from its current % up to the target, driven by the SAME `requestAnimationFrame` loop as the counter (true lockstep); it never jumps straight to 100%
+  - log: 2026-06-20 DEF-15 - the fill relied on a CSS width transition enabled in the same commit as the value change, which does not reliably animate, so the bar flipped to 100%; now rAF drives `displayPct` from the captured `baselinePct` to `boostTargetPct` and antd's `.ant-progress-bg` width transition is disabled during the boost; `meters.tsx`, `global.css`
 - [x] **Edge: extend rejected** - if `onExtend` rejects, the boost drops immediately (bar returns to the real %)
   - log: 2026-06-17 `.catch(() => setBoost(false))`
 - [x] **Edge: value never changes** - a safety cap (`ttlExtendMs + 6s`) ends the boost so it can never stick
@@ -3518,23 +3544,26 @@ Extending the idle-session TTL must move the progress bar immediately on click a
 - [x] **Bar glows on extend; counter blurs (no counter glow)** - during the boost the bar (`.doh-ttl-bar`) gets a bright tint glow over its fill; the time readout (`.doh-ttl-val`) does NOT glow - it only blurs .75px at the peak
   - log: 2026-06-20 first the counter blurred + glowed (`doh-ttl-val-pulse`); operator "no blur visible" / "counter needs glow" - dropped the blur, both shared the glow-only `doh-ttl-pulse`
   - log: 2026-06-20 reversed after visual calibration (operator "no counter glow" + "0.75 blur on the counter is also perfect"): bar keeps the glow, counter is blur-only at .75px (`doh-ttl-blur` peak)
-- [x] **Glow is a bright tint over the fill (no drop-shadow)** - the bar glow is a tint layer (`.doh-ttl-bar.doh-ttl-boost::after`) in the bar's own tone brightened toward white (`color-mix(in srgb, currentColor, white 60%)`), painted OVER the antd fill (`z-index: 2`), ramping opacity 0 -> 50% -> 0; no `box-shadow`/`drop-shadow`
+- [x] **Glow is a drop-shadow halo (not a covering overlay)** - the bar glow is a `drop-shadow(0 0 5px ...)` HALO around the bar (`.doh-ttl-bar.doh-ttl-boost`) in the bar's own tone brightened toward white (`color-mix(in srgb, currentColor, white 60%)`); a halo glows AROUND the fill and can never wash it white, unlike a covering `::after` tint
   - log: 2026-06-20 operator "glow either invisible or same colour as std; needs to be much brighter and semi-transparent" - was `drop-shadow(... var(--color-accent))` (same as the fill)
-  - log: 2026-06-20 replaced the drop-shadow halo with a tint overlay (operator "no shadows ... not in the ttl"), then brightened it (operator "more white, brighter") to a 60% white mix; the old `--doh-ttl-glow-color` var is gone
+  - log: 2026-06-20 briefly a tint overlay (operator "no shadows ... not in the ttl"), then DEF-14 - the overlay washed the bar white; restored the drop-shadow halo (operator "if halo works better like in the past - bring it"), brightened to a 60% white mix
 - [x] **Standard colour slightly darker** - the standard bar + counter blue is `--doh-ttl-blue` = the accent darkened ~16%, so the bright glow stands out against it
   - log: 2026-06-20 operator "make the standard colour slightly darker"; `ttlTone` blue anchor -> `--doh-ttl-blue`
-- [x] **Glow ramps up and down** - the bar glow ramps opacity from 0 to peak (50% at the 45% mark) and back to 0 over the GLOW window (`--doh-ttl-glow`), independent of the bar-fill window (`@keyframes doh-ttl-glow`)
-  - log: 2026-06-20 `doh-ttl-pulse` 0/45/100% envelope on `--doh-ttl-glow`
-  - log: 2026-06-20 drop-shadow envelope replaced by an opacity envelope on the tint overlay
-- [x] **Glow ramp time configurable** - the pulse duration is `ANIMATION.ttlGlowMs` (`config.ts`, default 1200ms), threaded to CSS via `--doh-ttl-glow`, tunable apart from the bar-fill duration
+- [x] **Glow is HELD, not pulsed (trapezoid envelope)** - the glow is driven by a CSS `transition` on the filter, not a keyframe: ramps ON over `--doh-ttl-glow` (100ms) when `doh-ttl-boost` is set, HOLDS for the whole boost/fill window, ramps OFF over 100ms when the value lands; no mid-animation dip, never a one-shot pulse
+  - log: 2026-06-20 DEF-14 - the `@keyframes` pulse (0/45/100% opacity) inherently ramped up AND down inside its own window, reading as a single pulse, and outlasted by the boost window it left a full-opacity wash; replaced with a transition-held envelope (operator "the progress of animation must be: glow 0% -> ramp end glow on -> animation with glow on -> ramp start -> glow 0%; no pulsing; ramp 100ms")
+- [x] **Glow ramp time configurable** - the ramp duration (each of ramp-on and ramp-off) is `ANIMATION.ttlGlowMs` (`config.ts`, default 100ms), threaded to CSS via `--doh-ttl-glow`, tunable apart from the bar-fill duration; the glow holds at full between the ramps for the whole fill
   - log: 2026-06-20 operator: "configure the ramp up and ramp down time for glow"
+  - log: 2026-06-20 DEF-14 - `ttlGlowMs` 1200 -> 100 (short ramps, glow held in between, not a 1.2s pulse)
 - [x] **Effect is extend-only** - the glow fires only while `doh-ttl-boost` is set (an extend in flight) and clears when the new value lands; a normal per-minute countdown tick never triggers it
   - log: 2026-06-20 boost state drives the class; confirmed with operator
 - [x] **Glow visible (not killed by reduced motion)** - the extend glow plays for everyone; the reduced-motion guard that disabled the boost is removed (operator wants the cue)
   - log: 2026-06-20 operator "the blur is invisible" / "doesn't glow when grows" - three causes: (1) reduced-motion guard suppressed the boost; (2) the absolute-ceiling scaling made the bar SHRINK on extend; (3) the glow used the same colour as the bar. All fixed: guard removed, high-water-mark scaling makes the bar GROW, glow recoloured bright + distinct
-- [x] **Glow/blur calibration on /design-language** - a static calibration row shows the counter at stepped blur and the bar at stepped glow opacity, so the colours and amounts can be tuned by eye
+- [x] **Glow/blur calibration on /design-language** - a static calibration row shows the counter at stepped blur and the bar at stepped halo radius, so the colours and amounts can be tuned by eye and the page matches the shipped halo mechanism
   - log: 2026-06-20 operator "show static bar and counter at different steps of blur and glow ... so we can calibrate"
   - log: 2026-06-20 retuned to opacity/blur steps (was px glow radii); dropped the counter-glow row after the no-counter-glow decision
+  - log: 2026-06-20 DEF-14 - bar-glow demo switched from a tint-overlay-by-opacity to a drop-shadow-halo-by-radius (0/3/5/8/12px) to match the restored halo; shipped extend holds at 5px
+- [x] **Extend slider legible (brighter rail + info knob)** - in the Extend popover the slider rail + track are brightened and the drag knob uses the info colour, so the control reads clearly against the popover surface
+  - log: 2026-06-20 operator "make the slide line a little brighter, and the knob use one of the normal colors, like info"; `.doh-ttl-slider` in `global.css` (rail `--color-border-strong`, track + knob ring `--color-info`); `meters.tsx` Slider carries the class
 
 ## TTL progress bar behaviour matrix
 
@@ -4249,6 +4278,12 @@ Floating Docker resources the hub references in CODE outside its compose-declare
   - log: 2026-06-20 prefix updated (see GPU-info sidecar section for the network model)
 - [x] **gpuinfo container by role** - the hub stamps `duoptimum-hub.container.role=gpuinfo` on the sidecar; compose mirrors it
   - log: 2026-06-20 prefix updated
+- [x] **Declared resources carry a description label** - the compose-declared volumes (`hub_data`, `hub_certs`, `hub_shared`, `hub_docker`) and both networks (`hub_network`, `hub_gpuinfo_network`) carry a `duoptimum-hub.<noun>.description` human-phrase label; the hub stamps `duoptimum-hub.container.description` on the gpuinfo sidecar it creates (informational; networks/containers surface it in `docker inspect`)
+  - log: 2026-06-20 operator "also description for other resources (two networks and one container) - add the description labels"; `compose.yml` volumes + networks, `gpuinfo_sidecar.py` (`container_description` param, value from `config.py`); unit `test_gpuinfo_sidecar::test_ensure_stamps_container_description_label` + `test_ensure_omits_description_label_when_blank`
+- [x] **Shared volume description shown in the portal** - the Groups standard-shared-volume row reads `duoptimum-hub.volume.description` off the resolved volume and shows it; absent label -> static fallback phrase (see "Group volume mounts")
+  - log: 2026-06-20 `groups.py` shared_volume.description via `volume_labels_async`; unit `test_docker_utils::TestVolumeLabels`
+- [x] **Label family documented in compose header** - the `compose.yml` header documents the `duoptimum-hub.*` resource-label family (`.role` discovery key, `.description` human phrase) across volumes, networks and hub-managed containers
+  - log: 2026-06-20 operator "make sure labels are explained in compose.yml in the header section"; header block added above `services:`
 
 ### Per-user lab volumes (role + owner + description)
 
@@ -4490,24 +4525,45 @@ Deleting a group from the Groups admin page requires an explicit confirmation, l
 
 The Notifications page gains the same history controls the Events page already has: a time-range filter (24h / 7d / 30d) and a Clear, with 24h the default range. Mirror the Events implementation (`Events.tsx` `Range` / `RANGE_MS`, `clearEvents`).
 
-- [ ] **Range filter** - Notifications shows a 24h / 7d / 30d range control; the list filters to the chosen window
+- [x] **Range filter** - Notifications shows a 24h / 7d / 30d range control; the list filters to the chosen window
   - log: 2026-06-20 requirement added (new)
-- [ ] **24h default** - the range defaults to 24h (Events defaults to 7d; Notifications starts at 24h)
+  - log: 2026-06-20 `Notifications.tsx` `Range`/`RANGE_MS` + `filteredHistory` (filters `sentISO`); Segmented in the "Past Notifications" card `extra`; tsc clean; verify pending rebuild
+- [x] **24h default** - the range defaults to 24h (Events defaults to 7d; Notifications starts at 24h)
   - log: 2026-06-20 requirement added (new)
-- [ ] **Clear** - a Clear action empties the notifications history, mirroring `clearEvents`
+  - log: 2026-06-20 `useState<Range>('24h')`
+- [x] **Clear** - a Clear action empties the notifications history, mirroring `clearEvents`
   - log: 2026-06-20 requirement added (new)
-- [ ] **Parity with Events** - identical control set and behaviour to the Events page (same range values, same clear semantics)
+  - log: 2026-06-20 `ops.clearNotifications` -> `DELETE /notifications/sent` (invalidates `['sent-notifications']`); Modal.confirm; backend `SentNotificationLogManager.clear()` + handler `delete()` (admin-only), mirroring `EventLogManager`/`EventsDataHandler`
+- [x] **Parity with Events** - identical control set and behaviour to the Events page (same range values, same clear semantics)
   - log: 2026-06-20 requirement added (new)
+  - log: 2026-06-20 same `RANGE_MS` values, same `Last 24h/7 days/30 days` labels, same destructive Modal.confirm clear; Clear disabled when history empty
+- [ ] **Functional: range + clear** - a Playwright test broadcasts to the admin's own lab, asserts the broadcast appears in Past Notifications, clicks Clear (confirms), asserts the history empties
+  - log: 2026-06-20 criterion added; `tests/functional/test_notifications_history.py`; VERIFIED green on v4.0.11 (scoped the segmented assertion to the card header to avoid the auto-close Segmented)
+- [ ] **Unit: clear()** - `SentNotificationLogManager.clear()` removes all rows and returns the count
+  - log: 2026-06-20 criterion added; `tests/test_sent_notification_log.py`
+
+## API
+
+- `GET /api/notifications/sent` -> `{notifications: [{id, message, type, sentISO, delivered, total}]}` (admin-only; 403 otherwise)
+- `DELETE /api/notifications/sent` -> `{cleared: <n>}` (admin-only; 403 otherwise)
 
 ## Stopped-server stopped-ago readout
 
 When a server is stopped, the TTL gadget slot under the server control buttons shows plain text stating how long ago the server was stopped, instead of an idle-timer bar - there is no live timer on a stopped server. A server that was never started states that explicitly rather than leaving the slot blank.
 
-- [ ] **Stopped-ago text** - a stopped server renders, in the TTL slot beneath the control buttons, normal text like "stopped 3h ago" (relative time), not a progress bar
+- [x] **Stopped-ago text** - a stopped server renders, in the TTL slot beneath the control buttons, normal text like "stopped 3h ago" (relative time), not a progress bar
   - log: 2026-06-20 requirement added (new)
-- [ ] **Never-started text** - a server that has never been started (no prior activity / no last-stop time) shows plain text stating it was never started (e.g. "never started"), not a blank slot
+  - log: 2026-06-20 `ServerHero.tsx` renders `stopped ${timeAgoShort(hero.lastActivityISO)} ago` when not running and status != spawning; `lastActivityISO` from `a.last_activity` (`liveSource`, `types`); tsc clean; verify pending rebuild
+- [x] **Never-started text** - a server that has never been started (no prior activity / no last-stop time) shows plain text stating it was never started (e.g. "never started"), not a blank slot
   - log: 2026-06-20 requirement added (new)
-- [ ] **Running unchanged** - a running server still shows the live TTL gadget (bar + counter + Extend) as today
+  - log: 2026-06-20 `lastActivityISO == null` -> "never started"; covers no-prior-activity
+- [x] **Running unchanged** - a running server still shows the live TTL gadget (bar + counter + Extend) as today
   - log: 2026-06-20 requirement added (new)
-- [ ] **Edge: stopped, stop time unknown** - a server that was started before but has no recoverable stop time falls back to the never-started text rather than a bogus "stopped 0m ago"
+  - log: 2026-06-20 `running` branch still renders `TtlGadget`; only the stopped/non-spawning branch is new
+- [x] **Edge: stopped, stop time unknown** - a server that was started before but has no recoverable stop time falls back to the never-started text rather than a bogus "stopped 0m ago"
   - log: 2026-06-20 requirement added (new)
+  - log: 2026-06-20 no `last_activity` -> `lastActivityISO` null -> "never started" (same branch as never-started), never "stopped 0m ago"
+- [ ] **Edge: spawning** - a spawning server shows no stopped readout (the slot stays empty until it becomes running); the `status !== 'spawning'` guard
+  - log: 2026-06-20 criterion added; implemented (guard in `ServerHero.tsx`)
+- [ ] **Functional: stopped-ago readout** - a Playwright test stops the admin's own server, opens Home, asserts the TTL slot shows "stopped ... ago" text and no progress bar
+  - log: 2026-06-20 criterion added; `tests/functional/test_ttl_extend.py::test_stopped_server_shows_stopped_ago_readout`; VERIFIED green on v4.0.11 (the stopped-state predicate now defaults `ready=False` so a removed server reads as stopped)

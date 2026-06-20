@@ -164,7 +164,7 @@ def scenarios():
 
     # --- volume mounts ---
     add("vol_single", ["a"], [_grp("a", volume_mounts_active=True,
-        volume_mounts=[{"volume": "shared", "mountpoint": "/mnt/shared"}])])
+        volume_mounts=[{"volume": "team", "mountpoint": "/mnt/team"}])])
     add("vol_union", ["a", "b"], [
         _grp("a", volume_mounts_active=True,
              volume_mounts=[{"volume": "v1", "mountpoint": "/mnt/a"}]),
@@ -173,13 +173,19 @@ def scenarios():
     ])
     add("vol_conflict_priority_wins", ["hi", "lo"], [
         _grp("hi", volume_mounts_active=True,
-             volume_mounts=[{"volume": "vhi", "mountpoint": "/mnt/shared"}]),
+             volume_mounts=[{"volume": "vhi", "mountpoint": "/mnt/team"}]),
         _grp("lo", volume_mounts_active=True,
-             volume_mounts=[{"volume": "vlo", "mountpoint": "/mnt/shared"}]),
+             volume_mounts=[{"volume": "vlo", "mountpoint": "/mnt/team"}]),
     ])
     add("vol_protected_skipped", ["a"], [_grp("a", volume_mounts_active=True,
         volume_mounts=[{"volume": "bad", "mountpoint": "/etc"},
                        {"volume": "ok", "mountpoint": "/mnt/ok"}])])
+    # standard shared mount: allow toggle + access mode (resolved by label at apply)
+    add("vol_shared_allow", ["a"], [_grp("a", volume_mounts_active=True, shared_mount_allow=True)])
+    add("vol_shared_read_only", ["a"], [_grp("a", volume_mounts_active=True,
+        shared_mount_allow=True, shared_mount_mode="ro")])
+    add("vol_legacy_shared_folds", ["a"], [_grp("a", volume_mounts_active=True,
+        volume_mounts=[{"volume": "stale_literal_shared", "mountpoint": "/mnt/shared"}])])
 
     # --- kitchen sink: every feature, multiple groups ---
     add("kitchen_sink", ["power", "base"], [

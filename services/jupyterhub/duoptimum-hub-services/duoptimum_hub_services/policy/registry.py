@@ -20,11 +20,20 @@ from urllib.parse import urlparse
 from ..api_keys_pool import merge_pool_on_save, normalize_pool
 from .base import (
     _VOLUME_NAME_RE,
+    DEFAULT_VOLUME_MODE,
+    SHARED_MOUNTPOINT,
+    VOLUME_MODES,
     Policy,
     PolicyCoerceError,
     is_protected_mountpoint,
     is_reserved_env_var,
 )
+
+
+def _coerce_mode(value):
+    """Normalise an access-mode value to 'ro'/'rw' (default rw)."""
+    v = (value or '').strip().lower()
+    return v if v in VOLUME_MODES else DEFAULT_VOLUME_MODE
 
 
 # Fallback per-group limited-Docker quota/caps when a granting group stored a
@@ -945,37 +954,61 @@ class VolumeMountsPolicy(Policy):
     validate_code = 'invalid_volume_mounts'
 
     def default(self):
-        return {'volume_mounts_active': False, 'volume_mounts': []}
+        # shared_mount_* gates the standard shared volume (resolved by label at
+        # spawn, mounted at SHARED_MOUNTPOINT); volume_mounts holds custom extras.
+        return {'volume_mounts_active': False,
+                'shared_mount_allow': False, 'shared_mount_mode': DEFAULT_VOLUME_MODE,
+                'volume_mounts': []}
 
     def resolve(self, matched, ctx):
-        volume_mounts = {}
+        # `matched` is priority-ordered (highest first); first grant wins on any
+        # conflict. The standard shared mount is collapsed to a single allow+mode
+        # (applied once even via several groups); custom mounts keep volume+mode.
+        shared_allow = False
+        shared_mode = DEFAULT_VOLUME_MODE
+        volume_mounts = {}  # mountpoint -> {'volume', 'mode'}
         skipped = []
         for cfg in matched:
             inner = cfg.get('config') or {}
             if not inner.get('volume_mounts_active', True):
                 continue
+            if inner.get('shared_mount_allow') and not shared_allow:
+                shared_allow = True
+                shared_mode = _coerce_mode(inner.get('shared_mount_mode'))
             for entry in (inner.get('volume_mounts') or []):
                 volume = (entry.get('volume') or '').strip()
                 mountpoint = (entry.get('mountpoint') or '').strip()
                 if not volume or not mountpoint or not mountpoint.startswith('/'):
                     continue
                 norm = '/' + mountpoint.strip('/')
+                mode = _coerce_mode(entry.get('mode'))
+                # legacy migration: a custom mount at the standard mountpoint is the
+                # old one-click quick-add (stored the literal shared-volume name).
+                # Fold it into the standard allow so the stale name is never mounted -
+                # the standard row resolves the current name by label at apply.
+                if norm == SHARED_MOUNTPOINT:
+                    if not shared_allow:
+                        shared_allow = True
+                        shared_mode = mode
+                    continue
                 if is_protected_mountpoint(norm):
                     skipped.append({'volume': volume, 'mountpoint': norm,
                                     'group': cfg.get('group_name'), 'reason': 'protected'})
                     continue
                 if norm in volume_mounts:
-                    if volume_mounts[norm] != volume:
+                    if volume_mounts[norm]['volume'] != volume:
                         skipped.append({'volume': volume, 'mountpoint': norm,
                                         'group': cfg.get('group_name'), 'reason': 'shadowed'})
                     continue
-                if volume in volume_mounts.values():
+                if any(vm['volume'] == volume for vm in volume_mounts.values()):
                     skipped.append({'volume': volume, 'mountpoint': norm,
                                     'group': cfg.get('group_name'), 'reason': 'shadowed'})
                     continue
-                volume_mounts[norm] = volume
+                volume_mounts[norm] = {'volume': volume, 'mode': mode}
         return {
-            'volume_mounts': [{'volume': v, 'mountpoint': m} for m, v in volume_mounts.items()],
+            'shared_mount': {'allow': shared_allow, 'mode': shared_mode} if shared_allow else None,
+            'volume_mounts': [{'volume': vm['volume'], 'mountpoint': m, 'mode': vm['mode']}
+                              for m, vm in volume_mounts.items()],
             'skipped_volume_mounts': skipped,
         }
 
@@ -983,13 +1016,18 @@ class VolumeMountsPolicy(Policy):
         out = {}
         if 'volume_mounts_active' in body:
             out['volume_mounts_active'] = bool(body['volume_mounts_active'])
+        if 'shared_mount_allow' in body:
+            out['shared_mount_allow'] = bool(body['shared_mount_allow'])
+        if 'shared_mount_mode' in body:
+            out['shared_mount_mode'] = _coerce_mode(body['shared_mount_mode'])
         if 'volume_mounts' in body:
             mounts_in = body['volume_mounts']
             if not isinstance(mounts_in, list):
                 raise PolicyCoerceError("volume_mounts must be a list")
             out['volume_mounts'] = [
                 {'volume': (m.get('volume') or '').strip(),
-                 'mountpoint': (m.get('mountpoint') or '').strip()}
+                 'mountpoint': (m.get('mountpoint') or '').strip(),
+                 'mode': _coerce_mode(m.get('mode'))}
                 for m in mounts_in if isinstance(m, dict)
             ]
         return out
@@ -1007,9 +1045,13 @@ class VolumeMountsPolicy(Policy):
                 return False, f'Invalid volume name "{volume}" - use letters, digits, ".", "_" or "-".'
             if not mountpoint.startswith('/'):
                 return False, f'Mountpoint "{mountpoint}" must be an absolute path.'
+            norm = '/' + mountpoint.strip('/')
+            # a custom mount may not shadow the standard shared mount - that row owns
+            # SHARED_MOUNTPOINT and is granted via the allow toggle, not a custom row
+            if norm == SHARED_MOUNTPOINT:
+                return False, f'Mountpoint "{SHARED_MOUNTPOINT}" is the standard shared volume - grant it with the shared toggle, not a custom mount.'
             if is_protected_mountpoint(mountpoint):
                 return False, f'Mountpoint "{mountpoint}" is a protected location - mount under /mnt or /data instead.'
-            norm = '/' + mountpoint.strip('/')
             if norm in seen_mountpoints:
                 return False, f'Duplicate mountpoint "{norm}" - each mountpoint can hold one volume.'
             if volume in seen_volumes:
@@ -1019,26 +1061,62 @@ class VolumeMountsPolicy(Policy):
         return True, ''
 
     def summarize(self, c):
+        if not c.get('volume_mounts_active'):
+            return None
         n = len(c.get('volume_mounts') or [])
-        if c.get('volume_mounts_active') and n:
-            return {'badge': 'Volumes',
-                    'detail': f"Volume Mounts: {n} mount{'s' if n != 1 else ''}"}
-        return None
+        shared = bool(c.get('shared_mount_allow'))
+        if not n and not shared:
+            return None
+        parts = []
+        if shared:
+            parts.append('shared')
+        if n:
+            parts.append(f"{n} mount{'s' if n != 1 else ''}")
+        return {'badge': 'Volumes', 'detail': f"Volume Mounts: {' + '.join(parts)}"}
 
     async def apply(self, spawner, resolved, actx):
         # Named Docker volumes -> container mountpoints. Spawner objects persist
         # across spawns, so first pop whatever this hook added last time (tracked
         # on the spawner) - leaving a group actually unmounts on the next spawn.
-        # Missing volumes are auto-created by Docker.
+        # Missing volumes are auto-created by Docker. Read-only mounts use the
+        # {'bind', 'mode'} form; read-write keeps the bare-string form (= rw).
         username = actx.username
         for _key in getattr(spawner, '_stellars_group_volume_keys', ()):
             spawner.volumes.pop(_key, None)
         _added_volume_keys = []
+
+        def _mount(volume, mountpoint, mode):
+            spawner.volumes[volume] = ({'bind': mountpoint, 'mode': 'ro'}
+                                       if mode == 'ro' else mountpoint)
+            _added_volume_keys.append(volume)
+            spawner.log.info("[GroupVolumes] mount user=%s volume=%s -> %s (%s)",
+                             username, volume, mountpoint, mode)
+
+        # standard shared mount: resolve the role=shared volume by label fresh each
+        # spawn (never a saved name), so a rename never strands the group.
+        shared = resolved.get('shared_mount')
+        shared_name = ''
+        if shared and shared.get('allow'):
+            shared_name = getattr(actx, 'shared_volume_name', '') or ''
+            if shared_name:
+                _mount(shared_name, SHARED_MOUNTPOINT, shared.get('mode') or DEFAULT_VOLUME_MODE)
+            else:
+                spawner.log.warning(
+                    "[GroupVolumes] shared mount allowed for user=%s but no role=shared "
+                    "volume resolved - skipping (set the shared volume label)", username)
+
         for _vm in resolved.get('volume_mounts') or []:
-            spawner.volumes[_vm['volume']] = _vm['mountpoint']
-            _added_volume_keys.append(_vm['volume'])
-            spawner.log.info("[GroupVolumes] mount user=%s volume=%s -> %s",
-                             username, _vm['volume'], _vm['mountpoint'])
+            # spawner.volumes is keyed by volume NAME: a custom row reusing the resolved
+            # shared volume name would clobber the /mnt/shared mount above and bypass its
+            # policy mode (e.g. force rw over a ro shared grant). The shared grant owns its
+            # volume - skip the colliding custom row (granted via the shared toggle, not here).
+            if shared_name and _vm['volume'] == shared_name:
+                spawner.log.warning(
+                    "[GroupVolumes] custom mount user=%s volume=%s -> %s reuses the standard "
+                    "shared volume - skipped (grant it with the shared toggle, not a custom row)",
+                    username, _vm['volume'], _vm['mountpoint'])
+                continue
+            _mount(_vm['volume'], _vm['mountpoint'], _vm.get('mode') or DEFAULT_VOLUME_MODE)
         spawner._stellars_group_volume_keys = _added_volume_keys
         for _sk in resolved.get('skipped_volume_mounts') or []:
             spawner.log.warning(

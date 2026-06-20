@@ -145,22 +145,30 @@ body { margin: 0; font-family: var(--font-sans); }
    ("9h 0m" vs "9h 58m"); tabular-nums keeps digits uniform. */
 .doh-ttl-val { display: inline-flex; align-items: center; justify-content: flex-start; gap: 5px; white-space: nowrap; min-width: 84px; font-size: var(--text-sm); color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .doh-ttl-val b { color: var(--color-text); }
-/* extend animation. bar fills over FILL window (--doh-ttl-anim). on extend the BAR glows:
-   a brightened tint (currentColor mixed toward white) over its fill, opacity 0 -> 50% -> 0,
-   NO drop/box shadow. the COUNTER does not glow - it only blurs .75px at the peak. fires only
-   on extend (doh-ttl-boost, off when value lands), never on a tick. */
-.doh-ttl-bar { display: inline-block; position: relative; }
-.doh-ttl-boost .ant-progress-bg { transition: width var(--doh-ttl-anim, 1s) ease !important; }
-.doh-ttl-bar.doh-ttl-boost::after {
-  content: ''; position: absolute; inset: 0;
-  background: color-mix(in srgb, currentColor, white 60%);
-  border-radius: var(--radius-full); pointer-events: none;
-  z-index: 2; /* over the antd progress fill (it is positioned, else the tint hides under it) */
-  animation: doh-ttl-glow var(--doh-ttl-glow, 1.2s) ease;
-}
-.doh-ttl-val.doh-ttl-boost { animation: doh-ttl-blur var(--doh-ttl-glow, 1.2s) ease; }
-@keyframes doh-ttl-glow { 0%, 100% { opacity: 0; } 45% { opacity: .5; } }
-@keyframes doh-ttl-blur { 0%, 100% { filter: blur(0); } 45% { filter: blur(.75px); } }
+/* extend animation. the bar fill GROWS from its current position to the target over the
+   fill window - driven frame-by-frame by rAF in meters.tsx (in lockstep with the counter),
+   NOT a CSS width transition: a same-frame class+value change does not reliably animate, so
+   the bar used to flip straight to 100% (DEF-15). antd's own width transition is killed below
+   so rAF is the sole driver. on extend the BAR also glows: a drop-shadow HALO around the bar
+   (currentColor mixed toward white, brighter), NOT a tint overlay - the halo never covers the
+   fill, so it can't wash the bar white (DEF-14). held, not pulsed: a CSS transition ramps the
+   glow ON over --doh-ttl-glow (100ms), HOLDS it while doh-ttl-boost is on (the whole fill
+   window), then ramps OFF over 100ms when the value lands - a trapezoid envelope, no
+   mid-animation dip. the COUNTER does not glow - it only blurs .75px, ramped the same way
+   (transition lives inline in meters.tsx so it can sit beside the colour transition). fires
+   only on extend (doh-ttl-boost), never on a tick. */
+.doh-ttl-bar { display: inline-block; position: relative; transition: filter var(--doh-ttl-glow, 100ms) ease; }
+.doh-ttl-boost .ant-progress-bg { transition: none !important; }
+.doh-ttl-bar.doh-ttl-boost { filter: drop-shadow(0 0 5px color-mix(in srgb, currentColor, white 60%)); }
+.doh-ttl-val.doh-ttl-boost { filter: blur(.75px); }
+/* extend-popover slider: a brighter slide line (rail + track) and an info-toned drag knob,
+   so the control reads clearly against the popover (default antd rail is too faint here). */
+.doh-ttl-slider .ant-slider-rail { background: var(--color-border-strong) !important; }
+.doh-ttl-slider .ant-slider-track,
+.doh-ttl-slider:hover .ant-slider-track { background: var(--color-info) !important; }
+.doh-ttl-slider .ant-slider-handle::after { box-shadow: 0 0 0 2px var(--color-info) !important; }
+.doh-ttl-slider .ant-slider-handle:hover::after,
+.doh-ttl-slider .ant-slider-handle:focus::after { box-shadow: 0 0 0 4px var(--color-info) !important; }
 
 /* ---- metric card ---- */
 .doh-m-top { display: flex; align-items: center; gap: var(--space-2); color: var(--color-text-muted); font-size: var(--text-sm); }

@@ -541,6 +541,7 @@ _gpuinfo_url = (
         JUPYTERHUB_COMPOSE_PROJECT_NAME, container_name=JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME,
         container_role_label_key=JUPYTERHUB_CONTAINER_ROLE_LABEL_KEY,
         container_role_label_value=JUPYTERHUB_GPUINFO_CONTAINER_ROLE_LABEL,
+        container_description="GPU-info sidecar - GPU detection, utilisation and per-GPU processes",
     )
     if JUPYTERHUB_GPU_ENABLED != 0 else ""
 )
@@ -785,6 +786,7 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     block_file_downloads=JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS,        # master switch: overlay per-user download-block CHP routes for non-granted users
     lab_sudo_enable_default=JUPYTERHUB_LAB_SUDO_ENABLE,  # default JUPYTERLAB_SUDO_ENABLE when no group configures sudo
     api_keys_reconcile_interval=JUPYTERHUB_IDLE_CULLER_INTERVAL,  # periodic api-keys-pool reconcile cadence (reuses the cull interval, default 600s)
+    shared_volume_name=JUPYTERHUB_SHARED_VOLUME_NAME,  # role=shared volume the group "standard shared" mount resolves to at spawn (label-resolved, rename-safe; '' = absent)
     volume_role_label_key=JUPYTERHUB_VOLUME_ROLE_LABEL_KEY,  # duoptimum-hub.volume.role key stamped on per-user volumes at spawn
     user_volume_label_templates=user_volume_label_templates,  # name-template -> {role, description}; hook pre-creates each labelled per-user volume (role/owner/description)
 )

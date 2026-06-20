@@ -66,11 +66,17 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
             </>
           )}
         </div>
-        {running && (
+        {running ? (
           <div style={{ marginTop: 20 }}>
             <TtlGadget timeLeftMin={hero.ttl.timeLeftMin} baseMin={hero.ttl.baseMin} maxAddHours={hero.ttl.maxAddHours} uptimeLabel={hero.startedISO ? timeAgoShort(hero.startedISO) : undefined} onExtend={(h) => extendSession(hero.user, h)} />
           </div>
-        )}
+        ) : hero.status !== 'spawning' ? (
+          // stopped: no live idle timer - state how long ago it stopped, or that it
+          // was never started (no recoverable last-activity time). not a bar.
+          <div className="doh-muted" style={{ marginTop: 20, fontSize: 'var(--text-sm)' }}>
+            {hero.lastActivityISO ? `stopped ${timeAgoShort(hero.lastActivityISO)} ago` : 'never started'}
+          </div>
+        ) : null}
       </Card>
       <Card>
         <h3 style={{ fontSize: 14, margin: '0 0 12px' }}>{resourcesTitle}</h3>

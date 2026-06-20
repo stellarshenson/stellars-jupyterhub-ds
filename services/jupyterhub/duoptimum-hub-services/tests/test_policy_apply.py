@@ -193,18 +193,58 @@ class TestSudoApply:
 
 class TestVolumeMountsApply:
     def test_mounts_and_tracks(self):
-        s = _apply('volume_mounts', {'volume_mounts': [{'volume': 'data', 'mountpoint': '/mnt/data'}],
+        s = _apply('volume_mounts', {'volume_mounts': [{'volume': 'data', 'mountpoint': '/mnt/data', 'mode': 'rw'}],
                                      'skipped_volume_mounts': []})
-        assert s.volumes == {'data': '/mnt/data'}
+        assert s.volumes == {'data': '/mnt/data'}  # rw keeps the bare-string form
         assert s._stellars_group_volume_keys == ['data']
 
+    def test_read_only_uses_bind_mode_form(self):
+        s = _apply('volume_mounts', {'volume_mounts': [{'volume': 'data', 'mountpoint': '/mnt/data', 'mode': 'ro'}],
+                                     'skipped_volume_mounts': []})
+        assert s.volumes == {'data': {'bind': '/mnt/data', 'mode': 'ro'}}
+
     def test_unmounts_on_leave(self):
-        s = _apply('volume_mounts', {'volume_mounts': [{'volume': 'data', 'mountpoint': '/mnt/data'}],
+        s = _apply('volume_mounts', {'volume_mounts': [{'volume': 'data', 'mountpoint': '/mnt/data', 'mode': 'rw'}],
                                      'skipped_volume_mounts': []})
         # next spawn: group removed -> previously-added volume is popped
         _apply('volume_mounts', {'volume_mounts': [], 'skipped_volume_mounts': []}, spawner=s)
         assert s.volumes == {}
         assert s._stellars_group_volume_keys == []
+
+    def test_shared_mount_resolves_name_by_label(self):
+        # the standard shared mount carries no saved name; apply mounts the
+        # label-resolved volume (actx.shared_volume_name) at /mnt/shared
+        s = _apply('volume_mounts',
+                   {'shared_mount': {'allow': True, 'mode': 'rw'}, 'volume_mounts': [], 'skipped_volume_mounts': []},
+                   actx=_actx(shared_volume_name='hub_shared_resolved'))
+        assert s.volumes == {'hub_shared_resolved': '/mnt/shared'}
+        assert s._stellars_group_volume_keys == ['hub_shared_resolved']
+
+    def test_shared_mount_read_only(self):
+        s = _apply('volume_mounts',
+                   {'shared_mount': {'allow': True, 'mode': 'ro'}, 'volume_mounts': [], 'skipped_volume_mounts': []},
+                   actx=_actx(shared_volume_name='hub_shared_resolved'))
+        assert s.volumes == {'hub_shared_resolved': {'bind': '/mnt/shared', 'mode': 'ro'}}
+
+    def test_shared_mount_skipped_when_no_volume_resolved(self):
+        # shared allowed but no role=shared volume exists -> skipped, never invented
+        s = _apply('volume_mounts',
+                   {'shared_mount': {'allow': True, 'mode': 'rw'}, 'volume_mounts': [], 'skipped_volume_mounts': []},
+                   actx=_actx(shared_volume_name=''))
+        assert s.volumes == {}
+        assert s._stellars_group_volume_keys == []
+
+    def test_custom_reusing_shared_name_cannot_clobber_or_bypass_ro(self):
+        # spawner.volumes is keyed by volume NAME: a custom row reusing the resolved
+        # shared volume name must NOT overwrite the ro /mnt/shared mount with an rw one
+        s = _apply('volume_mounts',
+                   {'shared_mount': {'allow': True, 'mode': 'ro'},
+                    'volume_mounts': [{'volume': 'hub_shared_resolved', 'mountpoint': '/mnt/data', 'mode': 'rw'}],
+                    'skipped_volume_mounts': []},
+                   actx=_actx(shared_volume_name='hub_shared_resolved'))
+        # the shared ro mount survives; the colliding custom row is skipped
+        assert s.volumes == {'hub_shared_resolved': {'bind': '/mnt/shared', 'mode': 'ro'}}
+        assert s._stellars_group_volume_keys == ['hub_shared_resolved']
 
 
 # ── downloads (fake app + proxy) ───────────────────────────────────────────────

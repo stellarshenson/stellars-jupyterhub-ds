@@ -30,6 +30,17 @@ from dataclasses import dataclass
 # Valid Docker volume name (Docker's own constraint)
 _VOLUME_NAME_RE = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9_.-]*$')
 
+# The standard shared volume's fixed mountpoint. The volume itself is NEVER stored
+# by name in a group config - the hub resolves it by label (role=shared) at spawn,
+# so a volume rename never strands a group on a stale name. A group config only
+# carries an allow flag + access mode for it. The literal-name-as-custom-mount form
+# the old one-click quick-add saved is migrated to this allow flag (by mountpoint).
+SHARED_MOUNTPOINT = '/mnt/shared'
+
+# Per-volume access modes (Docker bind modes). rw is the default (full access).
+VOLUME_MODES = ('ro', 'rw')
+DEFAULT_VOLUME_MODE = 'rw'
+
 # Container paths a group volume may never mount onto. Prefix semantics - a
 # mountpoint equal to OR under any of these is rejected (mounting over system
 # dirs, the conda env, or the per-user /home tree would break or hijack the lab).
@@ -86,6 +97,9 @@ class ApplyContext:
     hub_network_name: str = ''
     block_file_downloads: int = 0
     lab_sudo_enable_default: int = 1
+    # standard shared volume resolved by label (role=shared) at boot; '' when absent
+    # -> the standard mount cannot be placed (allow has no effect, spawn skips it)
+    shared_volume_name: str = ''
     # resolve inputs reused by on_hub_startup (it re-resolves per active user)
     gpu_available: bool = False
     reserved_names: frozenset = frozenset()

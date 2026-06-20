@@ -53,11 +53,11 @@ export const SERVERS_COL_HELP = {
 }
 
 // UI animation timings (milliseconds) - tunable here without touching the
-// components or CSS. The TTL extend value drives both the JS hold timer and the
-// CSS bar-fill/glow (threaded to global.css via the `--doh-ttl-anim` variable).
+// components or CSS. The TTL extend value drives the rAF bar-fill + count-up
+// hold timer; the glow ramp is threaded to global.css via `--doh-ttl-glow`.
 export const ANIMATION = {
-  ttlExtendMs: 3000, // TTL extend: bar fills to the new limit over this duration
-  ttlGlowMs: 1200, // TTL extend: bar glow + counter glow/blur pulse ramps up then back down over this (threaded to CSS via --doh-ttl-glow)
+  ttlExtendMs: 3000, // TTL extend: bar grows (rAF) from current fill to the new limit over this duration
+  ttlGlowMs: 100, // TTL extend: glow/blur RAMP duration (each of ramp-on and ramp-off); the glow holds at 50% in between for the whole fill, never a pulse (threaded to CSS via --doh-ttl-glow)
 }
 
 // Mock-mode display fixtures only. Live mode never reads jupyterhubVersion or
