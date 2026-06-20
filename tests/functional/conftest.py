@@ -71,12 +71,15 @@ def pytest_collection_modifyitems(config, items):
         items[:] = [i for i in items if "signupopen" in i.keywords]
     elif AUTH_MODE == "signupbootstrap":
         items[:] = [i for i in items if "signupbootstrap" in i.keywords]
+    elif AUTH_MODE == "traefik":
+        items[:] = [i for i in items if "traefik" in i.keywords]
     else:
         items[:] = [
             i for i in items
             if "envauth" not in i.keywords
             and "signupopen" not in i.keywords
             and "signupbootstrap" not in i.keywords
+            and "traefik" not in i.keywords
             and ("gpu" not in i.keywords or gpu_on)
         ]
 
@@ -248,6 +251,13 @@ def clean_groups(admin_api):
 def browser_type_launch_args(browser_type_launch_args):
     # The runner container is root; Chromium needs no-sandbox there.
     return {**browser_type_launch_args, "args": ["--no-sandbox", "--disable-dev-shm-usage"]}
+
+
+@pytest.fixture(scope="session")
+def browser_context_args(browser_context_args):
+    # Accept self-signed TLS so the Traefik dashboard (https, reached by service
+    # name) renders in-browser; harmless for the plain-http regimes.
+    return {**browser_context_args, "ignore_https_errors": True}
 
 
 def _pw_cookies(session):

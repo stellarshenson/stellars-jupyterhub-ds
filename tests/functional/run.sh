@@ -16,6 +16,7 @@
 #   env               signup off + env-password admin (restart-to-provision on fresh DB)
 #   signup-open       signup on + env-password admin authorises a self-signup
 #   signup-bootstrap  signup on + NO env pw -> admin self-signup auto-authorised
+#   traefik           Traefik + TLS front; /traefik dashboard route reached over HTTPS
 #   all               every regime in turn; non-zero if any failed
 #   clean             tear the harness down and exit
 # Env: PYTEST_ARGS passed through to pytest (e.g. PYTEST_ARGS="-k redirect");
@@ -30,6 +31,7 @@ ENV_OVERLAY=tests/functional/compose.functional-env.yml
 SIGNUPOPEN_OVERLAY=tests/functional/compose.functional-signup-open.yml
 SIGNUPBOOTSTRAP_OVERLAY=tests/functional/compose.functional-signup-bootstrap.yml
 GPU_OVERLAY=tests/functional/compose.functional-gpu.yml
+TRAEFIK_OVERLAY=tests/functional/compose.functional-traefik.yml
 GPUINFO_MOCK_IMAGE=stellars/duoptimum-gpuinfo-mock:latest
 FUNCTEST_IMAGES="quay.io/jupyterhub/singleuser:latest mcr.microsoft.com/playwright/python:v1.49.0-noble"
 
@@ -74,7 +76,7 @@ run_regime() {
 # every regime in turn, cleaning between each; report which passed, non-zero if any failed
 run_all() {
   local overall=0 failed="" setup
-  for setup in signup gpu env signup-open signup-bootstrap; do
+  for setup in signup gpu env signup-open signup-bootstrap traefik; do
     echo "==================================================================="
     echo "[functional/all] setup: $setup"
     echo "==================================================================="
@@ -94,7 +96,8 @@ case "${1:-signup}" in
   env)              run_regime env 0 1 "$BASE" "$ENV_OVERLAY" ;;
   signup-open)      run_regime signup-open 0 1 "$BASE" "$SIGNUPOPEN_OVERLAY" ;;
   signup-bootstrap) run_regime signup-bootstrap 0 0 "$BASE" "$SIGNUPBOOTSTRAP_OVERLAY" ;;
+  traefik)          run_regime traefik 0 0 "$BASE" "$TRAEFIK_OVERLAY" ;;
   all)              run_all ;;
   clean)            clean ;;
-  *) echo "run.sh: unknown regime '${1:-}' (signup|gpu|env|signup-open|signup-bootstrap|all|clean)" >&2; exit 2 ;;
+  *) echo "run.sh: unknown regime '${1:-}' (signup|gpu|env|signup-open|signup-bootstrap|traefik|all|clean)" >&2; exit 2 ;;
 esac

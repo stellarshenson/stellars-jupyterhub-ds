@@ -1,0 +1,43 @@
+# Overlay: Traefik + TLS in front of the hub, so the /traefik dashboard route can be
+# tested end to end (the base stack has no Traefik). The traefik service mirrors the
+# production recipe (compose.yml): websecure :443, docker + file providers, the dashboard
+# router, api.dashboard + api.basePath. Certs come from the SAME shared `certs` volume the
+# base hub provisions at startup (00_provision_certificates.sh runs before the hub is
+# healthy, so /certs is populated before traefik starts). No published host port - the
+# Playwright runner reaches `traefik` by service name on the test net (never binds the
+# operator's :443). Layer ON TOP of compose.functional.yml.
+
+services:
+  traefik:
+    image: traefik:latest
+    command:
+      - "--entrypoints.websecure.address=:443"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/certs"
+      - "--providers.file.watch=true"
+      - "--serverstransport.insecureskipverify=true"
+      - "--api.dashboard=true" # open for the test
+      - "--api.basePath=/traefik"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - certs:/certs # shared with the hub; hub provisions self-signed certs here
+    depends_on:
+      duoptimum-hub:
+        condition: service_healthy
+    networks:
+      - jupyterhub_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik-dashboard.rule=PathPrefix(`/traefik`)"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard.tls=true"
+
+  tests:
+    environment:
+      - FUNCTEST_AUTH_MODE=traefik # conftest collects only traefik-marked tests
+      - TRAEFIK_BASE=https://traefik # dashboard reached by service name over TLS
+    depends_on:
+      traefik:
+        condition: service_started

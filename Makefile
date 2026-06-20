@@ -261,7 +261,7 @@ test:
 	@cd services/jupyterhub/duoptimum-hub-services && python3 -m pytest tests/ -q
 	@cd services/jupyterhub/duoptimum-docker-proxy && python3 -m pytest tests/ -q
 
-## run the FULL functional UI/scenario harness - every regime (signup, gpu, env, signup-open, signup-bootstrap), cleaning between each (LOCAL ONLY; single regime/cleanup: tests/functional/run.sh <regime>; PYTEST_ARGS=... selects tests, REMOVE_IMAGES=1 drops pulled images)
+## run the FULL functional UI/scenario harness - every regime (signup, gpu, env, signup-open, signup-bootstrap, traefik), cleaning between each (LOCAL ONLY; single regime/cleanup: tests/functional/run.sh <regime>; PYTEST_ARGS=... selects tests, REMOVE_IMAGES=1 drops pulled images)
 test-functional:
 	@tests/functional/run.sh all
 

@@ -4264,3 +4264,24 @@ Configurable platform display name via `JUPYTERHUB_HUB_NAME`. Shown as the porta
   - log: 2026-06-20 implemented; functional test `test_hub_name.py::test_hub_name_on_login_screen`
 - [ ] **Default when unset** - empty / unset env falls back to "Duoptimum Hub" on every surface (`hubName()` `||` default; config default; mock/dev with no jhdata)
   - log: 2026-06-20 criterion added
+
+---
+
+## Traefik dashboard route (/traefik on 443)
+
+Traefik dashboard reached over the secure 443 entrypoint at `/traefik`, replacing the removed insecure `:8080` port. No auth - a single prominent toggle `TRAEFIK_DASHBOARD_ENABLED` (env on the `traefik` service) opens or closes it. Served via `--api.basePath=/traefik` (Traefik v3.3+) so the SPA assets and API load under `/traefik` with no stripprefix; router `traefik-dashboard` (PathPrefix `/traefik` -> `api@internal`, websecure, tls) lives on the `traefik` service labels in `compose.yml`. Exercised by the Traefik + TLS functional regime (`compose.functional-traefik.yml`, `run.sh traefik`).
+
+- [ ] **basePath quirk-free** - `--api.basePath=/traefik`; dashboard UI assets + API load under `/traefik` (no stripprefix, no white page)
+  - log: 2026-06-20 criterion added
+- [ ] **Open by default** - `TRAEFIK_DASHBOARD_ENABLED` unset/true -> dashboard reachable at `/traefik/dashboard/` on 443
+  - log: 2026-06-20 criterion added
+- [ ] **Closeable** - `TRAEFIK_DASHBOARD_ENABLED=false` -> `--api.dashboard=false` -> `api@internal` absent -> `/traefik` 404 (UI and API both gone)
+  - log: 2026-06-20 criterion added; verified by flag wiring, not a second runtime regime
+- [ ] **Dashboard API on /traefik** - `https://<host>/traefik/api/overview` returns 200 JSON via `api@internal`
+  - log: 2026-06-20 criterion added; functional test `test_traefik_dashboard.py::test_dashboard_api_open`
+- [ ] **Dashboard UI on /traefik** - `https://<host>/traefik/dashboard/` renders the dashboard SPA in-browser (harness sees it render, not a white page)
+  - log: 2026-06-20 criterion added; functional test `test_traefik_dashboard.py::test_dashboard_ui_renders`
+- [ ] **Insecure :8080 removed** - Traefik publishes only 443; the `--api.insecure` dashboard on `:8080` is gone (connection refused)
+  - log: 2026-06-20 criterion added; functional test `test_traefik_dashboard.py::test_insecure_8080_absent`
+- [ ] **TLS via hub-provisioned certs** - dashboard served with the same `hub_certs` file-provider cert chain as the hub routes, no separate cert
+  - log: 2026-06-20 criterion added
