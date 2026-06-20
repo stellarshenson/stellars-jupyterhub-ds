@@ -29,8 +29,10 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "functest-secret")
 #   "signup"     (default): first admin created via the bootstrap-signup window.
 #   "env"                 : signup disabled + JUPYTERHUB_ADMIN_PASSWORD; the admin
 #                           is pre-provisioned by the target's restart-to-provision.
-#   "signupopen"          : signup ENABLED; admin self-signs-up + self-approves, a
-#                           second user self-signs-up (pending) and admin authorises.
+#   "signupopen"          : signup ENABLED + env-password admin; a non-admin
+#                           self-signs-up (pending) and the admin authorises them.
+#   "signupbootstrap"     : signup ENABLED, NO env password; the admin self-signs-up
+#                           and is auto-authorised (first_admin_self_signup_pending).
 AUTH_MODE = os.environ.get("FUNCTEST_AUTH_MODE", "signup")
 
 # Generous timeout: the SPA bundle (~2.4 MB) boots after the post-login redirect.
@@ -67,11 +69,14 @@ def pytest_collection_modifyitems(config, items):
         items[:] = [i for i in items if "envauth" in i.keywords]
     elif AUTH_MODE == "signupopen":
         items[:] = [i for i in items if "signupopen" in i.keywords]
+    elif AUTH_MODE == "signupbootstrap":
+        items[:] = [i for i in items if "signupbootstrap" in i.keywords]
     else:
         items[:] = [
             i for i in items
             if "envauth" not in i.keywords
             and "signupopen" not in i.keywords
+            and "signupbootstrap" not in i.keywords
             and ("gpu" not in i.keywords or gpu_on)
         ]
 

@@ -25,6 +25,7 @@
       window.jhdata = {
         base_url: "{{ base_url }}",
         prefix: "{{ prefix }}",
+        hub_name: {{ hub_name | tojson }},
         xsrf_token: "{{ xsrf_token }}",
         authPage: "login",
         authError: {{ (login_error or '') | tojson }},

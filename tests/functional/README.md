@@ -31,16 +31,16 @@ After the run (pass **or** fail), the harness removes everything it created -
 containers, spawned labs, the network, and all volumes. The pulled test images
 (`quay.io/jupyterhub/singleuser`, the Playwright runner) are **kept** to avoid
 wasteful re-pulls on the next run; the hub image under test is never touched.
-`make test-functional` always cleans up; `make test-functional-clean`
+`make test-functional` always cleans up; `tests/functional/run.sh clean`
 force-cleans a leftover harness. Add `REMOVE_IMAGES=1` to also drop the pulled
 images.
 
 ## Run
 
 ```bash
-make build               # or reuse the current stellars/duoptimum-hub:latest
-make test-functional-all # every setup (signup, env, signup-open) one by one
-make test-functional     # just the signup-bootstrap setup -> run -> full teardown
+make build                       # or reuse the current stellars/duoptimum-hub:latest
+make test-functional             # EVERY regime (signup, gpu, env, signup-open, signup-bootstrap) one by one
+tests/functional/run.sh signup   # a SINGLE regime; 'clean' tears down a leftover harness
 ```
 
 `REMOVE_IMAGES=1 make test-functional` also drops the pulled test images
@@ -50,14 +50,18 @@ for faster re-runs.
 ## Setups (initial conditions)
 
 Each setup is a distinct initial condition with its own compose override and
-pytest regime; `make test-functional-all` runs them in turn, cleaning between each:
+pytest regime; `make test-functional` runs them all in turn (cleaning between
+each), or `tests/functional/run.sh <regime>` runs one:
 
-- **signup** (`make test-functional`) - fresh DB, signup off; the admin is created
+- **signup** (`run.sh signup`) - fresh DB, signup off; the admin is created
   through the bootstrap-signup window. Runs the full SPA UI suite + container policy
-- **env** (`make test-functional-env`) - signup off + `JUPYTERHUB_ADMIN_PASSWORD`;
+- **gpu** (`run.sh gpu`) - GPU autodetect via a mock gpuinfo sidecar (any host); the GPU display tests
+- **env** (`run.sh env`) - signup off + `JUPYTERHUB_ADMIN_PASSWORD`;
   restart-to-provision seeds the admin. One focused env-password login test
-- **signup-open** (`make test-functional-signup-open`) - signup enabled; the admin is
+- **signup-open** (`run.sh signup-open`) - signup enabled; the admin is
   env-provisioned, then a non-admin self-signs-up and the admin authorises via the SPA
+- **signup-bootstrap** (`run.sh signup-bootstrap`) - signup enabled, NO env password;
+  the admin self-signs-up and is auto-authorised
 
 ## Layout
 

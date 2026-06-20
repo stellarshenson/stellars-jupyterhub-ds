@@ -90,3 +90,77 @@ class TestEmptyConfigBehaviour:
         """Calling _fetch_volume_sizes without templates short-circuits to {}."""
         vc.configure_volume_cache({})  # explicit reset
         assert vc._fetch_volume_sizes() == {}
+
+
+# DEF-7: the targeted-du path measures only the user volumes by walking the
+# bind-mounted host volumes dir, deterministically (no partial/cold-boot snapshot).
+TEMPLATES = {
+    "home": "proj_jupyterlab_{username}_home",
+    "workspace": "proj_jupyterlab_{username}_workspace",
+    "cache": "proj_jupyterlab_{username}_cache",
+}
+
+
+def _mkvol(root, name, payload_bytes):
+    data = root / name / "_data"
+    data.mkdir(parents=True)
+    if payload_bytes:
+        (data / "blob").write_bytes(b"x" * payload_bytes)
+
+
+class TestDuFetch:
+    def test_du_measures_only_matching_user_volumes(self, tmp_path, monkeypatch):
+        root = tmp_path / "volumes"
+        _mkvol(root, "proj_jupyterlab_alice_home", 2 * 1024 * 1024)      # ~2 MB
+        _mkvol(root, "proj_jupyterlab_alice_workspace", 0)              # empty -> ~0
+        _mkvol(root, "proj_jupyterlab_bob_cache", 1024 * 1024)         # ~1 MB
+        _mkvol(root, "proj_other_volume", 9 * 1024 * 1024)            # non-matching -> ignored
+        _mkvol(root, "some_system_volume", 7 * 1024 * 1024)          # non-matching -> ignored
+        vc.configure_volume_cache(TEMPLATES)
+        monkeypatch.setenv("JUPYTERHUB_DOCKER_VOLUMES_DIR", str(root))
+        try:
+            data = vc._fetch_volume_sizes()
+        finally:
+            vc.configure_volume_cache({})
+
+        assert set(data) == {"alice", "bob"}, "only templated user volumes counted, orphans ignored"
+        assert data["alice"]["volumes"]["home"] >= 1.9          # ~2 MB
+        assert data["alice"]["volumes"]["workspace"] == 0.0     # empty volume reports 0, not an error
+        assert 1.9 <= data["alice"]["total"] <= 2.2
+        assert data["bob"]["volumes"]["cache"] >= 0.9           # ~1 MB
+
+    def test_empty_volume_reports_zero_not_error(self, tmp_path, monkeypatch):
+        root = tmp_path / "volumes"
+        _mkvol(root, "proj_jupyterlab_carol_home", 0)
+        vc.configure_volume_cache(TEMPLATES)
+        monkeypatch.setenv("JUPYTERHUB_DOCKER_VOLUMES_DIR", str(root))
+        try:
+            data = vc._fetch_volume_sizes()
+        finally:
+            vc.configure_volume_cache({})
+        assert data["carol"]["volumes"]["home"] == 0.0
+
+
+class TestFetchDispatch:
+    def test_uses_du_when_volume_root_present(self, tmp_path, monkeypatch):
+        root = tmp_path / "vols"
+        root.mkdir()
+        vc.configure_volume_cache({"home": "p_jupyterlab_{username}_home"})
+        monkeypatch.setenv("JUPYTERHUB_DOCKER_VOLUMES_DIR", str(root))
+        monkeypatch.setattr(vc, "_fetch_via_df", lambda: {"_df": True})
+        monkeypatch.setattr(vc, "_fetch_via_du", lambda r: {"_du": r})
+        try:
+            out = vc._fetch_volume_sizes()
+        finally:
+            vc.configure_volume_cache({})
+        assert out == {"_du": str(root)}, "bind-mount present -> du path, never df"
+
+    def test_falls_back_to_df_when_root_absent(self, tmp_path, monkeypatch):
+        vc.configure_volume_cache({"home": "p_jupyterlab_{username}_home"})
+        monkeypatch.setenv("JUPYTERHUB_DOCKER_VOLUMES_DIR", str(tmp_path / "does-not-exist"))
+        monkeypatch.setattr(vc, "_fetch_via_df", lambda: {"_df": True})
+        try:
+            out = vc._fetch_volume_sizes()
+        finally:
+            vc.configure_volume_cache({})
+        assert out == {"_df": True}, "no bind-mount -> df fallback"

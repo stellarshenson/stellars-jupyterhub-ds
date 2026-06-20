@@ -49,7 +49,13 @@ from duoptimum_hub_services.docker_utils import (  # net discovery by role label
     resolve_self_network_by_label,
     resolve_network_placeholder,
 )
-from duoptimum_hub_services.admin_bootstrap import query_admin_state, provision_admin_userinfo  # first-admin bootstrap DB queries (raw sqlite3 on users_info, before the ORM exists)
+from duoptimum_hub_services.admin_bootstrap import (  # first-admin bootstrap data/decision layer
+    query_admin_state,                  # raw sqlite3 at config-load (ORM not up yet)
+    bootstrap_window_open,              # pure policy: is the signup-off bootstrap window open
+    admin_unreachable,                 # pure policy: no path to a first admin -> fail fast
+    provision_admin_userinfo,           # ORM at authenticator-init (env-password path)
+    first_admin_self_signup_pending,    # ORM at request-time (auto-authorise the first admin's self-signup)
+)
 
 # Tornado request handlers - registered via c.JupyterHub.extra_handlers
 from duoptimum_hub_services.handlers import (
@@ -232,7 +238,7 @@ if "{network}" in JUPYTERHUB_GPUINFO_NETWORK_NAME:
         resolve_self_network_by_label(JUPYTERHUB_NETWORK_ROLE_LABEL_KEY, JUPYTERHUB_GPUINFO_NETWORK_ROLE_LABEL) or "",
     ).strip()  # {network} -> hub<->sidecar net (role=gpuinfo)
 JUPYTERHUB_GPUINFO_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_IMAGE", "stellars/duoptimum-gpuinfo-nvidia:latest")  # sidecar image the hub self-starts
-JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN", "").strip()                              # admin username (auto-authorized on first signup) (required; baked image ENV - validated below)
+JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN", "").strip().lower()                      # admin username; .lower() - JupyterHub normalizes usernames to lowercase, bootstrap lookups/compares use this raw so it must match the DB + login form (auto-authorized on first signup; required; baked image ENV - validated below)
 
 # Branding URIs - file:// copies to static dir, http(s):// passed to templates, empty = stock assets
 JUPYTERHUB_BRANDING_LOGO_URI = os.environ.get("JUPYTERHUB_BRANDING_LOGO_URI", "")                          # hub logo (login page, nav bar)
@@ -241,6 +247,7 @@ JUPYTERHUB_BRANDING_FAVICON_BUSY_URI = os.environ.get("JUPYTERHUB_BRANDING_FAVIC
 JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI = os.environ.get("JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI", "")        # JupyterLab main area icon
 JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI = os.environ.get("JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI", "")    # JupyterLab splash screen icon
 JUPYTERHUB_BRANDING_STAGE = os.environ.get("JUPYTERHUB_BRANDING_STAGE", "")                                # environment-stage header badge (DEV/STG/TST/PRD or custom); empty = no badge
+JUPYTERHUB_HUB_NAME = os.environ.get("JUPYTERHUB_HUB_NAME", "Duoptimum Hub")                                # display name: portal logo tooltip + login/signup screen text; default baked in Dockerfile
 
 # User environment customization - paths passed through to spawned containers
 JUPYTERLAB_AUX_SCRIPTS_PATH = os.environ.get("JUPYTERLAB_AUX_SCRIPTS_PATH", "")             # admin startup scripts executed on container launch
@@ -382,22 +389,28 @@ prepare_sent_notification_log()
 
 JUPYTERHUB_ADMIN_PASSWORD = os.environ.get("JUPYTERHUB_ADMIN_PASSWORD", "").strip()
 
-# Raw-sqlite bootstrap queries live in duoptimum_hub_services.admin_bootstrap (imported
-# above); this config only drives the policy around them.
+# admin_bootstrap is the data layer; this config drives policy. State is read here at
+# config-load (raw sqlite, ORM not up yet); provisioning is deferred to
+# BootstrapAdminAuthenticator.__init__, where users_info is guaranteed to exist.
 _DB_EMPTY_AT_STARTUP, _ADMIN_PRESENT_AT_STARTUP = query_admin_state(JUPYTERHUB_ADMIN)
 _ADMIN_PROVISIONING_REQUESTED = bool(JUPYTERHUB_ADMIN and JUPYTERHUB_ADMIN_PASSWORD)
 
-# Bootstrap window: signup off, no env password, no users yet, no admin yet.
-# In this exact state the upstream silently re-opens signup, scoped to the admin name.
-_BOOTSTRAP_WINDOW_OPEN = (
-    JUPYTERHUB_SIGNUP_ENABLED == 0
-    and not _ADMIN_PROVISIONING_REQUESTED
-    and _DB_EMPTY_AT_STARTUP
-    and not _ADMIN_PRESENT_AT_STARTUP
+# Bootstrap window + fail-fast are pure policy in admin_bootstrap (unit-tested across the
+# full state matrix); this config just feeds them the startup state and acts on the result.
+_BOOTSTRAP_WINDOW_OPEN = bootstrap_window_open(
+    JUPYTERHUB_SIGNUP_ENABLED, _ADMIN_PROVISIONING_REQUESTED, _DB_EMPTY_AT_STARTUP, _ADMIN_PRESENT_AT_STARTUP
 )
-
-if _ADMIN_PROVISIONING_REQUESTED:
-    provision_admin_userinfo(JUPYTERHUB_ADMIN, JUPYTERHUB_ADMIN_PASSWORD)
+_ADMIN_UNREACHABLE = admin_unreachable(
+    JUPYTERHUB_SIGNUP_ENABLED, _ADMIN_PROVISIONING_REQUESTED, _ADMIN_PRESENT_AT_STARTUP, _BOOTSTRAP_WINDOW_OPEN
+)
+if _ADMIN_UNREACHABLE:
+    raise SystemExit(
+        f"[Admin Bootstrap] FATAL: admin '{JUPYTERHUB_ADMIN}' does not exist and cannot "
+        "be created - signup is disabled (JUPYTERHUB_SIGNUP_ENABLED=0), the bootstrap "
+        "self-signup window is closed (database already contains users), and no "
+        "JUPYTERHUB_ADMIN_PASSWORD was set. Provide JUPYTERHUB_ADMIN_PASSWORD to "
+        "pre-provision the admin, or set JUPYTERHUB_SIGNUP_ENABLED=1 to allow signup."
+    )
 
 
 class BootstrapAdminSignUpHandler(DuoptimumSignUpHandler):
@@ -463,6 +476,15 @@ class BootstrapAdminAuthenticator(DuoptimumHubAuthenticator):
     generic spaces/commas/password message.
     """
 
+    def __init__(self, *args, **kwargs):
+        # super() runs NativeAuthenticator.__init__ -> add_new_table(), so users_info
+        # is guaranteed to exist once it returns. This is the deterministic anchor for
+        # env-password provisioning; config-load time is too early (no table on a fresh
+        # volume -> the INSERT silently no-ops). Provision once, against our own session.
+        super().__init__(*args, **kwargs)
+        if _ADMIN_PROVISIONING_REQUESTED:
+            provision_admin_userinfo(self.db, JUPYTERHUB_ADMIN, JUPYTERHUB_ADMIN_PASSWORD)
+
     def _bootstrap_admin_pending(self):
         """The bootstrap window only takes effect while it was open at startup
         AND the admin row has not yet been inserted in the DB. Checked at
@@ -505,7 +527,12 @@ class BootstrapAdminAuthenticator(DuoptimumHubAuthenticator):
         ]
 
     def create_user(self, username, password, **kwargs):
-        pending = self._bootstrap_admin_pending()
+        # Auto-authorise the FIRST admin's self-signup regardless of the signup flag
+        # (was gated on the signup-off window, so the signup-on default left the admin
+        # is_authorized=False with no one to authorise them -> locked out). Non-admin
+        # signups still land in the pending queue (is_authorized=False). Decision logic
+        # lives in the service layer (admin_bootstrap), this only wires it.
+        pending = first_admin_self_signup_pending(self.db, JUPYTERHUB_ADMIN, _ADMIN_PROVISIONING_REQUESTED)
         user_info = super().create_user(username, password, **kwargs)
         if (
             user_info is not None
@@ -678,6 +705,9 @@ c.JupyterHub.template_vars = {
     # the built-in admin and the hook-promoted admin (whose persistent User.admin row
     # is False), instead of guessing from a mock fixture.
     'admin_user': JUPYTERHUB_ADMIN or '',
+    # Display name -> window.jhdata.hub_name. SPA shows it as the logo tooltip and as
+    # the login/signup screen text; default "Duoptimum Hub" (baked in the Dockerfile).
+    'hub_name': JUPYTERHUB_HUB_NAME,
 }
 
 # ── Tornado settings ──

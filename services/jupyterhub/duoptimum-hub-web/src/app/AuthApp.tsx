@@ -8,6 +8,7 @@ import { Alert, Button, Form, Input } from 'antd'
 import { ThemeProvider } from '../theme/ThemeProvider'
 import { Notice } from '../components/Notice'
 import { hubUrl, portalAssetBase, xsrfToken } from '../services/hub/client'
+import { hubName } from './capabilities'
 
 // Native browser POST so the hub's 302 redirect + Set-Cookie work as on the stock
 // form (fetch can't follow the auth redirect / set the session cookie cleanly).
@@ -45,7 +46,7 @@ function AuthLogin() {
       <div className="doh-auth-card">
         <Brand />
         <h1 className="doh-auth-title">Sign In</h1>
-        <p className="doh-auth-sub">Duoptimum Hub</p>
+        <p className="doh-auth-sub">{hubName()}</p>
         {error && <div style={{ marginBottom: 16 }}><Alert type="error" showIcon message={error} /></div>}
         <Form layout="vertical" requiredMark={false} onFinish={submit}>
           <Form.Item label="Username" name="username" rules={[{ required: true, message: 'Enter your username' }]}>
@@ -81,7 +82,7 @@ function AuthSignup() {
       <div className="doh-auth-card">
         <Brand />
         <h1 className="doh-auth-title">Create an Account</h1>
-        <p className="doh-auth-sub">Duoptimum Hub</p>
+        <p className="doh-auth-sub">{hubName()}</p>
         {message && <div style={{ marginBottom: 16 }}><Notice type={tone}>{message}</Notice></div>}
         <Form layout="vertical" requiredMark={false} onFinish={submit}>
           <Form.Item label="Username" name="username" rules={[{ required: true, message: 'Choose a username' }]}>

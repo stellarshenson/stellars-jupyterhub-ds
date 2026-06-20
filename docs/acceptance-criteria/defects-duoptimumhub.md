@@ -10,6 +10,9 @@ Checkbox state: `[ ]` = open / unresolved, `[x]` = fixed and verified; in-progre
 - [DEF-2: Server Status hero shows Activity 0 when the server is stopped](#def-2-server-status-hero-shows-activity-0-when-the-server-is-stopped)
 - [DEF-3: Host Status CPU/Memory bars blank with no tooltip when no servers are active](#def-3-host-status-cpumemory-bars-blank-with-no-tooltip-when-no-servers-are-active)
 - [DEF-4: GPUs shown without live health when the gpuinfo sidecar is disconnected](#def-4-gpus-shown-without-live-health-when-the-gpuinfo-sidecar-is-disconnected)
+- [DEF-5: Infinite login redirect loop (nested ?next=) on the auth pages](#def-5-infinite-login-redirect-loop-nested-next-on-the-auth-pages)
+- [DEF-6: New user activity spikes to ~300% instead of ramping from zero](#def-6-new-user-activity-spikes-to-300-instead-of-ramping-from-zero)
+- [DEF-7: Volume sizes show ~0 GB (partial cold-boot df result cached for an hour)](#def-7-volume-sizes-show-0-gb-partial-cold-boot-df-result-cached-for-an-hour)
 
 ---
 
@@ -118,3 +121,82 @@ The GPU inventory is enumerated once at hub startup and seeded from a persisted 
 
 - acc-crit: [last-known cache + non-blocking GPU + GPU-widget gating](acc-crit-duoptimumhub.md#last-known-cache--non-blocking-gpu--gpu-widget-gating)
 - operational note: the sidecar image is `stellars/duoptimum-gpuinfo-nvidia:latest` (rebrand); if it is absent the sidecar never starts - a separate build/pull concern, but the portal now degrades correctly regardless
+
+---
+
+## DEF-5: Infinite login redirect loop (nested ?next=) on the auth pages
+
+- **Severity**: BLOCKER - the site is unusable; visiting it produces an ever-nesting `/hub/login?next=/hub/login?next=...%2Fhub%2Fhome` URL and hundreds of `/hub/api/*` calls returning 302/403
+- **Status**: fixed, deployed and verified (2026-06-20)
+- **Surface**: `src/App.tsx`, `src/main.tsx`, `src/services/hub/client.ts` (`loginRedirect`, `getCurrentUser`), `src/services/hub/liveSource.ts` (`getTokens`)
+
+Loading the hub root bounced through an unbounded chain of `/hub/login?next=...` redirects, each wrapping the previous URL, while the network tab filled with `/hub/api/*` requests returning 302/403.
+
+Root cause: JavaScript import side effects. `App.tsx` ran `hydrateQueryCache`, `persistQueryCache` and `prefetchCore()` as module-level statements. `main.tsx` statically `import`s `App` to choose between `<App/>` and `<AuthApp/>`, so merely importing the module executed those statements on EVERY page - including the login/signup pages (which render `<AuthApp/>`). `prefetchCore()` warms the `tokens` query via `getTokens()` -> `getCurrentUser()`, which on an unauthenticated auth page gets 403 and calls `loginRedirect()`. `loginRedirect()` encodes the current URL into `?next=` and assigns it; run from the login page itself, each pass wraps the prior `?next=`, so the URL grows without bound.
+
+- [x] **Repro** - open the hub root unauthenticated (Playwright against the live URL); the address bar shows nested `/hub/login?next=/hub/login?next=...` and many `/hub/api/*` 302/403 calls
+  - log: 2026-06-19 reproduced with Playwright against the live deployment
+- [x] **Root cause identified** - module-level cache-warm/prefetch side effects in `App.tsx` fire on `import` even on auth pages (main.tsx statically imports App); the `tokens` warm-up hits `getCurrentUser` -> 403 -> `loginRedirect` wraps the current login URL into `?next=` -> infinite nesting
+  - log: 2026-06-19 confirmed empirically via Playwright instrumentation (the static `import App` executes the side effects; login renders `AuthApp`, not `App`)
+- [x] **Fix** - moved the three side effects into the `App` component body behind a `useRef` guard so they run once when `<App/>` actually mounts, never on the auth pages; auth pages render `<AuthApp/>` with no portal GETs
+  - log: 2026-06-19 `App.tsx` (side effects gated to component mount); rebuilt with `make rebuild`, `hub_data` volume reset, stack restarted
+- [x] **Verified** - post-deploy Playwright: clean `/hub/login?next=%2Fhub%2Fhome` (single, un-nested), login form renders, 2 navigations, no loop
+  - log: 2026-06-19 verified on the live stack after rebuild
+
+### Cross-references
+
+- acc-crit: [Auth & bootstrap](acc-crit-duoptimumhub.md#auth--bootstrap) - login/redirect workflow functional test tracked there
+
+---
+
+## DEF-6: New user activity spikes to ~300% instead of ramping from zero
+
+- **Severity**: MED - misleading activity reading; a brand-new user looks heavily loaded when they have barely been active
+- **Status**: fixed (2026-06-20) - denominator changed to a full-window expected total; unit-tested
+- **Surface**: `duoptimum_hub_services/activity/monitor.py` (`_weighted_active_fraction`, `_weighted_expected_total`, `get_score`, `get_avg_active_hours`), `docs/activity-tracking-methodology.md`, the activity meters on the portal
+
+A just-created user (the freshly bootstrapped admin), active for only a short while, shows an activity meter that jumps to ~300% almost immediately instead of growing progressively from zero. Expected: a new account starts near zero and ramps as real activity accumulates over the scoring window.
+
+Root cause: the score model normalises `active_frac * 24` against the daily target on the assumption that samples are taken 24/7, so the decay-weighted active fraction equals the real share of the day active. But `_weighted_active_fraction` builds `weighted_total` from only the samples that EXIST in the DB, not from true elapsed wall-clock. A brand-new account has just a handful of samples, nearly all ACTIVE (it was created and the user immediately used the lab), so `active_frac` is ~1.0. `get_avg_active_hours` then returns ~24.0 honest-hours/day UNCAPPED, and the portal percentage (honest hours / 8h target) reads ~300%. `get_score` itself clamps at 100% (`min(1.0, ...)`, L146), so the 300% surfaces through the uncapped avg-hours / frontend-pct path. The documented 24h / ~144-sample minimum-data threshold (`activity-tracking-methodology.md`) is not enforced in the score path.
+
+- [x] **Repro** - create a new admin, use the lab briefly, observe the activity meter reading ~300% rather than a low ramping value
+  - log: 2026-06-20 reported by operator
+- [x] **Root cause identified** - `_weighted_active_fraction` denominator counts only existing samples, not 24/7 elapsed time; a new mostly-active account gives `active_frac`~1.0 -> `get_avg_active_hours`~24h/day -> 24/8 = ~300%; the documented 24h min-data threshold is not enforced
+  - log: 2026-06-20 confirmed by code trace (monitor.py) against the design doc
+- [x] **Fix** - `_weighted_active_fraction` now divides decay-weighted active samples by `_weighted_expected_total()`: the decay-weighted count of every slot a FULLY sampled retention window holds (geometric series, `sum r**k`, `r = exp(-lambda*dt)`, `n = retention/dt`), not the samples on hand. Not-yet-elapsed slots count as inactive, so a new account's fraction starts near zero and ramps; an established account (window already full) is unchanged. Fraction capped at 1.0 (hours <= 24). NOTE: "elapsed since first sample" was rejected - it still spikes (few early samples, all active -> frac ~1.0); only a FULL-window denominator ramps from zero. Removing the init inactive sample is also WRONG (would force frac=1.0)
+  - log: 2026-06-20 implemented in `activity/monitor.py`
+- [x] **Verified** - new account reads near-zero immediately after creation and grows monotonically with real activity, never exceeding 24h/day from a short burst; established 8h/day still reads 100
+  - log: 2026-06-20 unit tests `TestNewUserRamp` + rewritten `TestScoring`/`TestTargetNormalisation` (full-window seeds), 743 pass
+
+### Cross-references
+
+- acc-crit: [activity scoring (target-hours normalisation + honest hours)](acc-crit-duoptimumhub.md#activity-scoring-target-hours-normalisation-honest-hours)
+
+---
+
+## DEF-7: Volume sizes show ~0 GB (partial cold-boot df result cached for an hour)
+
+- **Severity**: HIGH - the Servers / Manage-Volumes UI reports volume sizes that are wildly wrong (workspace 0 GB while 87 GB on disk), so quota usage is meaningless and a user looks empty when they are full
+- **Status**: open - root cause confirmed on the live stack; fix + faster method pending
+- **Surface**: `duoptimum_hub_services/volume_cache.py` (`_fetch_volume_sizes`, `_refresh_volume_sizes_sync`, `VolumeSizeRefresher`), `handlers/activity.py` (`volume_size_mb` / `volume_breakdown`), the Servers list + Manage-Volumes table
+
+On the live stack the Manage-Volumes / Servers UI shows `konrad.jelen`'s workspace as 0 GB and home as ~0.5 GB, while on disk the workspace is 86.96 GB and home 38.42 GB. The hub's persisted cache (`/data/volume_sizes.json`, written at boot) holds byte-identical sizes for all three users (`home 482.9, workspace 0.0, cache 425.9` MB) - impossible for real independent data.
+
+Root cause: `_fetch_volume_sizes` calls Docker `/system/df?type=volume` once at hub boot and reads `UsageData.Size`. Docker computes df volume sizes lazily and returns whatever is ready when asked - the boot call (logged ~14s after start) caught the du scan MID-FLIGHT: the small `cache` volume had finished (425.9 vs real 446), `home` was partway (482.9 vs 38 GB), the large `workspace` had not started (0). The hub cached AND persisted that partial result, and only refreshes every `JUPYTERHUB_ACTIVITYMON_VOLUMES_UPDATE_INTERVAL=3600s`, so the wrong sizes persist up to an hour. Two compounding problems: (1) `/system/df` can return an incomplete snapshot with no completeness signal, and (2) the call is brutally slow - a warm `type=volume` call timed at 131.7s because it re-scans every volume on the host (23 volumes incl. the live 250 GB), not just the user's.
+
+- [x] **Repro** - on the live stack, Manage-Volumes shows `konrad.jelen` workspace 0 GB; `/data/volume_sizes.json` has identical partial sizes for all 3 users; a fresh in-process re-fetch returns correct distinct sizes
+  - log: 2026-06-20 reported by operator ("volumes massive, server shows almost nothing"); confirmed by reading the persisted cache + reproducing the df call inside the hub
+- [x] **Root cause identified** - boot-time `/system/df?type=volume` returns a partial mid-scan result (big volumes 0); cached + persisted; only refreshed hourly. Warm call measured 131.7s, scanning ALL host volumes
+  - log: 2026-06-20 timing + partial-result evidence captured from the running hub
+- [ ] **Fix (correctness)** - never cache/persist an incomplete result; the size source must be deterministic (complete-or-retry), so the UI never shows a partial/zero size
+- [ ] **Fix (faster method)** - replace the full-system `/system/df` scan with a TARGETED, parallel per-volume size of only the user's volumes (model on `container_size_cache`'s parallel `inspect(size=True)`); avoids re-scanning system + every other user's volumes
+- [ ] **Edge: empty volume** - a genuinely empty volume reports ~0, not an error; 0 must be distinguishable from "not yet computed"
+- [ ] **Edge: orphaned/renamed-project volumes** - stale `stellars-tech-ai-lab_*` volumes (a prior project name) coexist with `stellars-tech-ai-workbench_*`; the size total must count only the active project's templated volumes, not double-count the orphans (separate disk-cleanup, not a code defect)
+- [ ] **Functional test** - small volume -> reported small; grow cache/home/workspace to ~1.5 GB each -> reported ~1.5 GB (not 0), within tolerance
+- [ ] **Verified** - on the live stack after rebuild/redeploy: Manage-Volumes shows `konrad.jelen` workspace ~87 GB / home ~38 GB, refreshed within seconds of boot
+- [ ] **Log spam** - `VolumeSizeRefresher.start()` logs `[VolumeSizeRefresher] Already running` every ~15s (activity-poll cadence); should be quiet when already running
+
+### Cross-references
+
+- acc-crit: [volume-size reporting](acc-crit-duoptimumhub.md#volume-size-reporting)
+- task: #347

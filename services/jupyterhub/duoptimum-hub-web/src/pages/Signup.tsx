@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom'
 import { Notice } from '../components/Notice'
 import { isMock } from '../services/dataMode'
 import { hubUrl, portalAssetBase } from '../services/hub/client'
+import { hubName } from '../app/capabilities'
 
 export default function Signup() {
   const [done, setDone] = useState(false)
@@ -20,7 +21,7 @@ export default function Signup() {
       <div className="doh-auth-card">
         <div className="doh-auth-brand"><img src={logoSrc} alt="Duoptimum Hub" /></div>
         <h1 className="doh-auth-title">Create an Account</h1>
-        <p className="doh-auth-sub">Duoptimum Hub</p>
+        <p className="doh-auth-sub">{hubName()}</p>
         {done && (
           <div style={{ marginBottom: 16 }}>
             <Notice type="success">Account created - an administrator must authorise it before you can sign in.</Notice>

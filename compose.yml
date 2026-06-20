@@ -146,7 +146,8 @@ services:
       # Enable Traefik proxy
       - "traefik.enable=true"
 
-      # hub service (8000), canonical /hub; /jupyterhub + /duoptimum-hub aliases -> redirected by hub-alias-redirect below
+      # hub service (8000), canonical /hub; /jupyterhub + /duoptimum-hub aliases 
+      # -> redirected by hub-alias-redirect below
       - "traefik.http.routers.duoptimum-hub-rtr.rule=Path(`/hub`)
          || PathPrefix(`/hub/`)
          || Path(`/jupyterhub`)
@@ -160,7 +161,8 @@ services:
       - "traefik.http.services.duoptimum-hub-svc.loadbalancer.server.port=8000"
 
       # Aliases - /jupyterhub, /duoptimum-hub 302 to canonical base_url (/hub). Subpath kept.
-      - "traefik.http.middlewares.hub-alias-redirect.redirectregex.regex=^(https?://[^/]+)/(jupyterhub|duoptimum-hub)(/.*)?$$"
+      - "traefik.http.middlewares.hub-alias-redirect.redirectregex.regex\
+        =^(https?://[^/]+)/(jupyterhub|duoptimum-hub)(/.*)?$$"
       - "traefik.http.middlewares.hub-alias-redirect.redirectregex.replacement=$${1}/hub$${3}"
       - "traefik.http.middlewares.hub-alias-redirect.redirectregex.permanent=false"
 
@@ -169,7 +171,8 @@ services:
       - "traefik.http.middlewares.duoptimum-hub-ratelimit.ratelimit.average=${JUPYTERHUB_RATELIMIT_AVERAGE:-100}"
       - "traefik.http.middlewares.duoptimum-hub-ratelimit.ratelimit.burst=${JUPYTERHUB_RATELIMIT_BURST:-200}"
       - "traefik.http.middlewares.duoptimum-hub-ratelimit.ratelimit.period=${JUPYTERHUB_RATELIMIT_PERIOD:-1s}"
-      - "traefik.http.middlewares.duoptimum-hub-ratelimit.ratelimit.sourcecriterion.ipstrategy.depth=${JUPYTERHUB_RATELIMIT_XFF_DEPTH:-1}"
+      - "traefik.http.middlewares.duoptimum-hub-ratelimit.ratelimit.sourcecriterion.ipstrategy.depth\
+        =${JUPYTERHUB_RATELIMIT_XFF_DEPTH:-1}"
       - "traefik.http.routers.duoptimum-hub-rtr.middlewares=hub-alias-redirect,duoptimum-hub-ratelimit"
     networks:
       - hub_network

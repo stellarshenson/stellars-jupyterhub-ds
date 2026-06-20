@@ -360,15 +360,15 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, uptimeLabel, 
   const marks: Record<number, ReactNode> = { 1: '1h', [maxH]: 'max' }
   const atMax = hours >= maxH
   return (
-    <div className="doh-ttl">
-      <span className={boost ? 'doh-ttl-bar doh-ttl-boost' : 'doh-ttl-bar'} style={{ flex: 1, minWidth: 0, '--doh-ttl-anim': `${ANIMATION.ttlExtendMs}ms` } as CSSProperties} title="Idle session timer - your server is stopped automatically when this runs out">
+    <div className="doh-ttl" style={{ '--doh-ttl-anim': `${ANIMATION.ttlExtendMs}ms` } as CSSProperties}>
+      <span className={boost ? 'doh-ttl-bar doh-ttl-boost' : 'doh-ttl-bar'} style={{ flex: 1, minWidth: 0 }} title="Idle session timer - your server is stopped automatically when this runs out">
         {/* status="normal" pins the status: antd otherwise auto-switches to "success"
          * at percent>=100 (progress.js), toggling .ant-progress-status-success exactly
          * at max - which re-animates/restyles the fill (the flicker + slightly-wider
          * look at max vs almost-max). Pinned, the bar renders identically at 99 and 100. */}
         <Progress percent={shownPct} status="normal" showInfo={false} strokeColor={barTone} trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
       </span>
-      <span className="doh-ttl-val" style={{ color: barTone, transition: 'color .4s ease' }}>
+      <span className={boost ? 'doh-ttl-val doh-ttl-boost' : 'doh-ttl-val'} style={{ color: barTone, transition: 'color .4s ease' }}>
         <Icon name="clock" size={14} />
         <b style={{ color: barTone }}>{fmtMinutes(displayMin)}</b>
       </span>

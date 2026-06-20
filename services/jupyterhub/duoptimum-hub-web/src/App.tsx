@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider, keepPreviousData } from '@tanstack/react-query'
+import { useRef } from 'react'
 import { RouterProvider } from 'react-router-dom'
 import { ThemeProvider } from './theme/ThemeProvider'
 import { RoleProvider } from './app/RoleContext'
@@ -24,11 +25,6 @@ const queryClient = new QueryClient({
   },
 })
 
-// Rehydrate last session's cache before first render, then keep persisting it so
-// the next portal load paints from cache and only revalidates what changed.
-hydrateQueryCache(queryClient)
-persistQueryCache(queryClient)
-
 // Warm every key page's data at startup so navigating to any of them paints
 // immediately instead of empty-then-lazy (routes are statically bundled, so the
 // page code is already loaded - only the data is the gap). prefetchQuery honours
@@ -50,9 +46,21 @@ function prefetchCore() {
   ]
   for (const [key, queryFn] of warm) void queryClient.prefetchQuery({ queryKey: [key], queryFn })
 }
-prefetchCore()
 
 export default function App() {
+  // Warm + persist the cache once, when the portal actually mounts. These were
+  // module-level side effects, but main.tsx statically imports this module on the
+  // auth pages too (login/signup render <AuthApp/>); firing portal GETs there hit
+  // the hub unauthenticated, and the tokens warm-up (getCurrentUser -> 403)
+  // triggered loginRedirect into an infinite nested-`next` loop. Running them in
+  // the component body keeps the pre-paint warm while gating it to <App/> only.
+  const warmed = useRef(false)
+  if (!warmed.current) {
+    warmed.current = true
+    hydrateQueryCache(queryClient)
+    persistQueryCache(queryClient)
+    prefetchCore()
+  }
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>

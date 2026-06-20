@@ -400,10 +400,10 @@ volumes:
 Two tiers: fast Python unit suites that run in CI and gate the image build, and a local-only functional harness that boots the real image and drives the running platform.
 
 - **Unit tests** - `make test` runs the `duoptimum-hub-services` and `duoptimum-docker-proxy` pytest suites; they also gate the Docker build and run as a GitHub `unit_tests` job
-- **Functional tests** - `make test-functional` boots the built image in an isolated throwaway deployment (own compose project, network and volumes - never touches a real deployment) and drives the hub UI with a containerized Playwright runner, inspecting spawned containers to assert each group policy lands on the lab; local-only, since GitHub runners cannot run the DockerSpawner deployment
-- **Env-password admin mode** - `make test-functional-env` covers the signup-disabled, pre-provisioned-admin regime (restart-to-provision) with one focused test
-- **GPU** - `make test-functional` auto-detects a host GPU and runs the GPU auto-detection test when one is present
-- **Selective / cleanup** - `PYTEST_ARGS="-k ..."` re-runs part of the suite; `make test-functional-clean` force-removes a leftover harness
+- **Functional tests** - `make test-functional` boots the built image in an isolated throwaway deployment (own compose project, network and volumes - never touches a real deployment) and drives the hub UI with a containerized Playwright runner, inspecting spawned containers to assert each group policy lands on the lab; runs every regime (signup, gpu, env, signup-open, signup-bootstrap) in turn, cleaning between each; local-only, since GitHub runners cannot run the DockerSpawner deployment
+- **Single regime** - `tests/functional/run.sh <regime>` runs one setup (`signup` | `gpu` | `env` | `signup-open` | `signup-bootstrap`); e.g. `run.sh env` is the signup-disabled, pre-provisioned-admin restart-to-provision case
+- **GPU** - the `signup` regime auto-detects a host GPU; `gpu` forces it via a mock sidecar (runs on any host)
+- **Selective / cleanup** - `PYTEST_ARGS="-k ..."` re-runs part of the suite; `tests/functional/run.sh clean` force-removes a leftover harness
 - See [docs/functional-test-system.md](docs/functional-test-system.md) for how it works
 
 ## Customisation
