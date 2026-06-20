@@ -68,18 +68,21 @@ class GroupsDataHandler(BaseHandler):
             for g in result:
                 g['priority'] = desired[g['name']]
 
-        # Standard shared volume: the UI offers a one-click "/mnt/shared" mount
-        # only when the volume actually exists on the host. Docker errors fail
-        # safe (exists=False -> quick-add hidden; manual rows still work).
+        # Standard shared volume: the UI shows its resolved name + a human
+        # description (read from the volume's duoptimum-hub.volume.description label)
+        # and offers the grant only when the volume actually exists on the host.
+        # Docker errors fail safe (exists=False -> grant disabled; manual rows still work).
         stellars_config = self.settings.get('stellars_config') or {}
         shared_name = stellars_config.get('shared_volume_name', '')
-        from ..docker_utils import volume_exists_async
-        shared_exists = bool(shared_name) and await volume_exists_async(shared_name)
+        from ..docker_utils import volume_labels_async
+        labels = await volume_labels_async(shared_name) if shared_name else None
+        shared_exists = labels is not None  # one inspect: None means absent / docker error
+        shared_desc = (labels or {}).get('duoptimum-hub.volume.description', '')
 
         self.log.info(f"[Groups Data] Returning {len(result)} group(s)")
         self.finish({
             'groups': result,
-            'shared_volume': {'name': shared_name, 'exists': shared_exists},
+            'shared_volume': {'name': shared_name, 'exists': shared_exists, 'description': shared_desc},
         })
 
 

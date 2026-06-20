@@ -246,16 +246,16 @@ export default function DesignLanguage() {
                 </div>
               ))}
             </div>
-            {/* bar GLOW steps - a brightened tint (currentColor mixed toward white) over the fill, by opacity (target 50%) */}
+            {/* bar GLOW steps - a drop-shadow HALO around the bar (currentColor mixed toward white), by radius;
+               the halo glows around the fill and never covers it (the shipped extend glow holds at 5px) */}
             <div style={{ display: 'flex', gap: 28, alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <span style={{ width: 92, fontSize: 12, color: 'var(--color-text-muted)' }}>bar glow</span>
-              {[0, 0.25, 0.5, 0.75, 1].map((op) => (
-                <div key={op} style={{ textAlign: 'center' }}>
-                  <span className="doh-ttl-bar" style={{ display: 'inline-block', width: 150, position: 'relative', color: 'var(--doh-ttl-blue)' }}>
+              {[0, 3, 5, 8, 12].map((r) => (
+                <div key={r} style={{ textAlign: 'center' }}>
+                  <span className="doh-ttl-bar" style={{ display: 'inline-block', width: 150, position: 'relative', color: 'var(--doh-ttl-blue)', filter: r ? `drop-shadow(0 0 ${r}px color-mix(in srgb, currentColor, white 60%))` : 'none' }}>
                     <Progress percent={80} status="normal" showInfo={false} strokeColor="var(--doh-ttl-blue)" trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
-                    {op > 0 && <span style={{ position: 'absolute', inset: 0, background: 'color-mix(in srgb, currentColor, white 60%)', opacity: op, borderRadius: 'var(--radius-full)', zIndex: 2, pointerEvents: 'none' }} />}
                   </span>
-                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{Math.round(op * 100)}%</div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{r}px</div>
                 </div>
               ))}
             </div>

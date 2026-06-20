@@ -204,6 +204,27 @@ async def volume_exists_async(volume_name):
     return await loop.run_in_executor(_docker_executor, volume_exists, volume_name)
 
 
+def volume_labels(volume_name):
+    """Labels dict of a named Docker volume (blocking); None when absent or on error.
+    A label-less but existing volume returns {} (distinct from None) so callers can
+    tell "volume present" from "volume missing"."""
+    try:
+        import docker
+        docker_client = docker.from_env()
+        try:
+            return (docker_client.volumes.get(volume_name).attrs.get('Labels')) or {}
+        finally:
+            docker_client.close()
+    except Exception:
+        return None
+
+
+async def volume_labels_async(volume_name):
+    """Async wrapper - runs in thread pool to avoid blocking the hub loop."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_docker_executor, volume_labels, volume_name)
+
+
 def resolve_self_mount_volume(destination):
     """The Docker volume name backing a mount inside THIS (hub) container.
 

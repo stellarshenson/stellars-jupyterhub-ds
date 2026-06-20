@@ -6,6 +6,7 @@ dashboard). The model is a ceiling-bounded cull deadline stored in
 `spawner.state['cull_at']`; see that module's docstring.
 """
 
+import html
 import json
 from datetime import datetime, timedelta, timezone
 
@@ -18,6 +19,7 @@ from duoptimum_hub_services.idle_culler import (
     calc_extended_remaining,
     remaining_seconds_for,
 )
+from ..event_log import record_event
 
 __all__ = [
     "SessionInfoHandler",
@@ -161,6 +163,14 @@ class ExtendSessionHandler(BaseHandler):
         new_available = calc_available_hours(new_remaining, ceiling)
 
         self.log.info(f"[Extend Session] {username}: SUCCESS - added {hours}h, remaining={new_remaining/3600:.1f}h (ceiling={ceiling//3600}h)")
+
+        # audit feed: who extended whose session and by how much (actor may be an admin
+        # acting on another user). Topping to the ceiling reads as "to maximum".
+        _who = html.escape(str(username))
+        if maxed:
+            record_event('server', f'<b>{_who}</b> session extended to maximum ({ceiling // 3600}h)')
+        else:
+            record_event('server', f'<b>{_who}</b> session extended by {hours}h')
 
         if maxed:
             message = f"Session topped up to maximum ({ceiling // 3600}h)"

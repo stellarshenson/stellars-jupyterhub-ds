@@ -13,6 +13,7 @@ from duoptimum_hub_services.docker_utils import (
     resolve_network_placeholder,
     resolve_self_mount_volume_by_label,
     resolve_self_network_by_label,
+    volume_labels,
 )
 
 
@@ -365,3 +366,40 @@ class TestResolveNetworkPlaceholder:
     def test_empty_network_blanks_token(self):
         # unresolved net -> token becomes empty (caller treats as fatal/degrade)
         assert resolve_network_placeholder("{network}", "") == ""
+
+
+class TestVolumeLabels:
+    """volume_labels distinguishes present-with-labels, present-without-labels ({}), absent (None)."""
+
+    @staticmethod
+    def _install_fake_docker(monkeypatch, *, labels=None, raises=False):
+        class _Vol:
+            attrs = {"Labels": labels}
+
+        class _Volumes:
+            def get(self, name):
+                if raises:
+                    raise RuntimeError("no such volume")
+                return _Vol()
+
+        class _Client:
+            volumes = _Volumes()
+
+            def close(self):
+                pass
+
+        monkeypatch.setitem(sys.modules, "docker", SimpleNamespace(from_env=lambda: _Client()))
+
+    def test_returns_labels_dict(self, monkeypatch):
+        self._install_fake_docker(monkeypatch, labels={"duoptimum-hub.volume.description": "Shared store"})
+        assert volume_labels("hub_shared") == {"duoptimum-hub.volume.description": "Shared store"}
+
+    def test_label_less_volume_returns_empty_dict(self, monkeypatch):
+        # an existing volume with no labels -> {} (NOT None) so callers read it as "present"
+        self._install_fake_docker(monkeypatch, labels=None)
+        assert volume_labels("hub_data") == {}
+
+    def test_absent_or_error_returns_none(self, monkeypatch):
+        # absent volume / docker error -> None (distinct from {}), so exists check fails safe
+        self._install_fake_docker(monkeypatch, raises=True)
+        assert volume_labels("nope") is None

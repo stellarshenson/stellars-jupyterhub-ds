@@ -30,7 +30,8 @@ def _sample_config():
         'sudo_active': True, 'sudo_enable': False,
         'downloads_active': True, 'downloads_allow': False,
         'volume_mounts_active': True,
-        'volume_mounts': [{'volume': 'data', 'mountpoint': '/mnt/data'}],
+        'shared_mount_allow': True, 'shared_mount_mode': 'ro',
+        'volume_mounts': [{'volume': 'data', 'mountpoint': '/mnt/data', 'mode': 'rw'}],
         'api_keys_pool': {
             'enabled': True, 'mode': 'single', 'env_var_id': '', 'env_var_secret': '',
             'env_var_key': 'TOKEN',

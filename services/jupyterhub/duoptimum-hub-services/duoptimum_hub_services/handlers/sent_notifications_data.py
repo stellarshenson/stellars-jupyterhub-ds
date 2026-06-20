@@ -7,7 +7,8 @@ from ..sent_notification_log import SentNotificationLogManager
 
 
 class SentNotificationsDataHandler(BaseHandler):
-    """The portal "Past Notifications" feed: GET the recent sent-broadcast history."""
+    """The portal "Past Notifications" feed: GET the recent sent-broadcast history,
+    DELETE to clear it (both admin-only)."""
 
     @web.authenticated
     async def get(self):
@@ -17,3 +18,13 @@ class SentNotificationsDataHandler(BaseHandler):
 
         notifications = SentNotificationLogManager.get_instance().recent(limit=100)
         self.finish({"notifications": notifications})
+
+    @web.authenticated
+    async def delete(self):
+        """Clear the entire sent-notification history (the "Clear" action)."""
+        current_user = self.current_user
+        if not current_user.admin:
+            raise web.HTTPError(403, "Only administrators can access this endpoint")
+
+        cleared = SentNotificationLogManager.get_instance().clear()
+        self.finish({"cleared": cleared})

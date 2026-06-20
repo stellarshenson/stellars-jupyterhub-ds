@@ -58,7 +58,7 @@ export function VolumeReset({ name, onClose }: { name: string; onClose?: () => v
         style={{ marginTop: 12 }}
         pagination={false}
         loading={namesPending}
-        rowSelection={{ type: 'checkbox', selectedRowKeys: selected, onChange: (keys) => setSelected(keys as string[]), getCheckboxProps: (record) => ({ disabled: running || removed.includes(record.suffix) }) }}
+        rowSelection={{ type: 'checkbox', selectedRowKeys: selected, onChange: (keys) => setSelected(keys as string[]), getCheckboxProps: (record) => ({ disabled: running || removed.includes(record.suffix) || !!record.policyControlled }) }}
         dataSource={rows}
         columns={[
           { title: 'Volume', dataIndex: 'name', render: (v) => <span className="doh-mono">{v}</span> },
@@ -68,12 +68,15 @@ export function VolumeReset({ name, onClose }: { name: string; onClose?: () => v
             title: 'Size',
             dataIndex: 'sizeGB',
             align: 'right',
-            // a removed volume reads "removed" in dangerous (red) text in place;
-            // otherwise the size (or the slow-sizes placeholder)
+            // a removed volume reads "removed" in dangerous (red) text in place; the
+            // policy-controlled shared volume reads "policy-controlled" (not the
+            // user's to reset); otherwise the size (or the slow-sizes placeholder)
             render: (v, record) =>
               removed.includes(record.suffix)
                 ? <span className="doh-text-danger">removed</span>
-                : v != null ? <span className="doh-num">{v} GB</span> : sizesPending ? <span className="doh-muted">updating…</span> : <span className="doh-muted">-</span>,
+                : record.policyControlled
+                  ? <span className="doh-muted">policy-controlled</span>
+                  : v != null ? <span className="doh-num">{v} GB</span> : sizesPending ? <span className="doh-muted">updating…</span> : <span className="doh-muted">-</span>,
           },
         ]}
       />

@@ -17,8 +17,19 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
 - [DEF-11: Functional UI tests brittle on new frontend](#def-11-functional-ui-tests-brittle-on-new-frontend) - fixed
 - [DEF-12: Live hub 504 Gateway Timeout via Traefik](#def-12-live-hub-504-gateway-timeout-via-traefik) - fixed
 - [DEF-13: TTL bar scaled to absolute ceiling (35h reads 50%)](#def-13-ttl-bar-scaled-to-absolute-ceiling-35h-reads-50) - fixed
+- [DEF-14: TTL extend glow stuck at full opacity, no blur](#def-14-ttl-extend-glow-stuck-at-full-opacity-no-blur) - fixed
+- [DEF-15: TTL extend bar flips to 100% instead of growing](#def-15-ttl-extend-bar-flips-to-100-instead-of-growing) - open
 
 ## Open
+
+### DEF-15: TTL extend bar flips to 100% instead of growing
+
+- [ ] **LOW** - on extend the TTL progress bar jumps straight to its new fill (100% for a banked extend) instead of growing from its current position; the counter count-up animates but the bar does not; root cause: the fill relied on a CSS width transition ENABLED by the same `.doh-ttl-boost` class toggle that also changed the bar percent in the same React commit - enabling a transition and changing the animated value in one frame does not reliably animate (the browser may not paint the pre-change state), so the bar flips to the end value; antd's own `.ant-progress-bg` width transition compounded it; fix: drive the bar percent with the SAME `requestAnimationFrame` loop that animates the counter - grow from the captured current fill to the target in lockstep - and disable the CSS width transition (`.doh-ttl-boost .ant-progress-bg { transition: none }`) so rAF is the sole driver (guaranteed from->to growth, no flip); `meters.tsx`, `global.css`, `config.ts`
+  - log: 2026-06-20 reported (operator: "on extend the bar just flips 100%; it should start at its current position and progress as part of the animation")
+  - log: 2026-06-20 root cause: same-frame transition-enable + value-change does not animate; rAF is deterministic
+  - log: 2026-06-20 fix applied (rAF-driven bar fill in lockstep with the counter; antd width transition killed); tsc/eslint clean; verify pending rebuild + live extend
+  - ref: task #375; DEF-14 (glow); acc-crit "TTL extend bar animation"
+
 
 ### DEF-1: Start-server falls to stock spawn screen, no logs
 
@@ -119,6 +130,16 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
   - log: 2026-06-20 fix: `traefik.docker.network` label pins the backend to hub_network; redeploy (compose-only, no rebuild)
   - log: 2026-06-20 VERIFIED: curl + Playwright real-browser through traefik 200 (`/hub/login` "Sign in - Duoptimum Hub", `/` -> login redirect); was a 10s timeout
   - ref: task #362; DEF/#366 network rename
+
+### DEF-14: TTL extend glow stuck at full opacity, no blur
+
+- [x] **MEDIUM** - on the live Server Control TTL bar, an extend leaves the glow overlay at FULL opacity (a near-solid white wash over the bar), it pulses once then stays, and the counter never blurs; operator screenshot mid-animation; root cause: the tint-overlay rewrite (#370, drop-shadow halo -> `::after` tint overlay) had three faults at once - (1) WASH: the overlay had no resting `opacity: 0` and no `animation-fill-mode`, so outside the 1.2s `doh-ttl-glow` keyframe it reverts to CSS-default opacity 1, and the boost window (`ttlExtendMs` 3s + until the value lands) outlasts the 1.2s glow, so the bar sits under a full-opacity tint after the single pulse; (2) PULSE: a keyframe (0 -> .5 -> 0) inherently ramps up AND back down inside its own window, so it reads as a one-shot pulse, not a glow held for the fill; (3) NO BLUR: the counter `doh-ttl-blur` keyframe had the same fill-mode gap; the design-page render looked good because it is a STATIC 50% tint (= the held state, no keyframe), and the past (@12d9734) render looked good because it used a drop-shadow HALO synced to the fill duration - a halo glows AROUND the bar and can never wash the fill, unlike a covering overlay; fix: restore the proven drop-shadow halo (brighter, `color-mix(currentColor, white 60%)`) and drive it with a CSS `transition` not a keyframe - the `.doh-ttl-boost` class toggles the filter on, the 100ms transition ramps it ON, HOLDS it for the whole boost window, ramps OFF in 100ms when the value lands (trapezoid envelope, no pulse); counter blurs `.75px` the same way (no halo, blur only); `global.css`, `meters.tsx`, `config.ts`
+  - log: 2026-06-20 reported (operator screenshot: "glow is weird (full opacity), there is pulsing, there is no blur; all is bad")
+  - log: 2026-06-20 root cause confirmed (wash + pulse + no-blur, all from keyframe overlay with no fill-mode; design page = static tint, past = halo synced to fill)
+  - log: 2026-06-20 fix applied (drop-shadow halo + transition-held envelope, 100ms ramps, hold for fill; `ttlGlowMs` 1200 -> 100); tsc clean
+  - log: 2026-06-20 VERIFIED live (operator: "ttl visual design is good - glow & blur")
+  - lessons (CSS animation): (1) `@keyframes` ramps up AND back down inside its own window, so it always reads as a pulse; for a "ramp on / HOLD / ramp off" envelope use a CSS `transition` toggled by a class (trapezoid), never a keyframe; (2) a keyframe with no resting rule and no `animation-fill-mode` reverts to the property's CSS default outside its active window - a glow overlay then washes the element once the trigger outlives the keyframe; (3) a glow that COVERS the element (tint overlay) can wash it out, a glow that SURROUNDS it (drop-shadow halo) never can - prefer the halo; (4) enabling a transition and changing the animated value in the SAME commit does not reliably animate, so the element flips to the end value - for a guaranteed from->to animation drive the value with `requestAnimationFrame` and disable the CSS transition (see DEF-15)
+  - ref: task #370 (tint-overlay glow), #374; DEF-15 (bar growth); acc-crit "TTL extend bar animation"
 
 ### DEF-13: TTL bar scaled to absolute ceiling (35h reads 50%)
 

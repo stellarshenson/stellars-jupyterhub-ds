@@ -1,14 +1,18 @@
 /* Notifications - broadcast to active labs. Send (left, the composer) and past
  * notifications (right, the sent history). Outgoing only. */
-import { useState } from 'react'
-import { Button, Card, Checkbox, Input, Radio, Segmented, Select, Table } from 'antd'
+import { useMemo, useState } from 'react'
+import { Button, Card, Checkbox, Input, Modal, Radio, Segmented, Select, Table } from 'antd'
 import { PageHeader } from '../components/PageHeader'
 import { Icon } from '../components/Icon'
 import { NotificationPill } from '../components/NotificationPill'
 import { useSentNotifications, useServers } from '../hooks/queries'
-import { broadcast } from '../services/ops'
+import { broadcast, clearNotifications } from '../services/ops'
 import { timeAgoShort, exactDate } from '../lib/format'
 import type { SentNotification } from '../services/types'
+
+// same range control as Events.tsx; Notifications defaults to 24h (Events to 7d)
+type Range = '24h' | '7d' | '30d'
+const RANGE_MS: Record<Range, number> = { '24h': 864e5, '7d': 6.048e8, '30d': 2.592e9 }
 
 // Scrollable, filterable recipient list: per-user checkboxes plus a select-all
 // (scoped to the current filter) so an operator can select all, then unselect a few.
@@ -75,6 +79,20 @@ export default function Notifications() {
   const [autoCloseMs, setAutoCloseMs] = useState(0) // default Never (no auto-close), user-changeable
   const [mode, setMode] = useState<'all' | 'selected'>('all')
   const [recipients, setRecipients] = useState<string[]>([])
+  const [range, setRange] = useState<Range>('24h')
+  const filteredHistory = useMemo(
+    () => history.filter((n) => Date.now() - new Date(n.sentISO).getTime() <= RANGE_MS[range]),
+    [history, range],
+  )
+  // clearing the persisted notification history is destructive + irreversible -> confirm first
+  const clearHistory = () =>
+    Modal.confirm({
+      title: 'Clear the notification history?',
+      content: 'This permanently deletes every recorded broadcast. This cannot be undone.',
+      okText: 'Clear',
+      okButtonProps: { danger: true },
+      onOk: () => clearNotifications(),
+    })
   const send = async () => {
     try {
       await broadcast(msg.trim(), variant, autoCloseMs === 0 ? false : autoCloseMs, mode === 'selected' ? recipients : undefined)
@@ -128,12 +146,30 @@ export default function Notifications() {
           </div>
         </Card>
 
-        <Card title="Past Notifications" styles={{ body: { padding: 0 } }}>
+        <Card
+          title="Past Notifications"
+          styles={{ body: { padding: 0 } }}
+          extra={
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <Segmented
+                size="small"
+                value={range}
+                onChange={(v) => setRange(v as Range)}
+                options={[
+                  { label: 'Last 24h', value: '24h' },
+                  { label: 'Last 7 days', value: '7d' },
+                  { label: 'Last 30 days', value: '30d' },
+                ]}
+              />
+              <Button size="small" danger icon={<Icon name="close" size={14} />} disabled={!history.length} onClick={clearHistory}>Clear</Button>
+            </div>
+          }
+        >
           <Table<SentNotification>
             rowKey="id"
             pagination={false}
             locale={{ emptyText: 'No broadcasts sent yet' }}
-            dataSource={history}
+            dataSource={filteredHistory}
             columns={[
               { title: 'Message', dataIndex: 'message' },
               { title: 'Type', dataIndex: 'type', width: 120, render: (v) => <NotificationPill type={v} /> },

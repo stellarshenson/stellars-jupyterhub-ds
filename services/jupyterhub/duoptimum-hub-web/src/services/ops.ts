@@ -73,6 +73,9 @@ export const resetActivity = () =>
 export const clearEvents = () =>
   run('Cleared the event log', () => hubSend('DELETE', '/events'), [['events']])
 
+export const clearNotifications = () =>
+  run('Cleared the notification history', () => hubSend('DELETE', '/notifications/sent'), [['sent-notifications']])
+
 // ── Users ─────────────────────────────────────────────────────────────────--
 /** Idempotently set a user's NativeAuth authorisation. Unlike NativeAuth's
  * /authorize/{name} GET-toggle, this sets the requested state directly, so a

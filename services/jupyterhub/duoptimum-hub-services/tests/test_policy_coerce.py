@@ -134,7 +134,19 @@ class TestVolumeMountsCoerce:
 
     def test_strips_and_normalises(self):
         out = _coerce({'volume_mounts': [{'volume': ' v ', 'mountpoint': ' /mnt/x '}]})
-        assert out['volume_mounts'] == [{'volume': 'v', 'mountpoint': '/mnt/x'}]
+        assert out['volume_mounts'] == [{'volume': 'v', 'mountpoint': '/mnt/x', 'mode': 'rw'}]
+
+    def test_mode_normalised_default_rw(self):
+        out = _coerce({'volume_mounts': [
+            {'volume': 'a', 'mountpoint': '/mnt/a', 'mode': 'ro'},
+            {'volume': 'b', 'mountpoint': '/mnt/b', 'mode': 'BOGUS'},
+            {'volume': 'c', 'mountpoint': '/mnt/c'},
+        ]})
+        assert [m['mode'] for m in out['volume_mounts']] == ['ro', 'rw', 'rw']
+
+    def test_shared_mount_keys_coerced(self):
+        out = _coerce({'shared_mount_allow': 1, 'shared_mount_mode': 'ro'})
+        assert out == {'shared_mount_allow': True, 'shared_mount_mode': 'ro'}
 
 
 def test_coerce_config_only_emits_present_keys():

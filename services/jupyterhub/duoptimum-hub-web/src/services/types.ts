@@ -82,6 +82,7 @@ export interface GroupConfig {
   members: string[]
   sections: PolicySection[]
   config: PolicyConfig // the real flat policy config (read + write)
+  sharedVolume?: { name: string; exists: boolean; description?: string } // the standard /mnt/shared volume (label-resolved); name '' / exists false = absent; description from the duoptimum-hub.volume.description label
 }
 
 export interface PolicySection {
@@ -102,9 +103,12 @@ export interface PolicyEnvVar {
   description?: string
 }
 
+export type VolumeMode = 'ro' | 'rw' // Read / Read-Write
+
 export interface PolicyVolumeMount {
   volume: string
   mountpoint: string
+  mode?: VolumeMode // access level; default rw
 }
 
 export interface PolicyApiCred {
@@ -155,6 +159,8 @@ export interface PolicyConfig {
   downloads_allow?: boolean
   api_keys_pool?: PolicyApiKeysPool
   volume_mounts_active?: boolean
+  shared_mount_allow?: boolean // grant the standard shared volume (resolved by label at spawn)
+  shared_mount_mode?: VolumeMode // access level for the standard shared volume; default rw
   volume_mounts?: PolicyVolumeMount[]
 }
 
@@ -218,6 +224,7 @@ export interface ServerHero {
   activityHours?: number | null // real avg active hours/day behind the score
   activityPct?: number | null // uncapped activity % (may exceed 100%), for the tooltip
   startedISO?: string | null // server (container) start time - drives the uptime label
+  lastActivityISO?: string | null // last activity time; when stopped drives the "stopped Xh ago" readout (null = never started)
   upgradeAvailable?: boolean // a newer lab image is available locally than the running container
   ttl: SessionInfo
   resources: ResourceSnapshot
@@ -231,6 +238,7 @@ export interface Volume {
   sizeGB?: number
   standard: boolean // platform-managed core volume vs custom mount
   role?: string // duoptimum-hub.volume.role (lab-home/lab-workspace/lab-cache); marks a system volume by role, not name
+  policyControlled?: boolean // governed by group policy (the shared volume) - listed but never user-resettable
 }
 
 // Lab Container page: the spawn image + the standard per-user volumes every lab

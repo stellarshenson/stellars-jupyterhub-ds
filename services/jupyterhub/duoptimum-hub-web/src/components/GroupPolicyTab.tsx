@@ -12,11 +12,16 @@ import { Icon } from './Icon'
 import type { IconKey } from './Icon'
 import { useTotalResources } from '../hooks/queries'
 import { gpuSupported } from '../app/capabilities'
-import type { GroupConfig, PolicyConfig } from '../services/types'
+import type { GroupConfig, PolicyConfig, VolumeMode } from '../services/types'
+
+// the standard shared volume's fixed mountpoint (mirrors policy/base.py SHARED_MOUNTPOINT);
+// the volume itself is resolved by label at spawn, never stored by name
+const SHARED_MOUNTPOINT = '/mnt/shared'
+const MODE_OPTIONS = [{ value: 'rw', label: 'Read-Write' }, { value: 'ro', label: 'Read' }]
 
 interface EnvVar { name: string; value: string; desc: string }
 interface ApiCred { slot?: string; a: string; b: string; desc: string }
-interface VolMount { volume: string; mountpoint: string }
+interface VolMount { volume: string; mountpoint: string; mode: VolumeMode }
 
 function Section({ icon, title, on, onToggle, children }: { icon: IconKey; title: string; on: boolean; onToggle: (v: boolean) => void; children: ReactNode }) {
   return (
@@ -50,6 +55,12 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
   // gpu_device_ids reconcile below)
   const { data: resources } = useTotalResources()
   const gpuDevices = resources?.gpuDevices ?? []
+  // the standard shared volume exists on this host (label-resolved by the hub); when
+  // absent the standard-mount controls are disabled (grant has no effect at spawn).
+  // name = the resolved docker volume; description = its duoptimum-hub.volume.description label
+  const sharedVolExists = !!cfg?.sharedVolume?.exists
+  const sharedName = cfg?.sharedVolume?.name ?? ''
+  const sharedDesc = cfg?.sharedVolume?.description ?? ''
 
   const [on, setOn] = useState<Record<string, boolean>>({})
   const [envVars, setEnvVars] = useState<EnvVar[]>([])
@@ -63,6 +74,8 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
   const [dq, setDq] = useState({ maxContainers: 10, maxVolumes: 10, maxNetworks: 3, maxStorage: 50, cpuCap: 2, memCap: 8 })
   const [dFlags, setDFlags] = useState({ dangerous: false, composeEnabled: true, composeOverride: true, hubNetwork: true })
   const [volMounts, setVolMounts] = useState<VolMount[]>([])
+  const [sharedAllow, setSharedAllow] = useState(false)
+  const [sharedMode, setSharedMode] = useState<VolumeMode>('rw')
   const [apiMode, setApiMode] = useState<'' | 'single' | 'pair'>('')
   const [apiVarKey, setApiVarKey] = useState('')
   const [apiVarId, setApiVarId] = useState('')
@@ -111,7 +124,17 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       composeOverride: c.docker_limited_user_compose_project_allow_override ?? true,
       hubNetwork: c.docker_limited_hub_network_access ?? true,
     })
-    setVolMounts((c.volume_mounts ?? []).map((v) => ({ volume: v.volume, mountpoint: v.mountpoint })))
+    // standard shared mount: allow flag + access level. Legacy migration - the old
+    // one-click quick-add stored the literal shared name as a custom mount at
+    // /mnt/shared; fold any such row into the standard allow toggle so it shows as
+    // the standard row (not a custom one) and re-saves without the stale name.
+    const norm = (m: string) => '/' + (m || '').trim().replace(/\/+$/, '').replace(/^\/+/, '')
+    const legacy = (c.volume_mounts ?? []).find((v) => norm(v.mountpoint) === SHARED_MOUNTPOINT)
+    setSharedAllow(!!c.shared_mount_allow || !!legacy)
+    setSharedMode((c.shared_mount_mode ?? legacy?.mode ?? 'rw') as VolumeMode)
+    setVolMounts((c.volume_mounts ?? [])
+      .filter((v) => norm(v.mountpoint) !== SHARED_MOUNTPOINT)
+      .map((v) => ({ volume: v.volume, mountpoint: v.mountpoint, mode: (v.mode ?? 'rw') as VolumeMode })))
     const pool = c.api_keys_pool
     const mode = pool?.mode ?? ''
     setApiMode(mode)
@@ -172,7 +195,9 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       downloads_active: on.downloads ?? false,
       downloads_allow: downloadsAllow,
       volume_mounts_active: on.volume_mounts ?? false,
-      volume_mounts: volMounts.map((v) => ({ volume: v.volume, mountpoint: v.mountpoint })),
+      shared_mount_allow: sharedAllow,
+      shared_mount_mode: sharedMode,
+      volume_mounts: volMounts.map((v) => ({ volume: v.volume, mountpoint: v.mountpoint, mode: v.mode })),
       api_keys_pool: {
         enabled: on.api_keys ?? false,
         mode: apiMode,
@@ -185,7 +210,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       },
     }
     onChange(config)
-  }, [onChange, on, envVars, gpuAll, gpuIds, resources, memGB, memSwap, cpuCores, dStd, dPriv, dq, dFlags, volMounts, apiMode, apiVarKey, apiVarId, apiVarSecret, apiCreds, downloadsAllow, sudoEnable])
+  }, [onChange, on, envVars, gpuAll, gpuIds, resources, memGB, memSwap, cpuCores, dStd, dPriv, dq, dFlags, volMounts, sharedAllow, sharedMode, apiMode, apiVarKey, apiVarId, apiVarSecret, apiCreds, downloadsAllow, sudoEnable])
 
   const toggle = (key: string) => (v: boolean) => setOn((e) => ({ ...e, [key]: v }))
 
@@ -287,7 +312,24 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
 
       {/* Volume mounts */}
       <Section icon="disk" title="Volume Mounts" on={on.volume_mounts ?? false} onToggle={toggle('volume_mounts')}>
-        <div className="doh-pol-hint">Mount named Docker volumes into members' containers. Mountpoints must be absolute and outside protected paths; a missing volume is created on first spawn.</div>
+        {/* Standard shared volume: a fixed row, granted by a toggle + access level.
+           The volume is resolved by label at spawn (never a saved name), so a rename
+           never strands the group. Disabled when the host has no shared volume. */}
+        <div className="doh-pol-field-label">Standard shared volume</div>
+        <div className="doh-pol-hint">{sharedDesc || `The platform shared volume mounted at ${SHARED_MOUNTPOINT}.`} Resolved by label at spawn, so a rename never strands the group.</div>
+        <div className="doh-row" style={{ gap: 12, alignItems: 'center', marginBottom: 4 }}>
+          {/* disabled when the host has no shared volume - but never strand an existing
+             grant: if it is already allowed, keep it un-checkable so the admin can revoke it */}
+          <Checkbox checked={sharedAllow} disabled={!sharedVolExists && !sharedAllow} onChange={(e) => setSharedAllow(e.target.checked)}>Grant</Checkbox>
+          {/* show the RESOLVED volume name -> its fixed mountpoint (the name is never stored
+             in the group config, only displayed here, so the operator sees what backs the mount) */}
+          <span><span className="doh-mono">{sharedName || '—'}</span> <span className="doh-muted">→</span> <span className="doh-mono">{SHARED_MOUNTPOINT}</span></span>
+          <Select<VolumeMode> size="small" value={sharedMode} disabled={!sharedAllow || !sharedVolExists} onChange={setSharedMode} options={MODE_OPTIONS} style={{ width: 150 }} />
+          {!sharedVolExists && <span className="doh-muted" style={{ fontSize: 12 }}>no shared volume on this host - unavailable</span>}
+        </div>
+
+        <div className="doh-pol-field-label" style={{ marginTop: 12 }}>Additional mounts</div>
+        <div className="doh-pol-hint">Mount more named Docker volumes into members' containers. Mountpoints must be absolute, outside protected paths, and not {SHARED_MOUNTPOINT} (use the toggle above); a missing volume is created on first spawn.</div>
         <Table<VolMount>
           size="small"
           pagination={false}
@@ -295,12 +337,13 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
           rowKey={(_, i) => `vol-${i}`}
           rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
           columns={[
-            { title: 'Volume', width: '45%', render: (_, r, i) => <Input size="small" className="doh-mono" value={r.volume} placeholder="my_volume" onChange={(e) => setVolMounts((p) => p.map((x, j) => (j === i ? { ...x, volume: e.target.value } : x)))} /> },
+            { title: 'Volume', width: '38%', render: (_, r, i) => <Input size="small" className="doh-mono" value={r.volume} placeholder="my_volume" onChange={(e) => setVolMounts((p) => p.map((x, j) => (j === i ? { ...x, volume: e.target.value } : x)))} /> },
             { title: 'Mountpoint', render: (_, r, i) => <Input size="small" className="doh-mono" value={r.mountpoint} placeholder="/mnt/…" onChange={(e) => setVolMounts((p) => p.map((x, j) => (j === i ? { ...x, mountpoint: e.target.value } : x)))} /> },
+            { title: 'Access', width: 150, render: (_, r, i) => <Select<VolumeMode> size="small" value={r.mode} onChange={(v) => setVolMounts((p) => p.map((x, j) => (j === i ? { ...x, mode: v } : x)))} options={MODE_OPTIONS} style={{ width: 138 }} /> },
             { title: '', width: 40, render: (_, __, i) => <span style={{ cursor: 'pointer', color: 'var(--color-text-subtle)' }} onClick={() => setVolMounts((p) => p.filter((_, j) => j !== i))}><Icon name="close" size={14} /></span> },
           ]}
         />
-        <Button size="small" icon={<Icon name="plus" size={13} />} style={{ marginTop: 8 }} onClick={() => setVolMounts((p) => [...p, { volume: '', mountpoint: '' }])}>Add Mount</Button>
+        <Button size="small" icon={<Icon name="plus" size={13} />} style={{ marginTop: 8 }} onClick={() => setVolMounts((p) => [...p, { volume: '', mountpoint: '', mode: 'rw' }])}>Add Mount</Button>
       </Section>
 
       {/* API keys pool */}

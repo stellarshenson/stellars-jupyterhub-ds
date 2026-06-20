@@ -39,6 +39,20 @@ def test_recent_respects_limit(manager):
     assert len(manager.recent(limit=3)) == 3
 
 
+def test_clear_removes_all_rows_and_returns_count(manager):
+    manager.record('a', 'info', 1, 1)
+    manager.record('b', 'warning', 2, 2)
+    assert manager.clear() == 2  # returns the count removed
+    assert manager.recent() == []  # history emptied
+    # the store is still usable after a clear (records append fresh)
+    manager.record('c', 'success', 3, 3)
+    assert [r['message'] for r in manager.recent()] == ['c']
+
+
+def test_clear_on_empty_returns_zero(manager):
+    assert manager.clear() == 0
+
+
 def test_record_helper_never_raises(monkeypatch):
     # unwritable path: the manager would fail; the helper must swallow it
     monkeypatch.setenv('STELLARS_SENT_NOTIFICATION_LOG_DB_PATH', '/proc/nonexistent/cannot.sqlite')

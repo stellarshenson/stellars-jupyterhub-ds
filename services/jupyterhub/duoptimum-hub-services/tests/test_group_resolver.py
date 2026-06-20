@@ -428,34 +428,34 @@ class TestVolumeMounts:
         assert r["volume_mounts"] == [] and r["skipped_volume_mounts"] == []
 
     def test_single_group_passthrough(self):
-        cfgs = [_grp("a", volume_mounts=[{"volume": "shared", "mountpoint": "/mnt/shared"}])]
+        cfgs = [_grp("a", volume_mounts=[{"volume": "datasets", "mountpoint": "/mnt/team"}])]
         r = _resolve(["a"], cfgs)
-        assert r["volume_mounts"] == [{"volume": "shared", "mountpoint": "/mnt/shared"}]
+        assert r["volume_mounts"] == [{"volume": "datasets", "mountpoint": "/mnt/team", "mode": "rw"}]
 
     def test_union_across_groups(self):
         cfgs = [
-            _grp("a", volume_mounts=[{"volume": "shared", "mountpoint": "/mnt/shared"}]),
+            _grp("a", volume_mounts=[{"volume": "team", "mountpoint": "/mnt/team"}]),
             _grp("b", volume_mounts=[{"volume": "datasets", "mountpoint": "/data"}]),
         ]
         r = _resolve(["a", "b"], cfgs)
-        assert {m["volume"] for m in r["volume_mounts"]} == {"shared", "datasets"}
+        assert {m["volume"] for m in r["volume_mounts"]} == {"team", "datasets"}
 
     def test_mountpoint_conflict_higher_priority_wins(self):
         # configs arrive priority-descending: group "a" outranks "b"
         cfgs = [
-            _grp("a", volume_mounts=[{"volume": "vol_a", "mountpoint": "/mnt/shared"}]),
-            _grp("b", volume_mounts=[{"volume": "vol_b", "mountpoint": "/mnt/shared"}]),
+            _grp("a", volume_mounts=[{"volume": "vol_a", "mountpoint": "/mnt/team"}]),
+            _grp("b", volume_mounts=[{"volume": "vol_b", "mountpoint": "/mnt/team"}]),
         ]
         r = _resolve(["a", "b"], cfgs)
-        assert r["volume_mounts"] == [{"volume": "vol_a", "mountpoint": "/mnt/shared"}]
+        assert r["volume_mounts"] == [{"volume": "vol_a", "mountpoint": "/mnt/team", "mode": "rw"}]
         assert r["skipped_volume_mounts"] == [
-            {"volume": "vol_b", "mountpoint": "/mnt/shared", "group": "b", "reason": "shadowed"}
+            {"volume": "vol_b", "mountpoint": "/mnt/team", "group": "b", "reason": "shadowed"}
         ]
 
     def test_same_volume_same_mountpoint_dedupes_silently(self):
         cfgs = [
-            _grp("a", volume_mounts=[{"volume": "shared", "mountpoint": "/mnt/shared"}]),
-            _grp("b", volume_mounts=[{"volume": "shared", "mountpoint": "/mnt/shared"}]),
+            _grp("a", volume_mounts=[{"volume": "team", "mountpoint": "/mnt/team"}]),
+            _grp("b", volume_mounts=[{"volume": "team", "mountpoint": "/mnt/team"}]),
         ]
         r = _resolve(["a", "b"], cfgs)
         assert len(r["volume_mounts"]) == 1 and r["skipped_volume_mounts"] == []
@@ -463,12 +463,43 @@ class TestVolumeMounts:
     def test_same_volume_other_mountpoint_is_shadowed(self):
         # docker mounts are keyed by volume name - the higher-priority claim wins
         cfgs = [
-            _grp("a", volume_mounts=[{"volume": "shared", "mountpoint": "/mnt/shared"}]),
-            _grp("b", volume_mounts=[{"volume": "shared", "mountpoint": "/mnt/other"}]),
+            _grp("a", volume_mounts=[{"volume": "team", "mountpoint": "/mnt/team"}]),
+            _grp("b", volume_mounts=[{"volume": "team", "mountpoint": "/mnt/other"}]),
         ]
         r = _resolve(["a", "b"], cfgs)
-        assert r["volume_mounts"] == [{"volume": "shared", "mountpoint": "/mnt/shared"}]
+        assert r["volume_mounts"] == [{"volume": "team", "mountpoint": "/mnt/team", "mode": "rw"}]
         assert r["skipped_volume_mounts"][0]["reason"] == "shadowed"
+
+    # ── standard shared mount (resolved by label at apply, not by saved name) ──
+    def test_shared_allow_yields_shared_slice(self):
+        r = _resolve(["a"], [_grp("a", shared_mount_allow=True)])
+        assert r["shared_mount"] == {"allow": True, "mode": "rw"}
+        assert r["volume_mounts"] == []  # the standard mount is not a custom entry
+
+    def test_shared_mode_read_only(self):
+        r = _resolve(["a"], [_grp("a", shared_mount_allow=True, shared_mount_mode="ro")])
+        assert r["shared_mount"] == {"allow": True, "mode": "ro"}
+
+    def test_shared_not_allowed_is_none(self):
+        r = _resolve(["a"], [_grp("a", volume_mounts=[{"volume": "v", "mountpoint": "/mnt/team"}])])
+        assert r["shared_mount"] is None
+
+    def test_shared_applied_once_across_groups_first_mode_wins(self):
+        # both grant the shared mount; it collapses to one, highest-priority mode wins
+        cfgs = [
+            _grp("a", shared_mount_allow=True, shared_mount_mode="ro"),
+            _grp("b", shared_mount_allow=True, shared_mount_mode="rw"),
+        ]
+        r = _resolve(["a", "b"], cfgs)
+        assert r["shared_mount"] == {"allow": True, "mode": "ro"}  # group a outranks b
+
+    def test_legacy_custom_at_shared_mountpoint_folds_into_shared(self):
+        # the old one-click quick-add saved the literal shared name at /mnt/shared;
+        # it is folded into the standard allow so the stale name is never mounted
+        cfgs = [_grp("a", volume_mounts=[{"volume": "stale_literal_shared", "mountpoint": "/mnt/shared", "mode": "ro"}])]
+        r = _resolve(["a"], cfgs)
+        assert r["shared_mount"] == {"allow": True, "mode": "ro"}
+        assert r["volume_mounts"] == []  # the stale literal is dropped, not mounted by name
 
     def test_protected_mountpoint_skipped_defense_in_depth(self):
         # a stale/legacy DB row mounting over /etc never reaches the spawner
@@ -489,7 +520,7 @@ class TestVolumeMounts:
     def test_mountpoint_normalised_trailing_slash(self):
         cfgs = [_grp("a", volume_mounts=[{"volume": "v", "mountpoint": "/mnt/data/"}])]
         r = _resolve(["a"], cfgs)
-        assert r["volume_mounts"] == [{"volume": "v", "mountpoint": "/mnt/data"}]
+        assert r["volume_mounts"] == [{"volume": "v", "mountpoint": "/mnt/data", "mode": "rw"}]
 
     def test_group_without_mounts_contributes_nothing(self):
         cfgs = [

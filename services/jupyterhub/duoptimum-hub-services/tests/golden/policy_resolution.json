@@ -62,6 +62,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -115,6 +116,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -148,6 +150,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -180,6 +183,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -212,6 +216,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -244,6 +249,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -277,6 +283,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -309,6 +316,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -342,6 +350,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -374,6 +383,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -407,6 +417,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -439,6 +450,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -472,6 +484,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -504,6 +517,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -534,6 +548,7 @@
     "matched_groups": [],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -570,6 +585,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -607,6 +623,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -643,6 +660,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [
       "PATH",
       "JUPYTERHUB_X"
@@ -678,6 +696,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -714,6 +733,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -746,6 +766,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -781,6 +802,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -813,6 +835,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -845,6 +868,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -880,6 +904,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -917,6 +942,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -977,11 +1003,13 @@
     ],
     "mem_limit_gb": 32.0,
     "mem_swap_disabled": true,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": true,
     "volume_mounts": [
       {
+        "mode": "rw",
         "mountpoint": "/mnt/data",
         "volume": "data"
       }
@@ -1015,6 +1043,7 @@
     ],
     "mem_limit_gb": 16.0,
     "mem_swap_disabled": true,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -1048,6 +1077,7 @@
     ],
     "mem_limit_gb": 8.0,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -1080,6 +1110,7 @@
     ],
     "mem_limit_gb": 8.0,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -1113,6 +1144,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": false,
@@ -1146,6 +1178,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": true,
@@ -1182,6 +1215,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -1212,6 +1246,7 @@
     "matched_groups": [],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
@@ -1245,11 +1280,12 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [
       {
         "group": "lo",
-        "mountpoint": "/mnt/shared",
+        "mountpoint": "/mnt/team",
         "reason": "shadowed",
         "volume": "vlo"
       }
@@ -1257,10 +1293,47 @@
     "sudo_enable": null,
     "volume_mounts": [
       {
-        "mountpoint": "/mnt/shared",
+        "mode": "rw",
+        "mountpoint": "/mnt/team",
         "volume": "vhi"
       }
     ]
+  },
+  "vol_legacy_shared_folds": {
+    "api_key_pools": [],
+    "cpu_limit_cores": null,
+    "docker_access": false,
+    "docker_limited": false,
+    "docker_limited_allow_dangerous_flags": false,
+    "docker_limited_cpu_cap_cores": 0,
+    "docker_limited_hub_network_access": false,
+    "docker_limited_max_containers": 0,
+    "docker_limited_max_networks": 0,
+    "docker_limited_max_storage_gb": 0,
+    "docker_limited_max_volumes": 0,
+    "docker_limited_mem_cap_gb": 0,
+    "docker_limited_user_compose_project_allow_override": false,
+    "docker_limited_user_compose_project_enabled": false,
+    "docker_privileged": false,
+    "downloads_allow": null,
+    "env_var_source": {},
+    "env_vars": {},
+    "gpu_access": false,
+    "gpu_all": false,
+    "gpu_device_ids": [],
+    "matched_groups": [
+      "a"
+    ],
+    "mem_limit_gb": null,
+    "mem_swap_disabled": false,
+    "shared_mount": {
+      "allow": true,
+      "mode": "rw"
+    },
+    "skipped_env_vars": [],
+    "skipped_volume_mounts": [],
+    "sudo_enable": null,
+    "volume_mounts": []
   },
   "vol_protected_skipped": {
     "api_key_pools": [],
@@ -1289,6 +1362,7 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [
       {
@@ -1301,10 +1375,83 @@
     "sudo_enable": null,
     "volume_mounts": [
       {
+        "mode": "rw",
         "mountpoint": "/mnt/ok",
         "volume": "ok"
       }
     ]
+  },
+  "vol_shared_allow": {
+    "api_key_pools": [],
+    "cpu_limit_cores": null,
+    "docker_access": false,
+    "docker_limited": false,
+    "docker_limited_allow_dangerous_flags": false,
+    "docker_limited_cpu_cap_cores": 0,
+    "docker_limited_hub_network_access": false,
+    "docker_limited_max_containers": 0,
+    "docker_limited_max_networks": 0,
+    "docker_limited_max_storage_gb": 0,
+    "docker_limited_max_volumes": 0,
+    "docker_limited_mem_cap_gb": 0,
+    "docker_limited_user_compose_project_allow_override": false,
+    "docker_limited_user_compose_project_enabled": false,
+    "docker_privileged": false,
+    "downloads_allow": null,
+    "env_var_source": {},
+    "env_vars": {},
+    "gpu_access": false,
+    "gpu_all": false,
+    "gpu_device_ids": [],
+    "matched_groups": [
+      "a"
+    ],
+    "mem_limit_gb": null,
+    "mem_swap_disabled": false,
+    "shared_mount": {
+      "allow": true,
+      "mode": "rw"
+    },
+    "skipped_env_vars": [],
+    "skipped_volume_mounts": [],
+    "sudo_enable": null,
+    "volume_mounts": []
+  },
+  "vol_shared_read_only": {
+    "api_key_pools": [],
+    "cpu_limit_cores": null,
+    "docker_access": false,
+    "docker_limited": false,
+    "docker_limited_allow_dangerous_flags": false,
+    "docker_limited_cpu_cap_cores": 0,
+    "docker_limited_hub_network_access": false,
+    "docker_limited_max_containers": 0,
+    "docker_limited_max_networks": 0,
+    "docker_limited_max_storage_gb": 0,
+    "docker_limited_max_volumes": 0,
+    "docker_limited_mem_cap_gb": 0,
+    "docker_limited_user_compose_project_allow_override": false,
+    "docker_limited_user_compose_project_enabled": false,
+    "docker_privileged": false,
+    "downloads_allow": null,
+    "env_var_source": {},
+    "env_vars": {},
+    "gpu_access": false,
+    "gpu_all": false,
+    "gpu_device_ids": [],
+    "matched_groups": [
+      "a"
+    ],
+    "mem_limit_gb": null,
+    "mem_swap_disabled": false,
+    "shared_mount": {
+      "allow": true,
+      "mode": "ro"
+    },
+    "skipped_env_vars": [],
+    "skipped_volume_mounts": [],
+    "sudo_enable": null,
+    "volume_mounts": []
   },
   "vol_single": {
     "api_key_pools": [],
@@ -1333,13 +1480,15 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
     "volume_mounts": [
       {
-        "mountpoint": "/mnt/shared",
-        "volume": "shared"
+        "mode": "rw",
+        "mountpoint": "/mnt/team",
+        "volume": "team"
       }
     ]
   },
@@ -1371,15 +1520,18 @@
     ],
     "mem_limit_gb": null,
     "mem_swap_disabled": false,
+    "shared_mount": null,
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
     "volume_mounts": [
       {
+        "mode": "rw",
         "mountpoint": "/mnt/a",
         "volume": "v1"
       },
       {
+        "mode": "rw",
         "mountpoint": "/mnt/b",
         "volume": "v2"
       }

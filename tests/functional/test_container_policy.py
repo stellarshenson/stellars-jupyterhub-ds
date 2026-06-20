@@ -55,17 +55,24 @@ def _stop_server(admin_api, base):
     "functional-test-harness::mem 4G",
     "functional-test-harness::env FOO=bar",
     "functional-test-harness::volume vol->/mnt/x",
+    "duoptimumhub::Access level per volume",
+    "duoptimumhub::Standard resolved by label, not by saved name",
 )
 def test_policies_applied_to_container(admin_api, docker_client, base_url):
     base = base_url
-    # 1. Create the group and configure several policies.
+    # 1. Create the group and configure several policies, incl. a read-write and a
+    #    read-only custom mount and the standard shared mount (read-only).
     _post(admin_api, base, "/hub/api/admin/groups/create", json={"name": GROUP})
     cfg = {
         "sudo_active": True, "sudo_enable": False,
         "env_vars_active": True, "env_vars": [{"name": "FOO", "value": "bar"}],
         "mem_limit_enabled": True, "mem_limit_gb": 2,
         "volume_mounts_active": True,
-        "volume_mounts": [{"volume": "functest-data", "mountpoint": "/mnt/functest"}],
+        "shared_mount_allow": True, "shared_mount_mode": "ro",
+        "volume_mounts": [
+            {"volume": "functest-data", "mountpoint": "/mnt/functest", "mode": "rw"},
+            {"volume": "functest-ro", "mountpoint": "/mnt/functest-ro", "mode": "ro"},
+        ],
     }
     r = admin_api.put(f"{base}/hub/api/admin/groups/{GROUP}/config", json=cfg,
                       headers={"X-XSRFToken": _xsrf(admin_api)}, timeout=30)
@@ -86,8 +93,18 @@ def test_policies_applied_to_container(admin_api, docker_client, base_url):
         assert attrs["HostConfig"]["Memory"] == 2 * 1024 ** 3, "memory cap not applied"
 
         mounts = {m["Destination"]: m for m in attrs.get("Mounts", [])}
+        # read-write custom mount
         assert "/mnt/functest" in mounts, f"group volume not mounted; mounts={list(mounts)}"
         assert mounts["/mnt/functest"]["Name"] == "functest-data"
+        assert mounts["/mnt/functest"]["RW"] is True, "rw custom mount must be writable"
+        # read-only custom mount (access level ro)
+        assert "/mnt/functest-ro" in mounts, f"ro group volume not mounted; mounts={list(mounts)}"
+        assert mounts["/mnt/functest-ro"]["RW"] is False, "ro custom mount must be read-only"
+        # standard shared mount: resolved by label (role=shared), read-only. The name
+        # is the docker-resolved volume, NOT a literal saved in the group config.
+        assert "/mnt/shared" in mounts, f"standard shared mount not applied; mounts={list(mounts)}"
+        assert mounts["/mnt/shared"]["RW"] is False, "shared mount must be read-only here"
+        assert "shared" in mounts["/mnt/shared"]["Name"], "shared mount must resolve the role=shared volume by label"
 
         # compose-project label so teardown reaps the spawned lab
         labels = attrs["Config"].get("Labels", {})
