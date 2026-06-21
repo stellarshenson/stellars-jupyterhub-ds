@@ -16,6 +16,15 @@ def _net_by_suffix(client, suffix):
     return None
 
 
+def _sidecar(client):
+    # #405: the hub names the sidecar compose-style <project>-gpuinfo-nvidia-1, not a
+    # bare "gpuinfo-nvidia". Find it by the stable name fragment, project-prefix-agnostic.
+    for c in client.containers.list(all=True):
+        if "gpuinfo-nvidia" in c.name:
+            return c
+    return None
+
+
 @pytest.mark.gpu
 @pytest.mark.acc_crit("duoptimumhub::Functional: live labels via docker socket")
 def test_gpuinfo_network_carries_role_label(docker_client):
@@ -28,7 +37,8 @@ def test_gpuinfo_network_carries_role_label(docker_client):
 @pytest.mark.acc_crit("duoptimumhub::Functional: live labels via docker socket")
 def test_sidecar_container_carries_role_label(docker_client):
     # the hub stamps the container role label on the sidecar it creates
-    sidecar = docker_client.containers.get("gpuinfo-nvidia")
+    sidecar = _sidecar(docker_client)
+    assert sidecar is not None, "hub-created gpuinfo sidecar not found"
     assert (sidecar.labels or {}).get("hub.container.role") == "gpuinfo"
 
 

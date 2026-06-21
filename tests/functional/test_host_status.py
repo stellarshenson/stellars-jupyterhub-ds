@@ -17,6 +17,7 @@ stopped and the GPU row must vanish.
 import time
 
 import pytest
+import requests
 from playwright.sync_api import expect
 
 
@@ -48,8 +49,16 @@ def _gpu_enabled(page):
 
 
 def _gpu_connected(admin_api, base):
-    """Live sidecar reachability AND inventory (the a-AND-b 'GPU available' state)."""
-    return bool(admin_api.get(f"{base}/hub/api/activity", timeout=30).json().get("gpu_connected"))
+    """Live sidecar reachability AND inventory (the a-AND-b 'GPU available' state).
+
+    Tolerant of a transient connection reset: while the sidecar is being stopped the
+    hub can briefly drop a keep-alive connection mid-request. An unreachable activity
+    API is, from the client's view, 'not connected' - so treat a transient request
+    error as False rather than letting it fail the down-poll."""
+    try:
+        return bool(admin_api.get(f"{base}/hub/api/activity", timeout=30).json().get("gpu_connected"))
+    except requests.exceptions.RequestException:
+        return False
 
 
 def _host_card(page):

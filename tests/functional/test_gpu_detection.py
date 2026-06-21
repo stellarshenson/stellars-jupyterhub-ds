@@ -1,7 +1,7 @@
 """GPU auto-detection: assert JupyterHub correctly detects and configures GPU
 support when a GPU is present.
 
-Reads the hub's startup `[GPU debug] enabled=N detected=N ... gpus=[...]` line
+Reads the hub's startup `[GPU] enabled=N detected=N ... gpus=[...]` line
 (no spawn needed). Skips when no GPU is detected, so it is a no-op on a CPU-only
 host. To exercise auto-detection, run on a GPU host with:
 
@@ -27,7 +27,7 @@ HUB_CONTAINER = f"stellars-functest-{urlparse(os.environ.get('BASE_URL', 'http:/
 @pytest.mark.acc_crit("functional-test-harness::Auto-detect enables on GPU host")
 def test_gpu_autodetection(docker_client):
     logs = docker_client.containers.get(HUB_CONTAINER).logs().decode("utf-8", "replace")
-    m = re.search(r"\[GPU debug\] enabled=(\d) detected=(\d).*?gpus=(\[.*?\])", logs, re.S)
+    m = re.search(r"\[GPU\] enabled=(\d) detected=(\d).*?gpus=(\[.*?\])", logs, re.S)
     assert m, "hub did not log the GPU detection line"
     enabled, detected, gpus = int(m.group(1)), int(m.group(2)), m.group(3)
 

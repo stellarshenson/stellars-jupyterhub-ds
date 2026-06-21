@@ -2,11 +2,15 @@
 responding and clears it on recovery.
 
 Stops the real hub container over the docker socket, asserts the portal's offline
-indicator in both forms (desktop pulsating diode + popup, mobile top panel), then
+indicator in both forms (desktop header connection-status pill, mobile top panel), then
 restarts the hub and asserts the indicator clears. A stop/start (not down/up)
 preserves /data (cookie secret + db) inside the container, so the session admin
 cookies stay valid; the hub is always restored in `finally` so later tests run
 against a healthy stack.
+
+The redesign (#399/#414) replaced the old corner diode + full-screen modal with a
+calm header pill on desktop (`.doh-conn-pill.ok` -> `.doh-conn-pill.down`) and a pale
+in-flow panel on mobile (`.doh-hub-warn-panel`); there is no dialog any more.
 
 Detection is intentionally debounced (the hook needs a couple of failed 15s polls),
 so the waits are generous.
@@ -50,8 +54,9 @@ def test_hub_unreachable_indicator(admin_portal, docker_client, base_url):
     page.set_viewport_size(DESKTOP)
     admin_portal.goto("/home")
 
-    # healthy: no indicator in any form
-    expect(page.locator(".doh-hub-diode")).to_have_count(0)
+    # healthy: no DOWN indicator in any form (the desktop pill shows the calm "ok"
+    # state; only the down forms must be absent)
+    expect(page.locator(".doh-conn-pill.down")).to_have_count(0)
     expect(page.locator(".doh-hub-warn-panel")).to_have_count(0)
 
     hub = docker_client.containers.get(HUB_CONTAINER)
@@ -59,20 +64,24 @@ def test_hub_unreachable_indicator(admin_portal, docker_client, base_url):
         hub.stop(timeout=10)
         _wait_health(base_url, up=False)
 
-        # desktop: persistent pulsating diode + the popup dialog
-        expect(page.locator(".doh-hub-diode")).to_be_visible(timeout=DETECT_TIMEOUT)
-        expect(page.get_by_role("dialog")).to_be_visible()
-        expect(page.get_by_role("dialog")).to_contain_text("not responding")
+        # desktop: the header pill flips to the down state (no modal/dialog any more)
+        down_pill = page.locator(".doh-conn-pill.down")
+        expect(down_pill).to_be_visible(timeout=DETECT_TIMEOUT)
+        expect(down_pill).to_contain_text("Not responding")
+        expect(page.get_by_role("dialog")).to_have_count(0)
 
-        # mobile: top panel instead, no diode/popup (same outage, just resize)
+        # mobile: in-flow panel instead, pill hidden below the breakpoint (same outage,
+        # just resize)
         page.set_viewport_size(MOBILE)
-        expect(page.locator(".doh-hub-warn-panel")).to_be_visible(timeout=DETECT_TIMEOUT)
-        expect(page.locator(".doh-hub-diode")).to_have_count(0)
+        panel = page.locator(".doh-hub-warn-panel")
+        expect(panel).to_be_visible(timeout=DETECT_TIMEOUT)
+        expect(panel).to_contain_text("Hub not responding")
+        expect(page.locator(".doh-conn-pill")).to_have_count(0)
         page.set_viewport_size(DESKTOP)
     finally:
         hub.start()
         _wait_health(base_url, up=True)
 
-    # recovery: indicator clears on the next successful poll
-    expect(page.locator(".doh-hub-diode")).to_have_count(0, timeout=CLEAR_TIMEOUT)
+    # recovery: the down indicator clears on the next successful poll
+    expect(page.locator(".doh-conn-pill.down")).to_have_count(0, timeout=CLEAR_TIMEOUT)
     expect(page.locator(".doh-hub-warn-panel")).to_have_count(0, timeout=CLEAR_TIMEOUT)
