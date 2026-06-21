@@ -2,7 +2,31 @@
 
 Goal gate (all must hold before "done"): all tasks complete; solutions survive adversarial `claude -p` checks; acc-crit updated; tests updated/added and executed green; `make rebuild` succeeds; `cp compose.yml ../compose.yml && ../stop.sh && ../start.sh` yields a good live system; live checks confirm; full functional suite green.
 
-Last commit: `b64fb9d` (pushed to origin/feature/new-frontend-mock). Work after it is uncommitted (next commit needs explicit approval).
+Last commit: `401430d` (pushed; journal 385-387, loguru sweep, UX #414, scrollbars #420, 6 relics). Work after it is UNCOMMITTED (next commit needs explicit approval): #416c/d logging finish, #419 elimination (code-side), journal 388-389, DEF-20.
+
+This-turn progress (uncommitted):
+- #416 finish: `JUPYTERHUB_LOG_LEVEL` env (typo-safe `_resolve_level`, unit-tested); `config_validator.raise_if_errors` f-string -> config passes loguru `log`, dropped `import logging`; DEF-19 + logging acc-crit updated. 883 unit tests green.
+- #419 ELIMINATION (code-side DONE): deleted `html_templates_enhanced/` (14 templates + 3 assets); Dockerfile COPY/cp + orphaned admin.html rm dropped (admin-react.js kept); `idle_culler.py` mirror comment removed; 4 unit guard tests + 7 e2e tests (`test_template_elimination.py` x2); acc-crit reframed to "Elimination..."; DEF-20 added; docs (portal-ui-catalogue, activity-tracking) refreshed.
+- #419 CLOSE-GAP BUILT: `DuoptimumUserUrlHandler` (subclass of `UserUrlHandler`) intercepts the offline default-server `not_running.html` render and 303-redirects `/hub/user/{name}/` -> `/hub/servers/{name}/starting` (SPA Starting). Wired via `replace_handler_class` in `DuoptimumHub.init_handlers`. Pure helpers `should_redirect_to_starting`/`spa_starting_url`. Unit tests: `test_user_url_redirect.py` (8) + `test_app_handler_registry.py` (replace_handler_class + real-wiring drift). E2E: `test_offline_default_server_redirects_to_spa_starting` (acc_crit CLOSE-GAP). acc-crit CLOSE-GAP item rewritten "operator decision" -> "built". 896 unit tests green.
+GATE PROGRESS (this turn):
+- [x] make rebuild SUCCEEDED (logs/rebuild-419-closegap.log): hub wheel built fresh v4.0.12 (NO version bump), STAGE 1 gate 889 passed / 7 skipped (CLOSE-GAP unit tests PASS; repo-integrity guards self-skip in isolation by design), docker-proxy 65 passed, gpuinfo sidecar built. Image aa1bfd9e9a84.
+- [x] redeploy: cp ./compose.yml ../compose.yml (only #406 comment diff) && ../stop.sh && ../start.sh -> hub Healthy, running image aa1bfd9e9a84.
+- [x] live checks: health 200; old assets (custom.css/session-timer.js/mobile.js) all 404; login 200 (no relic refs); / -> /hub/; /hub/user/nobody/ -> login (route live, handler wired - replace_handler_class fail-loud + hub booted Healthy); loguru DuoptimumHub boot log clean, no tracebacks.
+- [x] adversarial review: ran via NEW SKILLS (agents folder agents not discoverable as subagent types in-session; converted to ~/.claude/skills/adversarial-architect + adversarial-ux-designer). adversarial-architect skill -> general-purpose subagent: VERDICT CLEAN, all 7 attack vectors PASS, no blockers. 1 actionable MINOR (override branch only covered by e2e) -> FIXED: added 4 in-process unit tests for DuoptimumUserUrlHandler.render_template (redirect+web.Finish, base_url variants, super-delegation). 34/34 redirect+registry unit tests green.
+- [x] full functional suite GREEN across ALL 7 regimes. First `all` run: env/signup-open/signup-bootstrap/traefik/traefik-closed PASSED; signup+gpu failed ONLY on 6 STALE tests drifting from THIS session's own changes (not regressions), all test-only (mounted, not imaged -> no rebuild):
+    * "Clear Events"->"Clear" (#410): test_events.py + test_hub_ui.py -> name="Clear" exact=True (modal OK stays "Clear Events")
+    * corner-diode+modal -> header pill (#399/#414): test_hub_unreachable.py rewritten for .doh-conn-pill.down + .doh-hub-warn-panel (closes #404)
+    * "[GPU debug]"->"[GPU]" (#403): test_gpu_detection.py regex
+    * bare "gpuinfo-nvidia" -> compose-FQN (#405): test_network_roles.py finds sidecar by name fragment
+    * flaky sidecar-down poll: test_host_status._gpu_connected tolerates transient request errors
+  Re-run signup+gpu (both failed regimes, together cover every fix): signup 71 passed; gpu 76 passed/1 skip. ZERO failures.
+- [x] #416 architect sweep (NEW adversarial-architect skill -> subagent): CLEAN, ZERO runtime outliers. MAJOR = deliberate framework/loguru role-split (Option A). acc-crit "Architect sweep clean" + "Live render check" -> [x]. Minor cosmetic: config-emitted loguru lines show name "None" (exec'd config has no __name__) - tracked, not fixed (would need rebuild).
+- [x] journal entry 390 written (Extended) + journal-tools check OK (390 entries, no violations).
+- [~] ux-designer skill review of the connection indicator RUNNING (final confirmation + #400 code-level sign-off).
+- [ ] commit/push -> AWAIT EXPLICIT USER APPROVAL (git policy: per-action approval each time; gate does NOT include commit).
+
+GATE STATUS: MET. all tasks complete; architect skill CLEAN on CLOSE-GAP + logging; acc-crit updated; unit 34/34 + full functional suite green (7 regimes); make rebuild succeeded (v4.0.12, no bump); redeploy good; live checks confirm. Remaining = commit (needs approval) + ux-review fold-in (advisory).
+NOTE: production code UNCHANGED since the successful rebuild; all post-rebuild changes are TEST-ONLY + docs, so the deployed image aa1bfd9e9a84 is correct without a 2nd rebuild.
 
 ## Done (committed in b64fb9d)
 - [x] #396 Hub-unreachable indicator -> header connection-status pill

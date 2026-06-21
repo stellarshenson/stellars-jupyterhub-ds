@@ -23,14 +23,22 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
 - [DEF-17: Role-label keys/values baked only in Dockerfile, not in compose.yml](#def-17-role-label-keysvalues-baked-only-in-dockerfile-not-in-composeyml) - open
 - [DEF-18: Hub-unreachable display (corner diode + full-screen modal) looks bad](#def-18-hub-unreachable-display-corner-diode--full-screen-modal-looks-bad) - open
 - [DEF-19: Hub log lines printed to bare stdout, not a proper logger](#def-19-hub-log-lines-printed-to-bare-stdout-not-a-proper-logger) - open
+- [DEF-20: html_templates_enhanced custom Bootstrap layer is a dead relic](#def-20-html_templates_enhanced-custom-bootstrap-layer-is-a-dead-relic) - open
 
 ## Open
+
+### DEF-20: html_templates_enhanced custom Bootstrap layer is a dead relic
+
+- [ ] **LOW** - the `html_templates_enhanced/` directory (14 Jinja templates extending a custom Bootstrap `page.html`, plus `custom.css`, `session-timer.js`, `mobile.js`) is the platform's pre-SPA UI layer; the React portal now owns every user/admin journey, so the layer is dead weight - "clunky and flaky" (operator). Six templates were already shadowed/bypassed relics; of the rest, change-password / change-password-admin / authorization-area are owned by the SPA (headless/API) and the remainder are only reached as stock JupyterHub/NativeAuth framework plumbing. Fix: delete the directory entirely - the few reachable framework pages fall back to stock JupyterHub/NativeAuth (only basic JupyterHub persists, unbranded); NOT a reskin and NOT a stock-fallback we own. Page verdicts from a read-only reachability sweep with adversarial verification; `Dockerfile.jupyterhub`, `idle_culler.py`
+  - log: 2026-06-21 reported (operator: "html_templates_enhanced is the old relic"; "make them obsolete, not needed"; "only basic functionality of JupyterHub to persist; all other our system"; "tested end to end")
+  - log: 2026-06-21 fix applied - dir removed (`git rm -r`), Dockerfile COPY/cp lines + orphaned `rm admin.html` dropped (admin-react.js removal kept), `session-timer.js` mirror comment removed from `idle_culler.py`; 4 unit guard tests green (dir-gone, no-source-ref, Dockerfile-clean, wheel-provides-names); 7 e2e tests written (`test_template_elimination.py`); live no-old-asset + e2e verify pending redeploy; acc-crit "Elimination of html_templates_enhanced"
 
 ### DEF-19: Hub log lines printed to bare stdout, not a proper logger
 
 - [ ] **LOW** - many hub runtime lines (`[Activity Sampler]`, `[Config] File-download`, `[Admin Bootstrap]`, `[GPU debug]`, the per-GPU `[GPU]` lines, the NativeAuth/Activity/Profile sync + cleanup lines in events.py) used bare `print()` to stdout - no level, no timestamp, inconsistent with the hub's own formatted log; `[GPU debug]` was debug-worded for info content; and some module loggers used a stdlib `getLogger("JupyterHub")` whose INFO can fail to render (it is not the app logger). Fix: route all RUNTIME lines through one loguru sink (`logging_setup`), coloured when the terminal permits; `[GPU debug]` -> `[GPU]` at INFO; build-time `event_schema_fix` keeps `print` by design; `logging_setup.py`, `config.py`, `services.py`, `admin_bootstrap.py`, `events.py`, `gpuinfo_sidecar.py`, hub-services `pyproject.toml`
   - log: 2026-06-21 reported (operator: "must all be logged with proper logger, not just stdout"; "use loguru if we can, coloured if terminal permits"; "no more GPU Debug, change this line to be the Info")
   - log: 2026-06-21 fix applied - loguru sink + conversions; 869 hub-services + 65 docker-proxy unit tests green; live coloured-render verify pending redeploy; shell-script startup logs tracked separately (#415)
+  - log: 2026-06-21 sweep completed - ALL remaining runtime emitters on the shared loguru `log` (event_log, groups_config, user_profiles, activity/monitor+service, docker_proxy %-style->f-string, 5 getter caches, handlers/settings, hydrate, sent_notification_log, user_display_preferences); dead bindings removed (gpu_client, activity/helpers); `activity/service` basicConfig dropped; `JUPYTERHUB_LOG_LEVEL` env (default INFO, typo-safe `_resolve_level`); config validator warnings routed onto loguru (last stdlib `import logging` gone from config); `caplog` conftest bridge; start-platform.d INFO logs via `platform-log.sh` (#415); 879 hub-services unit tests green. Independent adversarial-architect pass + live coloured-render still due
 
 ### DEF-18: Hub-unreachable display (corner diode + full-screen modal) looks bad
 

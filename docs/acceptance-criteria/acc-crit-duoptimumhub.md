@@ -4667,48 +4667,56 @@ All platform-emitted hub RUNTIME log lines go through one loguru sink (`duoptimu
   - log: 2026-06-21 added to dependencies
 - [x] **Runtime sites converted** - `config.py` (GPU + Config lines), `services.py` (Activity Sampler), `admin_bootstrap.py`, `events.py` (info vs warning by content) and `gpuinfo_sidecar.py` route through `log`
   - log: 2026-06-21 converted (DEF-19)
+- [x] **All emitters converted (full sweep)** - every remaining runtime emitter on the shared `log`: `event_log`, `groups_config`, `user_profiles`, `activity/monitor`, `activity/service`, `docker_proxy` (four `%`-style -> f-string), `user_display_preferences`, `sent_notification_log`, `hydrate`, `handlers/settings`, and the five getter caches (`gpu_cache`, `volume_cache`, `container_size_cache`, `container_stats_cache`, `persisted_cache`)
+  - log: 2026-06-21 full sweep completed
+- [x] **No stdlib logger / basicConfig at runtime** - no runtime module keeps `getLogger(...)`, `logging.basicConfig`, or a bare `print()`; dead `log` bindings removed (`gpu_client`, `activity/helpers`); `activity/service` dropped its `basicConfig`
+  - log: 2026-06-21 dead bindings + basicConfig removed
 - [x] **[GPU debug] -> [GPU] at INFO** - the GPU detection summary logs at INFO as `[GPU]`, not a `[GPU debug]` print
   - log: 2026-06-21 operator: "no more GPU Debug... ok for info level"
+- [x] **Configurable level** - `JUPYTERHUB_LOG_LEVEL` sets the sink level (default INFO; unknown/blank/None -> INFO so a typo never blocks boot); `_resolve_level` unit-tested
+  - log: 2026-06-21 added (#416c); the Hub's own `log_level` does not reach this independent sink, so this env is the control
+- [x] **Validator warnings on loguru** - `config_validator.raise_if_errors` pre-formats each warning (f-string, no args) so it is logger-agnostic; `config` passes the shared loguru `log` and no longer imports stdlib `logging`
+  - log: 2026-06-21 swapped (#416d); validator tests pass unchanged (no warning string contains `%`)
+- [x] **Test capture bridge** - a `caplog` conftest fixture forwards loguru records into pytest so record-asserting tests still pass
+  - log: 2026-06-21 added (loguru -> caplog sink)
 - [x] **Build-time print kept** - `event_schema_fix.py` (image-build, stdlib-only) intentionally keeps `print()`
   - log: 2026-06-21 documented exception
-- [ ] **Shell startup logs INFO-formatted** - the pre-hub `start-platform.d/*` scripts emit INFO-formatted lines, not bare stdout
-  - log: 2026-06-21 criterion added (in progress, #415)
-- [ ] **Architect sweep clean** - the logging convention is unified (adversarial-architect `claude -p` sweep finds no runtime outlier)
-  - log: 2026-06-21 criterion added (sweep running)
-- [ ] **Live render check** - after redeploy the converted lines appear coloured/levelled in `docker logs`, not bare
-  - log: 2026-06-21 criterion added (pending redeploy)
+- [x] **Shell startup logs INFO-formatted** - the pre-hub `start-platform.d/*` scripts emit INFO-formatted lines via `platform-log.sh`, not bare stdout
+  - log: 2026-06-21 implemented (#415, `platform-log.sh`)
+- [x] **Unit tests green** - 879 hub-services unit tests pass after the sweep (was 874; +5 `_resolve_level` tests)
+  - log: 2026-06-21 `pytest -q` exit 0
+- [x] **Architect sweep clean** - the logging convention is unified (independent adversarial-architect sweep finds no runtime outlier)
+  - log: 2026-06-21 adversarial-architect skill -> independent subagent sweep: ZERO runtime outliers - 20 modules + config all on shared loguru `log`, no `getLogger`/`basicConfig`/bare `print` (only the documented build-time `event_schema_fix` print). Verdict "CLEAN by stated scope". The MAJOR it raised is the DELIBERATE role-split: Tornado handlers + `TimingDockerSpawner` keep the inherited JupyterHub framework logger (`self.log`/`app.log`/`spawner.log`), NOT loguru - Option A (no InterceptHandler, avoids double-logging core; small blast radius). Boundary documented in `logging_setup` docstring; `JUPYTERHUB_LOG_LEVEL` governs loguru lines, `c.JupyterHub.log_level` governs framework lines
+- [x] **Live render check** - after redeploy the converted lines appear coloured/levelled in `docker logs`, not bare
+  - log: 2026-06-21 verified live (image aa1bfd9e9a84): module-emitted lines render `time LEVEL name - message` (e.g. `INFO duoptimum_hub_services.volume_cache - ...`), levelled + colour-on-TTY. Minor cosmetic: config-file-emitted lines show name `None` (JupyterHub execs `jupyterhub_config.py` with no module `__name__`, so loguru `{name}` is None) - mechanism/level/colour unaffected; tracked, not fixed (would need a config change + rebuild)
 
-## Full takeover of html_templates_enhanced (portal owns every page)
+## Elimination of html_templates_enhanced (only basic JupyterHub persists)
 
-The modern portal/wheel stack renders 100% of user- and admin-facing pages; `html_templates_enhanced` (all templates + `custom.css` + `session-timer.js` + `mobile.js`) is removed entirely. Server-side handler contracts (xsrf, spawn-progress SSE, oauth consent, password change, authorization, share-accept) are preserved.
+The custom Bootstrap layer `html_templates_enhanced/` is removed in full - NOT reskinned, NOT replaced by a "modern base". Principle: everything a user or admin touches is the React SPA portal; the few pages JupyterHub renders as irreducible framework plumbing persist as PLAIN stock JupyterHub/NativeAuthenticator (template_paths fallback), unbranded and unowned by us. Page verdicts grounded by a read-only multi-agent reachability sweep with adversarial verification (28 reachability claims refuted = those pages are reached as stock plumbing, which is the intended outcome, not a regression).
 
-- [x] **6 relics gone (DEF-20)** - admin/home/token/login/native-login/signup removed (were shadowed by the wheel template_dir or bypassed by the auth template map)
+- [x] **6 relics gone (DEF-20)** - admin/home/token/login/native-login/signup removed (shadowed by the wheel template_dir / bypassed by the auth remap)
   - log: 2026-06-21 removed (v4.0.12)
-- [ ] **Directory removed** - `services/jupyterhub/html_templates_enhanced/` deleted entirely (templates + `static/`)
-  - log: 2026-06-21 criterion added (#419)
-- [ ] **No source reference** - no `.py`/`.yml`/`.sh`/Dockerfile/template references `html_templates_enhanced`, `custom.css`, `session-timer.js` or `mobile.js`
-  - log: 2026-06-21 added
-- [ ] **Dockerfile clean** - the `*.html` COPY, the 3 static `cp` lines and the `admin.html` `rm` removed; image builds
-  - log: 2026-06-21 added
-- [ ] **Modern base** - a wheel base template provides the chrome with self-contained styling aligned to the portal design language; no bootstrap/`custom.css`/old-JS dependency
-  - log: 2026-06-21 added
-- [ ] **Pages taken over** - error, 404, spawn, spawn_pending, stop_pending, not_running, oauth, logout, my_message, accept-share, change-password, change-password-admin, authorization-area each render branded from the modern stack
-  - log: 2026-06-21 added
-- [ ] **Spawn progress preserved** - spawn_pending shows live progress (hub progress SSE) + lab-ready poll fallback; no `session-timer.js`
-  - log: 2026-06-21 added
-- [ ] **OAuth consent preserved** - consent form authorizes scopes unchanged (xsrf intact)
-  - log: 2026-06-21 added
-- [ ] **Password change preserved** - user + admin change-password POST unchanged (xsrf, show/hide toggle)
-  - log: 2026-06-21 added
-- [ ] **Authorization area** - pending-user authorize/unauthorize/discard works, or redirects to the SPA Users page
-  - log: 2026-06-21 added
-- [ ] **Idle countdown** - `idle_culler.py` stays the source of truth; the `session-timer.js` mirror is removed; idle UI reimplemented modern or intentionally dropped on server pages
-  - log: 2026-06-21 added
-- [ ] **No old-asset 404** - after redeploy no page requests `css/custom.css`, `js/session-timer.js` or `js/mobile.js`
-  - log: 2026-06-21 added
-- [ ] **Unit tests** - wheel provides every required template name; a test asserts no source ref to the dir/assets remains
-  - log: 2026-06-21 added
-- [ ] **Functional (e2e)** - each page renders branded from the modern stack under the live stack; no old-asset 404
-  - log: 2026-06-21 added
-- [ ] **Docs refreshed** - `portal-ui-catalogue.md` + `activity-tracking-methodology.md` stale refs updated
-  - log: 2026-06-21 added
+- [x] **Directory removed** - `services/jupyterhub/html_templates_enhanced/` deleted entirely (14 `*.html` incl. `page.html` + `static/{custom.css,session-timer.js,mobile.js}`)
+  - log: 2026-06-21 `git rm -r` (#419)
+- [x] **No source reference** - no `.py`/`.yml`/`.sh`/Dockerfile/`*.ts`/`*.tsx`/`*.html` build input references `html_templates_enhanced`, `custom.css`, `session-timer.js` or `mobile.js`; `idle_culler.py` "Mirrored verbatim in session-timer.js" line removed; guard test enforces
+  - log: 2026-06-21 idle_culler comment dropped; guard test green
+- [x] **Dockerfile clean** - the `*.html` COPY + 3 static COPYs + 3 static `cp`s + orphaned `rm admin.html` removed; admin-react.js removal block kept
+  - log: 2026-06-21 trimmed; guard test green
+- [ ] **DELETE - vestigial (SPA owns journey)** - change-password, change-password-admin, authorization-area: the SPA owns these via headless/API (Profile.tsx, UserConfig, Users.tsx + `/api/native-users`); deleting the custom template changes nothing in the normal journey, a direct-URL falls back to stock NativeAuth
+  - log: 2026-06-21 classified + verified; e2e proof at gate (`test_template_elimination.py`)
+- [ ] **DELETE - unreachable** - 404 (PORTAL_ROUTE catch-all wins), oauth (no OAuthenticator configured), accept-share (no allow_sharing), logout (auto_login=False -> redirect, never rendered)
+  - log: 2026-06-21 classified + verified; e2e proof at gate
+- [ ] **KEEP as plain JupyterHub** - error, my_message, spawn, spawn_pending, stop_pending, not_running fall back to stock JupyterHub/NativeAuth; reachable as irreducible framework plumbing, unbranded, not owned by us
+  - log: 2026-06-21 classified + verified; e2e proof at gate
+- [ ] **CLOSE-GAP cold-start redirect** - the portal owns cold start too: `DuoptimumUserUrlHandler` (subclass of `UserUrlHandler`, rebound via `replace_handler_class` in `DuoptimumHub.init_handlers`) intercepts the offline default-server `not_running.html` render and 303-redirects `/hub/user/{name}/` -> `/hub/servers/{name}/starting` (the SPA Starting page), so an offline server never lands on stock not_running. Default server only (no named-server SPA Starting variant); named-server offline keeps stock not_running. JSON/`api` requests keep JupyterHub's 503 branch (redirect only on `Accept: text/html`)
+  - log: 2026-06-21 built (subclass + pure helpers `should_redirect_to_starting`/`spa_starting_url`/`replace_handler_class`); unit tests green (`test_user_url_redirect.py`, `test_app_handler_registry.py`); e2e at gate (`test_offline_default_server_redirects_to_spa_starting`)
+- [x] **Idle countdown** - `session-timer.js` dropped; SPA `TtlGadget`/`ServerLifecycle` own idle/extend UX (shared SSOT `idle_culler.calc_progress_pct_extended`); stock framework pages show no countdown
+  - log: 2026-06-21 mirror removed
+- [ ] **No old-asset 404** - after redeploy no page requests `css/custom.css`, `js/session-timer.js` or `js/mobile.js`, and a direct request to each 404s
+  - log: 2026-06-21 e2e written, pending redeploy
+- [x] **Unit tests** - guard test (no source ref to dir/assets) + dir-gone + Dockerfile-clean + wheel provides every portal-required template name
+  - log: 2026-06-21 4 tests green (`test_template_elimination.py`)
+- [ ] **Functional (e2e)** - against the live stack: every DELETE journey served by the SPA (user never lands on the old template); no old-asset request/404; KEEP pages still function (server start/stop via existing spawn e2e, logout redirect)
+  - log: 2026-06-21 7 tests written, run at gate (#407)
+- [x] **Docs refreshed** - `portal-ui-catalogue.md` + `activity-tracking-methodology.md` stale `html_templates_enhanced` refs updated
+  - log: 2026-06-21 catalogue marked historical + source-of-truth fixed; activity-tracking table row points at the SPA
