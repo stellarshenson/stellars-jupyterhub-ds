@@ -25,8 +25,11 @@ in the same slot regardless of what trails the anchors.)
 
 from jupyterhub.apihandlers.base import API404  # trailing /api/(.*) 404 catch-all (anchor)
 from jupyterhub.app import JupyterHub
+from jupyterhub.handlers.base import UserUrlHandler  # offline /user/... -> portal Starting
 from jupyterhub.handlers.static import LogoHandler  # trailing /logo catch-all (anchor)
 from traitlets import List
+
+from .handlers.user_url import DuoptimumUserUrlHandler
 
 
 def splice_before_catch_alls(handlers, custom, hub_prefix, add_url_prefix):
@@ -58,6 +61,31 @@ def splice_before_catch_alls(handlers, custom, hub_prefix, add_url_prefix):
     )
 
 
+def replace_handler_class(handlers, old_cls, new_cls):
+    """Return a new handler list with every tuple whose handler class is ``old_cls``
+    rebound to ``new_cls`` (route pattern + kwargs unchanged).
+
+    Pure - no app state - so it is unit-testable without booting a hub. Located by
+    class identity, never a pattern string. Raises if ``old_cls`` is absent: fail loud
+    rather than silently ship the stock handler when JupyterHub internals move.
+    """
+    out = []
+    replaced = 0
+    for tup in handlers:
+        if tup[1] is old_cls:
+            out.append((tup[0], new_cls, *tup[2:]))
+            replaced += 1
+        else:
+            out.append(tup)
+    if not replaced:
+        raise RuntimeError(
+            f"DuoptimumHub.init_handlers: {old_cls.__name__} not in JupyterHub's handler "
+            "list - cannot install the portal cold-start redirect. JupyterHub internals "
+            "changed; update duoptimum_hub_services.app.replace_handler_class wiring."
+        )
+    return out
+
+
 class DuoptimumHub(JupyterHub):
     """Platform application: JupyterHub plus the platform's owned extensions."""
 
@@ -79,6 +107,11 @@ class DuoptimumHub(JupyterHub):
             self.registered_handlers,
             self.hub_prefix,
             self.add_url_prefix,
+        )
+        # the portal owns cold-start: an offline default server routes into the SPA
+        # Starting page instead of JupyterHub's stock not-running page
+        self.handlers = replace_handler_class(
+            self.handlers, UserUrlHandler, DuoptimumUserUrlHandler
         )
 
 

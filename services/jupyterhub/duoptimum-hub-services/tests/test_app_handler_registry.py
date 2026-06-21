@@ -12,9 +12,15 @@ import pytest
 from jupyterhub.apihandlers.base import API404
 from jupyterhub.app import JupyterHub
 from jupyterhub.auth import Authenticator
+from jupyterhub.handlers.base import UserUrlHandler
 from jupyterhub.handlers.static import LogoHandler
 
-from duoptimum_hub_services.app import DuoptimumHub, splice_before_catch_alls
+from duoptimum_hub_services.app import (
+    DuoptimumHub,
+    replace_handler_class,
+    splice_before_catch_alls,
+)
+from duoptimum_hub_services.handlers.user_url import DuoptimumUserUrlHandler
 
 
 class _StubAuth(Authenticator):
@@ -47,6 +53,8 @@ def _stock_handlers():
         [
             (r"/login", _Dummy),
             (r"/home", _Dummy),
+            # the /user route the CLOSE-GAP wiring rebinds to the portal subclass
+            (r"/user/(?P<user_name>[^/]+)(?P<user_path>/.*)?", UserUrlHandler),
             (r"/api/users", _Dummy),       # a built-in /api route precedes API404
             (r"/logo", LogoHandler, {"path": "/x.png"}),
             (r"/api/(.*)", API404),
@@ -142,6 +150,62 @@ def test_custom_trait_list_not_mutated():
     assert [tuple(t) for t in custom] == snapshot  # no /hub prefix bled into the trait
 
 
+# ── pure class-replace (CLOSE-GAP cold-start redirect) ───────────────────────
+
+class _OldUserUrl:
+    """Stand-in for the stock handler class to be replaced."""
+
+
+class _NewUserUrl:
+    """Stand-in for the Duoptimum override class."""
+
+
+def _user_url_handlers():
+    return add_prefix(
+        PREFIX,
+        [
+            (r"/login", _Dummy),
+            (r"/user/(?P<user_name>[^/]+)(?P<user_path>/.*)?", _OldUserUrl),
+            (r"/logo", LogoHandler, {"path": "/x.png"}),
+        ],
+    )
+
+
+def test_replace_rebinds_matching_class():
+    out = replace_handler_class(_user_url_handlers(), _OldUserUrl, _NewUserUrl)
+    classes = [t[1] for t in out]
+    assert _NewUserUrl in classes
+    assert _OldUserUrl not in classes
+
+
+def test_replace_keeps_route_and_kwargs():
+    handlers = add_prefix(PREFIX, [(r"/user/(.*)", _OldUserUrl, {"k": 1})])
+    out = replace_handler_class(handlers, _OldUserUrl, _NewUserUrl)
+    assert out[0][0] == "/hub/user/(.*)"
+    assert out[0][1] is _NewUserUrl
+    assert out[0][2] == {"k": 1}
+
+
+def test_replace_leaves_other_handlers_untouched():
+    out = replace_handler_class(_user_url_handlers(), _OldUserUrl, _NewUserUrl)
+    pats = _patterns(out)
+    assert "/hub/login" in pats
+    assert "/hub/logo" in pats
+
+
+def test_replace_fail_loud_when_class_absent():
+    handlers = add_prefix(PREFIX, [(r"/login", _Dummy), (r"/home", _Dummy)])
+    with pytest.raises(RuntimeError, match=_OldUserUrl.__name__):
+        replace_handler_class(handlers, _OldUserUrl, _NewUserUrl)
+
+
+def test_replace_input_not_mutated():
+    handlers = _user_url_handlers()
+    before = [tuple(t) for t in handlers]
+    replace_handler_class(handlers, _OldUserUrl, _NewUserUrl)
+    assert [tuple(t) for t in handlers] == before
+
+
 # ── subclass wiring ────────────────────────────────────────────────────────
 
 def test_registered_handlers_is_config_trait():
@@ -214,3 +278,16 @@ def test_real_init_handlers_idempotent():
     second = _patterns(hub.handlers)
     assert first == second
     assert second.count("/hub/api/zzz") == 1
+
+
+def test_real_user_url_handler_replaced():
+    """End-to-end: stock init_handlers registers UserUrlHandler exactly once, and
+    DuoptimumHub rebinds it to the portal cold-start subclass (the /user route keeps
+    its pattern). Catches upstream drift in the UserUrlHandler registration."""
+    hub = _real_hub()
+    hub.init_handlers()
+    classes = [t[1] for t in hub.handlers]
+    assert UserUrlHandler not in classes
+    assert classes.count(DuoptimumUserUrlHandler) == 1
+    # DuoptimumUserUrlHandler is a subclass, so the route still resolves the same way
+    assert issubclass(DuoptimumUserUrlHandler, UserUrlHandler)
