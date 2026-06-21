@@ -211,7 +211,7 @@ JUPYTERHUB_ACTIVITYMON_VOLUMES_UPDATE_INTERVAL=3600    # seconds
 | File | Purpose |
 |------|---------|
 | `services/jupyterhub/conf/bin/custom_handlers.py` | API handlers, sampling logic, score calculation |
-| `services/jupyterhub/html_templates_enhanced/activity.html` | Admin UI template |
+| `services/jupyterhub/duoptimum-hub-web/src/` (SPA Activity page) | Admin UI |
 | `config/jupyterhub_config.py` | Handler registration, template vars |
 | `services/jupyterhub/conf/settings_dictionary.yml` | Settings page definitions |
 

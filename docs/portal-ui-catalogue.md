@@ -2,7 +2,10 @@
 
 Complete functional inventory of every hub-side screen, action, capability, modal, message, navigation path and dynamic behaviour. Purpose: a single source of truth for a future complete portal rebuild. Scope is the hub portal only (no JupyterLab UI). Fidelity is functional - routes, actions, endpoints, states, conditionals - not CSS, DOM structure or class names.
 
-Source of truth: `services/jupyterhub/html_templates_enhanced/*.html`, `services/jupyterhub/duoptimum-hub-services/duoptimum_hub_services/handlers/*.py`, `services/jupyterhub/conf/bin/custom_handlers.py`, `config/jupyterhub_config.py`.
+> [!NOTE]
+> Historical document. The rebuild this catalogue specified is complete: the React portal SPA now owns every user/admin journey and `html_templates_enhanced/` (all templates + `custom.css` + `session-timer.js` + `mobile.js`) has been eliminated (#419). The few pages JupyterHub still renders fall back to plain stock JupyterHub/NativeAuth. The screen-by-screen inventory below describes the now-removed layer and is retained as the rebuild record.
+
+Current source of truth: the React SPA `services/jupyterhub/duoptimum-hub-web/src/`; hub-side handlers `services/jupyterhub/duoptimum-hub-services/duoptimum_hub_services/handlers/*.py`, `services/jupyterhub/conf/bin/custom_handlers.py`, `config/jupyterhub_config.py`. The legacy `html_templates_enhanced/*.html` layer catalogued below has been removed.
 
 ## Global layer
 

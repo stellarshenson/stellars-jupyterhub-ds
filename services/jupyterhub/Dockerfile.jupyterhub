@@ -191,10 +191,6 @@ COPY --chmod=600  services/jupyterhub/templates/certs /certs
 # copies it in on first create. Path MUST equal JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR
 # (set below) - that is where the volume mounts, so a mismatch never reaches it.
 COPY --chmod=644  services/jupyterhub/templates/proxy-sockets/README.md /var/run/docker-proxy-sockets/README.md
-COPY --chmod=644  services/jupyterhub/html_templates_enhanced/*.html /srv/jupyterhub/templates/
-COPY --chmod=644  services/jupyterhub/html_templates_enhanced/static/custom.css /tmp/custom.css
-COPY --chmod=644  services/jupyterhub/html_templates_enhanced/static/session-timer.js /tmp/session-timer.js
-COPY --chmod=644  services/jupyterhub/html_templates_enhanced/static/mobile.js /tmp/mobile.js
 COPY --chmod=644  config/jupyterhub_config.py /srv/jupyterhub/jupyterhub_config.py
 COPY --chmod=644  services/jupyterhub/conf/settings_dictionary.yml /srv/jupyterhub/settings_dictionary.yml
 COPY --chmod=644  services/jupyterhub/conf/volumes_dictionary.yml /srv/jupyterhub/volumes_dictionary.yml
@@ -203,12 +199,9 @@ COPY --chmod=644  services/jupyterhub/conf/volumes_dictionary.yml /srv/jupyterhu
 ## from /mnt/user_config or /srv/jupyterhub/jupyterhub_config.py)
 RUN mkdir -p /srv/config
 
-## copy custom assets to JupyterHub's static directory
+## remove the stock JupyterHub admin React bundle (the Duoptimum Hub SPA replaces it)
 RUN <<-EOF
-    echo "installing custom assets to JupyterHub static directory"
-    cp /tmp/custom.css /srv/venv/share/jupyterhub/static/css/custom.css
-    cp /tmp/session-timer.js /srv/venv/share/jupyterhub/static/js/session-timer.js
-    cp /tmp/mobile.js /srv/venv/share/jupyterhub/static/js/mobile.js
+    echo "removing stock JupyterHub admin bundle (replaced by the Duoptimum Hub SPA)"
     # remove the original JupyterHub admin React app - the Duoptimum Hub SPA fully
     # replaces it (/hub/admin, /hub/home, /hub/token all redirect to /hub/portal).
     # Assert the expected path first: a silent no-op would ship the stock admin
@@ -219,11 +212,6 @@ RUN <<-EOF
         exit 1
     fi
     rm -f "$ADMIN_JS" "$ADMIN_JS.map"
-    # The enhanced admin.html (stock-style, still references the removed
-    # admin-react.js) is permanently shadowed by the duoptimum-hub-web wheel's
-    # admin.html redirect stub (its template dir is first in template_paths).
-    # Drop the dead copy so no image template references the removed bundle.
-    rm -f /srv/jupyterhub/templates/admin.html
 EOF
 
 ## default environment variables
