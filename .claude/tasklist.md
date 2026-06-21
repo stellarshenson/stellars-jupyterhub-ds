@@ -25,6 +25,15 @@ GATE PROGRESS (this turn):
 - [~] ux-designer skill review of the connection indicator RUNNING (final confirmation + #400 code-level sign-off).
 - [ ] commit/push -> AWAIT EXPLICIT USER APPROVAL (git policy: per-action approval each time; gate does NOT include commit).
 
+POST-GATE (user: "first commit and push, then continue"):
+- [x] committed the full gate batch in 5 logical commits (d36a690 feat CLOSE-GAP, 11188f4 refactor eliminate templates, cf0ba5c refactor loguru+sqlalchemy2, 8b4afc3 test functional fixes, a16ed39 docs) + pushed 401430d..a16ed39 on feature/new-frontend-mock. Tree clean.
+- [~] ux-designer MAJOR fixes (option a, user said "continue"):
+    * MAJOR2 elapsed-from-onset: `useHubHealth` stamps `firstFailAt` at first failure, used as `downSince`. DONE.
+    * MAJOR1 mobile recovery announcement: `HubConnectionIndicator` now an ALWAYS-mounted `role="status"` live region that swaps to `.doh-sr-only` "Hub connection restored" on recovery (was unmounting -> silent). Added `.doh-sr-only` util. DONE.
+    typecheck+lint clean. acc-crit indicator section updated (a11y line corrected assertive->polite, 2 new criteria, UX-review marked done). DEF-21 logged for the 2 MINOR + 1 TASTE deferred.
+    Rebuild #2 (frontend baked): SUCCEEDED v4.0.12 no-bump, STAGE 1 893 passed/7 skip (now incl. +4 override tests), image e65301120cea. Redeployed live (health 200). Re-running signup regime to confirm test_hub_unreachable on the new build.
+- [ ] commit the ux fixes -> AWAIT EXPLICIT APPROVAL (separate commit).
+
 GATE STATUS: MET. all tasks complete; architect skill CLEAN on CLOSE-GAP + logging; acc-crit updated; unit 34/34 + full functional suite green (7 regimes); make rebuild succeeded (v4.0.12, no bump); redeploy good; live checks confirm. Remaining = commit (needs approval) + ux-review fold-in (advisory).
 NOTE: production code UNCHANGED since the successful rebuild; all post-rebuild changes are TEST-ONLY + docs, so the deployed image aa1bfd9e9a84 is correct without a 2nd rebuild.
 

@@ -11,6 +11,7 @@ import { elapsedShort } from '../lib/format'
 const TITLE = 'Hub not responding'
 const BODY =
   'The Duoptimum Hub is not responding. Shown data may be stale and actions will fail until the connection is restored - retrying automatically.'
+const RECOVERED = 'Hub connection restored'
 
 export function HubConnectionIndicator() {
   const { down, downSince } = useHubHealth()
@@ -24,19 +25,30 @@ export function HubConnectionIndicator() {
     return () => clearInterval(id)
   }, [down])
 
-  if (!isMobile || !down) return null
+  // desktop uses the header ConnectionStatusPill (its own live region); render nothing here
+  if (!isMobile) return null
 
-  const elapsed = downSince ? elapsedShort(Date.now() - downSince) : ''
-  // polite role="status" (NOT assertive/alert): a transient blip should not interrupt a
-  // screen-reader user mid-task - matches the desktop pill's urgency. Title text stays
-  // stable; the ticking elapsed is visual only (aria-hidden) so it never re-announces.
+  const elapsed = down && downSince ? elapsedShort(Date.now() - downSince) : ''
+  // ALWAYS-mounted polite role="status" live region so RECOVERY announces too: an
+  // unmounted region is silent, so a screen-reader user would hear the outage but never
+  // that it cleared (the desktop pill stays mounted and gets this for free). The visible
+  // warning panel renders only while down; on recovery the region swaps to an sr-only
+  // "restored" line so the change is announced with no visual chrome. polite (not
+  // assertive) so a transient blip never interrupts mid-task; the ticking elapsed is
+  // aria-hidden so it never re-announces.
   return (
-    <div className="doh-hub-warn-panel" role="status">
-      <span className="doh-hub-warn-diode" aria-hidden="true" />
-      <div>
-        <div className="doh-hub-warn-title">{TITLE}{elapsed ? <span aria-hidden="true">{` · for ${elapsed}`}</span> : null}</div>
-        <div className="doh-hub-warn-body">{BODY}</div>
-      </div>
+    <div role="status">
+      {down ? (
+        <div className="doh-hub-warn-panel">
+          <span className="doh-hub-warn-diode" aria-hidden="true" />
+          <div>
+            <div className="doh-hub-warn-title">{TITLE}{elapsed ? <span aria-hidden="true">{` · for ${elapsed}`}</span> : null}</div>
+            <div className="doh-hub-warn-body">{BODY}</div>
+          </div>
+        </div>
+      ) : (
+        <span className="doh-sr-only">{RECOVERED}</span>
+      )}
     </div>
   )
 }

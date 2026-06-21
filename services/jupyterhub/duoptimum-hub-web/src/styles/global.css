@@ -284,6 +284,10 @@ body { margin: 0; font-family: var(--font-sans); }
   .doh-conn-pill .doh-conn-dot, .doh-hub-warn-diode { animation: none; }
 }
 
+/* screen-reader-only: kept in the a11y tree, removed from view + layout (zero box) - used
+   by the mobile connection live region to announce recovery with no visual chrome */
+.doh-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
 /* ---- command palette ---- */
 .doh-cmdk-item { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); cursor: pointer; }
 .doh-cmdk-item .anticon { color: var(--color-text-muted); }
