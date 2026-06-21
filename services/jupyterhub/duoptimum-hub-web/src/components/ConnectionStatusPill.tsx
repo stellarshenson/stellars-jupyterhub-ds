@@ -12,9 +12,11 @@ import { useIsMobile } from '../lib/useIsMobile'
 import { isMock } from '../services/dataMode'
 import { ANIMATION } from '../services/config'
 import { elapsedShort } from '../lib/format'
+import { hubName } from '../app/capabilities'
 
-const DOWN_TITLE =
-  'The Duoptimum Hub is not responding. Shown data may be stale and actions will fail until the connection is restored - retrying automatically.'
+// hub name from branding (JUPYTERHUB_BRANDING_HUB_NAME via window.jhdata), not hardcoded
+const downTitle = () =>
+  `${hubName()} not responding - data may be stale, actions will fail; retrying automatically.`
 
 const pulseVar = { '--doh-status-pulse': `${ANIMATION.statusPulseMs}ms` } as CSSProperties
 
@@ -34,7 +36,7 @@ export function ConnectionStatusPill() {
 
   if (!down) {
     return (
-      <span className="doh-conn-pill ok" style={pulseVar} role="status" aria-label="Hub connected" title="Connected to the Duoptimum Hub">
+      <span className="doh-conn-pill ok" style={pulseVar} role="status" aria-label="Hub connected" title={`Connected to the ${hubName()}`}>
         <span className="doh-conn-dot" aria-hidden="true" />
         Connected
       </span>
@@ -46,7 +48,7 @@ export function ConnectionStatusPill() {
   // reader says "Hub not responding, retrying" once, not the ticking seconds every second.
   // The elapsed readout is visual only - aria-hidden so it never re-announces.
   return (
-    <span className="doh-conn-pill down" style={pulseVar} role="status" aria-label="Hub not responding, retrying" title={DOWN_TITLE}>
+    <span className="doh-conn-pill down" style={pulseVar} role="status" aria-label="Hub not responding, retrying" title={downTitle()}>
       <span className="doh-conn-dot" aria-hidden="true" />
       Not responding
       {elapsed ? <span aria-hidden="true">{` · ${elapsed}`}</span> : null}

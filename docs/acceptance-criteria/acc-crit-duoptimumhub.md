@@ -268,7 +268,9 @@ The pool is exclusive by design: each running container is assigned at most one 
 - **AC-1** Given a group config editor, when an admin enables the API keys pool, then they select exactly one mode: `pair` or `single` (mutually exclusive)
 - **AC-2** Given `pair` mode, when configuring target variables, then the admin specifies an environment variable name for the key id and an environment variable name for the key secret
 - **AC-3** Given `single` mode, when configuring the target variable, then the admin specifies one environment variable name for the api key
-- **AC-4** Given an enabled pool, when the admin adds credentials, then the list accepts an unlimited number of entries, each entry matching the pool mode (id+secret for `pair`, single value for `single`)
+- **AC-4** Given an enabled pool, when the admin adds credentials, then the list accepts an unlimited number of entries, each entry matching the pool mode (id+secret for `pair`, single value for `single`); an entry has no per-key description field - the credential value(s) are the only inputs
+- **AC-4a** Given an enabled pool, when the admin clicks Import and selects a text file, then keys are parsed one per non-blank line and appended to the credential list - `single`: the whole trimmed line is the key; `pair`: `id,secret` or `id secret` (comma or whitespace) splits into id+secret. Lines that do not match the mode are skipped and counted. A success toast reports the imported count (and skipped count when any); a file with no valid keys reports an error and adds nothing. Import only - there is no export
+  - log: 2026-06-21 #411 added Import button + `parseApiKeysFile` in `GroupPolicyTab.tsx`; functional `test_api_keys_import.py`
 - **AC-5** Given a stored pool, when the admin reorders or edits the credential list, then each existing credential keeps its stable slot identity so in-flight assignments remain valid
 - **AC-6** Given the group config persistence layer, when a pool is saved, then credential secrets are stored in the same protected store as other group config (`groups_config.sqlite`). The groups page and its API are admin-only and return credentials in full (the admin manages them, so they are shown unmasked in the editor); obfuscation applies only to the logs (AC-26/AC-28)
 
@@ -4536,6 +4538,32 @@ NOTE (corrected 2026-06-20): the toggle gates the ROUTER, not the `--api.dashboa
 - [ ] **TLS via hub-provisioned certs** - dashboard served with the same `hub_certs` file-provider cert chain as the hub routes, no separate cert
   - log: 2026-06-20 criterion added
 
+## Traefik backend network binding
+
+The hub is multi-homed (`hub_network` + `hub_gpuinfo_network`); Traefik is on `hub_network` only. The `traefik.docker.network` label pins the backend network so Traefik never routes to the unreachable gpuinfo IP. Investigation (#409) outcome: the pin is required and must be name-based; the only hardening was a deterministic top-level project `name:` so the name-derived references stay consistent when `COMPOSE_PROJECT_NAME` is unset.
+
+- [x] **Pin is required, not redundant** - hub on 2 networks, Traefik on 1; without `traefik.docker.network` Traefik may select the gpuinfo IP it cannot reach -> 504; the label forces `hub_network`
+  - log: 2026-06-21 #409 investigated; hypothesis "label redundant" refuted - hub multi-homing makes the pin necessary
+- [x] **Name-based is the only option** - Traefik's `traefik.docker.network` takes a docker network NAME; it has no label-selector, so the hub's role-label network discovery cannot drive this pin
+  - log: 2026-06-21 #409 confirmed against Traefik docker provider semantics
+- [x] **Single source = COMPOSE_PROJECT_NAME** - the top-level `name:`, the pin (`${COMPOSE_PROJECT_NAME:-duoptimum-hub}_hub_network`) and the provider constraint (`Label(com.docker.compose.project, ${COMPOSE_PROJECT_NAME:-duoptimum-hub})`) all read the same variable, so the project name, the routed network and the label filter always agree
+  - log: 2026-06-21 verified via `docker compose config` - the live wrapper sets `COMPOSE_PROJECT_NAME=stellars-tech-ai-workbench` (`env.default`, consumed by `start.sh --env-file`); the submodule's standalone `.env` sets `stellars-jupyterhub-ds`; either way pin = `<project>_hub_network` and constraint = `<project>`, both derived, so the new `name:` is inert whenever the var is set (always, in both deploy paths)
+- [x] **Edge: COMPOSE_PROJECT_NAME unset** - top-level `name: ${COMPOSE_PROJECT_NAME:-duoptimum-hub}` makes the project name `duoptimum-hub` (not the dir basename), so the label fallbacks resolve to a network that actually exists
+  - log: 2026-06-21 added top-level `name:` in `compose.yml`; `docker compose config` with no env yields project `duoptimum-hub`, pin `duoptimum-hub_hub_network`, constraint `duoptimum-hub` - all consistent; inert when `.env` sets the var
+
+## Docker resource tester
+
+Functional audit of the docker resources the platform creates - names, labels and characteristics - read live over the docker socket in the default regime. Complements the volume role-label tests (`test_role_labels.py`) and the GPU-only gpuinfo net/sidecar tests (`test_network_roles.py`); covered by `test_docker_resources.py`.
+
+- [x] **Hub container identity** - the hub runs as `stellars-functest-duoptimum-hub` and carries `com.docker.compose.project=stellars-functest`
+  - log: 2026-06-21 #408 added `test_docker_resources.py::test_hub_container_name` + `::test_hub_compose_project_label`
+- [x] **Volume names project-namespaced** - every named volume the hub mounts is prefixed with the compose project, never a bare global name that could collide with another deployment
+  - log: 2026-06-21 #408 added `test_docker_resources.py::test_hub_volumes_project_prefixed`
+- [x] **Volume description label** - the shared volume carries a non-empty `hub.volume.description` (the Lab Setup system-volumes panel reads it)
+  - log: 2026-06-21 #408 added `test_docker_resources.py::test_shared_volume_has_description_label`
+- [x] **Network characteristics** - the hub<->lab network is a local `bridge` and the hub is attached to it
+  - log: 2026-06-21 #408 added `test_docker_resources.py::test_hub_network_is_bridge` + `::test_hub_attached_to_its_network`
+
 ## Group delete confirmation
 
 Deleting a group from the Groups admin page requires an explicit confirmation, like the volume-reset and remove-user flows - a single click on the row delete icon must not destroy a group's config outright.
@@ -4610,8 +4638,10 @@ When the portal cannot reach the hub (`useHubHealth` reports down), it surfaces 
   - log: 2026-06-21 requirement added
 - [ ] **Down state + elapsed** - while down the pill turns warning and shows how long the hub has been unreachable ("not responding for XXXX"), ticking ~every second from `downSince`
   - log: 2026-06-21 requirement added (operator: "not responding for xxxx time")
-- [ ] **Copy** - down state states (pill label and/or tooltip) that the hub is not responding, data may be stale, actions will fail until restored, retrying automatically
+- [ ] **Copy** - down state message is very terse and LEADS WITH the branding hub name (`hubName()` <- `JUPYTERHUB_BRANDING_HUB_NAME` via `window.jhdata`, never "The"): "<hub name> not responding - data may be stale, actions will fail; retrying automatically" (pill tooltip `downTitle()` + mobile panel `body()`); the healthy pill tooltip uses the same branding name
   - log: 2026-06-21 requirement carried from prior `TITLE`/`BODY`
+  - log: 2026-06-21 operator: make very terse, start with hub name not "The"; trimmed both strings to the one-line phrasing above
+  - log: 2026-06-21 operator: take the hub name from branding (env), not hardcoded; both messages + the healthy tooltip now call `hubName()`
 - [ ] **Mobile: in-flow panel** - below 768px (`useIsMobile`) the indicator renders as an in-flow warning panel (`.doh-hub-warn-panel`, pale warning surface that does not wash out the text) at the top of the content, with the soft diode + elapsed; no header pill on mobile
   - log: 2026-06-21 requirement updated (operator: "the warning home panel is exactly what will also be shown on the mobile screen"; pale bg "so it won't wash out over the text")
 - [ ] **Desktop home panel dropped** - the originally-requested desktop home-wide banner is superseded by the header pill (operator: "maybe this is better than the panel on top of the home page... takes less space"); re-add only on operator request

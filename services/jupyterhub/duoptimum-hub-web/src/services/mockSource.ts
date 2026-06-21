@@ -473,7 +473,7 @@ export const mockSource: DataSource = {
         env_var_id: 'OPENAI_ORG_ID',
         env_var_secret: 'OPENAI_API_KEY',
         env_var_key: '',
-        credentials: has('api_keys') ? [{ slot: 'mock-1', id: 'org-3xK', secret: 'sk-live-9f2a', description: 'seat 1' }] : [],
+        credentials: has('api_keys') ? [{ slot: 'mock-1', id: 'org-3xK', secret: 'sk-live-9f2a' }] : [],
       },
       volume_mounts_active: has('volume_mounts'),
       shared_mount_allow: has('volume_mounts'), // grant the standard shared volume

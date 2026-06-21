@@ -5,13 +5,14 @@
  * the full limited quota set + privileged, Memory/CPU/Downloads/Sudo their real
  * controls. Reads the group's stored flat config and emits an updated flat config
  * on every change (the parent PUTs it; the hub coerces + validates). */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button, Checkbox, Input, InputNumber, Radio, Select, Switch, Table } from 'antd'
 import { Icon } from './Icon'
 import type { IconKey } from './Icon'
 import { useTotalResources } from '../hooks/queries'
 import { gpuSupported } from '../app/capabilities'
+import { notify } from '../services/actions'
 import type { GroupConfig, PolicyConfig, VolumeMode } from '../services/types'
 
 // the standard shared volume's fixed mountpoint (mirrors policy/base.py SHARED_MOUNTPOINT);
@@ -20,8 +21,28 @@ const SHARED_MOUNTPOINT = '/mnt/shared'
 const MODE_OPTIONS = [{ value: 'rw', label: 'Read-Write' }, { value: 'ro', label: 'Read' }]
 
 interface EnvVar { name: string; value: string; desc: string }
-interface ApiCred { slot?: string; a: string; b: string; desc: string }
+interface ApiCred { slot?: string; a: string; b: string }
 interface VolMount { volume: string; mountpoint: string; mode: VolumeMode }
+
+// Parse an uploaded key file into pool credentials - one credential per non-blank line.
+// single: the whole trimmed line is the API key. pair: "id,secret" or "id secret" (comma or
+// whitespace separated) -> id + secret. Lines that do not match the mode are counted skipped.
+function parseApiKeysFile(text: string, mode: 'single' | 'pair'): { creds: ApiCred[]; skipped: number } {
+  const creds: ApiCred[] = []
+  let skipped = 0
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim()
+    if (!line) continue
+    if (mode === 'single') {
+      creds.push({ a: line, b: '' })
+    } else {
+      const parts = line.split(line.includes(',') ? ',' : /\s+/).map((s) => s.trim()).filter(Boolean)
+      if (parts.length === 2) creds.push({ a: parts[0], b: parts[1] })
+      else skipped++
+    }
+  }
+  return { creds, skipped }
+}
 
 function Section({ icon, title, on, onToggle, children }: { icon: IconKey; title: string; on: boolean; onToggle: (v: boolean) => void; children: ReactNode }) {
   return (
@@ -145,7 +166,6 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       slot: cr.slot,
       a: mode === 'pair' ? (cr.id ?? '') : (cr.key ?? ''),
       b: cr.secret ?? '',
-      desc: cr.description ?? '',
     })))
     setDownloadsAllow(c.downloads_allow ?? true)
     setSudoEnable(c.sudo_enable ?? true)
@@ -205,14 +225,33 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
         env_var_secret: apiVarSecret,
         env_var_key: apiVarKey,
         credentials: apiCreds.map((c) => (apiMode === 'pair'
-          ? { slot: c.slot, id: c.a, secret: c.b, description: c.desc }
-          : { slot: c.slot, key: c.a, description: c.desc })),
+          ? { slot: c.slot, id: c.a, secret: c.b }
+          : { slot: c.slot, key: c.a })),
       },
     }
     onChange(config)
   }, [onChange, on, envVars, gpuAll, gpuIds, resources, memGB, memSwap, cpuCores, dStd, dPriv, dq, dFlags, volMounts, sharedAllow, sharedMode, apiMode, apiVarKey, apiVarId, apiVarSecret, apiCreds, downloadsAllow, sudoEnable])
 
   const toggle = (key: string) => (v: boolean) => setOn((e) => ({ ...e, [key]: v }))
+
+  // import keys from a file (one per line, validated), appended to the pool - no export
+  const apiFileRef = useRef<HTMLInputElement>(null)
+  const importApiKeys = (file: File) => {
+    if (apiMode !== 'single' && apiMode !== 'pair') return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const { creds, skipped } = parseApiKeysFile(String(reader.result), apiMode)
+      if (!creds.length) {
+        notify.error(apiMode === 'pair'
+          ? 'No valid keys found - pair mode expects "id,secret" per line'
+          : 'No valid keys found in the file')
+        return
+      }
+      setApiCreds((p) => [...p, ...creds])
+      notify.success(`Imported ${creds.length} key${creds.length === 1 ? '' : 's'}${skipped ? ` (${skipped} skipped)` : ''}`)
+    }
+    reader.readAsText(file)
+  }
 
   return (
     <div style={{ border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: '4px 16px' }}>
@@ -380,11 +419,23 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
               columns={[
                 { title: apiMode === 'pair' ? 'Key ID' : 'API Key', render: (_, r, i) => <Input size="small" className="doh-mono" value={r.a} onChange={(e) => setApiCreds((p) => p.map((x, j) => (j === i ? { ...x, a: e.target.value } : x)))} /> },
                 ...(apiMode === 'pair' ? [{ title: 'Key Secret', render: (_: unknown, r: ApiCred, i: number) => <Input size="small" className="doh-mono" value={r.b} onChange={(e) => setApiCreds((p) => p.map((x, j) => (j === i ? { ...x, b: e.target.value } : x)))} /> }] : []),
-                { title: 'Description', render: (_, r, i) => <Input size="small" value={r.desc} onChange={(e) => setApiCreds((p) => p.map((x, j) => (j === i ? { ...x, desc: e.target.value } : x)))} /> },
                 { title: '', width: 40, render: (_, __, i) => <span style={{ cursor: 'pointer', color: 'var(--color-text-subtle)' }} onClick={() => setApiCreds((p) => p.filter((_, j) => j !== i))}><Icon name="close" size={14} /></span> },
               ]}
             />
-            <Button size="small" icon={<Icon name="plus" size={13} />} style={{ marginTop: 8 }} onClick={() => setApiCreds((p) => [...p, { a: '', b: '', desc: '' }])}>Add Key</Button>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <Button size="small" icon={<Icon name="plus" size={13} />} onClick={() => setApiCreds((p) => [...p, { a: '', b: '' }])}>Add Key</Button>
+              <Button size="small" icon={<Icon name="upload" size={13} />} onClick={() => apiFileRef.current?.click()}>Import</Button>
+              <input
+                ref={apiFileRef}
+                type="file"
+                accept=".txt,.csv,.env,.keys,text/*"
+                style={{ display: 'none' }}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) importApiKeys(f); e.target.value = '' }}
+              />
+            </div>
+            <div className="doh-pol-hint" style={{ marginTop: 6 }}>
+              {apiMode === 'pair' ? 'Import a text file - one "id,secret" per line' : 'Import a text file - one API key per line'}
+            </div>
           </>
         )}
       </Section>
