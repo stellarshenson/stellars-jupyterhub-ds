@@ -12,13 +12,11 @@ failure (sidecar down, no GPU) so callers never crash and the UI falls back to
 plain inventory chips.
 """
 
-import logging
 import os
 from datetime import datetime, timezone
 
 from .docker_utils import get_executor
-
-log = logging.getLogger('jupyterhub.custom_handlers')
+from .logging_setup import log
 
 # Cache: {'data': {index: {utilization, memory_used_mb, processes}}, 'timestamp': datetime, 'refreshing': bool}
 # 'last_attempt'/'last_ok' track sidecar reachability independently of 'timestamp'
@@ -26,19 +24,6 @@ log = logging.getLogger('jupyterhub.custom_handlers')
 # -> gpu_sidecar_connected() False, so the UI hides GPU widgets rather than render the
 # startup inventory (which is seeded from a persisted cache and outlives the sidecar).
 _gpu_util_cache = {'data': {}, 'timestamp': None, 'refreshing': False, 'last_attempt': None, 'last_ok': False}
-
-
-def _get_logger():
-    from traitlets.config import Application
-    # Use the hub's Application logger only if one already exists; never create
-    # the singleton here (Application.instance() would), which would pollute
-    # global state for any later code/test that constructs its own Application.
-    try:
-        if Application.initialized():
-            return Application.instance().log
-    except Exception:
-        pass
-    return logging.getLogger('jupyterhub')
 
 
 def _get_update_interval():
@@ -50,7 +35,7 @@ def configure_gpu_cache(gpuinfo_url=None):
     from . import gpu_client
     if gpuinfo_url:
         gpu_client.configure(gpuinfo_url)
-    _get_logger().info(f"[GPU Util] Sidecar endpoint: {gpu_client.get_url()}")
+    log.info(f"[GPU Util] Sidecar endpoint: {gpu_client.get_url()}")
 
 
 def _fetch_gpu_utilization():
@@ -76,8 +61,6 @@ def _fetch_gpu_utilization():
 
 def _refresh_sync():
     """Synchronous refresh of the GPU utilisation cache."""
-    logger = _get_logger()
-
     if _gpu_util_cache['refreshing']:
         return
 
@@ -96,14 +79,14 @@ def _refresh_sync():
             _gpu_util_cache['data'] = data
             _gpu_util_cache['timestamp'] = datetime.now(timezone.utc)
             if first:
-                logger.info(
+                log.info(
                     f"[GPU Util] Cache initialised: {len(data)} device(s); "
                     f"refreshing every {_get_update_interval()}s"
                 )
             else:
-                logger.debug(f"[GPU Util] Cache updated: {len(data)} device(s)")
+                log.debug(f"[GPU Util] Cache updated: {len(data)} device(s)")
         else:
-            logger.info("[GPU Util] Sample empty - keeping previous cache")
+            log.info("[GPU Util] Sample empty - keeping previous cache")
     finally:
         _gpu_util_cache['refreshing'] = False
 
@@ -156,11 +139,10 @@ class GpuUtilizationRefresher:
     def __init__(self):
         self.periodic_callback = None
         self.interval_seconds = _get_update_interval()
-        _get_logger().info(f"[GpuUtilizationRefresher] Initialized with interval={self.interval_seconds}s")
+        log.info(f"[GpuUtilizationRefresher] Initialized with interval={self.interval_seconds}s")
 
     def start(self):
         from tornado.ioloop import PeriodicCallback
-        logger = _get_logger()
 
         if self.periodic_callback is not None:
             return
@@ -168,7 +150,7 @@ class GpuUtilizationRefresher:
         interval_ms = self.interval_seconds * 1000
         self.periodic_callback = PeriodicCallback(self._refresh_tick, interval_ms)
         self.periodic_callback.start()
-        logger.info(f"[GpuUtilizationRefresher] Started - sampling every {self.interval_seconds}s")
+        log.info(f"[GpuUtilizationRefresher] Started - sampling every {self.interval_seconds}s")
 
         get_executor().submit(_refresh_sync)
 

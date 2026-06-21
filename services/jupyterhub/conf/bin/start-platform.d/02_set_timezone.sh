@@ -4,14 +4,16 @@
 # ----------------------------------------------------------------------------------------
 
 TZ_NAME="${JUPYTERHUB_TIMEZONE:-Etc/UTC}"
+LOG_COMPONENT="Timezone"
+source /platform-log.sh   # log -> INFO-format line (see conf/bin/platform-log.sh)
 
 if [ -n "$TZ_NAME" ] && [ -f "/usr/share/zoneinfo/$TZ_NAME" ]; then
     ln -sf "/usr/share/zoneinfo/$TZ_NAME" /etc/localtime
-    echo "$TZ_NAME" > /etc/timezone
+    echo "$TZ_NAME" > /etc/timezone   # writes the tz FILE, not a log line
     export TZ="$TZ_NAME"
-    echo "Timezone set to $TZ_NAME"
+    log "Timezone set to $TZ_NAME"
 else
-    echo "Timezone: UTC (default)"
+    log "Timezone: UTC (default)"
 fi
 
 # EOF

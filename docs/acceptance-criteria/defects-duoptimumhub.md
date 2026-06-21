@@ -22,8 +22,15 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
 - [DEF-16: Stopped-server readout shows "stopped now ago"](#def-16-stopped-server-readout-shows-stopped-now-ago) - open
 - [DEF-17: Role-label keys/values baked only in Dockerfile, not in compose.yml](#def-17-role-label-keysvalues-baked-only-in-dockerfile-not-in-composeyml) - open
 - [DEF-18: Hub-unreachable display (corner diode + full-screen modal) looks bad](#def-18-hub-unreachable-display-corner-diode--full-screen-modal-looks-bad) - open
+- [DEF-19: Hub log lines printed to bare stdout, not a proper logger](#def-19-hub-log-lines-printed-to-bare-stdout-not-a-proper-logger) - open
 
 ## Open
+
+### DEF-19: Hub log lines printed to bare stdout, not a proper logger
+
+- [ ] **LOW** - many hub runtime lines (`[Activity Sampler]`, `[Config] File-download`, `[Admin Bootstrap]`, `[GPU debug]`, the per-GPU `[GPU]` lines, the NativeAuth/Activity/Profile sync + cleanup lines in events.py) used bare `print()` to stdout - no level, no timestamp, inconsistent with the hub's own formatted log; `[GPU debug]` was debug-worded for info content; and some module loggers used a stdlib `getLogger("JupyterHub")` whose INFO can fail to render (it is not the app logger). Fix: route all RUNTIME lines through one loguru sink (`logging_setup`), coloured when the terminal permits; `[GPU debug]` -> `[GPU]` at INFO; build-time `event_schema_fix` keeps `print` by design; `logging_setup.py`, `config.py`, `services.py`, `admin_bootstrap.py`, `events.py`, `gpuinfo_sidecar.py`, hub-services `pyproject.toml`
+  - log: 2026-06-21 reported (operator: "must all be logged with proper logger, not just stdout"; "use loguru if we can, coloured if terminal permits"; "no more GPU Debug, change this line to be the Info")
+  - log: 2026-06-21 fix applied - loguru sink + conversions; 869 hub-services + 65 docker-proxy unit tests green; live coloured-render verify pending redeploy; shell-script startup logs tracked separately (#415)
 
 ### DEF-18: Hub-unreachable display (corner diode + full-screen modal) looks bad
 

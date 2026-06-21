@@ -6,7 +6,6 @@ SQLite database for activity scoring.
 """
 
 import asyncio
-import logging
 import os
 import sys
 from datetime import datetime, timedelta, timezone
@@ -15,14 +14,8 @@ import aiohttp
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from ..logging_setup import log
 from .model import ActivityBase, ActivitySample
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(levelname)1.1s %(asctime)s.%(msecs)03d %(name)s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-)
-log = logging.getLogger('activity_sampler')
 
 
 class ActivitySamplerService:

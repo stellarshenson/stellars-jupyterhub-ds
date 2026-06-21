@@ -9,7 +9,6 @@ The DB path defaults to /data/event_log.sqlite; override with the
 STELLARS_EVENT_LOG_DB_PATH env var (tests point it at a temp file).
 """
 
-import logging
 import os
 import threading
 from datetime import datetime, timezone
@@ -18,7 +17,7 @@ from sqlalchemy import Column, Integer, String, Text, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-log = logging.getLogger('jupyterhub.event_log')
+from .logging_setup import log
 
 EventLogBase = declarative_base()
 

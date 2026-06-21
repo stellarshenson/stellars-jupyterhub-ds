@@ -16,10 +16,9 @@ right before calling register - so admin group edits take effect on the
 user's next lab start, no manual operator step.
 """
 
-import logging
 import os
 
-log = logging.getLogger('jupyterhub.docker_proxy')
+from .logging_setup import log
 
 SOCK_MOUNT_DIR = '/run/dockersock'
 SOCK_FILENAME = 'docker.sock'
@@ -60,8 +59,7 @@ def _render_user_compose_project(template, *, compose_project, username):
         return template.format(compose=compose_project or '', username=username)
     except (KeyError, IndexError) as e:
         log.warning(
-            "user_compose_project_template render failed (%s); falling back to hub project",
-            e,
+            f"user_compose_project_template render failed ({e}); falling back to hub project"
         )
         return compose_project or ''
 
@@ -128,19 +126,16 @@ async def register_user(username, resolved, *, socket_dir,
     await mgr.register(username, overrides=overrides)
     socket_host_path = _socket_host_path(socket_dir, username)
     log.info(
-        "registered docker-proxy for owner=%s socket=%s limits: containers=%s "
-        "volumes=%s networks=%s storage_gb=%s cpu=%s mem_gb=%s "
-        "allow_privileged=%s allow_dangerous_flags=%s "
-        "compose_project=%s allow_compose_project_override=%s "
-        "extra_accessible_networks=%s",
-        username, socket_host_path,
-        overrides['max_containers'], overrides['max_volumes'],
-        overrides['max_networks'], overrides['max_storage_gb'],
-        overrides['cpu_cap_cores'], overrides['mem_cap_gb'],
-        overrides['allow_privileged'], overrides['allow_dangerous_flags'],
-        overrides.get('compose_project') or '<none>',
-        overrides['allow_compose_project_override'],
-        overrides.get('extra_accessible_networks') or (),
+        f"registered docker-proxy for owner={username} socket={socket_host_path} "
+        f"limits: containers={overrides['max_containers']} "
+        f"volumes={overrides['max_volumes']} networks={overrides['max_networks']} "
+        f"storage_gb={overrides['max_storage_gb']} cpu={overrides['cpu_cap_cores']} "
+        f"mem_gb={overrides['mem_cap_gb']} "
+        f"allow_privileged={overrides['allow_privileged']} "
+        f"allow_dangerous_flags={overrides['allow_dangerous_flags']} "
+        f"compose_project={overrides.get('compose_project') or '<none>'} "
+        f"allow_compose_project_override={overrides['allow_compose_project_override']} "
+        f"extra_accessible_networks={overrides.get('extra_accessible_networks') or ()}"
     )
     return socket_host_path, SOCK_MOUNT_DIR, docker_host_url()
 
@@ -151,6 +146,6 @@ async def unregister_user(username, *, socket_dir):
         mgr = get_manager(socket_dir)
         removed = await mgr.unregister(username)
         if removed:
-            log.info("unregistered docker-proxy for owner=%s", username)
+            log.info(f"unregistered docker-proxy for owner={username}")
     except Exception as e:
-        log.warning("unregister docker-proxy for %s failed: %s", username, e)
+        log.warning(f"unregister docker-proxy for {username} failed: {e}")

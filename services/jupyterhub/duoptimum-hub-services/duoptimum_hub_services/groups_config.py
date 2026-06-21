@@ -6,7 +6,6 @@ order, environment variables, GPU access, and Docker access settings.
 """
 
 import json
-import logging
 import re
 import threading
 
@@ -14,12 +13,11 @@ from sqlalchemy import Column, Integer, String, Text, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
+from .logging_setup import log
 # The policy registry owns defaults, mountpoint protection, and validation; this
 # module keeps only persistence (the GroupConfig table + manager) and the
 # legacy-row active-flag inference.
 from .policy import default_config
-
-log = logging.getLogger('jupyterhub.groups_config')
 
 GroupsConfigBase = declarative_base()
 

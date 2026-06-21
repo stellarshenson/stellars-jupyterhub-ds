@@ -1,12 +1,11 @@
 """Handlers for the settings page (HTML) and the settings data API (JSON)."""
 
-import logging
 import os
 
 from jupyterhub.handlers import BaseHandler
 from tornado import web
 
-log = logging.getLogger('jupyterhub.settings')
+from ..logging_setup import log
 
 SETTINGS_DICT_PATH = "/srv/jupyterhub/settings_dictionary.yml"
 

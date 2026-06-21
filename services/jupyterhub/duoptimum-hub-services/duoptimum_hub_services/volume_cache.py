@@ -20,7 +20,6 @@ capturing username group; disk volumes are matched against all templates and the
 first hit wins.
 """
 
-import logging
 import os
 import re
 import threading
@@ -28,9 +27,8 @@ import time
 from datetime import datetime, timezone
 
 from .docker_utils import get_executor
+from .logging_setup import log
 from .persisted_cache import load_cached, save_cached
-
-log = logging.getLogger('jupyterhub.custom_handlers')
 
 # Cache: {'data': {encoded_username: {total, volumes}}, 'timestamp': datetime, 'refreshing': bool}
 _volume_sizes_cache = {'data': {}, 'timestamp': None, 'refreshing': False}
@@ -44,19 +42,6 @@ _refresh_lock = threading.Lock()
 # _template_regexes:      [(suffix, compiled_regex_with_username_group), ...]
 _volume_name_templates = {}
 _template_regexes = []
-
-
-def _get_logger():
-    from traitlets.config import Application
-    # Use the hub's Application logger only if one already exists; never create
-    # the singleton here (Application.instance() would), which would pollute
-    # global state for any later code/test that constructs its own Application.
-    try:
-        if Application.initialized():
-            return Application.instance().log
-    except Exception:
-        pass
-    return logging.getLogger('jupyterhub')
 
 
 def _get_volumes_update_interval():
@@ -127,7 +112,7 @@ def configure_volume_cache(templates):
     for suffix, template in _volume_name_templates.items():
         pattern = '^' + re.escape(template).replace(placeholder, '(.+)') + '$'
         _template_regexes.append((suffix, re.compile(pattern)))
-    _get_logger().info(
+    log.info(
         f"[Volume Sizes] Configured {len(_volume_name_templates)} name template(s): "
         f"{list(_volume_name_templates.keys())}"
     )
@@ -139,7 +124,7 @@ def _fetch_volume_sizes():
     `complete` is False when any matched volume is still mid-computation (df -1) or the
     call errored, so the caller never caches a partial snapshot (DEF-7)."""
     if not _template_regexes:
-        _get_logger().warning(
+        log.warning(
             "[Volume Sizes] No volume-name templates configured; cache will be empty. "
             "Call configure_volume_cache(user_volume_name_templates) at hub startup."
         )
@@ -188,9 +173,9 @@ def _fetch_via_df():
 
             total_size = sum(u["total"] for u in user_data.values())
             if complete:
-                _get_logger().info(f"[Volume Sizes] Fetched (complete): {len(user_data)} users, {total_size:.1f} MB")
+                log.info(f"[Volume Sizes] Fetched (complete): {len(user_data)} users, {total_size:.1f} MB")
             else:
-                _get_logger().info(
+                log.info(
                     f"[Volume Sizes] df still computing: {pending} user volume(s) pending (-1); "
                     "not caching this partial pass"
                 )
@@ -198,7 +183,7 @@ def _fetch_via_df():
         finally:
             api_client.close()
     except Exception as e:
-        _get_logger().error(f"[Volume Sizes] Error fetching: {e}")
+        log.error(f"[Volume Sizes] Error fetching: {e}")
         return {}, False
 
 
@@ -211,11 +196,9 @@ def _refresh_volume_sizes_sync():
     worker. A threading.Lock makes the re-entry check-and-set atomic, so two submits
     (event-loop trigger + periodic tick) never run two loops at once."""
     global _volume_sizes_cache
-    logger = _get_logger()
-
     with _refresh_lock:
         if _volume_sizes_cache['refreshing']:
-            logger.info("[Volume Sizes] Refresh already in progress, skipping")
+            log.info("[Volume Sizes] Refresh already in progress, skipping")
             return
         _volume_sizes_cache['refreshing'] = True
 
@@ -230,12 +213,12 @@ def _refresh_volume_sizes_sync():
                 _volume_sizes_cache['data'] = data
                 _volume_sizes_cache['timestamp'] = datetime.now(timezone.utc)
                 save_cached('volume_sizes', data)  # survive restarts: replace last-known on disk
-                logger.info(f"[Volume Sizes] Cache updated: {len(data)} users")
+                log.info(f"[Volume Sizes] Cache updated: {len(data)} users")
                 return
             elapsed = time.monotonic() - start
             # stop on the attempt cap OR when another wait would blow the wall-clock budget
             if attempt >= max_attempts or elapsed + retry_delay >= budget:
-                logger.warning(
+                log.warning(
                     f"[Volume Sizes] df still partial after {attempt} attempt(s)/{elapsed:.0f}s "
                     f"(caps {max_attempts}/{budget}s); keeping previous cache, retrying next interval"
                 )
@@ -263,7 +246,7 @@ def get_volume_sizes_with_refresh():
     """Get volume sizes, triggering background refresh if stale. Non-blocking."""
     data, needs_refresh = get_cached_volume_sizes()
     if needs_refresh and not _volume_sizes_cache['refreshing']:
-        _get_logger().info("[Volume Sizes] Cache stale, triggering background refresh")
+        log.info("[Volume Sizes] Cache stale, triggering background refresh")
         get_executor().submit(_refresh_volume_sizes_sync)
     return data
 
@@ -282,11 +265,10 @@ class VolumeSizeRefresher:
     def __init__(self):
         self.periodic_callback = None
         self.interval_seconds = _get_volumes_update_interval()
-        _get_logger().info(f"[VolumeSizeRefresher] Initialized with interval={self.interval_seconds}s")
+        log.info(f"[VolumeSizeRefresher] Initialized with interval={self.interval_seconds}s")
 
     def start(self):
         from tornado.ioloop import PeriodicCallback
-        logger = _get_logger()
 
         if self.periodic_callback is not None:
             return  # already scheduled; quiet - start() is called on every activity poll
@@ -294,7 +276,7 @@ class VolumeSizeRefresher:
         interval_ms = self.interval_seconds * 1000
         self.periodic_callback = PeriodicCallback(self._refresh_tick, interval_ms)
         self.periodic_callback.start()
-        logger.info(f"[VolumeSizeRefresher] Started - refreshing every {self.interval_seconds}s")
+        log.info(f"[VolumeSizeRefresher] Started - refreshing every {self.interval_seconds}s")
 
         get_executor().submit(_refresh_volume_sizes_sync)
 
@@ -302,7 +284,7 @@ class VolumeSizeRefresher:
         if self.periodic_callback is not None:
             self.periodic_callback.stop()
             self.periodic_callback = None
-            _get_logger().info("[VolumeSizeRefresher] Stopped")
+            log.info("[VolumeSizeRefresher] Stopped")
 
     def _refresh_tick(self):
         if not _volume_sizes_cache['refreshing']:

@@ -1,6 +1,5 @@
 """ActivityMonitor singleton - database-backed activity scoring."""
 
-import logging
 import math
 import os
 import threading
@@ -9,9 +8,8 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker
 
+from ..logging_setup import log
 from .model import ActivityBase, ActivitySample
-
-log = logging.getLogger('jupyterhub.custom_handlers')
 
 
 class ActivityMonitor:

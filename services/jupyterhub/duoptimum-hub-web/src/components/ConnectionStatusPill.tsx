@@ -42,10 +42,14 @@ export function ConnectionStatusPill() {
   }
 
   const elapsed = downSince ? elapsedShort(Date.now() - downSince) : ''
+  // role="status" is a polite live region; keep its announced text STABLE so a screen
+  // reader says "Hub not responding, retrying" once, not the ticking seconds every second.
+  // The elapsed readout is visual only - aria-hidden so it never re-announces.
   return (
-    <span className="doh-conn-pill down" style={pulseVar} role="status" aria-label={`Hub not responding${elapsed ? ` for ${elapsed}` : ''}`} title={DOWN_TITLE}>
+    <span className="doh-conn-pill down" style={pulseVar} role="status" aria-label="Hub not responding, retrying" title={DOWN_TITLE}>
       <span className="doh-conn-dot" aria-hidden="true" />
-      Not responding{elapsed ? ` · ${elapsed}` : ''}
+      Not responding
+      {elapsed ? <span aria-hidden="true">{` · ${elapsed}`}</span> : null}
     </span>
   )
 }

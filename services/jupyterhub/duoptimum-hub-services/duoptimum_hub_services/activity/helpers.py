@@ -1,11 +1,8 @@
 """Convenience functions for activity monitoring (use singleton)."""
 
-import logging
 from datetime import datetime, timezone
 
 from .monitor import ActivityMonitor
-
-log = logging.getLogger('jupyterhub.custom_handlers')
 
 
 def calculate_activity_score(username):
