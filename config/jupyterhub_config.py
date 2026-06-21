@@ -11,7 +11,6 @@
 #   4. JupyterHub Config       - all c.* settings (SSL, spawner, auth, handlers)
 #   5. Services & Callbacks    - background services, startup hooks
 
-import logging                  # validator warnings -> hub log stream
 from duoptimum_hub_services.logging_setup import log  # platform loguru sink for our own log lines
 import os                       # env var reads
 import socket                   # gethostname() -> container short id (rename-proof hub address)
@@ -801,7 +800,7 @@ validate_hub_config({
     "branding_favicon_busy_uri": JUPYTERHUB_BRANDING_FAVICON_BUSY_URI,
     "branding_lab_main_icon_uri": JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI,
     "branding_lab_splash_uri": JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI,
-}).raise_if_errors(log=logging.getLogger("JupyterHub"))
+}).raise_if_errors(log=log)
 
 c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     branding,                                                # icon static names and URLs from setup_branding()

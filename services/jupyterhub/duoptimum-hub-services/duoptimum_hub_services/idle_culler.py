@@ -89,7 +89,7 @@ def calc_progress_pct(remaining_seconds, base_seconds):
     final `base` window. Time banked above `base` by extension keeps the bar
     pinned at 100% until it falls back below base, at which point it counts down
     as the normal base-hour counter. Clamped to [0, 100]; `base_seconds <= 0`
-    yields 0. Mirrored verbatim in `session-timer.js` (updateUI + startCountdown).
+    yields 0.
     """
     if base_seconds <= 0:
         return 0.0

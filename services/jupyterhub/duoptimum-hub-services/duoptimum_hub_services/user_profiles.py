@@ -14,7 +14,7 @@ import os
 import threading
 
 from sqlalchemy import Boolean, Column, String, Text, create_engine, inspect, text
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 from .logging_setup import log

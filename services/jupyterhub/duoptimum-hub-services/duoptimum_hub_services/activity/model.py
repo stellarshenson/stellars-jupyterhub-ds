@@ -1,7 +1,7 @@
 """ActivitySample ORM model - single source of truth for both hub process and service."""
 
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, Index
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 
 ActivityBase = declarative_base()
 
