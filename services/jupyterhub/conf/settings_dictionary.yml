@@ -124,6 +124,14 @@ GPU:
     description: Role value stamped on the gpuinfo sidecar container (matched against JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY)
     default: gpuinfo
 
+  - name: JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB
+    description: Hub container role value; doubles as the hub's stable hub_network alias (hub_connect_url host) so spawned labs+CHP reach the hub by a fixed name across redeploys instead of its ephemeral container id
+    default: hub
+
+  - name: JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB
+    description: Spawned-lab container role value; pre_spawn_hook stamps hub.container.role=lab on every user lab so labs are discoverable by role like the hub and gpuinfo sidecar
+    default: lab
+
 Services:
   - name: JUPYTERHUB_LAB_SERVICE_MLFLOW
     description: MLflow service (0=disabled, 1=enabled)

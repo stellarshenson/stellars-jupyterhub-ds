@@ -14,6 +14,8 @@ services:
     image: stellars/duoptimum-hub:latest
     pull_policy: never                       # use the locally built image, never pull
     container_name: stellars-functest-duoptimum-hub
+    labels:
+      hub.container.role: "hub" # mirror production: stable role label (alias is on the network below)
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw   # DockerSpawner
       - certs:/certs
@@ -42,7 +44,9 @@ services:
       - JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME=                          # keep labs in THIS project (not {compose}_labs) so clean() reaps them by project label
       - COMPOSE_PROJECT_NAME=stellars-functest
     networks:
-      - jupyterhub_network
+      jupyterhub_network:
+        aliases:
+          - hub # stable alias spawned labs+CHP reach the hub by (= baked JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB); mirrors production so hub_connect_url resolves (DEF-22)
     healthcheck:
       test: ["CMD-SHELL", "python3 -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/jupyterhub/hub/health', timeout=3).status==200 else 1)\""]
       interval: 5s

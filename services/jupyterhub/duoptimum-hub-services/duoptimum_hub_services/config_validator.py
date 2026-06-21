@@ -36,6 +36,8 @@ _REQUIRED = [
     ("shared_volume_role_label", "JUPYTERHUB_LABEL_VOLUME_ROLE_SHARED"),
     ("docker_proxy_volume_role_label", "JUPYTERHUB_LABEL_VOLUME_ROLE_DOCKER_PROXY"),
     ("gpuinfo_container_role_label", "JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO"),
+    ("hub_container_role_label", "JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB (hub container role / network alias)"),
+    ("lab_container_role_label", "JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB (spawned-lab container role)"),
     ("volume_description_label_key", "JUPYTERHUB_LABEL_VOLUME_DESCRIPTION"),
     ("volume_owner_label_key", "JUPYTERHUB_LABEL_VOLUME_OWNER_KEY"),
     ("container_description_label_key", "JUPYTERHUB_LABEL_CONTAINER_DESCRIPTION"),

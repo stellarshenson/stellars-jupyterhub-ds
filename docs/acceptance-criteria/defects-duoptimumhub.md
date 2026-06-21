@@ -25,6 +25,7 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
 - [DEF-19: Hub log lines printed to bare stdout, not a proper logger](#def-19-hub-log-lines-printed-to-bare-stdout-not-a-proper-logger) - open
 - [DEF-20: html_templates_enhanced custom Bootstrap layer is a dead relic](#def-20-html_templates_enhanced-custom-bootstrap-layer-is-a-dead-relic) - open
 - [DEF-21: Connection indicator - ux-review minors (5xx copy, uncapped elapsed, dual warning languages)](#def-21-connection-indicator---ux-review-minors-5xx-copy-uncapped-elapsed-dual-warning-languages) - open
+- [DEF-22: Hub connect URL uses ephemeral container id, brittle on redeploy](#def-22-hub-connect-url-uses-ephemeral-container-id-brittle-on-redeploy) - open
 
 ## Open
 
@@ -194,3 +195,14 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
 
 - [ ] **LOW** - the final `adversarial-ux-designer` skill pass on the hub-unreachable indicator (SHIP WITH FIXES) raised two MAJORs - mobile gave no screen-reader recovery announcement, and "for XXXX" started at 0s when the hub had already been down ~15-38s - BOTH now fixed (persistent mobile `role="status"` live region + `.doh-sr-only` recovery line; `useHubHealth` stamps the first-failure timestamp as `downSince`). These three lower-priority findings are deferred to a focused follow-up: (1) a reachable hub returning 5xx is counted as a failure and reads "Not responding" - the copy is wrong for the degraded-but-up case (`useHubHealth.ts` `!res.ok` branch); (2) `elapsedShort` is uncapped and the down pill is `white-space: nowrap`, so a multi-hour outage with the tab left open can widen the pill and crowd the breadcrumb (`format.ts`, `global.css` `.doh-conn-pill.down`) - cap or coarsen past 1h; (3) the connection panel uses its own warning treatment (`.doh-hub-warn-panel`) distinct from the established `.doh-notice.warning` pattern - two warning languages, a deliberate-or-unify call
   - log: 2026-06-21 logged from the final ux-designer skill review; 2 MAJOR fixed, these 3 deferred (LOW)
+
+### DEF-22: Hub connect URL uses ephemeral container id, brittle on redeploy
+
+- [ ] **HIGH** - `c.JupyterHub.hub_connect_url` host was `socket.gethostname()` = the hub's container short id, which the hub bakes into every lab's `JUPYTERHUB_API_URL` at spawn; a hub redeploy / config change / watchtower update mints a NEW container id, so every already-running lab is permanently stranded (`Error connecting to http://<old-id>:8080/hub/api: [Errno -2] Name or service not known`); fix: drive the host from a STABLE network alias `hub` (= `JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB`) that compose stamps on the hub's `hub_network` attachment AND as the `hub.container.role` label; `config/jupyterhub_config.py`, `compose.yml`, `Dockerfile.jupyterhub`, `settings_dictionary.yml`, `config_validator.py`
+  - log: 2026-06-21 reported live: lab log `Error connecting to http://a811573186e8:8080/hub/api: ... Name or service not known` after a hub redeploy; old labs could not reconnect, only a respawn fixed each one
+  - log: 2026-06-21 root cause: gethostname() = ephemeral container id baked into JUPYTERHUB_API_URL; new id on redeploy -> stale labs resolve a name that no longer exists in the embedded DNS
+  - log: 2026-06-21 fix: hub_connect_url host = JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB ('hub'); compose stamps it as a hub_network alias + container role label; baked Dockerfile ENV + settings_dictionary; validator-required (`hub_container_role_label`); orphan `import socket` dropped
+  - log: 2026-06-21 unit `test_config_validator.py` (46 pass) + functional `test_hub_connect_url.py` added (label + alias + DNS resolve + :8080 reachability); live verify pending rebuild + redeploy
+  - log: 2026-06-21 adversarial-review (claude -p, 2 rounds -> FIXES-SOUND): (1) added a binding guard - `test_container_policy.py` asserts the spawned lab's `JUPYTERHUB_API_URL` starts `http://hub:8080` (the plumbing tests passed even with the fix reverted); (2) boot-time `socket.gethostbyname(_HUB_HOST)` -> `log.error` so a dropped alias is loud at boot, not a silent per-spawn strand (the old gethostname always resolved)
+  - related: DEF-17 (role-label keys/values baked in compose, not only Dockerfile) - this extends the role-label discovery scheme to the hub's own container + its DNS alias
+  - ref: acc-crit "Redeploy-proof hub connect URL"; tasks #430-#436
