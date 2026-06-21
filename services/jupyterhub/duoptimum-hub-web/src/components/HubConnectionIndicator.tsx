@@ -7,10 +7,12 @@ import { useEffect, useState } from 'react'
 import { useHubHealth } from '../lib/useHubHealth'
 import { useIsMobile } from '../lib/useIsMobile'
 import { elapsedShort } from '../lib/format'
+import { hubName } from '../app/capabilities'
 
 const TITLE = 'Hub not responding'
-const BODY =
-  'The Duoptimum Hub is not responding. Shown data may be stale and actions will fail until the connection is restored - retrying automatically.'
+// hub name from branding (JUPYTERHUB_BRANDING_HUB_NAME via window.jhdata), not hardcoded
+const body = () =>
+  `${hubName()} not responding - data may be stale, actions will fail; retrying automatically.`
 const RECOVERED = 'Hub connection restored'
 
 export function HubConnectionIndicator() {
@@ -43,7 +45,7 @@ export function HubConnectionIndicator() {
           <span className="doh-hub-warn-diode" aria-hidden="true" />
           <div>
             <div className="doh-hub-warn-title">{TITLE}{elapsed ? <span aria-hidden="true">{` · for ${elapsed}`}</span> : null}</div>
-            <div className="doh-hub-warn-body">{BODY}</div>
+            <div className="doh-hub-warn-body">{body()}</div>
           </div>
         </div>
       ) : (

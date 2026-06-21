@@ -116,7 +116,6 @@ export interface PolicyApiCred {
   id?: string // pair mode
   secret?: string // pair mode
   key?: string // single mode
-  description?: string
 }
 
 export interface PolicyApiKeysPool {
