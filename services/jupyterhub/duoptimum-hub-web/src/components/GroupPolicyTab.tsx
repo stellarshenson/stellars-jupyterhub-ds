@@ -7,7 +7,7 @@
  * on every change (the parent PUTs it; the hub coerces + validates). */
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Button, Checkbox, Input, InputNumber, Radio, Select, Switch, Table } from 'antd'
+import { Alert, Button, Checkbox, Input, InputNumber, Modal, Radio, Select, Switch, Table, Tooltip } from 'antd'
 import { Icon } from './Icon'
 import type { IconKey } from './Icon'
 import { useTotalResources } from '../hooks/queries'
@@ -234,23 +234,45 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
 
   const toggle = (key: string) => (v: boolean) => setOn((e) => ({ ...e, [key]: v }))
 
-  // import keys from a file (one per line, validated), appended to the pool - no export
+  // import keys from a text file - a popup picks the file, validates immediately, then
+  // the operator submits (append to the pool) or cancels; no export. importGen invalidates
+  // any in-flight FileReader callback when the file is re-picked or the popup is closed/reopened
+  // (a stale onload must never land in a fresh popup and import the wrong file's keys)
   const apiFileRef = useRef<HTMLInputElement>(null)
-  const importApiKeys = (file: File) => {
-    if (apiMode !== 'single' && apiMode !== 'pair') return
+  const importGen = useRef(0)
+  const [importOpen, setImportOpen] = useState(false)
+  const [importName, setImportName] = useState('')
+  const [importParsed, setImportParsed] = useState<{ creds: ApiCred[]; skipped: number } | null>(null)
+  const [importError, setImportError] = useState('')
+  const openImport = () => { importGen.current++; setImportName(''); setImportParsed(null); setImportError(''); setImportOpen(true) }
+  const closeImport = () => { importGen.current++; setImportOpen(false); setImportName(''); setImportParsed(null); setImportError('') }
+  const validateImport = (file: File) => {
+    const mode = apiMode === 'pair' ? 'pair' : 'single'
+    const gen = ++importGen.current
+    setImportName(file.name)
+    setImportParsed(null)
+    setImportError('')
     const reader = new FileReader()
+    reader.onerror = () => { if (gen === importGen.current) setImportError('the file could not be read') }
     reader.onload = () => {
-      const { creds, skipped } = parseApiKeysFile(String(reader.result), apiMode)
+      if (gen !== importGen.current) return
+      const { creds, skipped } = parseApiKeysFile(String(reader.result), mode)
       if (!creds.length) {
-        notify.error(apiMode === 'pair'
-          ? 'No valid keys found - pair mode expects "id,secret" per line'
-          : 'No valid keys found in the file')
+        setImportError(mode === 'pair'
+          ? 'no valid "id,secret" lines found'
+          : 'no keys found - the file is empty or every line is blank')
         return
       }
-      setApiCreds((p) => [...p, ...creds])
-      notify.success(`Imported ${creds.length} key${creds.length === 1 ? '' : 's'}${skipped ? ` (${skipped} skipped)` : ''}`)
+      setImportParsed({ creds, skipped })
     }
     reader.readAsText(file)
+  }
+  const confirmImport = () => {
+    if (!importParsed) return
+    const { creds, skipped } = importParsed
+    setApiCreds((p) => [...p, ...creds])
+    notify.success(`Imported ${creds.length} key${creds.length === 1 ? '' : 's'}${skipped ? ` (${skipped} skipped)` : ''}`)
+    closeImport()
   }
 
   return (
@@ -423,19 +445,45 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
               ]}
             />
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <Button size="small" icon={<Icon name="plus" size={13} />} onClick={() => setApiCreds((p) => [...p, { a: '', b: '' }])}>Add Key</Button>
-              <Button size="small" icon={<Icon name="upload" size={13} />} onClick={() => apiFileRef.current?.click()}>Import</Button>
+              <Tooltip title="Add an empty row to enter one credential by hand">
+                <Button size="small" icon={<Icon name="plus" size={13} />} onClick={() => setApiCreds((p) => [...p, { a: '', b: '' }])}>Add Key</Button>
+              </Tooltip>
+              <Tooltip title="Import credentials from a text file - one per line">
+                <Button size="small" icon={<Icon name="upload" size={13} />} onClick={openImport}>Import Keys</Button>
+              </Tooltip>
+            </div>
+            <Modal
+              open={importOpen}
+              title="Import API keys"
+              onCancel={closeImport}
+              onOk={confirmImport}
+              okText={importParsed ? `Import ${importParsed.creds.length} key${importParsed.creds.length === 1 ? '' : 's'}` : 'Import'}
+              okButtonProps={{ disabled: !importParsed }}
+              destroyOnHidden
+            >
+              <div className="doh-pol-hint" style={{ marginBottom: 12 }}>
+                {apiMode === 'pair'
+                  ? 'Upload a text file with one "id,secret" per line (comma or whitespace separated). Blank lines are ignored.'
+                  : 'Upload a text file with one API key per line. Blank lines are ignored.'}
+              </div>
+              <Button icon={<Icon name="upload" size={13} />} onClick={() => apiFileRef.current?.click()}>{importName || 'Choose file'}</Button>
               <input
                 ref={apiFileRef}
                 type="file"
                 accept=".txt,.csv,.env,.keys,text/*"
                 style={{ display: 'none' }}
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) importApiKeys(f); e.target.value = '' }}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) validateImport(f); e.target.value = '' }}
               />
-            </div>
-            <div className="doh-pol-hint" style={{ marginTop: 6 }}>
-              {apiMode === 'pair' ? 'Import a text file - one "id,secret" per line' : 'Import a text file - one API key per line'}
-            </div>
+              {importError && <Alert type="error" showIcon style={{ marginTop: 12 }} message={`Import failed: ${importError}`} />}
+              {importParsed && (
+                <Alert
+                  type="success"
+                  showIcon
+                  style={{ marginTop: 12 }}
+                  message={`${importParsed.creds.length} valid key${importParsed.creds.length === 1 ? '' : 's'} ready${importParsed.skipped ? ` - ${importParsed.skipped} line${importParsed.skipped === 1 ? '' : 's'} skipped (bad format)` : ''}`}
+                />
+              )}
+            </Modal>
           </>
         )}
       </Section>
