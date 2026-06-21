@@ -132,3 +132,6 @@ dmypy.json
 
 # Runtime log artifacts (job output, adversarial-sweep traces) - fully ignored
 /logs/
+
+# Functional-test screenshot scratch (visual sign-off evidence) - never tracked
+/tests/functional/_screens/
