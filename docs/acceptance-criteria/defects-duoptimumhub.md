@@ -24,6 +24,7 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
 - [DEF-18: Hub-unreachable display (corner diode + full-screen modal) looks bad](#def-18-hub-unreachable-display-corner-diode--full-screen-modal-looks-bad) - open
 - [DEF-19: Hub log lines printed to bare stdout, not a proper logger](#def-19-hub-log-lines-printed-to-bare-stdout-not-a-proper-logger) - open
 - [DEF-20: html_templates_enhanced custom Bootstrap layer is a dead relic](#def-20-html_templates_enhanced-custom-bootstrap-layer-is-a-dead-relic) - open
+- [DEF-21: Connection indicator - ux-review minors (5xx copy, uncapped elapsed, dual warning languages)](#def-21-connection-indicator---ux-review-minors-5xx-copy-uncapped-elapsed-dual-warning-languages) - open
 
 ## Open
 
@@ -188,3 +189,8 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
   - log: 2026-06-20 fix: backend stores `display_ceiling` (remaining last extended TO) at extend and returns `display_ceiling_seconds`; bar measures against it (SSOT `calc_progress_pct_extended`, unit-tested); slider default +4h; colour gradual by % of base (`TTL_COLOR`); glow/blur ramp configurable (`ttlGlowMs`) + reduced-motion suppression removed; bar tooltip adds %, +h over standard, cull ETA
   - log: 2026-06-20 VERIFIED: 71 idle-culler unit tests pass; functional test + live check (below)
   - ref: task #363; acc-crit "TTL progress bar behaviour matrix" + "TTL extend bar animation"
+
+### DEF-21: Connection indicator - ux-review minors (5xx copy, uncapped elapsed, dual warning languages)
+
+- [ ] **LOW** - the final `adversarial-ux-designer` skill pass on the hub-unreachable indicator (SHIP WITH FIXES) raised two MAJORs - mobile gave no screen-reader recovery announcement, and "for XXXX" started at 0s when the hub had already been down ~15-38s - BOTH now fixed (persistent mobile `role="status"` live region + `.doh-sr-only` recovery line; `useHubHealth` stamps the first-failure timestamp as `downSince`). These three lower-priority findings are deferred to a focused follow-up: (1) a reachable hub returning 5xx is counted as a failure and reads "Not responding" - the copy is wrong for the degraded-but-up case (`useHubHealth.ts` `!res.ok` branch); (2) `elapsedShort` is uncapped and the down pill is `white-space: nowrap`, so a multi-hour outage with the tab left open can widen the pill and crowd the breadcrumb (`format.ts`, `global.css` `.doh-conn-pill.down`) - cap or coarsen past 1h; (3) the connection panel uses its own warning treatment (`.doh-hub-warn-panel`) distinct from the established `.doh-notice.warning` pattern - two warning languages, a deliberate-or-unify call
+  - log: 2026-06-21 logged from the final ux-designer skill review; 2 MAJOR fixed, these 3 deferred (LOW)

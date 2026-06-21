@@ -21,6 +21,10 @@ let state: Health = { down: false, downSince: null }
 const listeners = new Set<() => void>()
 let probeStarted = false
 let fails = 0
+// timestamp (ms) of the FIRST failed probe in the current run of failures - used as
+// downSince so the "for XXXX" readout counts from when the hub actually became
+// unreachable, not from the later debounced flip (which lags by FAILS_TO_DOWN polls)
+let firstFailAt: number | null = null
 let timer: ReturnType<typeof setTimeout> | undefined
 // the React Query client, captured from the first mounted hook - single app, one client,
 // so the probe can invalidate stale queries on recovery without per-consumer wiring
@@ -31,12 +35,20 @@ function emit() {
 }
 
 // only flips on a real transition; recovery refetches the stale cache. downSince is the
-// timestamp (ms) the hub first went down (null while up) - drives the "for XXXX" readout.
+// timestamp (ms) of the first failed probe (null while up) - drives the "for XXXX"
+// readout, so it counts from real onset rather than the debounced flip.
 function apply(next: boolean) {
   if (next === state.down) return
-  state = { down: next, downSince: next ? Date.now() : null }
+  state = { down: next, downSince: next ? (firstFailAt ?? Date.now()) : null }
   if (!next) qc?.invalidateQueries()
   emit()
+}
+
+// a successful probe: clear the failure run so the next outage stamps a fresh onset
+function ok() {
+  fails = 0
+  firstFailAt = null
+  apply(false)
 }
 
 async function probe() {
@@ -45,10 +57,11 @@ async function probe() {
   try {
     const res = await fetch(hubUrl('/health'), { signal: ctrl.signal, cache: 'no-store', credentials: 'same-origin' })
     // 401/403 = the hub answered (auth state), NOT the hub being down
-    if (res.status === 401 || res.status === 403) { fails = 0; apply(false) }
+    if (res.status === 401 || res.status === 403) ok()
     else if (!res.ok) throw new Error(String(res.status)) // 5xx etc.
-    else { fails = 0; apply(false) }
+    else ok()
   } catch {
+    if (fails === 0) firstFailAt = Date.now() // stamp onset at the first failure
     fails += 1
     if (fails >= FAILS_TO_DOWN) apply(true)
   } finally {
@@ -88,5 +101,6 @@ export function __resetHubHealth() {
   listeners.clear()
   probeStarted = false
   fails = 0
+  firstFailAt = null
   qc = null
 }

@@ -4618,16 +4618,22 @@ When the portal cannot reach the hub (`useHubHealth` reports down), it surfaces 
   - log: 2026-06-21 decision recorded
 - [ ] **Reachable: pill calm, panel absent** - while reachable the mobile panel renders nothing and the desktop pill stays in its calm healthy state (no warning, no layout jump)
   - log: 2026-06-21 requirement added
-- [ ] **a11y** - mobile panel is `role="alert" aria-live="assertive"`; the header pill is `role="status"` with an `aria-label`; decorative diodes are `aria-hidden`
-  - log: 2026-06-21 requirement carried
+- [x] **a11y** - both surfaces are polite `role="status"` (NOT assertive - a transient blip must not interrupt mid-task); the header pill carries an `aria-label`; decorative diodes are `aria-hidden`; the ticking elapsed is `aria-hidden` so it never re-announces
+  - log: 2026-06-21 both made polite role=status (#414 fix c); assertive dropped
+- [x] **a11y: recovery announced (both surfaces)** - desktop pill stays mounted and flips its `aria-label` to "Hub connected" on recovery; the mobile panel is an ALWAYS-mounted `role="status"` live region that swaps to an sr-only "Hub connection restored" line on recovery, so a screen-reader user hears the clear, not just the outage (an unmounted region is silent)
+  - log: 2026-06-21 ux MAJOR fixed - mobile region was unmounting on recovery (silent); `HubConnectionIndicator` now persistent live region + `.doh-sr-only`
+- [x] **Elapsed counts from onset** - `downSince` is the first-failed-probe timestamp, not the later debounced flip, so "for XXXX" reflects real unreachability instead of understating it by up to `FAILS_TO_DOWN` polls
+  - log: 2026-06-21 ux MAJOR fixed - `useHubHealth` stamps `firstFailAt` at the first failure
 - [ ] **Reduced motion** - under `prefers-reduced-motion` the diode halo pulse is disabled (static dot)
   - log: 2026-06-21 requirement carried
 - [ ] **Edge: recovery clears it** - when the probe flips back to up, the pill returns to healthy and the mobile panel disappears immediately (driven by `down` / `downSince`)
   - log: 2026-06-21 requirement carried
 - [ ] **Visual sign-off** - desktop + mobile screenshots of the down state reviewed against the above (warning-not-error, unobtrusive pill, soft slow pulse, elapsed present, pale mobile bg); operator sign-off recorded
   - log: 2026-06-21 requirement added (operator: "you must test how the server unreachable appears... and how does that appear on the mobile")
-- [ ] **Pedantic UX review** - the design passes an adversarial "20-year UX designer" review (claude -p) on friction, intent clarity, visual hierarchy, attention-without-alarm, stage-badge consistency, motion comfort, a11y, mobile parity; warranted findings applied
-  - log: 2026-06-21 requirement added (operator: "use adversarial UX Expert, pedantic UX designer claude -p")
+- [x] **Pedantic UX review** - the design passes an adversarial "20-year UX designer" review on friction, intent clarity, visual hierarchy, attention-without-alarm, stage-badge consistency, motion comfort, a11y, mobile parity; warranted findings applied
+  - log: 2026-06-21 ran twice - first review (#414) fixed BLOCKER+3 MAJOR+MINOR (entry 386); final pass via the `adversarial-ux-designer` SKILL verdict SHIP-WITH-FIXES, confirmed the four prior fixes hold + motion/contrast/attention pass, raised 2 MAJOR (mobile recovery announcement; elapsed-from-onset) NOW FIXED; 2 MINOR + 1 TASTE deferred to DEF-21
+- [ ] **DEF-21 minors** - reachable-but-5xx reads as "Not responding" (copy); uncapped elapsed + nowrap can crowd the breadcrumb on multi-hour outages; two warning visual languages (panel vs doh-notice.warning) - deferred, see DEF-21
+  - log: 2026-06-21 logged for a focused follow-up
 - [ ] **Functional** - `test_hub_unreachable.py` asserts the header pill down state + elapsed on desktop and the panel at mobile viewport; corner-diode/modal assertions removed
   - log: 2026-06-21 requirement added
 
