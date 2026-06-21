@@ -22,9 +22,7 @@ config. Hydration covers:
 uses, so that handler is now a fallback rather than the only trigger.
 """
 
-import logging
-
-log = logging.getLogger('jupyterhub')
+from .logging_setup import log
 
 
 def start_activity_refreshers(gpu_list=None):

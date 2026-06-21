@@ -17,25 +17,11 @@ raises, so a missing or corrupt file can never block hub startup.
 """
 
 import json
-import logging
 import os
 import tempfile
 from datetime import datetime, timezone
 
-log = logging.getLogger('jupyterhub')
-
-
-def _get_logger():
-    from traitlets.config import Application
-    # Use the hub's Application logger only if one already exists; never create
-    # the singleton here (Application.instance() would), which would pollute
-    # global state for any later code/test that constructs its own Application.
-    try:
-        if Application.initialized():
-            return Application.instance().log
-    except Exception:
-        pass
-    return log
+from .logging_setup import log
 
 
 def _persist_dir():
@@ -75,7 +61,7 @@ def save_cached(name, data):
                 pass
             raise
     except Exception as e:
-        _get_logger().warning(f"[Cache] Could not persist '{name}' to {path}: {e}")
+        log.warning(f"[Cache] Could not persist '{name}' to {path}: {e}")
 
 
 def load_cached(name):
@@ -85,7 +71,6 @@ def load_cached(name):
     the caller then shows nothing until its first refresh. Never raises.
     """
     path = _persist_path(name)
-    logger = _get_logger()
     if not os.path.exists(path):
         return None
     try:
@@ -94,16 +79,16 @@ def load_cached(name):
         ts = datetime.fromisoformat(payload['timestamp'])
         data = payload.get('data')
     except Exception as e:
-        logger.warning(f"[Cache] Ignoring unreadable persisted '{name}' at {path}: {e}")
+        log.warning(f"[Cache] Ignoring unreadable persisted '{name}' at {path}: {e}")
         return None
 
     age = (datetime.now(timezone.utc) - ts).total_seconds()
     ttl = _ttl_seconds()
     if age > ttl:
-        logger.info(
+        log.info(
             f"[Cache] Persisted '{name}' is stale ({age / 3600:.1f}h > {ttl / 3600:.0f}h TTL); "
             "ignoring until first refresh"
         )
         return None
-    logger.info(f"[Cache] Seeded '{name}' from persisted state ({age / 3600:.1f}h old)")
+    log.info(f"[Cache] Seeded '{name}' from persisted state ({age / 3600:.1f}h old)")
     return data, ts

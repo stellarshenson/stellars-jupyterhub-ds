@@ -5,31 +5,17 @@ own thread. Results trickle into the cache as each completes - no waiting for
 the slowest container to finish before showing any data.
 """
 
-import logging
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
-log = logging.getLogger('jupyterhub.custom_handlers')
+from .logging_setup import log
 
 # Cache: {encoded_username: {size_rw_mb, size_rootfs_mb}}
 _container_sizes_cache = {'data': {}, 'timestamp': None, 'refreshing': False}
 
 # Dedicated executor for size fetches (separate from stats executor)
 _size_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="docker-size")
-
-
-def _get_logger():
-    from traitlets.config import Application
-    # Use the hub's Application logger only if one already exists; never create
-    # the singleton here (Application.instance() would), which would pollute
-    # global state for any later code/test that constructs its own Application.
-    try:
-        if Application.initialized():
-            return Application.instance().log
-    except Exception:
-        pass
-    return logging.getLogger('jupyterhub')
 
 
 def _get_docker_timeout():
@@ -67,8 +53,6 @@ def _fetch_single_container_size(container_name, timeout):
 def _refresh_all_container_sizes():
     """Fetch sizes for all jupyterlab containers in parallel. Updates cache incrementally."""
     global _container_sizes_cache
-    logger = _get_logger()
-
     if _container_sizes_cache['refreshing']:
         return
 
@@ -98,10 +82,10 @@ def _refresh_all_container_sizes():
         for u in stale:
             del _container_sizes_cache['data'][u]
         if stale:
-            logger.info(f"[Container Sizes] Cleared {len(stale)} stale entries")
+            log.info(f"[Container Sizes] Cleared {len(stale)} stale entries")
 
         if not names:
-            logger.info("[Container Sizes] No running jupyterlab containers found")
+            log.info("[Container Sizes] No running jupyterlab containers found")
             _container_sizes_cache['timestamp'] = datetime.now(timezone.utc)
             return
 
@@ -117,10 +101,10 @@ def _refresh_all_container_sizes():
                 completed += 1
 
         _container_sizes_cache['timestamp'] = datetime.now(timezone.utc)
-        logger.info(f"[Container Sizes] Refreshed: {completed}/{len(names)} running containers")
+        log.info(f"[Container Sizes] Refreshed: {completed}/{len(names)} running containers")
 
     except Exception as e:
-        logger.error(f"[Container Sizes] Error during refresh: {e}")
+        log.error(f"[Container Sizes] Error during refresh: {e}")
     finally:
         _container_sizes_cache['refreshing'] = False
 
@@ -142,7 +126,7 @@ def get_container_sizes_with_refresh():
     """Get container sizes, triggering background refresh if stale. Non-blocking."""
     data, needs_refresh = get_cached_container_sizes()
     if needs_refresh and not _container_sizes_cache['refreshing']:
-        _get_logger().info("[Container Sizes] Cache stale, triggering background refresh")
+        log.info("[Container Sizes] Cache stale, triggering background refresh")
         from .docker_utils import get_executor
         get_executor().submit(_refresh_all_container_sizes)
     return data
@@ -162,20 +146,19 @@ class ContainerSizeRefresher:
     def __init__(self):
         self.periodic_callback = None
         self.interval_seconds = _get_refresh_interval()
-        _get_logger().info(f"[ContainerSizeRefresher] Initialized with interval={self.interval_seconds}s")
+        log.info(f"[ContainerSizeRefresher] Initialized with interval={self.interval_seconds}s")
 
     def start(self):
         from tornado.ioloop import PeriodicCallback
-        logger = _get_logger()
 
         if self.periodic_callback is not None:
-            logger.info("[ContainerSizeRefresher] Already running")
+            log.info("[ContainerSizeRefresher] Already running")
             return
 
         interval_ms = self.interval_seconds * 1000
         self.periodic_callback = PeriodicCallback(self._refresh_tick, interval_ms)
         self.periodic_callback.start()
-        logger.info(f"[ContainerSizeRefresher] Started - refreshing every {self.interval_seconds}s")
+        log.info(f"[ContainerSizeRefresher] Started - refreshing every {self.interval_seconds}s")
 
         # First refresh immediately
         from .docker_utils import get_executor
@@ -185,7 +168,7 @@ class ContainerSizeRefresher:
         if self.periodic_callback is not None:
             self.periodic_callback.stop()
             self.periodic_callback = None
-            _get_logger().info("[ContainerSizeRefresher] Stopped")
+            log.info("[ContainerSizeRefresher] Stopped")
 
     def _refresh_tick(self):
         if not _container_sizes_cache['refreshing']:

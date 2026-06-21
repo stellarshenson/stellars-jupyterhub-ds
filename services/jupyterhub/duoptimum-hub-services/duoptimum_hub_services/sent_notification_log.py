@@ -15,7 +15,6 @@ DB path defaults to /data/sent_notification_log.sqlite; override with the
 STELLARS_SENT_NOTIFICATION_LOG_DB_PATH env var (tests point it at a temp file).
 """
 
-import logging
 import os
 import threading
 from datetime import datetime, timezone
@@ -24,7 +23,7 @@ from sqlalchemy import Column, Integer, String, Text, create_engine, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-log = logging.getLogger('jupyterhub.sent_notification_log')
+from .logging_setup import log
 
 SentNotificationBase = declarative_base()
 

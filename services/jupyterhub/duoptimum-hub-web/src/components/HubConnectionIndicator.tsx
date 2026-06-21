@@ -27,11 +27,14 @@ export function HubConnectionIndicator() {
   if (!isMobile || !down) return null
 
   const elapsed = downSince ? elapsedShort(Date.now() - downSince) : ''
+  // polite role="status" (NOT assertive/alert): a transient blip should not interrupt a
+  // screen-reader user mid-task - matches the desktop pill's urgency. Title text stays
+  // stable; the ticking elapsed is visual only (aria-hidden) so it never re-announces.
   return (
-    <div className="doh-hub-warn-panel" role="alert" aria-live="assertive">
+    <div className="doh-hub-warn-panel" role="status">
       <span className="doh-hub-warn-diode" aria-hidden="true" />
       <div>
-        <div className="doh-hub-warn-title">{TITLE}{elapsed ? ` · for ${elapsed}` : ''}</div>
+        <div className="doh-hub-warn-title">{TITLE}{elapsed ? <span aria-hidden="true">{` · for ${elapsed}`}</span> : null}</div>
         <div className="doh-hub-warn-body">{BODY}</div>
       </div>
     </div>

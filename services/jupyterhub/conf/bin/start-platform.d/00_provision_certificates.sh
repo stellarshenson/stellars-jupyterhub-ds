@@ -17,14 +17,11 @@ set -e
 USER_CERTS="${CERTIFICATE_USER_CERTS_DIR:-/user-certs}"
 TARGET="${CERTIFICATE_TARGET_DIR:-/certs}"
 DEFAULT_CN="${CERTIFICATE_DOMAIN_NAME:-localhost}"
-LOG_PREFIX="[Certificates]"
+LOG_COMPONENT="Certificates"
+source /platform-log.sh   # log / log_warn / log_err -> INFO-format lines (see conf/bin/platform-log.sh)
 
 shopt -s nullglob
 mkdir -p "$TARGET"
-
-log()      { echo "$LOG_PREFIX $*"; }
-log_warn() { echo "$LOG_PREFIX WARN: $*" >&2; }
-log_err()  { echo "$LOG_PREFIX ERROR: $*" >&2; }
 
 # Pull every certFile / keyFile / caFile out of a yml, recursively.
 extract_paths() {
@@ -111,7 +108,7 @@ EOF
 
 print_status() {
     local source="$1"
-    echo "$LOG_PREFIX ========================================================"
+    log "========================================================"
     log "source: $source"
     local yml crt subj san issuer not_after
     for yml in "$TARGET"/*.yml "$TARGET"/*.yaml; do
@@ -129,7 +126,7 @@ print_status() {
         log "    issuer:  $issuer"
         log "    expires: $not_after"
     done
-    echo "$LOG_PREFIX ========================================================"
+    log "========================================================"
 }
 
 if operator_certs_valid; then

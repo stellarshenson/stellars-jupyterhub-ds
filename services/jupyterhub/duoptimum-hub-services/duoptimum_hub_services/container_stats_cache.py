@@ -17,33 +17,18 @@ Cache is keyed by the escapism-encoded username (the `jupyterlab-<encoded>`
 container-name suffix), matching how the handler looks it up.
 """
 
-import logging
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 from .docker_utils import encoded_username_from_lab_container, stats_from_container
-
-log = logging.getLogger('jupyterhub.custom_handlers')
+from .logging_setup import log
 
 # Cache: {encoded_username: {cpu_percent, cpu_cores, memory_mb, ...}}
 _container_stats_cache = {'data': {}, 'timestamp': None, 'refreshing': False}
 
 # Dedicated executor for stats fetches (separate from the size/ops executors)
 _stats_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="docker-stats")
-
-
-def _get_logger():
-    from traitlets.config import Application
-    # Use the hub's Application logger only if one already exists; never create
-    # the singleton here (Application.instance() would), which would pollute
-    # global state for any later code/test that constructs its own Application.
-    try:
-        if Application.initialized():
-            return Application.instance().log
-    except Exception:
-        pass
-    return logging.getLogger('jupyterhub')
 
 
 def _get_docker_timeout():
@@ -83,8 +68,6 @@ def _refresh_active_container_stats(active_encoded):
     Stale entries for stopped containers are pruned. Updates the cache incrementally.
     """
     global _container_stats_cache
-    logger = _get_logger()
-
     if _container_stats_cache['refreshing']:
         return
     active_encoded = set(active_encoded or ())
@@ -117,7 +100,7 @@ def _refresh_active_container_stats(active_encoded):
         for u in stale:
             del _container_stats_cache['data'][u]
         if stale:
-            logger.info(f"[Container Stats] Cleared {len(stale)} stale entries")
+            log.info(f"[Container Stats] Cleared {len(stale)} stale entries")
 
         if not names:
             _container_stats_cache['timestamp'] = datetime.now(timezone.utc)
@@ -135,10 +118,10 @@ def _refresh_active_container_stats(active_encoded):
                 completed += 1
 
         _container_stats_cache['timestamp'] = datetime.now(timezone.utc)
-        logger.info(f"[Container Stats] Refreshed: {completed}/{len(names)} active containers")
+        log.info(f"[Container Stats] Refreshed: {completed}/{len(names)} active containers")
 
     except Exception as e:
-        logger.error(f"[Container Stats] Error during refresh: {e}")
+        log.error(f"[Container Stats] Error during refresh: {e}")
     finally:
         _container_stats_cache['refreshing'] = False
 

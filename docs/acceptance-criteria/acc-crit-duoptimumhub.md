@@ -4654,3 +4654,61 @@ On a Docker Hub push the gpuinfo-nvidia sidecar image is tagged and pushed with 
   - log: 2026-06-20 `push:` adds `docker push $(GPUINFO_IMAGE):$(TAG)`; success banner names both images
 - [x] **Verified by dry-run** - `make -n push` emits the gpuinfo `docker tag ...:latest ...:$(TAG)` and the versioned `docker push`
   - log: 2026-06-20 verified `make -n push` shows both images tagged + pushed at `4.0.12_cuda-13.0.2_jh-5.5.0`
+
+## Hub logging (loguru)
+
+All platform-emitted hub RUNTIME log lines go through one loguru sink (`duoptimum_hub_services.logging_setup`, exported `log`), coloured when stderr is a TTY and plain when piped. Replaces a mix of bare `print()` to stdout and inconsistent stdlib logger names (`JupyterHub` / `jupyterhub` / `jupyterhub.*`) whose INFO could fail to render. Build-time stdlib-only scripts keep `print()` by design.
+
+- [x] **Single sink** - one loguru stderr handler configured once in `logging_setup` (INFO+, colour auto-detected); modules import `log` and call `log.info` / `log.warning`
+  - log: 2026-06-21 implemented (v4.0.12)
+- [x] **Colour if terminal permits** - coloured when stderr is a terminal, plain (markup stripped) when piped (docker logs)
+  - log: 2026-06-21 loguru `colorize=None` auto-detect
+- [x] **Declared dependency** - `loguru` in `duoptimum-hub-services` pyproject; reaches every env via the package install, never a manual one-off
+  - log: 2026-06-21 added to dependencies
+- [x] **Runtime sites converted** - `config.py` (GPU + Config lines), `services.py` (Activity Sampler), `admin_bootstrap.py`, `events.py` (info vs warning by content) and `gpuinfo_sidecar.py` route through `log`
+  - log: 2026-06-21 converted (DEF-19)
+- [x] **[GPU debug] -> [GPU] at INFO** - the GPU detection summary logs at INFO as `[GPU]`, not a `[GPU debug]` print
+  - log: 2026-06-21 operator: "no more GPU Debug... ok for info level"
+- [x] **Build-time print kept** - `event_schema_fix.py` (image-build, stdlib-only) intentionally keeps `print()`
+  - log: 2026-06-21 documented exception
+- [ ] **Shell startup logs INFO-formatted** - the pre-hub `start-platform.d/*` scripts emit INFO-formatted lines, not bare stdout
+  - log: 2026-06-21 criterion added (in progress, #415)
+- [ ] **Architect sweep clean** - the logging convention is unified (adversarial-architect `claude -p` sweep finds no runtime outlier)
+  - log: 2026-06-21 criterion added (sweep running)
+- [ ] **Live render check** - after redeploy the converted lines appear coloured/levelled in `docker logs`, not bare
+  - log: 2026-06-21 criterion added (pending redeploy)
+
+## Full takeover of html_templates_enhanced (portal owns every page)
+
+The modern portal/wheel stack renders 100% of user- and admin-facing pages; `html_templates_enhanced` (all templates + `custom.css` + `session-timer.js` + `mobile.js`) is removed entirely. Server-side handler contracts (xsrf, spawn-progress SSE, oauth consent, password change, authorization, share-accept) are preserved.
+
+- [x] **6 relics gone (DEF-20)** - admin/home/token/login/native-login/signup removed (were shadowed by the wheel template_dir or bypassed by the auth template map)
+  - log: 2026-06-21 removed (v4.0.12)
+- [ ] **Directory removed** - `services/jupyterhub/html_templates_enhanced/` deleted entirely (templates + `static/`)
+  - log: 2026-06-21 criterion added (#419)
+- [ ] **No source reference** - no `.py`/`.yml`/`.sh`/Dockerfile/template references `html_templates_enhanced`, `custom.css`, `session-timer.js` or `mobile.js`
+  - log: 2026-06-21 added
+- [ ] **Dockerfile clean** - the `*.html` COPY, the 3 static `cp` lines and the `admin.html` `rm` removed; image builds
+  - log: 2026-06-21 added
+- [ ] **Modern base** - a wheel base template provides the chrome with self-contained styling aligned to the portal design language; no bootstrap/`custom.css`/old-JS dependency
+  - log: 2026-06-21 added
+- [ ] **Pages taken over** - error, 404, spawn, spawn_pending, stop_pending, not_running, oauth, logout, my_message, accept-share, change-password, change-password-admin, authorization-area each render branded from the modern stack
+  - log: 2026-06-21 added
+- [ ] **Spawn progress preserved** - spawn_pending shows live progress (hub progress SSE) + lab-ready poll fallback; no `session-timer.js`
+  - log: 2026-06-21 added
+- [ ] **OAuth consent preserved** - consent form authorizes scopes unchanged (xsrf intact)
+  - log: 2026-06-21 added
+- [ ] **Password change preserved** - user + admin change-password POST unchanged (xsrf, show/hide toggle)
+  - log: 2026-06-21 added
+- [ ] **Authorization area** - pending-user authorize/unauthorize/discard works, or redirects to the SPA Users page
+  - log: 2026-06-21 added
+- [ ] **Idle countdown** - `idle_culler.py` stays the source of truth; the `session-timer.js` mirror is removed; idle UI reimplemented modern or intentionally dropped on server pages
+  - log: 2026-06-21 added
+- [ ] **No old-asset 404** - after redeploy no page requests `css/custom.css`, `js/session-timer.js` or `js/mobile.js`
+  - log: 2026-06-21 added
+- [ ] **Unit tests** - wheel provides every required template name; a test asserts no source ref to the dir/assets remains
+  - log: 2026-06-21 added
+- [ ] **Functional (e2e)** - each page renders branded from the modern stack under the live stack; no old-asset 404
+  - log: 2026-06-21 added
+- [ ] **Docs refreshed** - `portal-ui-catalogue.md` + `activity-tracking-methodology.md` stale refs updated
+  - log: 2026-06-21 added

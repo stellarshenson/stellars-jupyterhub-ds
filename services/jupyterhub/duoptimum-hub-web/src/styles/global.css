@@ -242,17 +242,32 @@ body { margin: 0; font-family: var(--font-sans); }
 .doh-mock-switch a:hover { color: var(--color-text); }
 .doh-mock-switch a.on { background: var(--color-accent-soft); color: var(--color-accent); font-weight: 600; }
 
+/* ---- themed scrollbars ----
+   subtle, theme-aligned (was too contrastive). Thumb is a faint tint of --color-text mixed
+   into transparent, so it auto-adapts: faint dark in light theme, faint light in dark theme;
+   track stays transparent. webkit pseudo-elements apply to every scrollable element; Firefox
+   uses scrollbar-width/color on * (scrollbar-color inherits, * keeps nested scrollers aligned). */
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--color-text) 22%, transparent) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--color-text) 18%, transparent); border-radius: var(--radius-full); border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--color-text) 32%, transparent); }
+::-webkit-scrollbar-corner { background: transparent; }
+
 /* ---- hub-connection status: header pill (desktop) + in-flow warning panel (mobile) ----
-   reads as a WARNING when down, never a red system error. The diode carries a SOFT halo that
-   slowly fades off slightly and back in (doh-soft-pulse, period from --doh-status-pulse set by
-   services/config.ts ANIMATION.statusPulseMs) - calm, not an expanding ring. */
+   reads as a WARNING when down, never a red system error. Motion carries meaning: ONLY the
+   down-state diode pulses (a SOFT halo that slowly fades off slightly and back in - doh-soft-pulse,
+   period from --doh-status-pulse set by services/config.ts ANIMATION.statusPulseMs - calm, not an
+   expanding ring). The healthy diode is static so a green pill never breathes in peripheral vision. */
 
 /* desktop header pill - sized to the StageBadge's vertical metrics (1px pad, 1.6 line, 1px
    border) so the two sit level; the down state fills with warning to draw attention */
 .doh-conn-pill { display: inline-flex; align-items: center; gap: 7px; font-size: var(--text-xs); font-weight: 600; letter-spacing: .02em; padding: 1px 9px; border: 1px solid currentColor; border-radius: var(--radius-sm); line-height: 1.6; white-space: nowrap; }
-.doh-conn-pill .doh-conn-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; animation: doh-soft-pulse var(--doh-status-pulse, 3s) ease-in-out infinite; }
-.doh-conn-pill.ok { color: var(--color-success); }                                                            /* healthy: calm outlined success pill */
-.doh-conn-pill.down { color: var(--color-warning); background: color-mix(in srgb, var(--color-warning) 14%, transparent); } /* down: warning fill */
+.doh-conn-pill .doh-conn-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }  /* static by default - see .down override */
+.doh-conn-pill.ok { color: var(--color-success); }                                                            /* healthy: calm outlined success pill, diode static */
+/* down: NEUTRAL text (amber-on-amber fails contrast), amber border + diode + pale fill - matches the mobile panel */
+.doh-conn-pill.down { color: var(--color-text); border-color: color-mix(in srgb, var(--color-warning) 55%, transparent); background: color-mix(in srgb, var(--color-warning) 14%, transparent); }
+.doh-conn-pill.down .doh-conn-dot { color: var(--color-warning); animation: doh-soft-pulse var(--doh-status-pulse, 3s) ease-in-out infinite; }  /* only the down diode pulses (motion = attention) */
 
 /* mobile: in-flow warning panel at the top of the content; pale warning surface so it never washes out the text */
 .doh-hub-warn-panel { display: flex; align-items: flex-start; margin: 12px 0; padding: 12px 14px; border-radius: var(--radius-md); color: var(--color-text); background: color-mix(in srgb, var(--color-warning) 12%, var(--color-surface)); border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent); }

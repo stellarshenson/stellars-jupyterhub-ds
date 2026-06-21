@@ -1,5 +1,6 @@
 """Shared fixtures for duoptimum_hub_services functional tests."""
 
+import logging
 import os
 
 import pytest
@@ -8,6 +9,26 @@ from sqlalchemy.orm import sessionmaker
 
 from duoptimum_hub_services.activity.model import ActivityBase
 from duoptimum_hub_services.activity.monitor import ActivityMonitor
+from duoptimum_hub_services.logging_setup import logger as _loguru_logger
+
+
+@pytest.fixture
+def caplog(caplog):
+    """Bridge loguru -> pytest's caplog.
+
+    The platform logs through the shared loguru sink, not stdlib logging, so
+    caplog sees nothing by default. Add a temporary loguru sink that forwards
+    each record into the caplog handler (the standard loguru recipe), so tests
+    that assert on caplog.records keep working after the loguru migration.
+    """
+    handler_id = _loguru_logger.add(
+        caplog.handler,
+        format="{message}",
+        level=0,
+        filter=lambda record: record["level"].no >= caplog.handler.level,
+    )
+    yield caplog
+    _loguru_logger.remove(handler_id)
 
 
 @pytest.fixture(autouse=True)

@@ -13,7 +13,6 @@ override with STELLARS_USER_DISPLAY_PREFS_DB_PATH (used by tests for a temp file
 """
 
 import json
-import logging
 import os
 import threading
 
@@ -21,7 +20,7 @@ from sqlalchemy import Column, String, Text, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-log = logging.getLogger('jupyterhub.user_display_preferences')
+from .logging_setup import log
 
 UserDisplayPreferencesBase = declarative_base()
 

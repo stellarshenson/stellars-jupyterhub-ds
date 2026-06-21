@@ -10,7 +10,6 @@ The DB path defaults to /data/user_profiles.sqlite; override with the
 STELLARS_USER_PROFILES_DB_PATH env var (used by tests to point at a temp file).
 """
 
-import logging
 import os
 import threading
 
@@ -18,7 +17,7 @@ from sqlalchemy import Boolean, Column, String, Text, create_engine, inspect, te
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-log = logging.getLogger('jupyterhub.user_profiles')
+from .logging_setup import log
 
 UserProfilesBase = declarative_base()
 

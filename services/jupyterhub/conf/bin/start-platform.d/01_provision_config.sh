@@ -21,10 +21,8 @@ USER_CONFIG="${JUPYTERHUB_USER_CONFIG_DIR:-/mnt/user_config}"
 ROOT="${JUPYTERHUB_USER_CONFIG_FILE:-jupyterhub_config.py}"
 RUNTIME="/srv/config"
 BUILTIN="/srv/jupyterhub/jupyterhub_config.py"
-LOG_PREFIX="[Config]"
-
-log()     { echo "$LOG_PREFIX $*"; }
-log_err() { echo "$LOG_PREFIX ERROR: $*" >&2; }
+LOG_COMPONENT="Config"
+source /platform-log.sh   # log / log_warn / log_err -> INFO-format lines (see conf/bin/platform-log.sh)
 
 mkdir -p "$RUNTIME"
 rm -rf "$RUNTIME"/* 2>/dev/null || true
