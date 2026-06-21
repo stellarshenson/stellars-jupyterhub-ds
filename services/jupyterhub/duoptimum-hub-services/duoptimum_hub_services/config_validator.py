@@ -75,8 +75,10 @@ class ValidationResult:
         """Log every warning (if a logger given), then SystemExit on any error - one message
         listing all offenders so the operator fixes them in a single pass, not one boot each."""
         if log is not None:
+            # pre-format so the call is logger-agnostic: stdlib (%-style) and loguru
+            # ({}-style) both accept a fully-rendered single string with no args
             for w in self.warnings:
-                log.warning("[config] %s", w)
+                log.warning(f"[config] {w}")
         if self.errors:
             raise SystemExit(
                 "Hub configuration invalid - refusing to start:\n  - "
