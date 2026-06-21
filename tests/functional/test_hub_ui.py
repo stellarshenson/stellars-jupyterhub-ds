@@ -78,7 +78,7 @@ def test_groups_page_renders(admin_portal):
 @pytest.mark.acc_crit("functional-test-harness::SPA page-render smoke")
 def test_events_page_renders(admin_portal):
     page = admin_portal.goto("/events")
-    expect(page.get_by_role("button", name="Clear Events")).to_be_visible()
+    expect(page.get_by_role("button", name="Clear", exact=True)).to_be_visible()
 
 
 @pytest.mark.acc_crit(

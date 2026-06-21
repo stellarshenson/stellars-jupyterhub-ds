@@ -1,6 +1,7 @@
 """Event-log persistence + clear, driven through the SPA Events page. An admin
-action records an event; the Events page shows it; the danger-toned Clear-Events
-button (behind a confirm modal) empties the persistent store and the feed.
+action records an event; the Events page shows it; the danger-toned toolbar "Clear"
+button (behind a confirm modal whose OK is "Clear Events") empties the persistent
+store and the feed.
 """
 
 import pytest
@@ -27,15 +28,15 @@ def test_events_render_and_clear(admin_portal, base_url, admin_api):
     page = admin_portal.goto("/events")
     # the feed shows at least the group event
     expect(page.locator("tr.ant-table-row").first).to_be_visible()
-    clear = page.get_by_role("button", name="Clear Events")
+    clear = page.get_by_role("button", name="Clear", exact=True)  # toolbar button
     expect(clear).to_be_enabled()
 
-    # Clear Events -> confirm modal -> its danger OK button (also labelled "Clear Events").
+    # toolbar "Clear" -> confirm modal -> its danger OK button (labelled "Clear Events").
     clear.click()
     page.locator(".ant-modal-confirm-btns").get_by_role("button", name="Clear Events").click()
 
-    # Wait for the confirm modal to close (else two "Clear Events" buttons match), then
-    # the feed empties and the toolbar button disables (nothing left to clear).
+    # Wait for the confirm modal to close, then the feed empties and the toolbar button
+    # disables (nothing left to clear).
     expect(page.locator(".ant-modal-confirm")).to_have_count(0)
     expect(page.locator("tr.ant-table-row")).to_have_count(0)
-    expect(page.get_by_role("button", name="Clear Events")).to_be_disabled()
+    expect(page.get_by_role("button", name="Clear", exact=True)).to_be_disabled()
