@@ -13,6 +13,10 @@
 #                    "standard shared volume" row). Networks/containers: visible in `docker inspect`.
 # --------------------------------------------------------------------------------------------------
 
+# project name: COMPOSE_PROJECT_NAME wins; else duoptimum-hub (NOT the dir basename) so the
+# ${COMPOSE_PROJECT_NAME:-duoptimum-hub} fallback in the traefik provider constraint stays consistent.
+name: ${COMPOSE_PROJECT_NAME:-duoptimum-hub}
+
 services:
 
   # Traefik: routes traffic, TLS, one instance (443 only - secure ingress). HTTP :80 + insecure :8080 dashboard removed.
@@ -44,6 +48,7 @@ services:
         condition: service_healthy
     networks:
       - hub_network
+      - hub_gpuinfo_network # join hub's 2nd net too -> backend IP always reachable, no pin needed
     labels:
       # Dashboard router: /traefik -> built-in api@internal (UI at /traefik/dashboard/, API at /traefik/api/).
       # THE TOGGLE: traefik.enable gates this whole route. =false (set in .env) means the docker provider
@@ -186,9 +191,8 @@ services:
       # Enable Traefik proxy
       - "traefik.enable=true"
 
-      # hub on 2 nets (hub_network + hub_gpuinfo_network); traefik only on hub_network.
-      # pin backend net - else traefik may pick the unreachable gpuinfo IP -> 504 gateway timeout.
-      - "traefik.docker.network=${COMPOSE_PROJECT_NAME:-duoptimum-hub}_hub_network"
+      # NO traefik.docker.network pin: traefik joins BOTH hub nets (its networks: block) so
+      # whichever backend IP its docker provider picks is reachable - no name to drift, no 504.
 
       # hub service (8000), canonical /hub; /jupyterhub + /duoptimum-hub aliases
       # -> redirected by hub-alias-redirect below
