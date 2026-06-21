@@ -265,6 +265,13 @@ export default function Servers() {
   ]
   const offlineUsers = data.filter((r) => r.status === 'offline').map((r) => r.user)
   const runningUsers = data.filter((r) => r.status === 'active' || r.status === 'idle').map((r) => r.user)
+  const startAll = () =>
+    Modal.confirm({
+      title: 'Start all stopped servers?',
+      content: `This starts ${offlineUsers.length} stopped lab(s).`,
+      okText: 'Start All',
+      onOk: () => startAllServers(offlineUsers),
+    })
   const stopAll = () =>
     Modal.confirm({
       title: 'Stop all running servers?',
@@ -283,7 +290,7 @@ export default function Servers() {
         title="Servers"
         actions={
           <>
-            <Button icon={<Icon name="play" size={14} />} disabled={!offlineUsers.length} onClick={() => startAllServers(offlineUsers)}>Start All</Button>
+            <Button icon={<Icon name="play" size={14} />} disabled={!offlineUsers.length} onClick={startAll}>Start All</Button>
             <Button danger icon={<Icon name="stop" size={14} filled />} disabled={!runningUsers.length} onClick={stopAll}>Stop All</Button>
           </>
         }

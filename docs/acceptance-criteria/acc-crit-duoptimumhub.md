@@ -14,6 +14,7 @@ Cross-document conflicts found during consolidation are tracked in [concerns.md]
 - [background refresh + immediate update](#background-refresh-immediate-update)
 - [environment-stage badge](#environment-stage-badge)
 - [broadcast auto-close duration](#broadcast-auto-close-duration)
+- [Bulk server actions confirmation (Start All / Stop All)](#bulk-server-actions-confirmation-start-all--stop-all)
 - [last-known cache + non-blocking GPU + GPU-widget gating](#last-known-cache-non-blocking-gpu-gpu-widget-gating)
 - [Cert Provisioning](#cert-provisioning)
 - [Compose Project Naming](#compose-project-naming)
@@ -4756,3 +4757,18 @@ The custom Bootstrap layer `html_templates_enhanced/` is removed in full - NOT r
   - log: 2026-06-21 7 tests written, run at gate (#407)
 - [x] **Docs refreshed** - `portal-ui-catalogue.md` + `activity-tracking-methodology.md` stale `html_templates_enhanced` refs updated
   - log: 2026-06-21 catalogue marked historical + source-of-truth fixed; activity-tracking table row points at the SPA
+
+---
+
+## Bulk server actions confirmation (Start All / Stop All)
+
+The admin Servers page bulk actions each require a confirmation popup before running, stating how many labs are affected, so neither is one-click-destructive. Message kept deliberately simple - action plus count, no embellishment.
+
+- [x] **Start All confirms** - "Start All" opens a confirm popup ("Start all stopped servers?", body "This starts N stopped lab(s)."); OK runs, Cancel aborts
+  - log: 2026-06-21 added (operator: start all + stop all require a confirm popup)
+- [x] **Stop All confirms** - "Stop All" opens a confirm popup ("Stop all running servers?", body "This stops N running lab(s)."); OK is danger-styled, Cancel aborts
+  - log: 2026-06-21 already present; kept
+- [x] **Simple message** - the popup states only the action and the affected count (N labs); no invented warning copy
+  - log: 2026-06-21 operator: "do not be inventive about the message, just make it simple"
+- [x] **Edge: empty set** - a button is disabled when its set is empty (no offline labs -> Start All disabled; no running labs -> Stop All disabled), so the popup never opens on zero labs
+  - log: 2026-06-21 existing `disabled={!offlineUsers.length}` / `disabled={!runningUsers.length}`; `Servers.tsx`
