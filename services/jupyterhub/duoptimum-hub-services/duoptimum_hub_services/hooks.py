@@ -39,6 +39,8 @@ def make_pre_spawn_hook(
     reserved_env_var_names=frozenset(),
     reserved_env_var_prefixes=(),
     compose_project='',
+    container_role_label_key='',
+    container_role_label_value='',
     docker_proxy_socket_dir='',
     docker_proxy_volume_name='',
     user_compose_project_template='',
@@ -127,18 +129,24 @@ def make_pre_spawn_hook(
 
         # ── Non-policy spawn steps (not group-scoped) ────────────────────────
 
-        # Docker Compose project labels: tag every container so `docker compose
-        # ls` / `docker compose -p <project> ps` group all spawned user
-        # containers under the same project as the hub.
+        # Container labels for the spawned lab: the hub.container.role=lab discovery
+        # label (parallel to the hub + gpuinfo sidecar, so labs are findable by role
+        # like every other hub-managed container) plus, when set, the Docker Compose
+        # project labels so `docker compose ls` / `-p <project> ps` group all spawned
+        # user containers under the hub's project. The role label is independent of the
+        # compose grouping, so it is applied even when compose_project is empty.
+        kwargs = dict(spawner.extra_create_kwargs or {})
+        labels = dict(kwargs.get('labels') or {})
+        if container_role_label_key and container_role_label_value:
+            labels[container_role_label_key] = container_role_label_value
         if compose_project:
-            kwargs = dict(spawner.extra_create_kwargs or {})
-            labels = dict(kwargs.get('labels') or {})
             labels.update({
                 'com.docker.compose.project': compose_project,
                 'com.docker.compose.service': f'jupyterlab_{username}',
                 'com.docker.compose.container-number': '1',
                 'com.docker.compose.oneoff': 'False',
             })
+        if labels:
             kwargs['labels'] = labels
             spawner.extra_create_kwargs = kwargs
 

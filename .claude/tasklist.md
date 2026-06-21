@@ -1,40 +1,88 @@
-# Task List - Duoptimum Hub session (persisted for recovery)
+# Task List - Duoptimum Hub (persisted for recovery)
 
-Mirrors the harness task list (#396-#423). Single source of truth for open vs done; reconciled 2026-06-21 (post network-fix commit).
+Reopen this to resume. Reconciled 2026-06-21 (v4.0.12). Current work = DEF-22 redeploy-proof
+hub connect URL + spawned-lab role label; journal entry #396.
 
-Goal gate (this session): all tasks complete; solutions survive adversarial `claude -p`/skill checks; acc-crit updated; tests updated/added and green; `make rebuild` succeeds; redeploy yields a good live system; live + functional checks confirm.
+## Goal gate (this session, Stop-hook)
 
-HEAD: `59502ba` (pushed, `feature/new-frontend-mock` -> github). Wrapper repo `main` at `e0bfe4d` (-> gitlab).
+All tasks complete; solutions survive `claude -p` adversarial checks; acc-crit updated; unit
+tests updated + functional tests added and executed; `make rebuild` succeeds; `../stop.sh &&
+../start.sh` gives a good working system; live + functional checks confirm.
 
-## Uncommitted (working tree - awaiting rebuild + commit approval)
-- [x] #408 docker resource tester `test_docker_resources.py` (untracked) - names/labels/characteristics, default regime
-- [x] #411 API keys import-from-file - `GroupPolicyTab.tsx` (`parseApiKeysFile` + Import button) + `test_api_keys_import.py` (untracked); acc-crit AC-4a
-- [x] #421 per-key Description removed from API keys pool (`GroupPolicyTab.tsx`, `types.ts`, `mockSource.ts`); acc-crit AC-4
-- [x] #423 terse hub-unreachable message, LEADS WITH the branding hub name (`hubName()` <- `JUPYTERHUB_BRANDING_HUB_NAME` via `window.jhdata`); `ConnectionStatusPill.tsx` (`downTitle()` + healthy tooltip), `HubConnectionIndicator.tsx` (`body()`); acc-crit Copy criterion; typecheck+lint green
-- [x] acc-crit edits riding along (AC-4, AC-4a, #408 + #409 sections, Copy)
-- NOTE the frontend edits (#411/#421/#423) bake into the bundle -> need a `make rebuild` before they show live; the two new functional tests are mounted (no rebuild)
+## Current scope
 
-## Pending (human)
-- [ ] #400 visual sign-off of the unreachable state desktop + mobile (only-human; code-level UX review done)
+1. **DEF-22** - `c.JupyterHub.hub_connect_url` baked the hub's ephemeral container id
+   (`socket.gethostname()`) into each lab's `JUPYTERHUB_API_URL`; a hub redeploy stranded
+   running labs with "Name or service not known". Fix: host = `JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB`
+   ('hub'), stamped by compose as a `hub_network` alias + `hub.container.role` label.
+2. **Lab role label** - `pre_spawn_hook` stamps `hub.container.role=lab`
+   (`JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB`) on every spawned lab, discoverable by role like the
+   hub + gpuinfo sidecar.
 
-## Committed + pushed
-- [x] #422 traefik->hub network-name DECOUPLING (Option A): dropped the `traefik.docker.network` pin, dual-homed traefik on both hub nets so the backend IP is always reachable - name-free, no 504. `compose.yml` -> submodule `59502ba` (github); wrapper `compose_override.yml` -> `e0bfe4d` (gitlab); journal 392; validated read-only via `docker compose config`; no rebuild/redeploy
-- [x] #396-#420 across `b64fb9d`..`914816e`: connection-indicator redesign (header pill, soft pulse, `downSince` elapsed, mobile panel, ux MAJORs); loguru + SQLAlchemy 2; `html_templates_enhanced` ELIMINATION + CLOSE-GAP cold-start redirect; Events "Clear"; antd sort-tooltip off + `COL_HELP` tooltips; theme scrollbars; functional suite (7 regimes). #409 investigation later SUPERSEDED by #422
+## Done
 
-## Open drift to resolve
-- acc-crit "## Traefik backend network binding" (~L4543) still says the pin is REQUIRED - STALE after #422 removed it; rewrite to Option A (reachability-based, name-free) - offered, awaiting operator go-ahead
-- DEF-21 ux-review minors: 5xx copy reads "Not responding"; uncapped elapsed + nowrap can crowd breadcrumb; two warning visual languages
+- [x] **Code (both)** - `config/jupyterhub_config.py` (`_HUB_HOST` = role-hub var, boot-time
+  `gethostbyname` fail-loud `log.error`, hook wiring), `hooks.py` (role-label block independent
+  of compose-project grouping), `config_validator.py` (`hub_container_role_label` +
+  `lab_container_role_label` required), `Dockerfile.jupyterhub`, `compose.yml` (env + label +
+  `hub_network` alias), `settings_dictionary.yml`, functest `compose.functional.yml` (hub alias)
+- [x] **Unit tests** - `test_config_validator.py` fixture + parametrize both new vars; suite green (902 + 65)
+- [x] **Functional tests written** - new `test_hub_connect_url.py` (label + alias + DNS + :8080);
+  `test_container_policy.py` binding assert (lab `JUPYTERHUB_API_URL` host + `hub.container.role=lab`)
+- [x] **Adversarial review** - `claude -p` 2 rounds -> FIXES-SOUND; MAJORs fixed (test binds to
+  the changed line; boot-time fail-loud added)
+- [x] **acc-crit** - "Redeploy-proof hub connect URL" + hub/lab "container by role" criteria
+  (checkboxes `[ ]` pending live verify)
+- [x] **DEF-22 registered** - `defects-duoptimumhub.md` + Contents
+- [x] **make rebuild** - `stellars/duoptimum-hub:latest` v4.0.12 (no bump); `logs/rebuild-role-hub-lab.log`
+- [x] **Journal** - entry #396
 
-## Deferred minors
-- Dedicated per-page `COL_HELP` functional checks (feature done; CPU/MEM covered in `test_servers_resources.py`)
-- loguru "None -" logger name on config-emitted lines (exec'd config has no `__name__`; needs rebuild)
-- Project CLAUDE.md env docs still cite `duoptimum-hub.*` keys (doc-only)
-- pre-existing mount-path drift: `test_lab_setup_system_volumes.py:50` `/run/dockersock` vs compose `/var/run/docker-proxy-sockets`
+## Functional run findings (2026-06-21)
+
+- `test_container_policy.py::test_policies_applied_to_container` PASSED - STRONG end-to-end proof:
+  the spawned lab's `JUPYTERHUB_API_URL` host = `hub` AND it carries `hub.container.role=lab`
+- `test_hub_connect_url.py` - 3/4 passed (alias present, alias resolves to hub IP, :8080 reachable);
+  `test_hub_carries_container_role_label` FAILED (`assert None == 'hub'`) - functest hub lacked the
+  `hub.container.role=hub` LABEL (I added it to production `compose.yml` but forgot `compose.functional.yml`)
+- FIX APPLIED: added `labels: hub.container.role: "hub"` to the functest hub in `compose.functional.yml`;
+  signup regime re-running to confirm (`logs/functest-role-hub-lab-signup.log`)
+- `test_role_labels.py` all PASSED
+
+## Open (resume here)
+
+- [ ] **Confirm signup re-run green** - after the `compose.functional.yml` label fix; expect all 4
+  `test_hub_connect_url.py` + `test_container_policy.py` PASS (api-keys still fails, see below).
+  Then optionally `bash tests/functional/run.sh traefik` + `... gpu` for full coverage
+- [ ] **Live redeploy** - `cp compose.yml ../compose.yml` (FIRST - start.sh uses on-disk copy),
+  then `../stop.sh && ../start.sh`; log `logs/redeploy-role-hub-lab-*.log`
+- [ ] **Live verification** - hub reachable (`curl -k -H 'Host: jupyterhub.lab.stellars-tech.eu'
+  https://localhost/hub/health` -> 200); `docker inspect <hub>` shows `hub` alias on hub_network +
+  `hub.container.role=hub`; spawn a lab -> `JUPYTERHUB_API_URL=http://hub:8080/...` + `hub.container.role=lab`;
+  pre-fix labs need ONE respawn
+- [ ] **Flip acc-crit + DEF-22 to done** - mark criteria `[x]` and DEF-22 `[x]` / Contents "- fixed" after live verify
+
+## Known issue surfaced (NOT this change)
+
+- [ ] **`test_api_keys_import.py::test_import_single_keys_from_file` FAILS** post-rebuild - the
+  #395 import-popup rework, first tested against a rebuilt image now (#393-#395 frontend changes
+  were committed but never rebuilt). Likely the test wasn't updated for the popup flow, or a real
+  popup bug. Investigate next session - unrelated to DEF-22 / lab role label
+
+## Carried-forward open drift (prior sessions)
+
+- acc-crit "## Traefik backend network binding" still says the `traefik.docker.network` pin is
+  REQUIRED - STALE after `59502ba`/#422 removed it (Option A dual-home); rewrite offered, awaiting go-ahead
+- acc-crit "Label namespace (prefix)" + project CLAUDE.md still cite `duoptimum-hub.*` keys; code/compose
+  use bare `hub.` (e.g. `hub.container.role`)
+- DEF-21 ux-review minors: degraded-5xx copy reads "Not responding"; uncapped elapsed + nowrap pill
+  can crowd the breadcrumb; two warning visual languages
+- pre-existing mount-path drift: `test_lab_setup_system_volumes.py:50` `/run/dockersock` vs compose
+  `/var/run/docker-proxy-sockets`
 
 ## Notes / decisions
-- loguru over JupyterHub stdlib logger; Option A (convert our emitters) not InterceptHandler
-- `html_templates_enhanced`: ELIMINATION framing - only basic JupyterHub framework persists; SPA owns every user/admin journey
-- `hub.*` label namespace propagated forward to honor the rename
-- #422 chose dual-home over a pin because Traefik's docker provider has NO label-based backend selector; lab isolation preserved (labs on `hub_network` only)
-- `_screens/` (functional screenshots) root-owned by the test runner - excluded from commits (sudo rm or gitignore)
-- Plan file `~/.claude/plans/majestic-percolating-sprout.md` = the #422 decoupling plan (approved + implemented)
+
+- Config is bind-mounted in production but BAKED in the functest image - rebuild required for
+  functional tests to see new ENV defaults + config
+- `make rebuild` does NOT bump the version (only `make build` / `rebuild_increment_version` do)
+- Redeploy rule: always `cp compose.yml ../compose.yml` BEFORE `../stop.sh && ../start.sh`
+- Git: no commit/push without explicit per-action approval; current branch `feature/new-frontend-mock`

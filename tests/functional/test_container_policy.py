@@ -89,6 +89,12 @@ def test_policies_applied_to_container(admin_api, docker_client, base_url):
         env = dict(e.split("=", 1) for e in attrs["Config"]["Env"] if "=" in e)
         assert env.get("JUPYTERLAB_SUDO_ENABLE") == "0", "sudo policy not applied"
         assert env.get("FOO") == "bar", "group env var not injected"
+        # DEF-22: the hub bakes its STABLE network alias (not its ephemeral container id)
+        # into the lab's API URL, so a hub redeploy does not strand the lab. Binds directly
+        # to _HUB_HOST = JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB - reverting it to gethostname()
+        # would bake the hub's short id here and fail this assertion.
+        api_url = env.get("JUPYTERHUB_API_URL", "")
+        assert api_url.startswith("http://hub:8080"), f"lab API URL not via stable hub alias: {api_url!r}"
 
         assert attrs["HostConfig"]["Memory"] == 2 * 1024 ** 3, "memory cap not applied"
 
@@ -109,5 +115,7 @@ def test_policies_applied_to_container(admin_api, docker_client, base_url):
         # compose-project label so teardown reaps the spawned lab
         labels = attrs["Config"].get("Labels", {})
         assert labels.get("com.docker.compose.project") == "stellars-functest"
+        # role label so labs are discoverable like the hub + gpuinfo sidecar
+        assert labels.get("hub.container.role") == "lab", "spawned lab missing hub.container.role=lab"
     finally:
         _stop_server(admin_api, base)

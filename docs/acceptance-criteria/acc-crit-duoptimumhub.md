@@ -4296,6 +4296,10 @@ Floating Docker resources the hub references in CODE outside its compose-declare
   - log: 2026-06-20 prefix updated (see GPU-info sidecar section for the network model)
 - [x] **gpuinfo container by role** - the hub stamps `duoptimum-hub.container.role=gpuinfo` on the sidecar; compose mirrors it
   - log: 2026-06-20 prefix updated
+- [ ] **hub container by role** - the hub carries `hub.container.role=hub` (compose label); the value doubles as the hub's `hub_network` DNS alias so spawned labs+CHP reach it by a stable name (see "Redeploy-proof hub connect URL")
+  - log: 2026-06-21 added (`JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB`); compose label + alias, Dockerfile ENV, settings_dictionary, validator-required
+- [ ] **lab container by role** - `pre_spawn_hook` stamps `hub.container.role=lab` on every spawned user lab (`JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB`), so labs are discoverable by role like the hub + gpuinfo sidecar; applied independent of the compose-project grouping
+  - log: 2026-06-21 added; `hooks.py` labels block, validator-required, Dockerfile ENV + compose env + settings_dictionary; functional `test_container_policy.py` asserts it on the spawned container; unit `test_config_validator.py` covers the required var
 - [x] **Declared resources carry a description label** - the compose-declared volumes (`hub_data`, `hub_certs`, `hub_shared`, `hub_docker`) and both networks (`hub_network`, `hub_gpuinfo_network`) carry a `duoptimum-hub.<noun>.description` human-phrase label; the hub stamps `duoptimum-hub.container.description` on the gpuinfo sidecar it creates (informational; networks/containers surface it in `docker inspect`)
   - log: 2026-06-20 operator "also description for other resources (two networks and one container) - add the description labels"; `compose.yml` volumes + networks, `gpuinfo_sidecar.py` (`container_description` param, value from `config.py`); unit `test_gpuinfo_sidecar::test_ensure_stamps_container_description_label` + `test_ensure_omits_description_label_when_blank`
 - [x] **Shared volume description shown in the portal** - the Groups standard-shared-volume row reads `duoptimum-hub.volume.description` off the resolved volume and shows it; absent label -> static fallback phrase (see "Group volume mounts")
@@ -4560,6 +4564,31 @@ The hub is multi-homed (`hub_network` + `hub_gpuinfo_network`); Traefik is on `h
   - log: 2026-06-21 verified via `docker compose config` - the live wrapper sets `COMPOSE_PROJECT_NAME=stellars-tech-ai-workbench` (`env.default`, consumed by `start.sh --env-file`); the submodule's standalone `.env` sets `stellars-jupyterhub-ds`; either way pin = `<project>_hub_network` and constraint = `<project>`, both derived, so the new `name:` is inert whenever the var is set (always, in both deploy paths)
 - [x] **Edge: COMPOSE_PROJECT_NAME unset** - top-level `name: ${COMPOSE_PROJECT_NAME:-duoptimum-hub}` makes the project name `duoptimum-hub` (not the dir basename), so the label fallbacks resolve to a network that actually exists
   - log: 2026-06-21 added top-level `name:` in `compose.yml`; `docker compose config` with no env yields project `duoptimum-hub`, pin `duoptimum-hub_hub_network`, constraint `duoptimum-hub` - all consistent; inert when `.env` sets the var
+
+## Redeploy-proof hub connect URL
+
+Spawned labs and CHP reach the hub via `c.JupyterHub.hub_connect_url`, baked into each lab's `JUPYTERHUB_API_URL` at spawn. The host was `socket.gethostname()` - the hub's ephemeral container id - so a hub redeploy or watchtower update minted a new id and stranded already-running labs with "Name or service not known" ([DEF-22](defects-duoptimumhub.md#def-22-hub-connect-url-uses-ephemeral-container-id-brittle-on-redeploy)). The host is now a STABLE network alias the hub carries on `hub_network`, sourced from `JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB` (default `hub`), so the name survives redeploys.
+
+- [ ] **Stable alias, not container id** - `_HUB_HOST = JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB`; `hub_connect_url = http://{host}:8080{base}/hub`; no `socket.gethostname()`
+  - log: 2026-06-21 implemented in `config/jupyterhub_config.py`; orphan `import socket` dropped
+- [ ] **Value = label = alias (one source)** - the env value doubles as the hub's `hub.container.role` label AND its `hub_network` DNS alias; compose stamps both from the same literal
+  - log: 2026-06-21 `compose.yml` hub `labels` + `hub_network.aliases`; "MUST match" comments on both
+- [ ] **Required var** - `JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB` is validator-required (`hub_container_role_label`); empty -> hub refuses to start
+  - log: 2026-06-21 added to `config_validator._REQUIRED` + the config values dict; unit `test_config_validator.py` fixture + parametrize (46 pass)
+- [ ] **Baked in all surfaces** - Dockerfile ENV default, compose env + label + alias, settings_dictionary entry all carry `hub`
+  - log: 2026-06-21 `Dockerfile.jupyterhub`, `compose.yml`, `settings_dictionary.yml`
+- [ ] **Functest mirrors production** - the functest hub carries the `hub` alias on its network so the connect URL resolves; without it the hub healthcheck (CHP -> hub via the connect URL) fails and the whole suite breaks
+  - log: 2026-06-21 `tests/functional/compose.functional.yml` hub `aliases: [hub]`
+- [ ] **Functional: label + alias + reachability** - `test_hub_connect_url.py` asserts `hub.container.role=hub`, the alias is on a hub network, the alias resolves to the hub IP from a peer, and `http://hub:8080{base}/hub/api` answers 200
+  - log: 2026-06-21 added `tests/functional/test_hub_connect_url.py`; verify pending rebuild + functional run
+- [ ] **Functional: lab actually uses the alias (binds to the fix)** - `test_container_policy.py` spawns a real lab and asserts its `JUPYTERHUB_API_URL` starts `http://hub:8080`; reverting `_HUB_HOST` to `gethostname()` bakes the container id here and fails this - the regression guard that binds to the changed line
+  - log: 2026-06-21 added (adversarial-review MAJOR: the alias-plumbing tests passed even with the fix reverted); verify pending rebuild + functional run
+- [ ] **Edge: alias missing - fail loud** - if compose omits the alias, config boot logs a `log.error` (`socket.gethostbyname(_HUB_HOST)` fails) naming the missing-alias cause, instead of a cryptic per-spawn "Name or service not known"; the hub still serves its UI (no boot refusal)
+  - log: 2026-06-21 added boot-time resolvability check (adversarial-review MAJOR: old gethostname always resolved, the new name can silently strand labs); also the functest healthcheck routes CHP -> hub via the connect URL, a second live guard
+- [ ] **Edge: pre-fix labs need one respawn** - labs spawned before the fix hold the old container-id `JUPYTERHUB_API_URL`; they must be stopped/started once to pick up the stable alias (no auto-migration)
+  - log: 2026-06-21 documented; one-time on rollout
+- [ ] **Wrapper inherits** - the live wrapper override redefines neither the hub `networks` nor the role env, so the base alias + value survive the compose merge
+  - log: 2026-06-21 verified `compose_override.yml` hub block (no `networks:` key; env adds only differing keys)
 
 ## Docker resource tester
 

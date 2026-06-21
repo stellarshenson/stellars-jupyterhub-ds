@@ -247,6 +247,13 @@ ENV JUPYTERHUB_GPUINFO_NETWORK_NAME={network}
 # Container role label (key + value) stamped on hub-created sidecar; mirrors compose service.
 ENV JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY=hub.container.role
 ENV JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO=gpuinfo
+# Hub's own role value; doubles as the hub's stable network alias (compose stamps both the
+# hub.container.role label AND a hub_network alias). Spawned labs+CHP reach the hub by this
+# fixed name (hub_connect_url), redeploy-proof unlike the old container-id (DEF-22).
+ENV JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB=hub
+# Spawned-lab role value; pre_spawn_hook stamps hub.container.role=lab on every user lab so
+# labs are discoverable by role like the hub + gpuinfo sidecar (uniform container management).
+ENV JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB=lab
 # Container description: label key for the sidecar's human phrase (env-sourced, not hardcoded in code)
 ENV JUPYTERHUB_LABEL_CONTAINER_DESCRIPTION=hub.container.description
 # Volume role labels (key + role values). Hub finds each mounted volume by hub.volume.role

@@ -13,7 +13,7 @@
 
 from duoptimum_hub_services.logging_setup import log  # platform loguru sink for our own log lines
 import os                       # env var reads
-import socket                   # gethostname() -> container short id (rename-proof hub address)
+import socket                   # boot-time resolvability check on the hub's stable network alias
 
 import jupyterhub               # __version__, __file__ for template paths
 import nativeauthenticator      # __file__ for template path resolution
@@ -204,6 +204,16 @@ JUPYTERHUB_GPUINFO_NVIDIA_URL = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_URL", 
 # empty -> validator fails.
 JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY = os.environ.get("JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY", "").strip()
 JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO = os.environ.get("JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO", "").strip()
+# Hub's own container role value. DOUBLES as the hub's stable network ALIAS - compose stamps
+# it both as hub.container.role on the hub AND as a `hub_network` alias, so spawned labs + CHP
+# reach the hub by this fixed name (see hub_connect_url) instead of the hub's ephemeral
+# container id, which changes on every redeploy/watchtower update (DEF-22). Key + value baked
+# ENV (MUST match compose label + alias); empty -> validator fails.
+JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB = os.environ.get("JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB", "").strip()
+# Spawned-lab container role value. pre_spawn_hook stamps hub.container.role=lab on every
+# user lab so labs are discoverable by role like the hub + gpuinfo sidecar (uniform container
+# management). Baked ENV (MUST match compose env); empty -> validator fails.
+JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB = os.environ.get("JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB", "").strip()
 # Volume role labels. Hub finds each named volume it mounts by role among own mounts -
 # discover, not name (name drifts: jupyterhub_shared -> hub_shared bug). Key + values baked
 # ENV (MUST match compose volume labels); empty -> validator fails. Duplicate role -> raises
@@ -780,6 +790,8 @@ validate_hub_config({
     "shared_volume_role_label": JUPYTERHUB_LABEL_VOLUME_ROLE_SHARED,
     "docker_proxy_volume_role_label": JUPYTERHUB_LABEL_VOLUME_ROLE_DOCKER_PROXY,
     "gpuinfo_container_role_label": JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO,
+    "hub_container_role_label": JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB,
+    "lab_container_role_label": JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB,
     "volume_description_label_key": JUPYTERHUB_LABEL_VOLUME_DESCRIPTION,
     "volume_owner_label_key": JUPYTERHUB_LABEL_VOLUME_OWNER_KEY,
     "container_description_label_key": JUPYTERHUB_LABEL_CONTAINER_DESCRIPTION,
@@ -811,6 +823,8 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     reserved_env_var_names=RESERVED_ENV_VAR_NAMES,           # names groups cannot override
     reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,     # prefixes reserved for JupyterHub/platform
     compose_project=JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME,     # compose project label on spawned labs (defaults to the hub project; overridable to differ)
+    container_role_label_key=JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY,   # hub.container.role key stamped on the spawned lab
+    container_role_label_value=JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB, # role value 'lab' - makes spawned labs discoverable by role like the hub + gpuinfo sidecar
     docker_proxy_socket_dir=JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR,   # path inside hub where per-user sockets live (backed by named volume)
     docker_proxy_volume_name=JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME,      # named docker volume; the spawner subpath-mounts this into each lab
     user_compose_project_template=JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE,  # rendered per-user when a docker-limited group enables it
@@ -836,10 +850,23 @@ c.DockerSpawner.args = [
 ]
 
 # ── Networking ──
-# Spawned labs + CHP reach the hub by the container's own short id: Docker sets
-# HOSTNAME to it and registers it in the embedded DNS for peers, so it is
-# rename-proof (independent of the compose service name) and always resolvable.
-_HUB_HOST = socket.gethostname()
+# Spawned labs + CHP reach the hub by a STABLE network alias, not the hub's container id.
+# The previous socket.gethostname() baked the hub's ephemeral short id into every lab's
+# JUPYTERHUB_API_URL; on a hub redeploy/watchtower update the id changes and already-running
+# labs are stranded with "Name or service not known" (DEF-22). The role value is stamped as a
+# hub_network alias by compose, so this name resolves to the hub across redeploys.
+_HUB_HOST = JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB
+# Fail LOUD if the alias is missing. gethostname() always resolved (just to a drifting id);
+# this name resolves only if compose actually stamped the hub_network alias. Surface a dropped
+# alias (e.g. an override that reshapes the hub networks) at boot, not as a cryptic per-spawn
+# "Name or service not known" - the exact silent-strand failure DEF-22 fixed.
+try:
+    socket.gethostbyname(_HUB_HOST)
+except OSError:
+    # error, not warning: a missing alias breaks EVERY spawn (bigger blast radius than the
+    # validator's optional-feature warnings); the hub still serves its UI, so do not refuse boot.
+    log.error(f"[networking] hub alias '{_HUB_HOST}' does not resolve - spawned labs will fail "
+              f"to reach the hub; ensure compose stamps it as a hub_network alias (DEF-22)")
 c.JupyterHub.hub_connect_url = f'http://{_HUB_HOST}:8080' + JUPYTERHUB_BASE_URL_PREFIX + '/hub'  # URL spawned containers/CHP use to reach hub
 c.DockerSpawner.remove = True                                # auto-remove containers after stop (volumes persist)
 c.DockerSpawner.debug = False                                # DockerSpawner debug logging
