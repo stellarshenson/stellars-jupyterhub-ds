@@ -14,8 +14,6 @@ services:
     image: stellars/duoptimum-hub:latest
     pull_policy: never                       # use the locally built image, never pull
     container_name: stellars-functest-duoptimum-hub
-    labels:
-      hub.container.role: "hub" # mirror production: stable role label (alias is on the network below)
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw   # DockerSpawner
       - certs:/certs
@@ -44,9 +42,14 @@ services:
       - JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME=                          # keep labs in THIS project (not {compose}_labs) so clean() reaps them by project label
       - COMPOSE_PROJECT_NAME=stellars-functest
     networks:
-      jupyterhub_network:
-        aliases:
-          - hub # stable alias spawned labs+CHP reach the hub by (= baked JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB); mirrors production so hub_connect_url resolves (DEF-22)
+      # NO hand-stamped alias: the service name `duoptimum-hub` is itself the DNS alias
+      # compose registers on every net the hub joins. Mirror production multi-homing -
+      # lab net + gpuinfo net - so a mis-bind off the lab net (hub_connect_url regression)
+      # can actually happen here. The gpuinfo net name sorts BEFORE the lab net name, so the
+      # hub's self-resolution of its own service name would land on the gpuinfo IP if anyone
+      # reintroduced hub_connect_url - reproducing the exact bug condition (DEF-22).
+      - jupyterhub_network
+      - gpuinfo_network
     healthcheck:
       test: ["CMD-SHELL", "python3 -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/jupyterhub/hub/health', timeout=3).status==200 else 1)\""]
       interval: 5s
@@ -76,6 +79,14 @@ services:
 networks:
   jupyterhub_network:
     name: stellars-functest_network
+  # 2nd hub net (role=gpuinfo), reproducing prod multi-homing. Its name sorts
+  # ALPHABETICALLY BEFORE the lab net's (stellars-functest_gpuinfo_network <
+  # stellars-functest_network) so the hub's self-resolution of its service name would
+  # land on the gpuinfo IP if hub_connect_url were ever reintroduced - the bug condition.
+  gpuinfo_network:
+    name: stellars-functest_gpuinfo_network
+    labels:
+      hub.network.role: "gpuinfo"
 
 volumes:
   certs:

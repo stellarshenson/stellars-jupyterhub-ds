@@ -2,8 +2,8 @@
 non-blank line, validated, appended to the list. Import only, no export. Default regime.
 
 Drives the SPA: open a group's Configure -> Policy tab, enable the API Keys Pool, pick
-single mode, upload an in-memory text file, and assert the success toast + the parsed
-rows land in the credential table. #411.
+single mode, open the Import popup, upload an in-memory text file, confirm, and assert the
+success toast + the parsed rows land in the credential table. #411, popup rework #418.
 """
 
 import pytest
@@ -36,11 +36,16 @@ def test_import_single_keys_from_file(admin_portal, admin_api, base_url):
         # antd renders options in a body-level portal as .ant-select-item-option
         page.locator(".ant-select-item-option", has_text="Single API Key").click()
 
+        # open the import popup; the file input lives in a body-level antd Modal, not in sec
+        sec.get_by_role("button", name="Import Keys").click()
+        dialog = page.get_by_role("dialog", name="Import API keys")
         # import three keys (one per line); the blank line is skipped silently
-        sec.locator("input[type=file]").set_input_files(files=[{
+        dialog.locator("input[type=file]").set_input_files(files=[{
             "name": "keys.txt", "mimeType": "text/plain",
             "buffer": b"sk-aaa\nsk-bbb\n\nsk-ccc\n",
         }])
+        # validation parses the file; the OK button reports the count - confirm to append
+        dialog.get_by_role("button", name="Import 3 keys").click()
 
         # success toast reports the count, and the parsed rows land in the table
         expect(page.get_by_text("Imported 3 keys")).to_be_visible()

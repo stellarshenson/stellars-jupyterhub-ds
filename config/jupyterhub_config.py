@@ -13,7 +13,6 @@
 
 from duoptimum_hub_services.logging_setup import log  # platform loguru sink for our own log lines
 import os                       # env var reads
-import socket                   # boot-time resolvability check on the hub's stable network alias
 
 import jupyterhub               # __version__, __file__ for template paths
 import nativeauthenticator      # __file__ for template path resolution
@@ -48,6 +47,7 @@ from duoptimum_hub_services import (
 
 from duoptimum_hub_services.docker_utils import resolve_self_mount_volume_by_label  # exact volume discovery by hub.volume.role among hub's own mounts (rename-safe; raises on duplicate role)
 from duoptimum_hub_services.docker_utils import resolve_self_compose_project  # runtime discovery of the hub's own compose project from its own container label (no env needed)
+from duoptimum_hub_services.docker_utils import resolve_self_compose_service  # runtime discovery of the hub's own compose SERVICE name (stable DNS alias) from its own container label - the hub_connect_ip labs reach the hub by
 from duoptimum_hub_services.docker_utils import volume_labels  # read a named volume's labels (injected into build_system_volume_rows)
 from duoptimum_hub_services.docker_utils import build_system_volume_rows  # pure builder: Lab Setup system-volume rows (shared + docker-proxy)
 from duoptimum_hub_services.policy.base import SHARED_MOUNTPOINT  # lab-side shared mount (/mnt/shared)
@@ -204,12 +204,6 @@ JUPYTERHUB_GPUINFO_NVIDIA_URL = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_URL", 
 # empty -> validator fails.
 JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY = os.environ.get("JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY", "").strip()
 JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO = os.environ.get("JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO", "").strip()
-# Hub's own container role value. DOUBLES as the hub's stable network ALIAS - compose stamps
-# it both as hub.container.role on the hub AND as a `hub_network` alias, so spawned labs + CHP
-# reach the hub by this fixed name (see hub_connect_url) instead of the hub's ephemeral
-# container id, which changes on every redeploy/watchtower update (DEF-22). Key + value baked
-# ENV (MUST match compose label + alias); empty -> validator fails.
-JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB = os.environ.get("JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB", "").strip()
 # Spawned-lab container role value. pre_spawn_hook stamps hub.container.role=lab on every
 # user lab so labs are discoverable by role like the hub + gpuinfo sidecar (uniform container
 # management). Baked ENV (MUST match compose env); empty -> validator fails.
@@ -790,7 +784,6 @@ validate_hub_config({
     "shared_volume_role_label": JUPYTERHUB_LABEL_VOLUME_ROLE_SHARED,
     "docker_proxy_volume_role_label": JUPYTERHUB_LABEL_VOLUME_ROLE_DOCKER_PROXY,
     "gpuinfo_container_role_label": JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO,
-    "hub_container_role_label": JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB,
     "lab_container_role_label": JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB,
     "volume_description_label_key": JUPYTERHUB_LABEL_VOLUME_DESCRIPTION,
     "volume_owner_label_key": JUPYTERHUB_LABEL_VOLUME_OWNER_KEY,
@@ -850,27 +843,29 @@ c.DockerSpawner.args = [
 ]
 
 # ── Networking ──
-# Spawned labs + CHP reach the hub by a STABLE network alias, not the hub's container id.
-# The previous socket.gethostname() baked the hub's ephemeral short id into every lab's
-# JUPYTERHUB_API_URL; on a hub redeploy/watchtower update the id changes and already-running
-# labs are stranded with "Name or service not known" (DEF-22). The role value is stamped as a
-# hub_network alias by compose, so this name resolves to the hub across redeploys.
-_HUB_HOST = JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB
-# Fail LOUD if the alias is missing. gethostname() always resolved (just to a drifting id);
-# this name resolves only if compose actually stamped the hub_network alias. Surface a dropped
-# alias (e.g. an override that reshapes the hub networks) at boot, not as a cryptic per-spawn
-# "Name or service not known" - the exact silent-strand failure DEF-22 fixed.
-try:
-    socket.gethostbyname(_HUB_HOST)
-except OSError:
-    # error, not warning: a missing alias breaks EVERY spawn (bigger blast radius than the
-    # validator's optional-feature warnings); the hub still serves its UI, so do not refuse boot.
-    log.error(f"[networking] hub alias '{_HUB_HOST}' does not resolve - spawned labs will fail "
-              f"to reach the hub; ensure compose stamps it as a hub_network alias (DEF-22)")
-c.JupyterHub.hub_connect_url = f'http://{_HUB_HOST}:8080' + JUPYTERHUB_BASE_URL_PREFIX + '/hub'  # URL spawned containers/CHP use to reach hub
+# Labs + CHP reach the hub by its compose SERVICE NAME - the stable Docker DNS alias compose
+# registers on every net the hub joins. A peer on a shared net resolves it to the hub's IP on
+# THAT net, so it is redeploy-proof (unlike socket.gethostname()'s ephemeral container id,
+# which stranded running labs with "Name or service not known" on a hub redeploy - DEF-22).
+# Discovered from the hub's own built-in com.docker.compose.service label (self-by-label, like
+# resolve_self_compose_project) - no hand-stamped alias, no env.
+#
+# Advertise via hub_connect_ip (advertise-ONLY). Do NOT use hub_connect_url: it ALSO drives the
+# API bind, and JupyterHub resolves its host FROM THE HUB - on the multi-homed hub that name
+# lands on the gpuinfo IP, binding the API off the lab net so labs get connection refused (the
+# regression). hub_ip stays 0.0.0.0 so the API listens on ALL the hub's interfaces (incl. the
+# lab net) and the hub never resolves its own name to pick one.
+_HUB_SERVICE_NAME = resolve_self_compose_service()
+if _HUB_SERVICE_NAME:
+    c.JupyterHub.hub_connect_ip = _HUB_SERVICE_NAME          # stable service-name DNS labs/CHP reach the hub by
+else:
+    # degrade, do not refuse boot: JupyterHub falls back to the container id - labs still reach
+    # the hub this boot but a later hub redeploy (new id) can strand them (the DEF-22 failure).
+    log.error("[networking] hub compose service name undiscoverable - falling back to the "
+              "container id (NOT redeploy-proof); spawned labs may strand on a hub redeploy")
 c.DockerSpawner.remove = True                                # auto-remove containers after stop (volumes persist)
 c.DockerSpawner.debug = False                                # DockerSpawner debug logging
-c.JupyterHub.hub_ip = "0.0.0.0"                              # bind/listen on all interfaces (no name resolution -> no DNS race)
+c.JupyterHub.hub_ip = "0.0.0.0"                              # listen on ALL interfaces incl. lab net; advertise via hub_connect_ip
 c.JupyterHub.hub_port = 8080                                 # internal hub port (not exposed externally)
 c.JupyterHub.base_url = JUPYTERHUB_BASE_URL_PREFIX + '/' if JUPYTERHUB_BASE_URL_PREFIX else '/'  # URL prefix for all hub routes
 

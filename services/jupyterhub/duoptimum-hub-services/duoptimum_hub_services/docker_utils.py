@@ -367,6 +367,32 @@ def resolve_self_compose_project():
         return None
 
 
+def resolve_self_compose_service():
+    """The docker-compose SERVICE name of THIS (hub) container, read from its own
+    ``com.docker.compose.service`` label.
+
+    Compose registers the service name as a network alias on every network the service
+    joins, so it is the stable DNS name peers on a shared network resolve to the hub -
+    redeploy-proof, unlike the ephemeral container id ``socket.gethostname()`` returns.
+    The hub advertises it as ``hub_connect_ip`` so spawned labs/CHP reach it by name with
+    no hand-stamped alias and no env. Same self-by-label pattern as
+    ``resolve_self_compose_project``. Returns None when undeterminable (not in a container,
+    docker socket unreachable, or no compose label), letting the caller fall back to
+    JupyterHub's default (the container id).
+    """
+    try:
+        import socket
+        import docker
+        client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        try:
+            container = client.containers.get(socket.gethostname())
+            return (container.labels or {}).get('com.docker.compose.service') or None
+        finally:
+            client.close()
+    except Exception:
+        return None
+
+
 def resolve_self_network_by_label(label_key, label_value=None):
     """Net THIS (hub) container attached to that carries label_key. Discover at runtime,
     not name via env (name would drift).
