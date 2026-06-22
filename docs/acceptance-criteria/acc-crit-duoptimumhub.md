@@ -597,7 +597,7 @@ Hub provisions Traefik TLS at boot via `00_provision_certificates.sh`, reconcili
   - log: 2026-06-17 unchanged behaviour, paths migrated
 - [x] **Persisted tier (symmetric)** - overlay empty/invalid AND `/certs` has >=1 yml whose every referenced file exists (recursive descent, `.pem` + subdirs accepted) -> keep `/certs` as-is, source `persisted`
   - log: 2026-06-17 rewritten from the old top-level-`*.crt`-only check; verified by simulation
-- [x] **Auto tier** - operator + persisted both invalid -> `mkcert.sh` self-signed (CN `$CERTIFICATE_DOMAIN_NAME`, 2048-bit, 365d, no SAN) + default `certs.yml` into `/certs`, source `auto-generated`
+- [x] **Auto tier** - operator + persisted both invalid -> `mkcert.sh` self-signed (CN `$JUPYTERHUB_HUB_CERTIFICATE_GENERATOR_DOMAIN_NAME`, 2048-bit, 365d, no SAN) + default `certs.yml` into `/certs`, source `auto-generated`
   - log: 2026-06-17 unchanged, target path migrated
 - [x] **Tier precedence** - operator > persisted > auto, evaluated in that order
   - log: 2026-06-17 verified
@@ -658,7 +658,7 @@ Hub provisions Traefik TLS at boot via `00_provision_certificates.sh`, reconcili
 
 - `CERTIFICATE_TARGET_DIR` (default `/certs`) - runtime dir Traefik scans
 - `CERTIFICATE_USER_CERTS_DIR` (default `/user-certs`) - operator overlay
-- `CERTIFICATE_DOMAIN_NAME` (default `localhost`) - CN for the auto-generated cert
+- `JUPYTERHUB_HUB_CERTIFICATE_GENERATOR_DOMAIN_NAME` (default `localhost`) - CN for the auto-generated cert
 
 ## Compose Project Naming
 

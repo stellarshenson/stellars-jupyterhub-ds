@@ -16,7 +16,7 @@ set -e
 
 USER_CERTS="${CERTIFICATE_USER_CERTS_DIR:-/user-certs}"
 TARGET="${CERTIFICATE_TARGET_DIR:-/certs}"
-DEFAULT_CN="${CERTIFICATE_DOMAIN_NAME:-localhost}"
+DEFAULT_CN="${JUPYTERHUB_HUB_CERTIFICATE_GENERATOR_DOMAIN_NAME:-localhost}"
 LOG_COMPONENT="Certificates"
 source /platform-log.sh   # log / log_warn / log_err -> INFO-format lines (see conf/bin/platform-log.sh)
 

@@ -11,6 +11,8 @@ page with empty volume-size data.
 import pytest
 
 from duoptimum_hub_services import volume_cache as vc
+from duoptimum_hub_services import container_size_cache as czc
+from duoptimum_hub_services import container_stats_cache as csc
 
 
 @pytest.fixture
@@ -264,3 +266,25 @@ class TestRefreshCachesOnlyComplete:
         vc._refresh_volume_sizes_sync()
         assert calls["n"] <= 3, "budget stopped the loop far short of the 100-attempt cap"
         assert vc._volume_sizes_cache['refreshing'] is False
+
+
+# Docker Engine API call timeout, shared by all three resource-stat caches. Guards the
+# JUPYTERHUB_DOCKER_TIMEOUT -> JUPYTERHUB_HUB_DOCKER_API_TIMEOUT rename: new name honoured,
+# default 360s, retired name inert.
+_TIMEOUT_HELPERS = [vc._get_docker_timeout, csc._get_docker_timeout, czc._get_docker_timeout]
+
+
+@pytest.mark.parametrize("get_docker_timeout", _TIMEOUT_HELPERS)
+def test_docker_api_timeout_honours_renamed_env(get_docker_timeout, monkeypatch):
+    monkeypatch.delenv("JUPYTERHUB_HUB_DOCKER_API_TIMEOUT", raising=False)
+    monkeypatch.delenv("JUPYTERHUB_DOCKER_TIMEOUT", raising=False)
+    assert get_docker_timeout() == 360                   # default when unset
+    monkeypatch.setenv("JUPYTERHUB_HUB_DOCKER_API_TIMEOUT", "42")
+    assert get_docker_timeout() == 42                    # new name honoured
+
+
+@pytest.mark.parametrize("get_docker_timeout", _TIMEOUT_HELPERS)
+def test_retired_docker_timeout_env_is_ignored(get_docker_timeout, monkeypatch):
+    monkeypatch.delenv("JUPYTERHUB_HUB_DOCKER_API_TIMEOUT", raising=False)
+    monkeypatch.setenv("JUPYTERHUB_DOCKER_TIMEOUT", "999")   # retired name must not leak through
+    assert get_docker_timeout() == 360

@@ -47,7 +47,7 @@ run_script() {
         -e "s|BUILTIN=\"/srv/jupyterhub/jupyterhub_config.py\"|BUILTIN=\"$BUILTIN_DIR/jupyterhub_config.py\"|" \
         "$SCRIPT_UNDER_TEST" > "$patched"
     JUPYTERHUB_USER_CONFIG_DIR="$user_dir" \
-    JUPYTERHUB_USER_CONFIG_FILE="$user_file" \
+    JUPYTERHUB_HUB_CONFIG_FILE="$user_file" \
     bash "$patched" 2>&1 | sed "s/^/    /"
     return "${PIPESTATUS[0]}"
 }
@@ -187,7 +187,7 @@ assert_exit s7 1 "$rc" && assert_runtime_empty s7
 assert_no_pycache s7 "$WORK/s7"
 
 echo
-echo "=== S8: env-var override JUPYTERHUB_USER_CONFIG_FILE=my_cfg.py => alias jupyterhub_config.py written ==="
+echo "=== S8: env-var override JUPYTERHUB_HUB_CONFIG_FILE=my_cfg.py => alias jupyterhub_config.py written ==="
 mkdir -p "$WORK/s8"
 echo "OPERATOR_RENAMED = True" > "$WORK/s8/my_cfg.py"
 run_script s8 "$WORK/s8" "my_cfg.py"
@@ -241,7 +241,7 @@ sed -e "s|RUNTIME=\"/srv/config\"|RUNTIME=\"$rt\"|" \
     -e "s|BUILTIN=\"/srv/jupyterhub/jupyterhub_config.py\"|BUILTIN=\"$BUILTIN_DIR/jupyterhub_config.py\"|" \
     "$SCRIPT_UNDER_TEST" > "$patched"
 JUPYTERHUB_USER_CONFIG_DIR="$WORK/nonexistent" \
-JUPYTERHUB_USER_CONFIG_FILE="jupyterhub_config.py" \
+JUPYTERHUB_HUB_CONFIG_FILE="jupyterhub_config.py" \
 bash "$patched" 2>&1 | sed "s/^/    /"
 rc="${PIPESTATUS[0]}"
 assert_exit s11 0 "$rc" && assert_contains_marker s11 "BUILTIN = True"

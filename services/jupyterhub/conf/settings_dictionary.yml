@@ -41,7 +41,7 @@ JupyterHub Core:
     default: ""
 
 Docker:
-  - name: JUPYTERHUB_DOCKER_TIMEOUT
+  - name: JUPYTERHUB_HUB_DOCKER_API_TIMEOUT
     description: Docker API timeout in seconds (for volume size fetch, etc.)
     default: "360"
 
@@ -245,7 +245,7 @@ User Environment:
     description: Admin-managed custom menu definitions for JupyterLab UI
     default: ""
 
-  - name: JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE
+  - name: JUPYTERHUB_LAB_VOLUMES_DESCRIPTIONS_FILE
     description: Path inside the hub container to an operator user-volume descriptions overlay YAML (suffix-keyed, with mount/description); merges over /srv/jupyterhub/volumes_dictionary.yml, operator fields win
     default: ""
 

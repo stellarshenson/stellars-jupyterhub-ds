@@ -32,7 +32,7 @@ _stats_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="docker-s
 
 
 def _get_docker_timeout():
-    return int(os.environ.get('JUPYTERHUB_DOCKER_TIMEOUT', 360))
+    return int(os.environ.get('JUPYTERHUB_HUB_DOCKER_API_TIMEOUT', 360))
 
 
 def _get_refresh_interval():

@@ -436,7 +436,7 @@ To rename the root file:
 services:
   jupyterhub:
     environment:
-      - JUPYTERHUB_USER_CONFIG_FILE=my_hub_config.py
+      - JUPYTERHUB_HUB_CONFIG_FILE=my_hub_config.py
 ```
 
 Empty or syntactically broken root config fails boot loudly (`exit 1`) - no silent fallback. See [docs/configuration.md](docs/configuration.md) for the full scenario matrix.
