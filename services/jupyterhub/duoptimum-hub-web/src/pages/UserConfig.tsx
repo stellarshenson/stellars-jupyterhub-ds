@@ -47,7 +47,7 @@ export default function UserConfig() {
   // navigates to /users/{newName})
   useEffect(() => { setRenameTo(name) }, [name])
 
-  // the platform-configured admin (JUPYTERHUB_ADMIN, from the live shell; mock
+  // the platform-configured admin (JUPYTERHUB_ADMIN_USERNAME, from the live shell; mock
   // falls back to the fixture): always admin + authorised, never removable.
   const isBuiltinAdmin = name === (adminUser() || PLATFORM.admin)
   // rename is admin-only, never for the built-in admin, and only while the user's

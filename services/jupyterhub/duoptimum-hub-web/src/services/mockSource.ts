@@ -602,7 +602,7 @@ export const mockSource: DataSource = {
   getSettingsReference() {
     return delay<SettingsRefCategory[]>([
       { category: 'Core', rows: [
-        { name: 'JUPYTERHUB_ADMIN', value: 'admin', description: 'Admin username granted the admin role at login' },
+        { name: 'JUPYTERHUB_ADMIN_USERNAME', value: 'admin', description: 'Admin username granted the admin role at login' },
         { name: 'JUPYTERHUB_BASE_URL', value: '/jupyterhub', description: 'URL prefix for all hub routes' },
         { name: 'JUPYTERHUB_LAB_IMAGE', value: 'stellars/stellars-jupyterlab-ds:latest', description: 'Image spawned for each user' },
         { name: 'JUPYTERHUB_NETWORK_NAME', value: 'jupyterhub_network', description: 'Docker network for spawned containers' },

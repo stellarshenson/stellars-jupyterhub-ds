@@ -240,7 +240,7 @@ if "{network}" in JUPYTERHUB_GPUINFO_NETWORK_NAME:
         resolve_self_network_by_label(JUPYTERHUB_LABEL_NETWORK_ROLE_KEY, JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO) or "",
     ).strip()  # {network} -> hub<->sidecar net (role=gpuinfo)
 JUPYTERHUB_GPUINFO_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_IMAGE", "").strip()  # sidecar image the hub self-starts (baked Dockerfile ENV; empty -> validate_hub_config fails)
-JUPYTERHUB_ADMIN = os.environ.get("JUPYTERHUB_ADMIN", "").strip().lower()                      # admin username; .lower() - JupyterHub normalizes usernames to lowercase, bootstrap lookups/compares use this raw so it must match the DB + login form (auto-authorized on first signup; required; baked image ENV - validated by validate_hub_config)
+JUPYTERHUB_ADMIN_USERNAME = os.environ.get("JUPYTERHUB_ADMIN_USERNAME", "").strip().lower()                      # admin username; .lower() - JupyterHub normalizes usernames to lowercase, bootstrap lookups/compares use this raw so it must match the DB + login form (auto-authorized on first signup; required; baked image ENV - validated by validate_hub_config)
 
 # Branding URIs - file:// copies to static dir, http(s):// passed to templates, empty = stock assets
 JUPYTERHUB_BRANDING_LOGO_URI = os.environ.get("JUPYTERHUB_BRANDING_LOGO_URI", "")                          # hub logo (login page, nav bar)
@@ -357,7 +357,7 @@ prepare_sent_notification_log()
 # ── Admin bootstrap ──────────────────────────────────────────────────────────
 # Two operating modes share this code:
 #
-#   1. Bootstrap-by-signup (default): operator sets only JUPYTERHUB_ADMIN. On a
+#   1. Bootstrap-by-signup (default): operator sets only JUPYTERHUB_ADMIN_USERNAME. On a
 #      fresh deployment the signup form is silently re-opened just for the admin
 #      name (BootstrapAdminAuthenticator below rejects every other username with a
 #      clear message). The admin signs up with their own password and our
@@ -384,8 +384,8 @@ JUPYTERHUB_ADMIN_PASSWORD = os.environ.get("JUPYTERHUB_ADMIN_PASSWORD", "").stri
 # admin_bootstrap is the data layer; this config drives policy. State is read here at
 # config-load (raw sqlite, ORM not up yet); provisioning is deferred to
 # BootstrapAdminAuthenticator.__init__, where users_info is guaranteed to exist.
-_DB_EMPTY_AT_STARTUP, _ADMIN_PRESENT_AT_STARTUP = query_admin_state(JUPYTERHUB_ADMIN)
-_ADMIN_PROVISIONING_REQUESTED = bool(JUPYTERHUB_ADMIN and JUPYTERHUB_ADMIN_PASSWORD)
+_DB_EMPTY_AT_STARTUP, _ADMIN_PRESENT_AT_STARTUP = query_admin_state(JUPYTERHUB_ADMIN_USERNAME)
+_ADMIN_PROVISIONING_REQUESTED = bool(JUPYTERHUB_ADMIN_USERNAME and JUPYTERHUB_ADMIN_PASSWORD)
 
 # Bootstrap window + fail-fast are pure policy in admin_bootstrap (unit-tested across the
 # full state matrix); this config just feeds them the startup state and acts on the result.
@@ -397,7 +397,7 @@ _ADMIN_UNREACHABLE = admin_unreachable(
 )
 if _ADMIN_UNREACHABLE:
     raise SystemExit(
-        f"[Admin Bootstrap] FATAL: admin '{JUPYTERHUB_ADMIN}' does not exist and cannot "
+        f"[Admin Bootstrap] FATAL: admin '{JUPYTERHUB_ADMIN_USERNAME}' does not exist and cannot "
         "be created - signup is disabled (JUPYTERHUB_SIGNUP_ENABLED=0), the bootstrap "
         "self-signup window is closed (database already contains users), and no "
         "JUPYTERHUB_ADMIN_PASSWORD was set. Provide JUPYTERHUB_ADMIN_PASSWORD to "
@@ -439,7 +439,7 @@ class BootstrapAdminSignUpHandler(DuoptimumSignUpHandler):
             and confirmation_matches
         ):
             submitted = self.get_body_argument("username", "", strip=False)
-            if submitted and submitted != JUPYTERHUB_ADMIN:
+            if submitted and submitted != JUPYTERHUB_ADMIN_USERNAME:
                 alert = "alert-warning"
                 message = (
                     "Only the admin user can sign up during the initial "
@@ -475,7 +475,7 @@ class BootstrapAdminAuthenticator(DuoptimumHubAuthenticator):
         # volume -> the INSERT silently no-ops). Provision once, against our own session.
         super().__init__(*args, **kwargs)
         if _ADMIN_PROVISIONING_REQUESTED:
-            provision_admin_userinfo(self.db, JUPYTERHUB_ADMIN, JUPYTERHUB_ADMIN_PASSWORD)
+            provision_admin_userinfo(self.db, JUPYTERHUB_ADMIN_USERNAME, JUPYTERHUB_ADMIN_PASSWORD)
 
     def _bootstrap_admin_pending(self):
         """The bootstrap window only takes effect while it was open at startup
@@ -483,9 +483,9 @@ class BootstrapAdminAuthenticator(DuoptimumHubAuthenticator):
         request time so admin user creation works as soon as the admin signs up
         (rather than requiring a hub restart to recapture the flag).
         """
-        if not _BOOTSTRAP_WINDOW_OPEN or not JUPYTERHUB_ADMIN:
+        if not _BOOTSTRAP_WINDOW_OPEN or not JUPYTERHUB_ADMIN_USERNAME:
             return False
-        return self.get_user(JUPYTERHUB_ADMIN) is None
+        return self.get_user(JUPYTERHUB_ADMIN_USERNAME) is None
 
     @property
     def enable_signup(self):
@@ -508,7 +508,7 @@ class BootstrapAdminAuthenticator(DuoptimumHubAuthenticator):
     def validate_username(self, username):
         if not super().validate_username(username):
             return False
-        if self._bootstrap_admin_pending() and username and username != JUPYTERHUB_ADMIN:
+        if self._bootstrap_admin_pending() and username and username != JUPYTERHUB_ADMIN_USERNAME:
             return False
         return True
 
@@ -524,12 +524,12 @@ class BootstrapAdminAuthenticator(DuoptimumHubAuthenticator):
         # is_authorized=False with no one to authorise them -> locked out). Non-admin
         # signups still land in the pending queue (is_authorized=False). Decision logic
         # lives in the service layer (admin_bootstrap), this only wires it.
-        pending = first_admin_self_signup_pending(self.db, JUPYTERHUB_ADMIN, _ADMIN_PROVISIONING_REQUESTED)
+        pending = first_admin_self_signup_pending(self.db, JUPYTERHUB_ADMIN_USERNAME, _ADMIN_PROVISIONING_REQUESTED)
         user_info = super().create_user(username, password, **kwargs)
         if (
             user_info is not None
             and pending
-            and self.normalize_username(username) == self.normalize_username(JUPYTERHUB_ADMIN)
+            and self.normalize_username(username) == self.normalize_username(JUPYTERHUB_ADMIN_USERNAME)
         ):
             user_info.is_authorized = True
             self.db.commit()
@@ -537,8 +537,8 @@ class BootstrapAdminAuthenticator(DuoptimumHubAuthenticator):
 
 
 async def _admin_post_auth_hook(authenticator, handler, authentication):
-    """Promote JUPYTERHUB_ADMIN to admin role on every successful authentication."""
-    if authentication and authentication.get('name') == JUPYTERHUB_ADMIN:
+    """Promote JUPYTERHUB_ADMIN_USERNAME to admin role on every successful authentication."""
+    if authentication and authentication.get('name') == JUPYTERHUB_ADMIN_USERNAME:
         authentication['admin'] = True
     return authentication
 
@@ -694,10 +694,10 @@ c.JupyterHub.template_vars = {
     # Authoritative "this platform has GPU" flag for the portal shell -> window.jhdata.
     # The SPA gates every GPU widget on this instead of inferring from a (lazy) device list.
     'gpu_enabled': bool(gpu_enabled),
-    # The platform admin username (JUPYTERHUB_ADMIN). The SPA needs this to recognise
+    # The platform admin username (JUPYTERHUB_ADMIN_USERNAME). The SPA needs this to recognise
     # the built-in admin and the hook-promoted admin (whose persistent User.admin row
     # is False), instead of guessing from a mock fixture.
-    'admin_user': JUPYTERHUB_ADMIN or '',
+    'admin_user': JUPYTERHUB_ADMIN_USERNAME or '',
     # Display name -> window.jhdata.hub_name. SPA shows it as the logo tooltip and as
     # the login/signup screen text; default "Duoptimum Hub" (baked in the Dockerfile).
     'hub_name': JUPYTERHUB_BRANDING_HUB_NAME,
@@ -772,7 +772,7 @@ JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE = os.environ.get(
 # bootable config (gpuinfo net unresolved -> GPU off; shared volume unresolved -> quick-add
 # hidden; branding file:// missing). Keeps this file thin - no scattered fail-fast.
 validate_hub_config({
-    "admin": JUPYTERHUB_ADMIN,
+    "admin": JUPYTERHUB_ADMIN_USERNAME,
     "lab_image": JUPYTERHUB_LAB_IMAGE,
     "namespace": JUPYTERHUB_COMPOSE_PROJECT_NAME,
     "lab_network_name": JUPYTERHUB_NETWORK_NAME,

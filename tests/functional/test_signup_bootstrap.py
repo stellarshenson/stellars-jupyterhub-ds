@@ -2,7 +2,7 @@
 
 Collected only by `make test-functional-signup-bootstrap` (FUNCTEST_AUTH_MODE=signupbootstrap).
 This is the shipped-default path an adversarial review flagged: signup enabled, no env
-password, fresh DB. The configured admin (JUPYTERHUB_ADMIN) self-signs-up via the open
+password, fresh DB. The configured admin (JUPYTERHUB_ADMIN_USERNAME) self-signs-up via the open
 form and must be AUTO-AUTHORISED (first_admin_self_signup_pending) - so they log in
 immediately without anyone approving them, not stranded is_authorized=False. The
 `_bootstrap_admin` fixture performs the admin self-signup; if the fix were absent the

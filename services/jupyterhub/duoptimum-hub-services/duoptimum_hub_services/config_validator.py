@@ -24,7 +24,7 @@ import os
 
 # (key, human label) - required non-empty; baked as Dockerfile ENV. Empty => run outside image.
 _REQUIRED = [
-    ("admin", "JUPYTERHUB_ADMIN (admin username)"),
+    ("admin", "JUPYTERHUB_ADMIN_USERNAME (admin username)"),
     ("lab_image", "JUPYTERHUB_LAB_IMAGE (lab image to spawn)"),
     ("namespace", "namespace (compose project) - discovered from the hub's own com.docker.compose.project label; run the hub under docker compose"),
     ("lab_network_name", "JUPYTERHUB_NETWORK_NAME (hub<->lab network)"),

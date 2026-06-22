@@ -21,7 +21,7 @@ services:
       - shared:/mnt/shared
       - docker_sockets:/var/run/docker-proxy-sockets   # MUST equal baked JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR (hub self-inspects this path)
     environment:
-      - JUPYTERHUB_ADMIN=functestadmin                   # dedicated test admin (no clash with real 'admin')
+      - JUPYTERHUB_ADMIN_USERNAME=functestadmin                   # dedicated test admin (no clash with real 'admin')
       - JUPYTERHUB_BASE_URL=/jupyterhub
       - JUPYTERHUB_BRANDING_HUB_NAME=Functest Hub Name   # exercise the configurable hub display name (logo tooltip + login/signup text)
       - JUPYTERHUB_BRANDING_LAB_NAME=Functest Lab Name   # exercise the lab display name (injected into labs as JUPYTERLAB_SYSTEM_NAME)

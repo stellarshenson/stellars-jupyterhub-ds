@@ -38,7 +38,7 @@ const ROLES: RoleDef[] = [
   {
     role: 'Admin',
     description: 'Full read/write/create/remove across the fleet, users, groups and platform settings',
-    assigned: "Holds JupyterHub's admin flag - JUPYTERHUB_ADMIN at login, or toggled on the Users screen",
+    assigned: "Holds JupyterHub's admin flag - JUPYTERHUB_ADMIN_USERNAME at login, or toggled on the Users screen",
     who: 'Platform operators, maintainers',
   },
   {

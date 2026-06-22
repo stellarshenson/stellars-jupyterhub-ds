@@ -92,7 +92,7 @@ Top nav, gated by auth and role; mobile collapses to a reduced inline set.
 - **Conditionals** - email field when `ask_email`; 2FA setup when enabled; terms checkbox when configured; result banner; generated 2FA backup code shown on success; HTTP warning
 - **Messages** - success/error result banner; 2FA backup code on success
 - **Navigation** - login link -> `/hub/login`
-- **Bootstrap window** - on a fresh DB with signup disabled and no env admin password, a one-shot window opens that accepts only the `JUPYTERHUB_ADMIN` username so the first admin can self-register; closes permanently once the admin row exists
+- **Bootstrap window** - on a fresh DB with signup disabled and no env admin password, a one-shot window opens that accepts only the `JUPYTERHUB_ADMIN_USERNAME` username so the first admin can self-register; closes permanently once the admin row exists
 - **Dynamic** - eye toggles both password fields together; terms checkbox enables submit; reCAPTCHA script when configured
 
 ### Change password - self (`/hub/user/{username}/change-password`)
