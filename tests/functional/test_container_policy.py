@@ -8,10 +8,12 @@ admin is added to it and spawned; every effect is checked on the one container.
 """
 
 import time
+from urllib.parse import urlparse
 
 import pytest
 
 CONTAINER = "jupyterlab-functestadmin"
+HUB = "stellars-functest-duoptimum-hub"
 GROUP = "ctr-policy"
 
 
@@ -89,12 +91,14 @@ def test_policies_applied_to_container(admin_api, docker_client, base_url):
         env = dict(e.split("=", 1) for e in attrs["Config"]["Env"] if "=" in e)
         assert env.get("JUPYTERLAB_SUDO_ENABLE") == "0", "sudo policy not applied"
         assert env.get("FOO") == "bar", "group env var not injected"
-        # DEF-22: the hub bakes its STABLE network alias (not its ephemeral container id)
-        # into the lab's API URL, so a hub redeploy does not strand the lab. Binds directly
-        # to _HUB_HOST = JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB - reverting it to gethostname()
-        # would bake the hub's short id here and fail this assertion.
+        # DEF-22: the lab's JUPYTERHUB_API_URL host must equal the hub's discovered compose
+        # service name (the hub_connect_ip the fix advertises), not the hub's ephemeral
+        # container id - so a hub redeploy does not strand the lab. Reverting it to
+        # gethostname() would bake the hub's short id here and fail this assertion.
+        hub_service = (docker_client.containers.get(HUB).labels or {}).get("com.docker.compose.service")
         api_url = env.get("JUPYTERHUB_API_URL", "")
-        assert api_url.startswith("http://hub:8080"), f"lab API URL not via stable hub alias: {api_url!r}"
+        assert urlparse(api_url).hostname == hub_service, \
+            f"lab API URL host {urlparse(api_url).hostname!r} != hub service name {hub_service!r}: {api_url!r}"
 
         assert attrs["HostConfig"]["Memory"] == 2 * 1024 ** 3, "memory cap not applied"
 

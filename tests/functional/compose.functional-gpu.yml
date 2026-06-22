@@ -4,21 +4,15 @@
 # on CPU hosts too). `tests/functional/run.sh gpu` builds the mock image and passes
 # FUNCTEST_GPU_ENABLED=1 (which the base compose feeds to both the hub and the test
 # marker gate). Layer ON TOP of compose.functional.yml.
+#
+# The base stack ALREADY multi-homes the hub onto gpuinfo_network (role=gpuinfo) to
+# reproduce prod, so this overlay declares NO network of its own: the hub discovers
+# that base net by role (resolve_self_network_by_label, hub.network.role=gpuinfo) and
+# self-starts the mock sidecar on it. Declaring a 2nd role=gpuinfo net here would make
+# that lookup ambiguous (ValueError) - the base net is the single source.
 
 services:
   duoptimum-hub:
     environment:
       # the hub self-starts THIS image as the gpuinfo sidecar; it serves canned GPUs
       - JUPYTERHUB_GPUINFO_NVIDIA_IMAGE=stellars/duoptimum-gpuinfo-mock:latest
-    # Hub discovers the gpuinfo net among its OWN attachments by role label
-    # (resolve_self_network_by_label, hub.network.role=gpuinfo) + runs the mock sidecar
-    # on it - so declare it here + attach the hub (base functional stack has no GPU net).
-    networks:
-      - jupyterhub_network
-      - hub_gpuinfo_network
-
-networks:
-  hub_gpuinfo_network:
-    name: stellars-functest_hub_gpuinfo_network
-    labels:
-      hub.network.role: "gpuinfo" # MUST match JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO

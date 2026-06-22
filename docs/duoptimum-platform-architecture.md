@@ -74,7 +74,7 @@ The platform ingresses through one Traefik router; the hub's Configurable HTTP P
 - **Traefik router** - matches the hostname/path set for the deployment and forwards to `duoptimumhub:8000`; TLS terminates at Traefik, the backend hop is HTTP
 - **Aliases** - `/jupyterhub`, `/hub`, `/optimumhub`, `/duoptimumhub` all reach the hub; in the standalone PATH deployment a `hub-alias-redirect` middleware 302s the three aliases to canonical `/jupyterhub`
 - **base_url** - `JUPYTERHUB_BASE_URL` (default `/jupyterhub`); all hub routes are prefixed with it
-- **Hub to labs** - spawned labs register with CHP at `hub_connect_url` (`http://duoptimumhub:8080`) and tunnel their Jupyter API/WebSocket traffic back through the hub
+- **Hub to labs** - spawned labs reach the hub at `hub_connect_ip` (the hub's compose service name `hub`, discovered from its own `com.docker.compose.service` label) and tunnel their Jupyter API/WebSocket traffic back through the hub
 - **Rate limiting** - per-source-IP at the Traefik router (`JUPYTERHUB_RATELIMIT_*`), WebSocket-safe
 
 ## The portal

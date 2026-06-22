@@ -61,6 +61,10 @@ services:
     restart: unless-stopped
 
   # Hub: manages users + their jupyterlab envs; proxies each user to their own env.
+  # Service name `hub` IS the stable DNS alias compose auto-registers on every net the hub
+  # joins; spawned labs/CHP reach the hub by it (the hub discovers it via its own
+  # com.docker.compose.service label and advertises it as hub_connect_ip). No hand-stamped
+  # network alias - the service name is the hostname.
   hub:
     build:
       context: .
@@ -140,7 +144,6 @@ services:
       - JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO=gpuinfo # hub<->sidecar network role value
       - JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY=hub.container.role # label key on hub-managed containers
       - JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO=gpuinfo # gpuinfo sidecar container role value
-      - JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB=hub # hub container role value; doubles as hub_network alias below (hub_connect_url host) - MUST match label + alias
       - JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB=lab # spawned-lab container role value (pre_spawn_hook stamps hub.container.role=lab on each lab)
       - JUPYTERHUB_LABEL_CONTAINER_DESCRIPTION=hub.container.description # label key for the gpuinfo sidecar's human description
       - JUPYTERHUB_LABEL_VOLUME_ROLE_KEY=hub.volume.role # label key on hub volumes
@@ -193,10 +196,6 @@ services:
       # Enable Traefik proxy
       - "traefik.enable=true"
 
-      # Hub container role; the value also names the hub_network alias below. MUST match
-      # JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB so the hub's self-known name resolves (DEF-22).
-      - "hub.container.role=hub"
-
       # NO traefik.docker.network pin: traefik joins BOTH hub nets (its networks: block) so
       # whichever backend IP its docker provider picks is reachable - no name to drift, no 504.
 
@@ -229,10 +228,11 @@ services:
         =${JUPYTERHUB_RATELIMIT_XFF_DEPTH:-1}"
       - "traefik.http.routers.hub-rtr.middlewares=hub-alias-redirect,hub-ratelimit"
     networks:
-      hub_network:
-        aliases:
-          - hub # stable DNS alias spawned labs+CHP use to reach the hub (= JUPYTERHUB_LABEL_CONTAINER_ROLE_HUB); redeploy-proof, unlike the old container id (DEF-22)
-      hub_gpuinfo_network: # hub<->sidecar; hub attaches, sidecar joins too
+      # No hand-stamped alias: the service name `hub` is already the DNS alias compose
+      # registers on each net. Labs (on hub_network) resolve `hub` to the hub's lab-net IP;
+      # the hub advertises that name via hub_connect_ip (discovered, not pinned here).
+      - hub_network
+      - hub_gpuinfo_network # hub<->sidecar; hub attaches, sidecar joins too
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f jupyterhub > /dev/null || exit 1"]
       interval: 10s
