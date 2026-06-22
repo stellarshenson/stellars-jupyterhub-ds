@@ -124,15 +124,18 @@ def test_extend_slider_defaults_to_plus_4h(admin_portal, admin_api, base_url):
 
 
 @pytest.mark.acc_crit(
-    "duoptimumhub::Glow is a drop-shadow halo (not a covering overlay)",
-    "duoptimumhub::Glow is HELD, not pulsed (trapezoid envelope)",
+    "duoptimumhub::Glow is the original one-shot accent drop-shadow flourish",
+    "duoptimumhub::Fill keeps its threshold tone on boost (glow only, no brighten)",
     "duoptimumhub::Bar glows on extend; counter blurs (no counter glow)",
 )
-def test_extend_glow_is_held_drop_shadow_halo(admin_portal, admin_api, base_url):
-    """DEF-14: on extend the bar gets a drop-shadow HALO (held, not a covering tint
-    overlay) and the counter blurs - never a full-opacity white wash. Asserts the DOM
-    contract: the boost class lands, the bar's computed filter carries `drop-shadow`,
-    the counter's carries `blur`, and neither paints a covering `::after` overlay."""
+def test_extend_glow_is_accent_drop_shadow_flourish(admin_portal, admin_api, base_url):
+    """The extend glow is the restored first-ever flourish: a one-shot accent
+    `drop-shadow` keyframe (`doh-ttl-pulse`) on the bar that peaks then fades - NOT the
+    superseded held white box-shadow on the track (which read as the fill brightening).
+    Asserts the DOM contract: the boost class lands, the bar runs the `doh-ttl-pulse`
+    animation, the track (`.ant-progress-inner`) carries NO box-shadow halo, the fill
+    keeps its threshold tone (never recoloured to the accent, #476), and the counter
+    blurs without glowing."""
     me = admin_api.get(f"{base_url}/hub/api/user", timeout=30).json()["name"]
     _post(admin_api, base_url, f"/hub/api/users/{me}/server")
     assert _wait(lambda: _server_state(admin_api, base_url, me).get("", {}).get("ready")), \
@@ -141,15 +144,32 @@ def test_extend_glow_is_held_drop_shadow_halo(admin_portal, admin_api, base_url)
         page = admin_portal.goto("/home")
         page.get_by_role("button", name="Extend", exact=True).click()
         page.get_by_role("button", name="Extend +4h", exact=True).click()
-        # boost holds >= ttlExtendMs (3s); the bar gains doh-ttl-boost and a drop-shadow halo
+        # the boost holds for the fill window; the bar gains doh-ttl-boost and runs the flourish
         bar = page.locator(".doh-ttl-bar").first
         expect(bar).to_have_class(re.compile(r"doh-ttl-boost"))
-        bar_filter = bar.evaluate("el => getComputedStyle(el).filter")
-        assert "drop-shadow" in bar_filter, f"bar glow must be a drop-shadow halo, got filter={bar_filter!r}"
-        # the halo never covers the fill: no painted ::after overlay on the bar
-        after_bg = bar.evaluate("el => getComputedStyle(el, '::after').backgroundColor")
-        assert after_bg in ("", "rgba(0, 0, 0, 0)", "transparent"), \
-            f"bar must not paint a covering ::after overlay (DEF-14 wash), got {after_bg!r}"
+        # the glow is the one-shot accent drop-shadow keyframe (animation-name is stable while boost is on)
+        anim = bar.evaluate("el => getComputedStyle(el).animationName")
+        assert "doh-ttl-pulse" in anim, f"bar must run the doh-ttl-pulse flourish, got animation-name={anim!r}"
+        # the superseded held box-shadow halo on the track is gone
+        inner = bar.locator(".ant-progress-inner").first
+        box_shadow = inner.evaluate("el => getComputedStyle(el).boxShadow")
+        assert box_shadow in ("", "none"), \
+            f"track must carry NO box-shadow halo (superseded), got box-shadow={box_shadow!r}"
+        # the fill keeps its threshold tone - NOT recoloured to the accent (#476). resolve the
+        # accent var to rgb via a probe so the comparison is in the same colour space as the fill.
+        fill_bg, accent_rgb = bar.evaluate(
+            "el => {"
+            " const f = el.querySelector('.ant-progress-bg');"
+            " const probe = document.createElement('span');"
+            " probe.style.color = 'var(--color-accent)';"
+            " document.body.appendChild(probe);"
+            " const a = getComputedStyle(probe).color;"
+            " probe.remove();"
+            " return [f ? getComputedStyle(f).backgroundColor : '', a];"
+            "}"
+        )
+        assert fill_bg and fill_bg != accent_rgb, \
+            f"fill must keep its threshold tone, not the accent: fill={fill_bg!r} accent={accent_rgb!r}"
         # the counter blurs but does NOT glow (no drop-shadow on the readout)
         val = page.locator(".doh-ttl-val").first
         val_filter = val.evaluate("el => getComputedStyle(el).filter")

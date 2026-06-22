@@ -348,10 +348,6 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, displayCeilin
     }
   }, [boost, timeLeftMin])
   const shownPct = boost ? displayPct : pct
-  // the bar's tone, shared by the readout: the time number + clock icon take the
-  // SAME colour the bar shows at this moment (accent normally, warning/danger as
-  // the cull nears, accent during an extend boost) so the gadget reads as one cue
-  const barTone = boost ? 'var(--color-accent)' : color
   const apply = () => {
     setOpen(false)
     const add = Math.max(1, Math.min(maxH, hours))
@@ -376,18 +372,22 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, displayCeilin
   // slider marks: first hour and the last tick labelled "max" (tops to ceiling)
   const marks: Record<number, ReactNode> = { 1: '1h', [maxH]: 'max' }
   const atMax = hours >= maxH
+  // the bar tone (also used by the readout - time number + clock icon): blue normally,
+  // warning/danger as the cull nears. an extend boost does NOT recolour the fill - the
+  // bar keeps its threshold tone and only the halo glows around it; the counter's boost
+  // cue is its blur, not a colour flip.
   return (
-    <div className="doh-ttl" style={{ '--doh-ttl-glow': `${ANIMATION.ttlGlowMs}ms` } as CSSProperties}>
-      <span className={boost ? 'doh-ttl-bar doh-ttl-boost' : 'doh-ttl-bar'} style={{ flex: 1, minWidth: 0, color: barTone }} title={barTip}>
+    <div className="doh-ttl" style={{ '--doh-ttl-glow': `${ANIMATION.ttlGlowMs}ms`, '--doh-ttl-anim': `${ANIMATION.ttlExtendMs}ms` } as CSSProperties}>
+      <span className={boost ? 'doh-ttl-bar doh-ttl-boost' : 'doh-ttl-bar'} style={{ flex: 1, minWidth: 0, color }} title={barTip}>
         {/* status="normal" pins the status: antd otherwise auto-switches to "success"
          * at percent>=100 (progress.js), toggling .ant-progress-status-success exactly
          * at max - which re-animates/restyles the fill (the flicker + slightly-wider
          * look at max vs almost-max). Pinned, the bar renders identically at 99 and 100. */}
-        <Progress percent={shownPct} status="normal" showInfo={false} strokeColor={barTone} trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
+        <Progress percent={shownPct} status="normal" showInfo={false} strokeColor={color} trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
       </span>
-      <span className={boost ? 'doh-ttl-val doh-ttl-boost' : 'doh-ttl-val'} style={{ color: barTone, transition: 'color .4s ease, filter var(--doh-ttl-glow, 250ms) ease' }}>
+      <span className={boost ? 'doh-ttl-val doh-ttl-boost' : 'doh-ttl-val'} style={{ color, transition: 'color .4s ease, filter var(--doh-ttl-glow, 250ms) ease' }}>
         <Icon name="clock" size={14} />
-        <b style={{ color: barTone }}>{fmtMinutes(displayMin)}</b>
+        <b style={{ color }}>{fmtMinutes(displayMin)}</b>
       </span>
       {uptimeLabel && (
         <span className="doh-muted" title="Server uptime" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>

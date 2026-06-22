@@ -205,6 +205,23 @@ export default function DesignLanguage() {
         </Row>
       </Card>
 
+      <Card title="Connection status (pulsing diode)" style={{ marginBottom: 16 }}>
+        <Row label="Diode pulse - good vs warning">
+          <span className="doh-conn-pill ok" title="Connected to the hub">
+            <span className="doh-conn-dot" aria-hidden="true" />
+            Connected
+          </span>
+          <span className="doh-conn-pill down" title="Hub not responding - retrying">
+            <span className="doh-conn-dot" aria-hidden="true" />
+            Not responding
+            <span aria-hidden="true">{' · 2m'}</span>
+          </span>
+        </Row>
+        <div className="doh-note" style={{ marginTop: 4 }}>
+          <b>Connection diode:</b> a solid core dot with a soft halo that pulses - severity rides BOTH speed and amplitude. Connected (good) is <b>slow and calm</b>: the halo dips a little and returns. Down (warning) <b>swings hard and 3x faster</b>: a deep fade + bigger expand, clearly more urgent, not merely quicker. The pulse is opacity + scale (the ring grows and fades, never shifts layout); honours <code>prefers-reduced-motion</code> with a steady halo.
+        </div>
+      </Card>
+
       <Card title="Meters, bars and widgets" style={{ marginBottom: 16 }}>
         <Row label="Activity meter (high/mid/low)">
           <ActivityMeter value={96} />
@@ -234,7 +251,7 @@ export default function DesignLanguage() {
         </Row>
         <Row label="TTL glow/blur calibration (static steps - tune colours + amounts)">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18, width: '100%' }}>
-            {/* counter BLUR steps - the counter ships blur-only (no glow); shipped default .75px at the peak */}
+            {/* counter BLUR steps - the counter ships blur-only (no glow); shipped default .5px at the peak */}
             <div style={{ display: 'flex', gap: 28, alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <span style={{ width: 92, fontSize: 12, color: 'var(--color-text-muted)' }}>counter blur</span>
               {[0.1, 0.25, 0.5, 0.75, 1].map((px) => (
@@ -246,13 +263,14 @@ export default function DesignLanguage() {
                 </div>
               ))}
             </div>
-            {/* bar GLOW steps - a drop-shadow HALO around the bar (currentColor mixed toward white), by radius;
-               the halo glows around the fill and never covers it (the shipped extend glow holds at 0.5px) */}
+            {/* bar GLOW steps - the original first-ever flourish: a brief accent drop-shadow AROUND the
+               bar that peaks then fades (one-shot, not a held halo), by radius; the fill keeps its tone
+               and the glow never covers it (the shipped extend flourish peaks at 4px accent) */}
             <div style={{ display: 'flex', gap: 28, alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <span style={{ width: 92, fontSize: 12, color: 'var(--color-text-muted)' }}>bar glow</span>
-              {[0, 3, 5, 8, 12].map((r) => (
+              {[0, 3, 4, 8, 12].map((r) => (
                 <div key={r} style={{ textAlign: 'center' }}>
-                  <span className="doh-ttl-bar" style={{ display: 'inline-block', width: 150, position: 'relative', color: 'var(--doh-ttl-blue)', filter: r ? `drop-shadow(0 0 ${r}px color-mix(in srgb, currentColor, white 60%))` : 'none' }}>
+                  <span className="doh-ttl-bar" style={{ display: 'inline-block', width: 150, position: 'relative', color: 'var(--doh-ttl-blue)', filter: r ? `drop-shadow(0 0 ${r}px var(--color-accent))` : 'none' }}>
                     <Progress percent={80} status="normal" showInfo={false} strokeColor="var(--doh-ttl-blue)" trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
                   </span>
                   <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{r}px</div>

@@ -149,22 +149,24 @@ body { margin: 0; font-family: var(--font-sans); }
    fill window - driven frame-by-frame by rAF in meters.tsx (in lockstep with the counter),
    NOT a CSS width transition: a same-frame class+value change does not reliably animate, so
    the bar used to flip straight to 100% (DEF-15). antd's own width transition is killed below
-   so rAF is the sole driver. on extend the BAR also glows: a box-shadow HALO on the rounded
-   track (.ant-progress-inner), currentColor mixed toward white. box-shadow (not a drop-shadow
-   filter) so the glow sits UNDER the bar - it draws outside the pill's box and is occluded by
-   the fill, haloing the OUTER edge and never washing over the surface. a drop-shadow filter
-   traced the fill's alpha and bled the halo over the track at the fill's leading edge (looked
-   "on top"); the track's own overflow:hidden does not clip its own box-shadow (DEF-14).
-   held, not pulsed: a CSS transition ramps the glow ON over --doh-ttl-glow (250ms), HOLDS it
-   while doh-ttl-boost is on (the whole fill window), then ramps OFF when the value lands - a
-   trapezoid envelope, no mid-animation dip. the COUNTER does not glow - it only blurs .75px,
-   ramped the same way (transition lives inline in meters.tsx so it can sit beside the colour
-   transition). fires only on extend (doh-ttl-boost), never on a tick. */
+   so rAF is the sole driver. on extend the BAR also glows: the ORIGINAL first-ever flourish -
+   a one-shot accent drop-shadow (doh-ttl-pulse) that peaks at 45% then fades over the fill
+   window (--doh-ttl-anim). a brief glow AROUND the bar, never a held halo and never a colour
+   change to the fill: the fill keeps its threshold tone (#476), the filter only haloes the
+   edge then clears. the held white box-shadow this replaced read as the thin bar getting
+   brighter, not haloed; every later variant (tint overlay, box-shadow radius retunes) was
+   worse than this first version. the COUNTER does not glow - it only blurs .5px (transition
+   lives inline in meters.tsx beside the colour transition). extend-only (doh-ttl-boost),
+   never on a tick. */
 .doh-ttl-bar { display: inline-block; position: relative; }
 .doh-ttl-boost .ant-progress-bg { transition: none !important; }
-.doh-ttl-bar .ant-progress-inner { transition: box-shadow var(--doh-ttl-glow, 250ms) ease; }
-.doh-ttl-bar.doh-ttl-boost .ant-progress-inner { box-shadow: 0 0 3px color-mix(in srgb, currentColor, white 60%); }
-.doh-ttl-val.doh-ttl-boost { filter: blur(.75px); }
+.doh-ttl-bar.doh-ttl-boost { animation: doh-ttl-pulse var(--doh-ttl-anim, 3s) ease; }
+@keyframes doh-ttl-pulse {
+  0%   { filter: none; }
+  45%  { filter: drop-shadow(0 0 4px var(--color-accent)); }
+  100% { filter: none; }
+}
+.doh-ttl-val.doh-ttl-boost { filter: blur(.5px); }
 /* extend-popover slider: a brighter slide line (rail + track) and an info-toned drag knob,
    so the control reads clearly against the popover (default antd rail is too faint here). */
 .doh-ttl-slider .ant-slider-rail { background: var(--color-border-strong) !important; }
@@ -259,33 +261,49 @@ body { margin: 0; font-family: var(--font-sans); }
 ::-webkit-scrollbar-corner { background: transparent; }
 
 /* ---- hub-connection status: header pill (desktop) + in-flow warning panel (mobile) ----
-   reads as a WARNING when down, never a red system error. Motion carries meaning: the diode pulses
-   a SOFT halo that slowly fades off slightly and back in (doh-soft-pulse, period from
-   --doh-status-pulse set by services/config.ts ANIMATION.statusPulseMs - calm, not an expanding
-   ring). Connected pulses slowly; the down diode runs 3x faster (CSS calc /3) to signal urgency. */
+   reads as a WARNING when down, never a red system error. Motion carries meaning, in BOTH
+   speed and amplitude: a solid core diode + a soft halo ring (on ::after) that pulses.
+   connected = doh-pulse-calm: a gentle dip-and-return (opacity 1->.55, scale 1->1.25), slow
+   (period --doh-status-pulse, ANIMATION.statusPulseMs in services/config.ts). down =
+   doh-pulse-alert: a hard swing (opacity 1->.15, scale 1->1.7) at 3x the speed (CSS calc /3) -
+   clearly more urgent than the calm pulse, not just faster; the dip floors above zero (the solid
+   core dot stays lit) so it reads as an urgent pulse, never a strobe. opacity + transform only (both
+   interpolate reliably; the earlier box-shadow-colour pulse was too faint to read). */
 
 /* desktop header pill - sized to the StageBadge's vertical metrics (1px pad, 1.6 line, 1px
    border) so the two sit level; the down state fills with warning to draw attention */
 .doh-conn-pill { display: inline-flex; align-items: center; gap: 7px; font-size: var(--text-xs); font-weight: 600; letter-spacing: .02em; padding: 1px 9px; border: 1px solid currentColor; border-radius: var(--radius-sm); line-height: 1.6; white-space: nowrap; }
-.doh-conn-pill .doh-conn-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 28%, transparent); animation: doh-soft-pulse var(--doh-status-pulse, 3s) ease-in-out infinite; }  /* base halo always visible (incl. reduced-motion); connected pulses slowly, .down 3x faster */
-.doh-conn-pill.ok { color: var(--color-success); }                                                            /* healthy: calm outlined success pill, diode pulses slowly */
-/* down: NEUTRAL text (amber-on-amber fails contrast), amber border + diode + pale fill - matches the mobile panel */
-.doh-conn-pill.down { color: var(--color-text); border-color: color-mix(in srgb, var(--color-warning) 55%, transparent); background: color-mix(in srgb, var(--color-warning) 14%, transparent); }
-.doh-conn-pill.down .doh-conn-dot { color: var(--color-warning); animation-duration: calc(var(--doh-status-pulse, 3s) / 3); }  /* down pulses 3x faster (urgency) */
+.doh-conn-pill .doh-conn-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }  /* solid core diode (always present) */
+/* halo ring on ::after: a static colour-mix box-shadow that PULSES via opacity + scale (the ring
+   never covers the core and never shifts layout); connected slow, .down 3x faster */
+.doh-conn-pill .doh-conn-dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 4px 2px color-mix(in srgb, currentColor 50%, transparent); animation: doh-pulse-calm var(--doh-status-pulse, 3s) ease-in-out infinite; }
+.doh-conn-pill.ok { color: var(--color-success); }                                                            /* healthy: calm outlined success pill, diode dips gently */
+/* down: standard WARNING text + amber border + diode + pale fill - matches the mobile panel */
+.doh-conn-pill.down { color: var(--color-warning); border-color: color-mix(in srgb, var(--color-warning) 55%, transparent); background: color-mix(in srgb, var(--color-warning) 14%, transparent); }
+.doh-conn-pill.down .doh-conn-dot { color: var(--color-warning); }
+.doh-conn-pill.down .doh-conn-dot::after { animation: doh-pulse-alert calc(var(--doh-status-pulse, 3s) / 3) ease-in-out infinite; }  /* down: stronger swing AND 3x faster (urgency) */
 
 /* mobile: in-flow warning panel at the top of the content; pale warning surface so it never washes out the text */
 .doh-hub-warn-panel { display: flex; align-items: flex-start; margin: 12px 0; padding: 12px 14px; border-radius: var(--radius-md); color: var(--color-text); background: color-mix(in srgb, var(--color-warning) 12%, var(--color-surface)); border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent); }
-.doh-hub-warn-diode { display: inline-block; flex: none; width: 8px; height: 8px; margin-top: 5px; margin-inline-end: 10px; border-radius: 50%; color: var(--color-warning); background: currentColor; animation: doh-soft-pulse calc(var(--doh-status-pulse, 3s) / 3) ease-in-out infinite; }  /* down-only panel: 3x faster, matches the pill down diode */
-.doh-hub-warn-title { font-weight: 600; }
+.doh-hub-warn-diode { position: relative; display: inline-block; flex: none; width: 8px; height: 8px; margin-top: 5px; margin-inline-end: 10px; border-radius: 50%; color: var(--color-warning); background: currentColor; }  /* down-only panel diode (solid core) */
+.doh-hub-warn-diode::after { content: ''; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 4px 2px color-mix(in srgb, currentColor 50%, transparent); animation: doh-pulse-alert calc(var(--doh-status-pulse, 3s) / 3) ease-in-out infinite; }  /* down: strong swing + 3x faster, matches the pill down diode */
+.doh-hub-warn-title { font-weight: 600; color: var(--color-warning); }
 .doh-hub-warn-body { font-size: var(--text-sm); color: var(--color-text-muted); margin-top: 2px; }
 
-/* soft halo pulse: a same-size ring whose intensity gently dips then returns (never expands) */
-@keyframes doh-soft-pulse {
-  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 55%, transparent); }
-  50%      { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 12%, transparent); }
+/* two halo pulses, amplitude encodes severity - opacity + transform only (both interpolate
+   reliably; the static box-shadow colour is not interpolated). calm = a gentle dip and return
+   (connected, all good); alert = a hard fade + expand (down, urgent), also run 3x faster. */
+@keyframes doh-pulse-calm {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .55; transform: scale(1.25); }
 }
+@keyframes doh-pulse-alert {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .15; transform: scale(1.7); }
+}
+/* reduced motion: no pulse, but keep a steady visible halo so the diode still reads as live */
 @media (prefers-reduced-motion: reduce) {
-  .doh-conn-pill .doh-conn-dot, .doh-hub-warn-diode { animation: none; }
+  .doh-conn-pill .doh-conn-dot::after, .doh-hub-warn-diode::after { animation: none; opacity: .6; transform: none; }
 }
 
 /* screen-reader-only: kept in the a11y tree, removed from view + layout (zero box) - used
