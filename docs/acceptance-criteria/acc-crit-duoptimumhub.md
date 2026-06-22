@@ -2704,7 +2704,7 @@ An admin can rename a user from the Configure-user screen via an action attached
   - log: 2026-06-18 to implement (UserConfig Username Form.Item)
 - [x] **Admin role only** - the Rename control renders / is usable only for an admin; a plain user (self-service Profile page) never sees it
   - log: 2026-06-18 UserConfig is admin-only (`/users/:name` under RequireAdmin); gated on role
-- [x] **Hidden for the built-in admin** - the platform admin account (`JUPYTERHUB_ADMIN`) cannot be renamed (like it cannot be removed/de-authorised)
+- [x] **Hidden for the built-in admin** - the platform admin account (`JUPYTERHUB_ADMIN_USERNAME`) cannot be renamed (like it cannot be removed/de-authorised)
   - log: 2026-06-18 gated on `isBuiltinAdmin`
 
 ### Rules
@@ -3013,7 +3013,7 @@ The roles are implicit - NOT assigned by name. The platform derives the role fro
   - log: 2026-06-18 operator: "it was supposed to be panel with table with rows" / "make it as table in the panel (single panel)"; replaced the two `Card` prose blocks with one `Card` + `Table<RoleDef>`
 - [x] **Role table columns** - columns are Role, Description, How assigned, Who; descriptions terse (technical-documentation style); Who is a terse example audience, not names
   - log: 2026-06-18 operator: "role name; description; how assigned; who (examples - not names, just terse description)"; `roleColumns`
-- [x] **Admin row** - terse: full read/write/create/remove across fleet, users, groups, platform; assigned = holds JupyterHub's `admin` flag (JUPYTERHUB_ADMIN at login, or toggled on Users); who = operators, maintainers
+- [x] **Admin row** - terse: full read/write/create/remove across fleet, users, groups, platform; assigned = holds JupyterHub's `admin` flag (JUPYTERHUB_ADMIN_USERNAME at login, or toggled on Users); who = operators, maintainers
   - log: 2026-06-18 `ROLES[0]`
 - [x] **User row** - terse: own server + profile only, no fleet/user/group rights; assigned = authenticated, authorised account without the admin flag; who = data scientists, notebook authors, learners
   - log: 2026-06-18 `ROLES[1]`
@@ -4475,7 +4475,7 @@ Two mutually-exclusive paths create the first admin: env-password pre-provisioni
   - log: 2026-06-20 verified by simulation
 - [ ] **Edge: admin exists but unauthorized** - `query_admin_state` reports admin present by username, so an `is_authorized=0` admin row does not trigger fail-fast; does not arise through env or self-signup paths (both set is_authorized); recovery is DELETE the row
   - log: 2026-06-20 noted - not produced by normal flows
-- [x] **Edge: uppercase JUPYTERHUB_ADMIN** - a non-normalised admin name (e.g. `Admin`) is stored normalised (`admin`), so a raw compare would never grant the admin role; FIXED by lowercasing `JUPYTERHUB_ADMIN` at the single source in `config/jupyterhub_config.py` (`.strip().lower()`), matching JupyterHub's unconditional `username.lower()`, so every bootstrap lookup / `post_auth_hook` / SPA `admin_user` compare holds
+- [x] **Edge: uppercase JUPYTERHUB_ADMIN_USERNAME** - a non-normalised admin name (e.g. `Admin`) is stored normalised (`admin`), so a raw compare would never grant the admin role; FIXED by lowercasing `JUPYTERHUB_ADMIN_USERNAME` at the single source in `config/jupyterhub_config.py` (`.strip().lower()`), matching JupyterHub's unconditional `username.lower()`, so every bootstrap lookup / `post_auth_hook` / SPA `admin_user` compare holds
   - log: 2026-06-20 fixed (#344); single-source lowercase, no `username_map` override in play
   - log: 2026-06-20 noted by round-2 review - pre-existing, out of scope
 - [ ] **E2E: env-password admin login** - on the live stack, fresh `/data`, `JUPYTERHUB_ADMIN_PASSWORD` set: admin logs in with the env password and reaches the portal; the creation log line is present, the password is not

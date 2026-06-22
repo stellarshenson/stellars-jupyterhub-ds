@@ -1,11 +1,11 @@
 # Override for the signup-on first-admin bootstrap regime: signup ENABLED, NO env
-# password. The configured admin (JUPYTERHUB_ADMIN) self-signs-up via the open form
+# password. The configured admin (JUPYTERHUB_ADMIN_USERNAME) self-signs-up via the open form
 # and must be AUTO-AUTHORISED by first_admin_self_signup_pending - the shipped-default
 # path the adversarial review flagged (signup on + no env password must not strand the
 # first admin as is_authorized=False with no one to approve them). Unlike the
 # signup-open regime there is NO env password and NO restart-to-provision: the admin
 # is created by the test's own signup, not env provisioning. The base compose already
-# sets JUPYTERHUB_ADMIN=functestadmin and no password; this only flips signup on.
+# sets JUPYTERHUB_ADMIN_USERNAME=functestadmin and no password; this only flips signup on.
 services:
   duoptimum-hub:
     environment:

@@ -60,7 +60,7 @@ interface JhData {
   user?: string
   admin_access?: boolean
   gpu_enabled?: boolean // authoritative: does this platform have GPU (sidecar found one)
-  admin_user?: string // the platform admin username (JUPYTERHUB_ADMIN)
+  admin_user?: string // the platform admin username (JUPYTERHUB_ADMIN_USERNAME)
   hub_name?: string // hub display name (JUPYTERHUB_BRANDING_HUB_NAME): logo tooltip + login/signup text; default "Duoptimum Hub"
   stage?: string // environment-stage label for the header badge (JUPYTERHUB_BRANDING_STAGE); empty/absent = no badge
   xsrf_token?: string

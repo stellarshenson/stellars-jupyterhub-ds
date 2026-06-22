@@ -12,7 +12,7 @@ export function gpuSupported(): boolean {
   return d ? !!d.gpu_enabled : true
 }
 
-/** The platform admin username (JUPYTERHUB_ADMIN), or '' under mock/dev. */
+/** The platform admin username (JUPYTERHUB_ADMIN_USERNAME), or '' under mock/dev. */
 export function adminUser(): string {
   const d = typeof window !== 'undefined' ? window.jhdata : undefined
   return d?.admin_user ?? ''

@@ -54,7 +54,7 @@ cd my-jupyterhub
 1. Download `compose.yml` (standalone - the image ships a working built-in `jupyterhub_config.py`; drop your own into `./config/` next to the compose file to override; see [docs/configuration.md](docs/configuration.md))
 2. Run: `docker compose up --no-build`
 3. Open https://localhost/jupyterhub in your browser
-4. Sign up as the admin user (matches `JUPYTERHUB_ADMIN`, default `admin`) - on a fresh deployment the signup form is open and the admin name is auto-authorised; other usernames are rejected during this initial bootstrap window
+4. Sign up as the admin user (matches `JUPYTERHUB_ADMIN_USERNAME`, default `admin`) - on a fresh deployment the signup form is open and the admin name is auto-authorised; other usernames are rejected during this initial bootstrap window
 5. Log in as `admin` - admin role is granted automatically at first login
 
 ### Start Scripts
@@ -68,7 +68,7 @@ This stack uses [NativeAuthenticator](https://github.com/jupyterhub/nativeauthen
 
 Two mutually-exclusive modes for creating the first admin user:
 
-**Bootstrap-by-signup (default)** - leave `JUPYTERHUB_ADMIN_PASSWORD` unset. On a fresh deployment with empty database, the signup form is silently re-opened scoped to the admin name only (`JUPYTERHUB_ADMIN`, default `admin`). Visit `/hub/signup`, register with a password you choose, and log in. NativeAuthenticator self-approves that signup and the admin role is granted at login. Any other username on the signup form is rejected. Once the admin exists in the database, the bootstrap window closes and signup falls back to whatever `JUPYTERHUB_SIGNUP_ENABLED` is set to.
+**Bootstrap-by-signup (default)** - leave `JUPYTERHUB_ADMIN_PASSWORD` unset. On a fresh deployment with empty database, the signup form is silently re-opened scoped to the admin name only (`JUPYTERHUB_ADMIN_USERNAME`, default `admin`). Visit `/hub/signup`, register with a password you choose, and log in. NativeAuthenticator self-approves that signup and the admin role is granted at login. Any other username on the signup form is rejected. Once the admin exists in the database, the bootstrap window closes and signup falls back to whatever `JUPYTERHUB_SIGNUP_ENABLED` is set to.
 
 **Bootstrap-by-env** - set `JUPYTERHUB_ADMIN_PASSWORD` in your override:
 
@@ -156,7 +156,7 @@ Users access JupyterHub through Traefik reverse proxy with TLS termination. Afte
 ```mermaid
 graph TB
     subgraph ENV["Environment Variables (compose.yml)"]
-        ADMIN[JUPYTERHUB_ADMIN<br/>Admin username]
+        ADMIN[JUPYTERHUB_ADMIN_USERNAME<br/>Admin username]
         BASEURL[JUPYTERHUB_BASE_URL<br/>URL prefix]
         IMG[JUPYTERHUB_LAB_IMAGE<br/>User container image]
         NET[JUPYTERHUB_NETWORK_NAME<br/>Container network]
