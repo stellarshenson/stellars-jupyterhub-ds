@@ -91,7 +91,7 @@ export const COL_HELP = {
 export const ANIMATION = {
   ttlExtendMs: 3000, // TTL extend: bar grows (rAF) from current fill to the new limit over this duration
   ttlGlowMs: 250, // TTL extend: glow/blur RAMP duration (each of ramp-on and ramp-off); the glow holds at 50% in between for the whole fill, never a pulse (threaded to CSS via --doh-ttl-glow)
-  statusPulseMs: 3000, // connection-status diode: soft halo pulse period - the halo fades off slightly and back in over this span (calm, not an expanding ring); threaded to CSS via --doh-status-pulse
+  statusPulseMs: 3000, // connection-status diode: SLOW (connected) soft-halo pulse period - fades off slightly and back in over this span (calm, not an expanding ring); the down diode runs 3x faster (CSS calc /3); threaded to CSS via --doh-status-pulse
 }
 
 // Mock-mode display fixtures only. Live mode never reads jupyterhubVersion or

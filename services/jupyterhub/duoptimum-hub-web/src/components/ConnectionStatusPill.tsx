@@ -2,7 +2,8 @@
  * by the shared useHubHealth probe. Sits in the header chrome beside the stage badge
  * (same height): a calm outlined "Connected" while the hub answers, a warning-filled
  * "Not responding · XXXX" (elapsed, ticking each second) when it stops. The diode
- * carries a soft slowly-pulsing halo (period from ANIMATION.statusPulseMs). Mobile
+ * carries a soft pulsing halo - slow when connected (period ANIMATION.statusPulseMs),
+ * 3x faster when down (CSS calc /3) to signal urgency. Mobile
  * uses the in-flow panel (HubConnectionIndicator) instead, so this renders nothing
  * below the breakpoint; mock has no hub to report on. */
 import type { CSSProperties } from 'react'
