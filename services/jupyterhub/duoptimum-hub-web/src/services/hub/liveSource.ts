@@ -117,7 +117,7 @@ interface RawGroupsResp {
 
 // event type -> icon key (the hub records type; the portal picks the icon)
 const EVENT_ICON: Record<string, string> = {
-  server: 'play', user: 'user', group: 'group', policy: 'shield', broadcast: 'megaphone', cull: 'stop', volume: 'disk',
+  server: 'play', user: 'user', group: 'group', policy: 'shield', broadcast: 'megaphone', cull: 'stop', volume: 'disk', error: 'close',
 }
 
 // registry order + display labels (mirrors duoptimum_hub_services POLICY_TYPES)

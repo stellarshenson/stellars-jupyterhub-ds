@@ -13,6 +13,7 @@
 # Usage: run.sh <regime>
 #   signup            default - signup off + no env pw + fresh DB -> bootstrap window; GPU autodetect
 #   gpu               GPU autodetect via a MOCK gpuinfo sidecar (runs on ANY host)
+#   gpu-missing       GPU autodetect but the sidecar cannot start (absent image) -> GPU off, CPU-only lab (DEF-24)
 #   env               signup off + env-password admin (restart-to-provision on fresh DB)
 #   signup-open       signup on + env-password admin authorises a self-signup
 #   signup-bootstrap  signup on + NO env pw -> admin self-signup auto-authorised
@@ -32,6 +33,7 @@ ENV_OVERLAY=tests/functional/compose.functional-env.yml
 SIGNUPOPEN_OVERLAY=tests/functional/compose.functional-signup-open.yml
 SIGNUPBOOTSTRAP_OVERLAY=tests/functional/compose.functional-signup-bootstrap.yml
 GPU_OVERLAY=tests/functional/compose.functional-gpu.yml
+GPU_MISSING_OVERLAY=tests/functional/compose.functional-gpu-missing.yml
 TRAEFIK_OVERLAY=tests/functional/compose.functional-traefik.yml
 GPUINFO_MOCK_IMAGE=stellars/duoptimum-gpuinfo-mock:latest
 FUNCTEST_IMAGES="quay.io/jupyterhub/singleuser:latest mcr.microsoft.com/playwright/python:v1.49.0-noble"
@@ -132,7 +134,7 @@ run_regime() {
 run_all() {
   local overall=0 failed="" setup
   RESULTS_FILE=$(mktemp); export RESULTS_FILE
-  for setup in signup gpu env signup-open signup-bootstrap traefik traefik-closed; do
+  for setup in signup gpu gpu-missing env signup-open signup-bootstrap traefik traefik-closed; do
     echo "==================================================================="
     echo "[functional/all] setup: $setup"
     echo "==================================================================="
@@ -150,6 +152,10 @@ case "${1:-signup}" in
     echo "[functional/gpu] building mock gpuinfo image ($GPUINFO_MOCK_IMAGE)..."
     docker build -q -t "$GPUINFO_MOCK_IMAGE" tests/functional/mock_gpuinfo >/dev/null
     run_regime gpu 1 0 "$BASE" "$GPU_OVERLAY" ;;
+  gpu-missing)
+    # GPU autodetect ON but the gpuinfo image is absent -> sidecar self-start returns ""
+    # -> GPU off, CPU-only lab. No mock image is built (absence is the point). DEF-24.
+    run_regime gpu-missing 1 0 "$BASE" "$GPU_MISSING_OVERLAY" ;;
   env)              run_regime env 0 1 "$BASE" "$ENV_OVERLAY" ;;
   signup-open)      run_regime signup-open 0 1 "$BASE" "$SIGNUPOPEN_OVERLAY" ;;
   signup-bootstrap) run_regime signup-bootstrap 0 0 "$BASE" "$SIGNUPBOOTSTRAP_OVERLAY" ;;
@@ -161,5 +167,5 @@ case "${1:-signup}" in
     run_regime traefik-closed 0 0 "$BASE" "$TRAEFIK_OVERLAY" ;;
   all)              run_all ;;
   clean)            clean ;;
-  *) echo "run.sh: unknown regime '${1:-}' (signup|gpu|env|signup-open|signup-bootstrap|traefik|traefik-closed|all|clean)" >&2; exit 2 ;;
+  *) echo "run.sh: unknown regime '${1:-}' (signup|gpu|gpu-missing|env|signup-open|signup-bootstrap|traefik|traefik-closed|all|clean)" >&2; exit 2 ;;
 esac

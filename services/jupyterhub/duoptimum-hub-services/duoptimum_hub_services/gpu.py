@@ -6,9 +6,11 @@ same sidecar serves live utilisation (see ``gpu_cache``), so one long-running
 peer backs both detection and sampling.
 
 Detection runs once at hub startup and must not stall the boot: the sidecar is
-self-started just before this, so a short bounded probe catches it; if it is
-still unreachable we fall back to the last-known inventory persisted on the data
-volume (see ``persisted_cache``) rather than blocking or showing nothing.
+self-started just before this, so a short bounded probe catches it. If the sidecar
+is up but slow to answer we reuse the last-known inventory persisted on the data
+volume (see ``persisted_cache``) rather than blocking or flapping off; if it failed
+to start at all GPU is simply off - with no sidecar the hub cannot back any GPU, and
+claiming GPUs from a stale snapshot crashes every spawn.
 """
 
 from .persisted_cache import load_cached, save_cached
@@ -62,20 +64,32 @@ def resolve_gpu_mode(gpu_enabled, _image=None, probe_sidecar=True):
 
     In autodetect the sidecar is queried for the host inventory (short bounded probe),
     but only when ``probe_sidecar`` is True (the caller's self-start succeeded, or an
-    operator/compose-managed sidecar is configured). If the sidecar is known-unreachable
-    (``probe_sidecar`` False) the probe is skipped so a missing sidecar never stalls boot
-    on DNS/connect. A fresh probe result is persisted as the last-known inventory; an
-    empty/skipped probe seeds from that persisted snapshot, so a cold/slow sidecar at
-    boot reuses last-known GPUs rather than dropping to off. Presence is derived from the
-    (possibly seeded) inventory, so the mode collapses to on/off.
+    operator/compose-managed sidecar is configured). If the sidecar is down
+    (``probe_sidecar`` False) GPU was NOT autodetected: the probe is skipped and the
+    mode resolves OFF. A down sidecar is never reused from the persisted snapshot - the
+    hub cannot back the GPUs that snapshot lists, so attaching device_requests from it
+    would crash every gpu-access spawn in the nvidia prestart hook. Only when the sidecar
+    IS up but answers empty (a cold/slow start) does the empty probe seed from the
+    persisted last-known inventory, so a momentarily-slow-but-present sidecar does not
+    flap GPU off for the session. A fresh probe result is persisted as the new last-known.
+    Presence is derived from the (possibly seeded) inventory, so the mode collapses to on/off.
     """
     if gpu_enabled == 0:
         return 0, 0, []
-    gpu_list = enumerate_gpus() if probe_sidecar else []
+    if not probe_sidecar:
+        # sidecar down -> GPU not autodetected -> OFF. never seed from last-known: no
+        # sidecar means no GPU to back, and stale device_requests crash every spawn
+        return 0, 0, []
+    gpu_list = enumerate_gpus()
     if gpu_list:
         save_cached(_INVENTORY_CACHE, gpu_list)          # refresh last-known
     else:
-        seeded = load_cached(_INVENTORY_CACHE)           # fall back to last-known
+        # sidecar UP but probe empty (a cold/slow start, or a genuine zero - one empty
+        # answer cannot tell them apart). reuse last-known (TTL-bounded): gpu_enabled is
+        # fixed at boot, so flapping off here would not self-heal until a restart. the
+        # DEF-24 crash path is the DOWN sidecar, handled above (off, no seed); this
+        # up+empty reuse is the deliberate residual trade-off, not that path.
+        seeded = load_cached(_INVENTORY_CACHE)
         if seeded is not None:
             gpu_list = seeded[0] or []
     nvidia_detected = 1 if gpu_list else 0

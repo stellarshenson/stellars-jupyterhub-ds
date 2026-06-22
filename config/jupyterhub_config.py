@@ -575,6 +575,13 @@ if _gpuinfo_sidecar_up:
 # probe only when the sidecar is actually up; otherwise skip straight to
 # last-known/off so a missing sidecar never stalls boot on DNS/connect
 gpu_enabled, nvidia_detected, gpu_list = resolve_gpu_mode(JUPYTERHUB_GPU_ENABLED, probe_sidecar=_gpuinfo_sidecar_up)
+# autodetect asked but sidecar never came up -> GPU NOT autodetected (nvidia), labs CPU-only.
+# say it plainly; the [GPUInfo] lines above carry the specific cause (no name/net/image/docker).
+# enabled=0 on the summary line alone is too implicit for the operator to read the cause from.
+if JUPYTERHUB_GPU_ENABLED != 0 and not _gpuinfo_sidecar_up:
+    log.warning(
+        "[GPU] gpuinfo-nvidia sidecar did not start -> GPU not detected (nvidia) -> "
+        "GPU disabled; labs start CPU-only (see [GPUInfo] above for the cause)")
 # index -> UUID map for CUDA_VISIBLE_DEVICES (UUIDs are stable across in-container
 # GPU re-indexing, unlike host indices). isolation is only real on native Linux;
 # on WSL2 (/dev/dxg) per-GPU selection is advisory, not enforced.

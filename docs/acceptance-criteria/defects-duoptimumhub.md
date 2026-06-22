@@ -27,6 +27,7 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
 - [DEF-21: Connection indicator - ux-review minors (5xx copy, uncapped elapsed, dual warning languages)](#def-21-connection-indicator---ux-review-minors-5xx-copy-uncapped-elapsed-dual-warning-languages) - open
 - [DEF-22: Hub connect URL uses ephemeral container id, brittle on redeploy](#def-22-hub-connect-url-uses-ephemeral-container-id-brittle-on-redeploy) - fixed
 - [DEF-23: Hub API bound to the gpuinfo interface after the DEF-22 alias fix - total spawn outage](#def-23-hub-api-bound-to-the-gpuinfo-interface-after-the-def-22-alias-fix---total-spawn-outage) - fixed
+- [DEF-24: GPU undetected (sidecar down) still spawns labs with GPU - crash](#def-24-gpu-undetected-sidecar-down-still-spawns-labs-with-gpu---crash) - fixed
 
 ## Open
 
@@ -113,6 +114,16 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
   - ref: acc-crit volume-size reporting; task #347
 
 ## Fixed
+
+### DEF-24: GPU undetected (sidecar down) still spawns labs with GPU - crash
+
+- [x] **HIGH** - when `gpuinfo-nvidia` fails to start the live probe is correctly skipped (`probe_sidecar=False`), but `resolve_gpu_mode`'s cache-seeding `else` branch ran UNCONDITIONALLY and reseeded `gpu_list` from the last-known persisted inventory (`gpu_inventory.json` from a prior boot when GPUs were present) -> `nvidia_detected=1` -> resolver reports GPU ON -> `GpuPolicy.apply` attaches Docker `device_requests` -> nvidia prestart hook crashes EVERY spawn (`nvidia-container-cli: WSL environment detected but no adapters were found`) -> 500, no lab. A sidecar that failed to start means GPU was NOT autodetected; a stale snapshot is not detection, and the hub must never claim GPUs it has no live sidecar to back. Fix: early `if not probe_sidecar: return 0, 0, []` BEFORE any cache access - only a sidecar that is UP but answers empty (cold/slow start) seeds from last-known; `gpu.py`
+  - log: 2026-06-22 reported live (operator: lab spawn 500 `nvidia-container-cli: WSL environment detected but no adapters were found`; "if gpuinfo failed to start, gpu was not autodetected - lab must start WITHOUT GPU"; "you - like a maniac - tried to start the lab with GPU")
+  - log: 2026-06-22 root cause: regression from dd14b75 (two-mode detection + sidecar gating) - the `else` seeding branch in `resolve_gpu_mode` fired even when `probe_sidecar=False`, resurrecting a stale inventory; `nvidia_detected=1` -> `device_requests` attached -> prestart hook crash on a host with no live GPU adapter
+  - log: 2026-06-22 fix applied: early return on `not probe_sidecar` (OFF, no seed) before any cache read; only sidecar-up-but-empty seeds last-known; `test_probe_sidecar_false_off_even_with_last_known` guards it (asserts `(0,0,[])` even with a persisted cache on disk)
+  - log: 2026-06-22 adversarial-review (3 parallel claude -p Mode-1 + a consolidated re-confirm round, all SHIP after triage; the DO-NOT-SHIP rested on a false positive - `record_event` is best-effort - and a prior-reviewed up+empty trade-off); added an Invariant-1 test guard asserting `load_cached` is never read on the down path
+  - log: 2026-06-22 VERIFIED: 910 hub-services unit tests + functional `gpu-missing` regime (2/2 against the rebuilt image: hub logs enabled=0 detected=0 + explicit "sidecar did not start" warning, spawned lab has no `device_requests` yet starts CPU-only); live redeploy (`make rebuild` v4.0.12 + `../stop.sh && ../start.sh`) confirms the NORMAL path intact - `[GPU] enabled=1 detected=1` (3 GPUs), no false warning, konrad lab survived + `hub:8080/hub/api` 200
+  - ref: acc-crit "GPU autodetection - sidecar down -> GPU off, CPU-only lab"; tasks #464-#473
 
 ### DEF-5: Infinite login redirect loop
 

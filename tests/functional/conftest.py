@@ -75,6 +75,8 @@ def pytest_collection_modifyitems(config, items):
         items[:] = [i for i in items if "traefik" in i.keywords]
     elif AUTH_MODE == "traefikclosed":
         items[:] = [i for i in items if "traefikclosed" in i.keywords]
+    elif AUTH_MODE == "gpumissing":
+        items[:] = [i for i in items if "gpu_missing" in i.keywords]
     else:
         items[:] = [
             i for i in items
@@ -83,6 +85,7 @@ def pytest_collection_modifyitems(config, items):
             and "signupbootstrap" not in i.keywords
             and "traefik" not in i.keywords
             and "traefikclosed" not in i.keywords
+            and "gpu_missing" not in i.keywords
             and ("gpu" not in i.keywords or gpu_on)
         ]
 

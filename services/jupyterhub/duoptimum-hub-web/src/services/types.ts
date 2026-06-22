@@ -163,7 +163,7 @@ export interface PolicyConfig {
   volume_mounts?: PolicyVolumeMount[]
 }
 
-export type EventType = 'server' | 'user' | 'group' | 'policy' | 'broadcast' | 'cull' | 'volume'
+export type EventType = 'server' | 'user' | 'group' | 'policy' | 'broadcast' | 'cull' | 'volume' | 'error'
 
 export interface EventRow {
   id: string

@@ -4,6 +4,10 @@ Emits ONE `[Timing]` log line per lifecycle method exit, carrying the
 method name, username, and elapsed seconds. Designed to be low-volume:
 no entry-side logging, no poll-loop logging - just exit summaries.
 
+Also records a single `error` event in the platform event log when a spawn
+RAISES (the only place a failed start is observable) - otherwise a crashed
+spawn leaves the 'server starting' event with no matching outcome.
+
 Methods instrumented:
 
   - ``start()``         total spawn time as the hub observes it
@@ -24,10 +28,13 @@ Pull the lines after the fact:
 
 from __future__ import annotations
 
+import html
 import time
 from typing import Any
 
 from dockerspawner import DockerSpawner
+
+from .event_log import record_event
 
 
 class TimingDockerSpawner(DockerSpawner):
@@ -37,6 +44,12 @@ class TimingDockerSpawner(DockerSpawner):
         t0 = time.perf_counter()
         try:
             return await super().start(*args, **kwargs)
+        except Exception:
+            # a raised spawn (nvidia prestart 500, image pull error, ...) otherwise leaves
+            # no audit trace - the 'server starting' event gets no matching outcome. record
+            # one best-effort 'error' event, then re-raise so the hub's error handling is unchanged
+            record_event('error', f'<b>{html.escape(str(self.user.name if self.user else "?"))}</b> server failed to start')
+            raise
         finally:
             self.log.info(
                 "[Timing] start user=%s elapsed=%.3fs",
