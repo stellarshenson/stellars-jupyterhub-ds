@@ -4664,7 +4664,7 @@ When a server is stopped, the TTL gadget slot under the server control buttons s
 
 ## Hub-unreachable warning indicator
 
-When the portal cannot reach the hub (`useHubHealth` reports down), it surfaces a transient WARNING - never a red system error, never a broken-icon/crash look, never a blocking full-screen modal. Desktop: a persistent connection-status PILL in the header chrome, between the theme/language controls and the stage badge, status-pill style with a softly pulsing diode - calm "Connected" while healthy, warning "Not responding" plus elapsed time while down. Mobile: an in-flow warning panel at the top of the content, pale warning surface, the same soft diode + elapsed. The page is never blocked; the pill sits quietly when healthy. Redesign supersedes the 2026-06-20 corner-diode + modal build (DEF-18).
+When the portal cannot reach the hub (`useHubHealth` reports down), it surfaces a transient WARNING - never a red system error, never a broken-icon/crash look, never a blocking full-screen modal. Desktop: a persistent connection-status PILL in the header chrome, between the theme/language controls and the stage badge, status-pill style with a softly pulsing diode - calm "Connected" (slow halo pulse) while healthy, warning "Not responding" plus elapsed time while down (diode pulses 3x faster). Mobile: an in-flow warning panel at the top of the content, pale warning surface, the same soft diode + elapsed. The page is never blocked; the pill sits quietly when healthy. Redesign supersedes the 2026-06-20 corner-diode + modal build (DEF-18).
 
 - [ ] **Warning, not error** - down state renders as a warning (warning colour, calm copy), never a red/danger error screen, broken/disconnect icon, or blocking modal
   - log: 2026-06-21 redesign (operator: corner diode "not right" abandon it; modal "looks quite terrible")
@@ -4672,10 +4672,12 @@ When the portal cannot reach the hub (`useHubHealth` reports down), it surfaces 
   - log: 2026-06-21 requirement added (operator: "similar style to stage... status pill style with diode")
 - [ ] **Aligned + prominent** - the pill matches the StageBadge height exactly (same vertical metrics, no row mismatch) and is large enough to draw attention in the down state
   - log: 2026-06-21 requirement added (operator: "aligned height-wise with stage indicator... large enough to draw attention")
-- [ ] **Soft pulsing halo** - the pill diode carries a halo that slowly fades off slightly and back in over a 3s cycle (calm, not the harsh expanding ring); the period is config-driven (`ANIMATION.statusPulseMs`, `services/config.ts`) and threaded to CSS via `--doh-status-pulse`
+- [ ] **Soft pulsing halo (slow connected, 3x faster down)** - the diode carries a halo that fades off slightly and back in (calm, not the harsh expanding ring); base period is config-driven (`ANIMATION.statusPulseMs` = 3s, `services/config.ts`, threaded to CSS via `--doh-status-pulse`); the connected diode pulses at the full period (slow), the down diode 3x faster via CSS `calc(var(--doh-status-pulse) / 3)` (~1s); the mobile down panel diode matches the down rate
   - log: 2026-06-21 requirement added (operator: "PULSATING SOFTLY... slowly fading off slightly and back in in 3s pulses - config in config.ts")
-- [ ] **Healthy state** - while reachable the pill is calm and quiet (success tone, "Connected"), not attention-grabbing
+  - log: 2026-06-22 operator "connected dot blinks (halo) slowly; connection dropped - 3x faster"; connected went static -> slow pulse, down went 3s -> `calc /3`
+- [ ] **Healthy state** - while reachable the pill is calm (success tone, "Connected") with a SLOW soft-halo pulse on the diode; low-key, not attention-grabbing
   - log: 2026-06-21 requirement added
+  - log: 2026-06-22 healthy diode was static; operator now wants it to slow-blink, so it carries the slow pulse (down stays 3x faster)
 - [ ] **Down state + elapsed** - while down the pill turns warning and shows how long the hub has been unreachable ("not responding for XXXX"), ticking ~every second from `downSince`
   - log: 2026-06-21 requirement added (operator: "not responding for xxxx time")
 - [ ] **Copy** - down state message is very terse and LEADS WITH the branding hub name (`hubName()` <- `JUPYTERHUB_BRANDING_HUB_NAME` via `window.jhdata`, never "The"): "<hub name> not responding - data may be stale, actions will fail; retrying automatically" (pill tooltip `downTitle()` + mobile panel `body()`); the healthy pill tooltip uses the same branding name

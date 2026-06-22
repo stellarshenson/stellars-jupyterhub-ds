@@ -1,6 +1,7 @@
 /* Mobile hub-unreachable panel - the in-flow warning shown at the top of the content
  * below the breakpoint (desktop uses the header ConnectionStatusPill instead). Pale
- * warning surface so it never washes out the text, a soft slowly-pulsing diode and the
+ * warning surface so it never washes out the text, a soft diode pulsing 3x faster than the
+ * connected rate (down = urgency) and the
  * elapsed "for XXXX". Driven by the shared useHubHealth probe; renders nothing while
  * the hub is reachable or on desktop. */
 import { useEffect, useState } from 'react'
