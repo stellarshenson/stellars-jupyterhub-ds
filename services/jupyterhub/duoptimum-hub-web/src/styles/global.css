@@ -149,17 +149,21 @@ body { margin: 0; font-family: var(--font-sans); }
    fill window - driven frame-by-frame by rAF in meters.tsx (in lockstep with the counter),
    NOT a CSS width transition: a same-frame class+value change does not reliably animate, so
    the bar used to flip straight to 100% (DEF-15). antd's own width transition is killed below
-   so rAF is the sole driver. on extend the BAR also glows: a drop-shadow HALO around the bar
-   (currentColor mixed toward white, brighter), NOT a tint overlay - the halo never covers the
-   fill, so it can't wash the bar white (DEF-14). held, not pulsed: a CSS transition ramps the
-   glow ON over --doh-ttl-glow (250ms), HOLDS it while doh-ttl-boost is on (the whole fill
-   window), then ramps OFF over 100ms when the value lands - a trapezoid envelope, no
-   mid-animation dip. the COUNTER does not glow - it only blurs .75px, ramped the same way
-   (transition lives inline in meters.tsx so it can sit beside the colour transition). fires
-   only on extend (doh-ttl-boost), never on a tick. */
-.doh-ttl-bar { display: inline-block; position: relative; transition: filter var(--doh-ttl-glow, 250ms) ease; }
+   so rAF is the sole driver. on extend the BAR also glows: a box-shadow HALO on the rounded
+   track (.ant-progress-inner), currentColor mixed toward white. box-shadow (not a drop-shadow
+   filter) so the glow sits UNDER the bar - it draws outside the pill's box and is occluded by
+   the fill, haloing the OUTER edge and never washing over the surface. a drop-shadow filter
+   traced the fill's alpha and bled the halo over the track at the fill's leading edge (looked
+   "on top"); the track's own overflow:hidden does not clip its own box-shadow (DEF-14).
+   held, not pulsed: a CSS transition ramps the glow ON over --doh-ttl-glow (250ms), HOLDS it
+   while doh-ttl-boost is on (the whole fill window), then ramps OFF when the value lands - a
+   trapezoid envelope, no mid-animation dip. the COUNTER does not glow - it only blurs .75px,
+   ramped the same way (transition lives inline in meters.tsx so it can sit beside the colour
+   transition). fires only on extend (doh-ttl-boost), never on a tick. */
+.doh-ttl-bar { display: inline-block; position: relative; }
 .doh-ttl-boost .ant-progress-bg { transition: none !important; }
-.doh-ttl-bar.doh-ttl-boost { filter: drop-shadow(0 0 0.5px color-mix(in srgb, currentColor, white 60%)); }
+.doh-ttl-bar .ant-progress-inner { transition: box-shadow var(--doh-ttl-glow, 250ms) ease; }
+.doh-ttl-bar.doh-ttl-boost .ant-progress-inner { box-shadow: 0 0 3px color-mix(in srgb, currentColor, white 60%); }
 .doh-ttl-val.doh-ttl-boost { filter: blur(.75px); }
 /* extend-popover slider: a brighter slide line (rail + track) and an info-toned drag knob,
    so the control reads clearly against the popover (default antd rail is too faint here). */
