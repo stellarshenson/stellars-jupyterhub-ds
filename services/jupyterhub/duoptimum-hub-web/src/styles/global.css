@@ -152,14 +152,14 @@ body { margin: 0; font-family: var(--font-sans); }
    so rAF is the sole driver. on extend the BAR also glows: a drop-shadow HALO around the bar
    (currentColor mixed toward white, brighter), NOT a tint overlay - the halo never covers the
    fill, so it can't wash the bar white (DEF-14). held, not pulsed: a CSS transition ramps the
-   glow ON over --doh-ttl-glow (100ms), HOLDS it while doh-ttl-boost is on (the whole fill
+   glow ON over --doh-ttl-glow (250ms), HOLDS it while doh-ttl-boost is on (the whole fill
    window), then ramps OFF over 100ms when the value lands - a trapezoid envelope, no
    mid-animation dip. the COUNTER does not glow - it only blurs .75px, ramped the same way
    (transition lives inline in meters.tsx so it can sit beside the colour transition). fires
    only on extend (doh-ttl-boost), never on a tick. */
-.doh-ttl-bar { display: inline-block; position: relative; transition: filter var(--doh-ttl-glow, 100ms) ease; }
+.doh-ttl-bar { display: inline-block; position: relative; transition: filter var(--doh-ttl-glow, 250ms) ease; }
 .doh-ttl-boost .ant-progress-bg { transition: none !important; }
-.doh-ttl-bar.doh-ttl-boost { filter: drop-shadow(0 0 5px color-mix(in srgb, currentColor, white 60%)); }
+.doh-ttl-bar.doh-ttl-boost { filter: drop-shadow(0 0 0.5px color-mix(in srgb, currentColor, white 60%)); }
 .doh-ttl-val.doh-ttl-boost { filter: blur(.75px); }
 /* extend-popover slider: a brighter slide line (rail + track) and an info-toned drag knob,
    so the control reads clearly against the popover (default antd rail is too faint here). */

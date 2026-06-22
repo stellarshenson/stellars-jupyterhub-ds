@@ -385,7 +385,7 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, displayCeilin
          * look at max vs almost-max). Pinned, the bar renders identically at 99 and 100. */}
         <Progress percent={shownPct} status="normal" showInfo={false} strokeColor={barTone} trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
       </span>
-      <span className={boost ? 'doh-ttl-val doh-ttl-boost' : 'doh-ttl-val'} style={{ color: barTone, transition: 'color .4s ease, filter var(--doh-ttl-glow, 100ms) ease' }}>
+      <span className={boost ? 'doh-ttl-val doh-ttl-boost' : 'doh-ttl-val'} style={{ color: barTone, transition: 'color .4s ease, filter var(--doh-ttl-glow, 250ms) ease' }}>
         <Icon name="clock" size={14} />
         <b style={{ color: barTone }}>{fmtMinutes(displayMin)}</b>
       </span>

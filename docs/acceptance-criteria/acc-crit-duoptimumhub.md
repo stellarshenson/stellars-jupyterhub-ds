@@ -3560,16 +3560,19 @@ Extending the idle-session TTL must move the progress bar immediately on click a
 - [x] **Bar glows on extend; counter blurs (no counter glow)** - during the boost the bar (`.doh-ttl-bar`) gets a bright tint glow over its fill; the time readout (`.doh-ttl-val`) does NOT glow - it only blurs .75px at the peak
   - log: 2026-06-20 first the counter blurred + glowed (`doh-ttl-val-pulse`); operator "no blur visible" / "counter needs glow" - dropped the blur, both shared the glow-only `doh-ttl-pulse`
   - log: 2026-06-20 reversed after visual calibration (operator "no counter glow" + "0.75 blur on the counter is also perfect"): bar keeps the glow, counter is blur-only at .75px (`doh-ttl-blur` peak)
-- [x] **Glow is a drop-shadow halo (not a covering overlay)** - the bar glow is a `drop-shadow(0 0 5px ...)` HALO around the bar (`.doh-ttl-bar.doh-ttl-boost`) in the bar's own tone brightened toward white (`color-mix(in srgb, currentColor, white 60%)`); a halo glows AROUND the fill and can never wash it white, unlike a covering `::after` tint
+- [x] **Glow is a drop-shadow halo (not a covering overlay)** - the bar glow is a `drop-shadow(0 0 0.5px ...)` HALO around the bar (`.doh-ttl-bar.doh-ttl-boost`) in the bar's own tone brightened toward white (`color-mix(in srgb, currentColor, white 60%)`); a halo glows AROUND the fill and can never wash it white, unlike a covering `::after` tint
   - log: 2026-06-20 operator "glow either invisible or same colour as std; needs to be much brighter and semi-transparent" - was `drop-shadow(... var(--color-accent))` (same as the fill)
   - log: 2026-06-20 briefly a tint overlay (operator "no shadows ... not in the ttl"), then DEF-14 - the overlay washed the bar white; restored the drop-shadow halo (operator "if halo works better like in the past - bring it"), brightened to a 60% white mix
+  - log: 2026-06-22 operator "change default progressbar glow to 0.5px"; halo radius 5px -> 0.5px
 - [x] **Standard colour slightly darker** - the standard bar + counter blue is `--doh-ttl-blue` = the accent darkened ~16%, so the bright glow stands out against it
   - log: 2026-06-20 operator "make the standard colour slightly darker"; `ttlTone` blue anchor -> `--doh-ttl-blue`
-- [x] **Glow is HELD, not pulsed (trapezoid envelope)** - the glow is driven by a CSS `transition` on the filter, not a keyframe: ramps ON over `--doh-ttl-glow` (100ms) when `doh-ttl-boost` is set, HOLDS for the whole boost/fill window, ramps OFF over 100ms when the value lands; no mid-animation dip, never a one-shot pulse
+- [x] **Glow is HELD, not pulsed (trapezoid envelope)** - the glow is driven by a CSS `transition` on the filter, not a keyframe: ramps ON over `--doh-ttl-glow` (250ms) when `doh-ttl-boost` is set, HOLDS for the whole boost/fill window, ramps OFF over 250ms when the value lands; no mid-animation dip, never a one-shot pulse
   - log: 2026-06-20 DEF-14 - the `@keyframes` pulse (0/45/100% opacity) inherently ramped up AND down inside its own window, reading as a single pulse, and outlasted by the boost window it left a full-opacity wash; replaced with a transition-held envelope (operator "the progress of animation must be: glow 0% -> ramp end glow on -> animation with glow on -> ramp start -> glow 0%; no pulsing; ramp 100ms")
-- [x] **Glow ramp time configurable** - the ramp duration (each of ramp-on and ramp-off) is `ANIMATION.ttlGlowMs` (`config.ts`, default 100ms), threaded to CSS via `--doh-ttl-glow`, tunable apart from the bar-fill duration; the glow holds at full between the ramps for the whole fill
+  - log: 2026-06-22 operator "glow / blur ramp up / ramp-down time to 250ms"; ramp 100ms -> 250ms
+- [x] **Glow ramp time configurable** - the ramp duration (each of ramp-on and ramp-off) is `ANIMATION.ttlGlowMs` (`config.ts`, default 250ms), threaded to CSS via `--doh-ttl-glow`, tunable apart from the bar-fill duration; the glow holds at full between the ramps for the whole fill
   - log: 2026-06-20 operator: "configure the ramp up and ramp down time for glow"
   - log: 2026-06-20 DEF-14 - `ttlGlowMs` 1200 -> 100 (short ramps, glow held in between, not a 1.2s pulse)
+  - log: 2026-06-22 `ttlGlowMs` 100 -> 250 (operator "ramp up / ramp-down time to 250ms")
 - [x] **Effect is extend-only** - the glow fires only while `doh-ttl-boost` is set (an extend in flight) and clears when the new value lands; a normal per-minute countdown tick never triggers it
   - log: 2026-06-20 boost state drives the class; confirmed with operator
 - [x] **Glow visible (not killed by reduced motion)** - the extend glow plays for everyone; the reduced-motion guard that disabled the boost is removed (operator wants the cue)
@@ -3577,7 +3580,7 @@ Extending the idle-session TTL must move the progress bar immediately on click a
 - [x] **Glow/blur calibration on /design-language** - a static calibration row shows the counter at stepped blur and the bar at stepped halo radius, so the colours and amounts can be tuned by eye and the page matches the shipped halo mechanism
   - log: 2026-06-20 operator "show static bar and counter at different steps of blur and glow ... so we can calibrate"
   - log: 2026-06-20 retuned to opacity/blur steps (was px glow radii); dropped the counter-glow row after the no-counter-glow decision
-  - log: 2026-06-20 DEF-14 - bar-glow demo switched from a tint-overlay-by-opacity to a drop-shadow-halo-by-radius (0/3/5/8/12px) to match the restored halo; shipped extend holds at 5px
+  - log: 2026-06-20 DEF-14 - bar-glow demo switched from a tint-overlay-by-opacity to a drop-shadow-halo-by-radius (0/3/5/8/12px) to match the restored halo; shipped extend holds at 0.5px
 - [x] **Extend slider legible (brighter rail + info knob)** - in the Extend popover the slider rail + track are brightened and the drag knob uses the info colour, so the control reads clearly against the popover surface
   - log: 2026-06-20 operator "make the slide line a little brighter, and the knob use one of the normal colors, like info"; `.doh-ttl-slider` in `global.css` (rail `--color-border-strong`, track + knob ring `--color-info`); `meters.tsx` Slider carries the class
 
