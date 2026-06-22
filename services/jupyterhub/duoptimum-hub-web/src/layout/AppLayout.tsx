@@ -2,12 +2,12 @@
  * sign-out foot), a top header carrying the breadcrumb (left) and the standard
  * antd header controls - language + theme dropdowns (right) - and a footer with
  * the platform + JupyterHub versions shown antd-style as tags. The command
- * palette, readonly banner and (Home-only) mock switch live in the content. */
+ * palette lives in the content. */
 import { ProLayout } from '@ant-design/pro-components'
 import { Button, Dropdown, Tag, Tooltip } from 'antd'
 import { GlobalOutlined } from '@ant-design/icons'
 import { useState } from 'react'
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Icon } from '../components/Icon'
 import type { IconKey } from '../components/Icon'
 import { useRole } from '../app/RoleContext'
@@ -17,15 +17,13 @@ import { PALETTES } from '../theme/tokens'
 import type { ThemeMode } from '../theme/tokens'
 import { portalAssetBase } from '../services/hub/client'
 import { useHubInfo } from '../hooks/queries'
-import { mockAction, notify } from '../services/actions'
+import { notify } from '../services/actions'
 import { hubUrl } from '../services/hub/client'
 import { useIsMobile } from '../lib/useIsMobile'
 import { SiderMenu } from './SiderMenu'
 import { Breadcrumbs } from './Breadcrumbs'
-import { MockSwitch } from './MockSwitch'
 import { CommandPalette } from './CommandPalette'
 import { MessageBinder } from './MessageBinder'
-import { ReadonlyBanner } from './ReadonlyBanner'
 import { StageBadge } from '../components/StageBadge'
 import { HubConnectionIndicator } from '../components/HubConnectionIndicator'
 import { ConnectionStatusPill } from '../components/ConnectionStatusPill'
@@ -50,7 +48,7 @@ function LanguageControl() {
         items: LANGS,
         selectable: true,
         selectedKeys: [lang],
-        onClick: ({ key }) => { setLang(key); mockAction(`Language: ${LANGS.find((l) => l.key === key)?.label}`) },
+        onClick: ({ key }) => { setLang(key); notify.info(`Language: ${LANGS.find((l) => l.key === key)?.label}`) },
       }}
     >
       {/* no Tooltip: it overlapped the open dropdown menu (aria-label keeps a11y) */}
@@ -79,16 +77,8 @@ function ThemeControl() {
 }
 
 function SiderFoot() {
-  const { role, username, live } = useRole()
-  const navigate = useNavigate()
-  const signOut = () => {
-    if (live) {
-      window.location.assign(hubUrl('/logout'))
-      return
-    }
-    mockAction('Signed out')
-    navigate('/login')
-  }
+  const { role, username } = useRole()
+  const signOut = () => window.location.assign(hubUrl('/logout'))
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: 12, borderTop: '1px solid var(--color-border-subtle)' }}>
       <div style={{ fontSize: 13, lineHeight: 1.2, minWidth: 0 }}>
@@ -154,9 +144,7 @@ function VersionFooter() {
 export function AppLayout() {
   const { pathname } = useLocation()
   const { resolved } = useTheme()
-  const { live } = useRole()
   const p = PALETTES[resolved]
-  const isHome = pathname === '/home' || pathname === '/'
   const logoSrc = `${portalAssetBase()}brand/jh-logo.svg`
   const markSrc = `${portalAssetBase()}brand/jl-logo.svg`
   const [collapsed, setCollapsed] = useState(false)
@@ -212,10 +200,8 @@ export function AppLayout() {
             <StageBadge />
           </div>
         </div>
-        <ReadonlyBanner />
         <Outlet />
       </div>
-      {isHome && !live && <MockSwitch />}
     </ProLayout>
   )
 }

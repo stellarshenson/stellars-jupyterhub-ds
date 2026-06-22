@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { startServer } from '../services/ops'
 import { hubUrl, xsrfToken } from '../services/hub/client'
-import { isMock } from '../services/dataMode'
 import { getDataSource } from '../services/datasource'
 import { invalidate } from '../services/actions'
 
@@ -21,8 +20,8 @@ export interface SpawnProgress {
  * only a truly offline server is spawned (once). It then follows the hub
  * spawn-progress SSE (`_xsrf` in the query string because EventSource cannot set
  * headers), falling back to a bounded status poll if the stream drops before a
- * terminal event. Mock mode animates a canned ramp. All timers + the EventSource
- * are torn down on unmount - nothing leaks. */
+ * terminal event. All timers + the EventSource are torn down on unmount -
+ * nothing leaks. */
 export function useSpawnProgress(user: string): SpawnProgress {
   const [state, setState] = useState<SpawnProgress>({ percent: 5, message: 'Requesting spawn…', phase: 'spawning' })
   const posted = useRef(false)
@@ -31,17 +30,6 @@ export function useSpawnProgress(user: string): SpawnProgress {
     let cancelled = false
     let es: EventSource | null = null
     const timers: number[] = []
-
-    if (isMock()) {
-      let p = 5
-      const t = window.setInterval(() => {
-        p = Math.min(100, p + 12)
-        setState({ percent: p, message: p < 100 ? 'Spawning…' : 'Ready', phase: p < 100 ? 'spawning' : 'ready' })
-        if (p >= 100) window.clearInterval(t)
-      }, 360)
-      timers.push(t)
-      return () => { cancelled = true; timers.forEach(window.clearInterval) }
-    }
 
     // Follow the hub spawn-progress SSE; creep the bar toward ~90% (the hub emits
     // only a couple of events for a fast/cached spawn, which otherwise reads as

@@ -12,8 +12,7 @@ import { Icon } from '../components/Icon'
 import { Notice } from '../components/Notice'
 import { GroupPolicyTab } from '../components/GroupPolicyTab'
 import { useGroupConfig, useGroups, useUserCorpus } from '../hooks/queries'
-import { isMock } from '../services/dataMode'
-import { mockSuccess, notify } from '../services/actions'
+import { notify } from '../services/actions'
 import { addMember, deleteGroup, removeMember, reorderGroups, saveGroupConfig } from '../services/ops'
 import type { PolicyConfig } from '../services/types'
 
@@ -52,11 +51,6 @@ export default function GroupConfig() {
   }, [cfg, ordered, form])
 
   const save = async () => {
-    if (isMock()) {
-      mockSuccess(`Saved ${name}`)
-      navigate('/groups')
-      return
-    }
     try {
       const v = await form.validateFields()
       await saveGroupConfig(name, v.description ?? '', policyCfg ?? cfg?.config)
@@ -83,7 +77,7 @@ export default function GroupConfig() {
 
   const removeGroup = async () => {
     await deleteGroup(name)
-    if (!isMock()) navigate('/groups')
+    navigate('/groups')
   }
 
   // client-side export of the live editor config (falls back to the stored config)

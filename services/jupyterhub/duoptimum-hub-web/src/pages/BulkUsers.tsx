@@ -7,7 +7,6 @@ import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { FormFooter } from '../components/FormFooter'
 import { GroupPicker } from '../components/GroupPicker'
-import { isMock } from '../services/dataMode'
 import { addMember, setUserAuthorization, createUser, getCredentials } from '../services/ops'
 
 export default function BulkUsers() {
@@ -24,11 +23,6 @@ export default function BulkUsers() {
       .filter(Boolean)
     if (!names.length) return
 
-    if (isMock()) {
-      const creds = await getCredentials(names)
-      navigate('/users/bulk/result', { state: { creds, groups: groups.join(', '), requested: names.length } })
-      return
-    }
     try {
       for (const name of names) {
         await createUser(name)

@@ -17,13 +17,12 @@ In practice: navigate to nouns, not views - one entity, one place. Home sits on 
 - **TanStack Query** - read hooks with loading / empty / error
 - **react-router-dom 6** - routing + breadcrumb handles (`handle.crumb` / `handle.parent`)
 
-## Data modes
+## Data source
 
-A single `DataSource` interface has two implementations, selected by `VITE_DATA_MODE`:
+The portal talks only to the live hub. A single `DataSource` interface (`services/datasource.ts`, backed by `services/hub/liveSource.ts`):
 
-- **mock** (default) - deterministic fixtures (`services/mockSource.ts`) shaped into view models; runs with no hub. The visible cast (alice, konrad, milan, nina) plus deterministic filler at realistic hundreds
-- **live** - readonly GETs to the hub through the Vite dev proxy: `/users`, `/groups`, `/activity`, `/admin/groups`, `/users/{u}/session-info`, `/info`; auth rides the hub session cookie, no API token. Set `VITE_DATA_MODE=live` and `VITE_HUB_ORIGIN`. Hub-absent views fall back to the mock
-- **Reads only** - the hub client (`services/hub/client.ts`) exposes no POST/PUT/DELETE; every action routes through `mockAction` and never mutates, so a real write cannot leak even in live mode
+- **Reads** - readonly GETs to the hub through the Vite dev proxy: `/users`, `/groups`, `/activity`, `/admin/groups`, `/users/{u}/session-info`, `/info`; auth rides the hub session cookie, no API token. Point `VITE_HUB_ORIGIN` at the hub
+- **Writes** - actions route through `services/ops.ts`, issuing real POST/PUT/DELETE to the hub API and NativeAuthenticator handlers, with success/error toasts and React Query invalidation
 
 ## Run
 
@@ -35,7 +34,7 @@ make typecheck   # tsc -b --noEmit
 make lint        # eslint
 ```
 
-Copy `.env.example` to `.env.local` to switch modes. Open `http://localhost:5180`.
+Copy `.env.example` to `.env.local` and point `VITE_HUB_ORIGIN` at your hub. Open `http://localhost:5180`.
 
 ## Theme
 
@@ -113,11 +112,10 @@ One language across every screen, so the portal reads as one system. Verified li
 ```
 src/
   theme/        tokens, antdTheme, cssVars, ThemeProvider
-  layout/       AppLayout (ProLayout), SiderMenu, Breadcrumbs, CommandPalette, MockSwitch,
-                ReadonlyBanner, MessageBinder
+  layout/       AppLayout (ProLayout), SiderMenu, Breadcrumbs, CommandPalette, MessageBinder
   app/          RoleContext, nav model
   components/   bespoke design-system set + Icon
-  services/     types, config, dataMode, datasource, mockSource, actions, hub/ (client + liveSource)
+  services/     types, config, datasource, actions, hub/ (client + liveSource)
   hooks/        TanStack Query read hooks
   pages/        one file per screen
   styles/       global.css (design-language enforcement: zebra, pills, meters, handle)
@@ -125,8 +123,8 @@ src/
 
 ## Tests
 
-`tests/smoke.spec.ts` asserts the shell renders with no console errors; `tests/shots.spec.ts` captures full-page screenshots per page in both themes (Playwright). Run `npx playwright test` against a running dev server.
+`make typecheck` (tsc) and `make lint` (eslint) gate the build. End-to-end coverage lives in the repo's `tests/functional/` suite (Playwright driving the real hub stack).
 
 ## Status
 
-Design build for review - faithful to `design-flows-frontend-mock.md`: every screen and action is present, both themes verified. Not wired to a live hub by default; mocked actions throughout. The rebuild concept and the hub-as-trust-boundary security model live in `../docs/portal-ui-catalogue.md`.
+The live portal the hub serves - every screen and action wired to the hub API, both themes verified. The rebuild concept and the hub-as-trust-boundary security model live in `../docs/portal-ui-catalogue.md`.

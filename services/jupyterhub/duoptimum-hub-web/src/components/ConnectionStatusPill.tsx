@@ -5,12 +5,11 @@
  * carries a soft pulsing halo - slow when connected (period ANIMATION.statusPulseMs),
  * 3x faster when down (CSS calc /3) to signal urgency. Mobile
  * uses the in-flow panel (HubConnectionIndicator) instead, so this renders nothing
- * below the breakpoint; mock has no hub to report on. */
+ * below the breakpoint. */
 import type { CSSProperties } from 'react'
 import { useEffect, useState } from 'react'
 import { useHubHealth } from '../lib/useHubHealth'
 import { useIsMobile } from '../lib/useIsMobile'
-import { isMock } from '../services/dataMode'
 import { ANIMATION } from '../services/config'
 import { elapsedShort } from '../lib/format'
 import { hubName } from '../app/capabilities'
@@ -33,7 +32,7 @@ export function ConnectionStatusPill() {
     return () => clearInterval(id)
   }, [down])
 
-  if (isMobile || isMock()) return null
+  if (isMobile) return null
 
   if (!down) {
     return (

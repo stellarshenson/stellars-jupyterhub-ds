@@ -2,11 +2,10 @@
  * down/downSince state for the whole app, exposed via useSyncExternalStore - so the
  * desktop pill and the mobile panel read the same source instead of each running their
  * own probe (which drifted up to a poll apart). The hub is reported unreachable only
- * after a few consecutive failures, so a single blip never flips it. Live mode only -
- * mock has no hub. On recovery it invalidates the query cache so stale data refetches. */
+ * after a few consecutive failures, so a single blip never flips it. On recovery it
+ * invalidates the query cache so stale data refetches. */
 import { useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { isMock } from '../services/dataMode'
 import { hubUrl } from '../services/hub/client'
 
 const POLL_MS = 15_000 // well under the hub's 1 req/s health rate limit
@@ -74,7 +73,7 @@ async function probe() {
 // mounted). Guarded so N consumers never start N probes.
 function subscribe(cb: () => void) {
   listeners.add(cb)
-  if (!probeStarted && !isMock()) {
+  if (!probeStarted) {
     probeStarted = true
     void probe()
   }

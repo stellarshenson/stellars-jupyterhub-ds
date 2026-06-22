@@ -10,7 +10,6 @@ import { Button, Progress } from 'antd'
 import { useRole } from '../app/RoleContext'
 import { useSpawnProgress } from '../hooks/useSpawnProgress'
 import { useContainerLogTail } from '../hooks/useContainerLogTail'
-import { isMock } from '../services/dataMode'
 import { userServerUrl, portalAssetBase, hubGet } from '../services/hub/client'
 
 export default function Starting() {
@@ -32,8 +31,8 @@ export default function Starting() {
   // the Servers fleet view (never auto-enter another user's lab)
   useEffect(() => {
     if (phase !== 'ready') return
-    // admin-other (or mock) -> straight back to the fleet view
-    if (!isOwn || isMock()) {
+    // admin-other -> straight back to the fleet view
+    if (!isOwn) {
       const t = window.setTimeout(() => navigate('/servers'), 600)
       return () => window.clearTimeout(t)
     }

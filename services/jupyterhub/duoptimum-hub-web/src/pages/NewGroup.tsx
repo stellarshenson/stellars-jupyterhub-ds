@@ -4,8 +4,6 @@ import { Card, Form, Input } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { FormFooter } from '../components/FormFooter'
-import { isMock } from '../services/dataMode'
-import { mockSuccess } from '../services/actions'
 import { createGroup } from '../services/ops'
 
 export default function NewGroup() {
@@ -14,11 +12,6 @@ export default function NewGroup() {
   const submit = async () => {
     const v = await form.validateFields().catch(() => null)
     if (!v) return
-    if (isMock()) {
-      mockSuccess('Group created')
-      navigate('/groups')
-      return
-    }
     try {
       await createGroup(v.name, v.description ?? '')
       navigate('/groups')
