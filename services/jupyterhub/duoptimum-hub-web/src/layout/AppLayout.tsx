@@ -7,6 +7,7 @@ import { ProLayout } from '@ant-design/pro-components'
 import { Button, Dropdown, Tag, Tooltip } from 'antd'
 import { GlobalOutlined } from '@ant-design/icons'
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Icon } from '../components/Icon'
 import type { IconKey } from '../components/Icon'
@@ -27,6 +28,13 @@ import { MessageBinder } from './MessageBinder'
 import { StageBadge } from '../components/StageBadge'
 import { HubConnectionIndicator } from '../components/HubConnectionIndicator'
 import { ConnectionStatusPill } from '../components/ConnectionStatusPill'
+
+// single source for the sider geometry: the expanded width we set on ProLayout and the
+// collapsed width ProLayout uses by default. Both the collapse handle (straddles the
+// edge) and the version footer (shifts to the page centre) derive from these, so the
+// two cannot drift.
+const SIDER_WIDTH = 248
+const SIDER_COLLAPSED_WIDTH = 64
 
 const THEME_MODES: Array<{ mode: ThemeMode; icon: IconKey; label: string }> = [
   { mode: 'light', icon: 'sun', label: 'Light' },
@@ -101,25 +109,34 @@ function SiderFoot() {
 }
 
 /* Thin rectangular grab handle straddling the sider's right edge at mid-height.
- * Fixed-positioned so it tracks the sider width; no icon. */
+ * Fixed-positioned so it tracks the sider width; no icon. Portalled to <body> so the
+ * `position: fixed` is viewport-relative: rendered in place it sits inside ProLayout's
+ * content column (a box whose left edge is the sider width), and any transform/contain
+ * on that subtree would capture the fixed element and offset `left` by the column origin,
+ * pushing the handle off the divider into the content. The portal removes that dependency. */
 function SiderHandle({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
-  return (
+  return createPortal(
     <Tooltip title={collapsed ? 'Expand' : 'Collapse'} placement="right">
       <button
         className="doh-sider-handle"
         onClick={onToggle}
         aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         style={{
-          position: 'fixed', left: collapsed ? 64 : 248, top: '50%', transform: 'translate(-50%, -50%)',
+          position: 'fixed', left: collapsed ? SIDER_COLLAPSED_WIDTH : SIDER_WIDTH, top: '50%', transform: 'translate(-50%, -50%)',
           width: 6, height: 44, padding: 0, border: 0, borderRadius: 3,
           cursor: 'pointer', zIndex: 101, transition: 'left .2s, background-color .12s',
         }}
       />
-    </Tooltip>
+    </Tooltip>,
+    document.body,
   )
 }
 
-function VersionFooter() {
+// siderOffsetPx is the live sider width (0 on mobile, collapsed, or expanded). The
+// footer lives in ProLayout's content column (offset right by the sider), so a plain
+// justify-center lands it right of the true page centre; shift the centred content left
+// by half the offset so the banner reads as centred across the WHOLE page, not the panel.
+function VersionFooter({ siderOffsetPx }: { siderOffsetPx: number }) {
   const { data: hub } = useHubInfo()
   const tag = { background: 'var(--color-surface-active)', color: 'var(--color-text-muted)', borderRadius: 4, marginInline: 4 }
   // click the version to copy the full version + build id to the clipboard
@@ -129,7 +146,7 @@ function VersionFooter() {
     navigator.clipboard.writeText(fullVersion).then(() => notify.success('Version copied'), () => notify.error('Copy failed'))
   }
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 12, padding: '14px 0', color: 'var(--color-text-subtle)', fontSize: 12 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 12, padding: '14px 0', color: 'var(--color-text-subtle)', fontSize: 12, transform: `translateX(-${siderOffsetPx / 2}px)`, transition: 'transform .2s' }}>
       <span>
         <Tooltip title={`build ${__BUILD_ID__}`}>
           <span onClick={copyVersion} style={{ cursor: 'pointer' }}>Duoptimum Hub<Tag bordered={false} style={tag}>v{__APP_VERSION__}</Tag></span>
@@ -160,7 +177,7 @@ export function AppLayout() {
       fixedHeader
       collapsed={collapsed}
       onCollapse={setCollapsed}
-      siderWidth={248}
+      siderWidth={SIDER_WIDTH}
       location={{ pathname }}
       route={{ path: '/', routes: [] }}
       menuRender={isMobile ? false : undefined}
@@ -174,7 +191,7 @@ export function AppLayout() {
       )}
       menuFooterRender={(props) => (props?.collapsed ? null : <SiderFoot />)}
       collapsedButtonRender={false}
-      footerRender={() => <VersionFooter />}
+      footerRender={() => <VersionFooter siderOffsetPx={isMobile ? 0 : (collapsed ? SIDER_COLLAPSED_WIDTH : SIDER_WIDTH)} />}
       token={{
         bgLayout: p.bg,
         header: { colorBgHeader: p.bg, heightLayoutHeader: 64 },

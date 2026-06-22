@@ -23,6 +23,7 @@ const TYPE_TONE: Record<EventType, 'ok' | 'warn' | 'grey' | 'accent' | 'danger'>
   broadcast: 'accent',
   cull: 'danger',
   volume: 'warn',
+  error: 'danger',
 }
 
 export default function Events() {
@@ -110,6 +111,7 @@ export default function Events() {
               { key: 'broadcast', label: 'Broadcast', count: counts.broadcast, tone: 'accent' },
               { key: 'cull', label: 'Culled', count: counts.cull, tone: 'danger' },
               { key: 'volume', label: 'Volume', count: counts.volume, tone: 'warn' },
+              { key: 'error', label: 'Failed', count: counts.error, tone: 'danger' },
             ]}
           />
         }

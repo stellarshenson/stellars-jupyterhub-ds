@@ -507,16 +507,17 @@ The portal stays responsive across hub restarts: slow server-side aggregates (vo
 
 - [x] **Self-start sidecar** - the hub starts the `gpuinfo-nvidia` sidecar itself; `ensure_gpuinfo_sidecar` returns a bool (True running / False unavailable)
   - log: 2026-06-17 verified (gpuinfo_sidecar.py returns True/False; config:498 captures it; __init__ exports it)
-- [x] **Skip probe when sidecar down** - when self-start returns False, detection skips the live probe entirely (no DNS/connect stall)
-  - log: 2026-06-17 verified by unit check (probe_sidecar=False -> 0 fetch calls, ~20ms); gpu.py:70
-- [x] **Bounded probe** - the boot probe is ~6x0.5s (max ~3s), not the old 20x1.0s (~20s)
-  - log: 2026-06-17 verified (gpu.py:18 _BOOT_PROBE attempts 6 delay 0.5 timeout 2)
-- [x] **Persist fresh inventory** - a successful probe saves the inventory as last-known
-  - log: 2026-06-17 verified by unit check (reachable -> gpu_inventory.json written); gpu.py:72
-- [x] **Seed from last-known** - an empty/skipped probe seeds gpu_list from the persisted inventory (within TTL)
-  - log: 2026-06-17 verified by unit check (unreachable + last-known -> detected ON from disk); gpu.py:74
-- [x] **Mode semantics** - mode 0 never probes; mode 2 collapses to on/off from inventory; mode 1 stays forced-on with empty list when sidecar down
-  - log: 2026-06-17 verified by unit check (mode0 untouched; mode2 off no-seed; mode1 forced-on-empty)
+- [x] **Skip probe when sidecar down -> off, never seed** - when self-start returns False detection skips the live probe AND resolves OFF; it does NOT seed gpu_list from the persisted inventory (a down sidecar means GPU was not autodetected - see "GPU autodetection - sidecar down" below, DEF-24)
+  - log: 2026-06-17 verified by unit check (probe_sidecar=False -> 0 fetch calls, ~20ms)
+  - log: 2026-06-22 CORRECTED for DEF-24 (was "seed from last-known on skip" - the stale-on bug); gpu.py:79 early return before any cache read; `test_probe_sidecar_false_off_even_with_last_known`
+- [x] **Bounded probe** - the boot probe is ~3x0.5s (max ~5s incl. timeouts), not the old 20x1.0s (~20s)
+  - log: 2026-06-22 verified (gpu.py:22 _BOOT_PROBE attempts 3 delay 0.5 timeout 1)
+- [x] **Persist fresh inventory** - a successful (non-empty) probe saves the inventory as last-known
+  - log: 2026-06-22 verified by unit check (reachable -> gpu_inventory.json written); gpu.py:85
+- [x] **Seed only when sidecar UP but probe empty** - an empty live probe from a REACHABLE sidecar (cold/slow start) seeds gpu_list from the persisted last-known so a present-but-slow sidecar does not flap GPU off; a DOWN sidecar never seeds (see above)
+  - log: 2026-06-22 verified by unit check (up+empty+last-known -> detected ON); gpu.py:86; `test_up_but_empty_probe_seeds_from_last_known`
+- [x] **Mode semantics** - mode 0 never probes; any non-zero mode autodetects (collapses to on/off from inventory); no forced-on, so a down or empty sidecar resolves OFF
+  - log: 2026-06-22 verified by unit check (mode0 untouched; up-empty-no-seed off; down off even with cache)
 - [x] **Runtime: no 20s boot stall** - boot logs show the sidecar self-start line and no ~20s GPU gap
   - log: 2026-06-17 VERIFIED LIVE after rebuild - hub self-started gpuinfo-nvidia, `[GPU debug] enabled=1 detected=1` with 3 GPUs (was enabled=0 detected=0); sidecar container Up
 
@@ -562,6 +563,23 @@ The inventory is enumerated once at startup and seeded from a persisted cache (o
   - log: 2026-06-19 any non-zero mode autodetects (`test_legacy_mode_2_treated_as_autodetect`)
 - [x] **Self-start implied by on** - GPU on implies the hub self-starts the sidecar; no separate env. The nvidia runtime is requested only when the docker host registers it (so a mock sidecar starts on any host, and asking for an absent runtime never fails self-start)
   - log: 2026-06-19 self-start gated on `JUPYTERHUB_GPU_ENABLED != 0`; `ensure_gpuinfo_sidecar` runtime-detection; dropped the `JUPYTERHUB_GPUINFO_SELF_START` flag
+
+### GPU autodetection - sidecar down -> GPU off, CPU-only lab (DEF-24)
+
+When the `gpuinfo-nvidia` sidecar fails to start the hub treats GPU as NOT autodetected: it resolves GPU off, attaches NO Docker `device_requests`, and labs spawn CPU-only. The failed sidecar is logged explicitly so the operator reads the cause, not just `enabled=0`. Closes the regression where a stale persisted inventory kept GPU "on" with no live sidecar, crashing every spawn in the nvidia prestart hook.
+
+- [x] **Down sidecar -> off** - sidecar self-start returns False -> `resolve_gpu_mode(.., probe_sidecar=False)` returns `(0, 0, [])`, never seeding from the persisted inventory
+  - log: 2026-06-22 `gpu.py:79` early return before any cache read; `test_probe_sidecar_false_off_even_with_last_known`
+- [x] **No device_requests when off** - `gpu_enabled=0` -> `gpu_available=False` -> the resolver's `gpu_access` gate is false -> `GpuPolicy.apply` pops `device_requests` and never sets it, so the nvidia prestart hook is never invoked and the lab spawns CPU-only
+  - log: 2026-06-22 `registry.py:248` gates on `resolved['gpu_access']`, `:273` pops device_requests when off; gate fed by `gpu_available=bool(gpu_enabled)` (config)
+- [x] **Explicit startup log** - autodetect requested (`JUPYTERHUB_GPU_ENABLED != 0`) but sidecar not up -> hub logs a WARNING `[GPU] gpuinfo-nvidia sidecar did not start -> GPU not detected (nvidia) -> GPU disabled; labs start CPU-only`
+  - log: 2026-06-22 `config/jupyterhub_config.py` after `resolve_gpu_mode`; the `[GPUInfo]` lines above carry the specific cause (no name/net/image/docker)
+- [x] **Edge: stale inventory on disk ignored** - a `gpu_inventory.json` from a prior GPU-present boot does NOT turn GPU on when the sidecar is down
+  - log: 2026-06-22 unit-verified (`test_probe_sidecar_false_off_even_with_last_known` persists a cache then asserts off) + a guard that `load_cached` is never read on the down path
+- [x] **Edge: sidecar up but empty seeds last-known** - a reachable sidecar answering empty (cold/slow) still seeds from last-known so a present-but-slow sidecar does not flap off
+  - log: 2026-06-22 unit-verified (`test_up_but_empty_probe_seeds_from_last_known`)
+- [x] **Runtime: sidecar-missing host spawns CPU-only lab** - on a deployment where the sidecar cannot start, a user server starts successfully with no GPU and no 500 from the nvidia prestart hook
+  - log: 2026-06-22 VERIFIED by functional `gpu-missing` regime (absent gpuinfo image -> sidecar down -> `test_lab_spawns_cpu_only_without_device_requests` green: no HostConfig.DeviceRequests, container created); ran against the rebuilt v4.0.12 image
 
 ### Mock gpuinfo for functional tests
 
@@ -840,6 +858,14 @@ The portal's visual conventions, applied consistently across every screen. `[x]`
   - log: 2026-06-17 verified (Users/Groups name-links to config; Servers row-click = report drawer)
 - [x] **Label casing = Title Case** - button labels and header labels (page / card / section titles, table column headers, section tabs) Title-Case every principal word; minor words (a, an, the, and, or, of, to, in, on, at, by, for, with, vs...) stay lowercase unless first/last; acronyms (API, GPU, CPU, TLS, ID) and units (+7h, GB) preserved; sentence copy / form-field input labels / filter data-values stay sentence case. Detail in [acc-crit-label-capitalisation]
   - log: 2026-06-18 added (operator: "labels (buttons, headers) must have all capitalised parts; sweep"); demoed on /design-language Conventions card
+- [x] **Version banner centred on the page** - the footer version banner (`Duoptimum Hub vX · JupyterHub vY`) is centred across the ENTIRE page width, not within the sider-offset content column; the footer lives in ProLayout's content column so the centred content is shifted left by half the live sider width (0 mobile, 64 collapsed, 248 expanded) to land on the true page centre
+  - log: 2026-06-22 implemented (operator: "centered horizontally across entire page, not just the main panel"); `VersionFooter` takes `siderOffsetPx`, applies `translateX(-offset/2)`; no `100vw` so no horizontal scrollbar; tsc clean; visual verify pending rebuild
+- [ ] **Edge: banner re-centres on collapse** - collapsing/expanding the sider keeps the banner on the page centre (offset recomputed from `collapsed`); a `.2s transform` transition smooths the shift alongside the sider slide
+  - log: 2026-06-22 logic verified (footerRender recomputes `siderOffsetPx` from `collapsed`/`isMobile` each render); visual verify pending rebuild
+- [ ] **Edge: narrow-desktop clip (accepted)** - in a ~768-800px desktop band (just above the mobile breakpoint, sider expanded) the 124px left shift can tuck the banner's leftmost few px under the sider; accepted trade-off for true page-centring on the common wider desktop, no clip when collapsed or on mobile (offset 0)
+  - log: 2026-06-22 raised by adversarial re-confirm round (SHIP); documented as a known cosmetic limitation
+- [ ] **Sider collapse handle centred on the divider** - the thin grab handle straddles the sider's right edge (`left` = the live sider width 64 collapsed / 248 expanded, `translate(-50%,-50%)`) at viewport mid-height; it is portalled to `<body>` so `position: fixed` is viewport-relative and cannot be captured (and offset) by a transform/contain on ProLayout's content subtree
+  - log: 2026-06-22 reported (operator: "collapse handle must be centred on the line, now is with offset"); fix: `createPortal(..., document.body)` removes the transformed-ancestor dependency; tsc clean; visual verify pending rebuild
 
 ### Navigation (system-wide)
 
@@ -1118,6 +1144,23 @@ The portal's audit feed (Overview "Recent events" + the Events page) is backed b
 - [x] **Session extend is audited** - extending a user's idle session records a `server` event ("<user> session extended by Nh", or "...to maximum" when topped to the ceiling), so the feed shows who bought more time and how much (actor may be an admin acting on another user)
   - log: 2026-06-20 operator "log event ... when user requested additional time"; `ExtendSessionHandler` calls `record_event('server', ...)` on the success path; `handlers/session.py`
   - log: 2026-06-20 functional `test_extend_records_event` VERIFIED green on v4.0.11
+
+### Server lifecycle events
+
+A spawn has three outcomes in the feed: starting, stopped, and (new) failed. The failed-start event closes the gap where a crashed spawn left the "server starting" event with no matching outcome.
+
+- [x] **Starting recorded** - the pre-spawn hook records a `server` event "<user> server starting" when a spawn begins
+  - log: 2026-06-18 `hooks.py` pre_spawn_hook:105
+- [x] **Stopped recorded** - the post-stop hook records a `server` event "<user> server stopped"
+  - log: 2026-06-18 `hooks.py` post_stop_hook:307
+- [x] **Failed start recorded** - when a spawn RAISES (nvidia prestart 500, image pull error, ...) the spawner records exactly ONE `error` event "<user> server failed to start", then re-raises so the hub's own error handling is unchanged; best-effort (`record_event` never raises into the spawn)
+  - log: 2026-06-22 operator "we must also record failed start events in the events log"; `TimingDockerSpawner.start` except-branch -> `record_event('error', ...)`; `test_timing_spawner.py` (records-one-and-reraises, success-records-none, username-escaped)
+- [x] **Failed start surfaced in the UI** - the `error` event renders danger-toned with a `close` icon and a "Failed" scope pill on the Events page; it is registered in EVENT_ICON so the unknown-type coercion keeps it as `error`, not `server`
+  - log: 2026-06-22 `types.ts` EventType += 'error'; `liveSource.ts` EVENT_ICON.error='close'; `Events.tsx` TYPE_TONE.error='danger' + "Failed" scope pill; tsc clean
+- [x] **Username HTML-escaped** - the event text is pre-escaped HTML (the feed renders via `dangerouslySetInnerHTML`), so a username carrying markup cannot inject
+  - log: 2026-06-22 `html.escape` in the record call; `test_failed_start_escapes_username`
+- [ ] **Runtime: a real failed spawn shows a Failed row** - on the live system, a spawn that crashes records a "<user> server failed to start" row visible under the Failed pill
+  - log: 2026-06-22 functional/live verify pending rebuild (tasks #466, #473)
 
 ### Clear action
 

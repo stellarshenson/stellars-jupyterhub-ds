@@ -1,0 +1,18 @@
+# Overlay: GPU autodetect REQUESTED but the gpuinfo sidecar cannot start (DEF-24).
+# `run.sh gpu-missing` passes FUNCTEST_GPU_ENABLED=1 (autodetect on) but points the
+# hub at a gpuinfo image that does not exist locally and is never built. The hub's
+# self-start hits `client.images.get(image)` -> ImageNotFound and, because it must NOT
+# pull at boot, returns "" (sidecar down). probe_sidecar is then False, so GPU resolves
+# OFF and labs spawn CPU-only with no device_requests - the regression guard.
+#
+# Distinct AUTH_MODE (gpumissing) so conftest collects ONLY the gpu_missing tests here,
+# never the positive gpu tests (which need a live mock sidecar). Layer ON TOP of
+# compose.functional.yml. No mock image is built for this regime - absence is the point.
+services:
+  duoptimum-hub:
+    environment:
+      # absent image: never built, not pullable at boot -> sidecar self-start returns ""
+      - JUPYTERHUB_GPUINFO_NVIDIA_IMAGE=stellars/duoptimum-gpuinfo-absent:latest
+  tests:
+    environment:
+      - FUNCTEST_AUTH_MODE=gpumissing

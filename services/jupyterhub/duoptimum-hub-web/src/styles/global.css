@@ -263,7 +263,7 @@ body { margin: 0; font-family: var(--font-sans); }
 /* desktop header pill - sized to the StageBadge's vertical metrics (1px pad, 1.6 line, 1px
    border) so the two sit level; the down state fills with warning to draw attention */
 .doh-conn-pill { display: inline-flex; align-items: center; gap: 7px; font-size: var(--text-xs); font-weight: 600; letter-spacing: .02em; padding: 1px 9px; border: 1px solid currentColor; border-radius: var(--radius-sm); line-height: 1.6; white-space: nowrap; }
-.doh-conn-pill .doh-conn-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; animation: doh-soft-pulse var(--doh-status-pulse, 3s) ease-in-out infinite; }  /* slow halo pulse (connected); .down runs 3x faster */
+.doh-conn-pill .doh-conn-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 28%, transparent); animation: doh-soft-pulse var(--doh-status-pulse, 3s) ease-in-out infinite; }  /* base halo always visible (incl. reduced-motion); connected pulses slowly, .down 3x faster */
 .doh-conn-pill.ok { color: var(--color-success); }                                                            /* healthy: calm outlined success pill, diode pulses slowly */
 /* down: NEUTRAL text (amber-on-amber fails contrast), amber border + diode + pale fill - matches the mobile panel */
 .doh-conn-pill.down { color: var(--color-text); border-color: color-mix(in srgb, var(--color-warning) 55%, transparent); background: color-mix(in srgb, var(--color-warning) 14%, transparent); }
@@ -277,8 +277,8 @@ body { margin: 0; font-family: var(--font-sans); }
 
 /* soft halo pulse: a same-size ring whose intensity gently dips then returns (never expands) */
 @keyframes doh-soft-pulse {
-  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 38%, transparent); }
-  50%      { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 10%, transparent); }
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 55%, transparent); }
+  50%      { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 12%, transparent); }
 }
 @media (prefers-reduced-motion: reduce) {
   .doh-conn-pill .doh-conn-dot, .doh-hub-warn-diode { animation: none; }
