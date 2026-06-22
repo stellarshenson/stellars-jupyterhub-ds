@@ -1,7 +1,5 @@
-/* Action plumbing shared by the mock toasts and the live operation layer (ops.ts).
+/* Action plumbing for the live operation layer (ops.ts).
  *
- * - mockAction / mockSuccess: the "(mock)" toasts used in mock mode and by views
- *   whose backend write does not exist yet (client-only or unsupported actions).
  * - notify: real success/info/error toasts for live operations.
  * - bindQueryClient / invalidate: lets ops.ts refresh the React Query cache after
  *   a successful live write, without each call site threading the query client. */
@@ -56,15 +54,4 @@ export const notify = {
     if (messageApi) messageApi.error(text)
     else console.error(text)
   },
-}
-
-export function mockAction(label: string): void {
-  const text = `${label} (mock)`
-  if (messageApi) messageApi.info(text)
-  else console.info(text)
-}
-
-export function mockSuccess(label: string): void {
-  if (messageApi) messageApi.success(`${label} (mock)`)
-  else console.info(`${label} (mock)`)
 }

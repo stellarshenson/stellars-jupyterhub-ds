@@ -8,8 +8,6 @@ import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { FormFooter } from '../components/FormFooter'
 import { GroupPicker } from '../components/GroupPicker'
-import { mockSuccess } from '../services/actions'
-import { isMock } from '../services/dataMode'
 import { addMember, setUserAuthorization, createUser, setUserPassword } from '../services/ops'
 import { genPassword } from '../lib/password'
 
@@ -22,11 +20,6 @@ export default function NewUser() {
   const submit = async () => {
     const v = await form.validateFields().catch(() => null)
     if (!v) return
-    if (isMock()) {
-      mockSuccess('User created')
-      navigate('/users')
-      return
-    }
     try {
       await createUser(v.username) // creates + auto-authorises with a generated password
       if (pw) await setUserPassword(v.username, pw) // honour the password shown to the admin

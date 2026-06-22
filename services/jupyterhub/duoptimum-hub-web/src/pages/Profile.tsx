@@ -8,8 +8,6 @@ import { PageHeader } from '../components/PageHeader'
 import { FormFooter } from '../components/FormFooter'
 import { useRole } from '../app/RoleContext'
 import { useUserProfile } from '../hooks/queries'
-import { isMock } from '../services/dataMode'
-import { mockSuccess } from '../services/actions'
 import { changeOwnPassword, saveUserProfile } from '../services/ops'
 import { genPassword } from '../lib/password'
 
@@ -27,10 +25,6 @@ export default function Profile() {
   }, [profile, form])
 
   const save = async () => {
-    if (isMock()) {
-      mockSuccess('Profile saved')
-      return
-    }
     try {
       const v = await form.validateFields()
       await saveUserProfile(username, { firstName: v.first ?? '', lastName: v.last ?? '', email: v.email ?? '' })

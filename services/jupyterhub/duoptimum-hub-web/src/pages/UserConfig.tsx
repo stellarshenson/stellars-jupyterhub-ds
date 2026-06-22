@@ -13,8 +13,6 @@ import { VolumeReset } from '../components/VolumeReset'
 import { RemoveUserModal } from '../components/RemoveUserModal'
 import { useRole } from '../app/RoleContext'
 import { useEffectiveGrants, useServerHero, useUser, useUserProfile } from '../hooks/queries'
-import { mockSuccess } from '../services/actions'
-import { isMock } from '../services/dataMode'
 import { addMember, setUserAuthorization, removeMember, renameUser, saveUserProfile, setAdmin, setForcePasswordChange, setUserPassword } from '../services/ops'
 import { PLATFORM } from '../services/config'
 import { adminUser, isAdminUser } from '../app/capabilities'
@@ -78,13 +76,6 @@ export default function UserConfig() {
   const save = async () => {
     try {
       const v = await form.validateFields()
-      // validate in both modes; the mock demo should gate on the same rules, not
-      // "save" invalid data
-      if (isMock()) {
-        mockSuccess(`Saved ${name}`)
-        navigate(backTo)
-        return
-      }
       await saveUserProfile(name, { firstName: v.first ?? '', lastName: v.last ?? '', email: v.email ?? '' })
       const effAdmin = isAdminUser(name, !!user?.admin)
       if (!isBuiltinAdmin && user && !!v.admin !== effAdmin) await setAdmin(name, !!v.admin)
@@ -120,7 +111,7 @@ export default function UserConfig() {
         + 'move them across separately.',
       onOk: async () => {
         await renameUser(name, target)
-        if (!isMock()) navigate(`/users/${encodeURIComponent(target)}`, { state })
+        navigate(`/users/${encodeURIComponent(target)}`, { state })
       },
     })
   }

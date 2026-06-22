@@ -1,13 +1,13 @@
-/* Settings - the running configuration; mostly a reference, with the admin-
- * overridable controls (signup) rendered as live toggles. The Display Options
- * accordion on top is the per-user options harness (registry-driven). */
+/* Settings - the running platform configuration, shown read-only as reference
+ * (switch rows are disabled indicators of the current value, not editable - there is
+ * no settings-write API). The Display Options accordion on top is the per-user
+ * options harness (registry-driven, editable). */
 import { Card, Collapse, Switch, Tag } from 'antd'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { Icon } from '../components/Icon'
 import { OptionControl } from '../components/OptionControl'
 import { useSettings } from '../hooks/queries'
-import { mockAction } from '../services/actions'
 import { usePref, useSetPref } from '../app/PrefsContext'
 import { SETTINGS_PANELS } from '../services/displayOptions'
 import type { DisplayOption } from '../services/displayOptions'
@@ -15,7 +15,7 @@ import type { PlatformSetting } from '../services/types'
 
 function value(row: PlatformSetting) {
   if (row.control === 'switch')
-    return <Switch size="small" defaultChecked={row.value === 'enabled'} onChange={(v) => mockAction(`${row.key} ${v ? 'enabled' : 'disabled'}`)} />
+    return <Switch size="small" checked={row.value === 'enabled'} disabled />
   if (row.state === 'ok') return <Tag bordered={false} style={{ background: 'var(--color-success-soft)', color: 'var(--color-success)', borderRadius: 4 }}>{row.value}</Tag>
   if (row.state === 'accent') return <Tag bordered={false} style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4 }}>{row.value}</Tag>
   if (row.state === 'neutral') return <span className="doh-mono">{row.value}</span>

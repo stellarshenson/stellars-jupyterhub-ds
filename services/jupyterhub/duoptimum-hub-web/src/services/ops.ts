@@ -1,32 +1,25 @@
 /* Live operation layer - the real writes behind every portal action.
  *
- * Each op is mode-aware: in mock mode it shows the "(mock)" toast and resolves
- * (the demo stays inert, no backend); in live mode it issues the real hub call,
- * shows a real success/error toast, and invalidates the affected React Query
- * keys so the views refetch. Server lifecycle, user create/delete/admin, group
- * CRUD + membership, tokens, broadcast, volume reset and session extend all go
- * through the standard JupyterHub API or the custom duoptimum-hub-services API;
- * authorize/discard + change-password go through NativeAuthenticator's handlers.
+ * Each op issues the real hub call, shows a success/error toast, and invalidates
+ * the affected React Query keys so the views refetch. Server lifecycle, user
+ * create/delete/admin, group CRUD + membership, tokens, broadcast, volume reset
+ * and session extend all go through the standard JupyterHub API or the custom
+ * duoptimum-hub-services API; authorize/discard + change-password go through
+ * NativeAuthenticator's handlers.
  *
  * The group-policy editor PUTs the full flat config (the hub coerces +
- * validates); a few unsupported or client-only actions (signup-enable env, image
- * pull) keep their existing mock/client-side behaviour. */
-import { isMock } from './dataMode'
+ * validates). */
 import { hubAuthForm, hubAuthGet, hubSend, HubError } from './hub/client'
-import { invalidate, mockSuccess, notify, patchQuery } from './actions'
+import { invalidate, notify, patchQuery } from './actions'
 import type { PolicyConfig, UserProfile, UserRow } from './types'
 
-/** Run a live write with success/error toasts + cache invalidation; in mock mode
- * just toast. Returns the run() result (or undefined in mock mode). */
+/** Run a live write with success/error toasts + cache invalidation. Returns the
+ * run() result. */
 async function run<T>(
   label: string,
   fn: () => Promise<T>,
   keys: ReadonlyArray<readonly unknown[]> = [],
 ): Promise<T | undefined> {
-  if (isMock()) {
-    mockSuccess(label)
-    return undefined
-  }
   try {
     const out = await fn()
     notify.success(label)
@@ -107,16 +100,14 @@ export const renameUser = (name: string, newName: string) =>
 
 /** Persist a user's display profile (first/last name + email). Admin or self. */
 export const saveUserProfile = (name: string, profile: UserProfile) => {
-  // Optimistic (live only): patch the table's fullName in the ['users'] cache at
+  // Optimistic: patch the table's fullName in the ['users'] cache at
   // once so a saved name shows immediately on return to the list - the same
   // instant-effect the Groups page gets from its local row state. Snapshot the
   // prior rows so a failed write rolls back synchronously. fullName falls to
   // undefined when both names are blank, matching how getUsers builds it.
   const fullName = `${profile.firstName} ${profile.lastName}`.trim() || undefined
   let prev: UserRow[] | undefined
-  if (!isMock()) {
-    patchQuery<UserRow[]>(['users'], (rows) => { prev = rows; return rows?.map((u) => (u.name === name ? { ...u, fullName } : u)) })
-  }
+  patchQuery<UserRow[]>(['users'], (rows) => { prev = rows; return rows?.map((u) => (u.name === name ? { ...u, fullName } : u)) })
   return run(`Saved ${name}'s profile`, () => hubSend('PUT', `/users/${encodeURIComponent(name)}/profile`, {
     first_name: profile.firstName,
     last_name: profile.lastName,
@@ -164,7 +155,6 @@ export interface Credential {
 }
 /** Fetch the auto-generated passwords cached when users were just created. */
 export async function getCredentials(usernames: string[]): Promise<Credential[]> {
-  if (isMock()) return usernames.map((u) => ({ username: u, password: 'mock-correct-horse-battery' }))
   const r = await hubSend<{ credentials?: Credential[] }>('POST', '/admin/credentials', { usernames })
   return r.credentials ?? []
 }
@@ -244,11 +234,6 @@ export interface BroadcastResult {
   failed: number
 }
 export async function broadcast(message: string, variant: string, autoClose: number | boolean, recipients?: string[]): Promise<BroadcastResult | undefined> {
-  if (isMock()) {
-    const n = recipients?.length ?? 18
-    mockSuccess(recipients?.length ? `Broadcast sent to ${n} selected server(s)` : 'Broadcast sent to active servers')
-    return { total: n, successful: n, failed: 0 }
-  }
   try {
     const r = await hubSend<BroadcastResult>('POST', '/notifications/broadcast', { message, variant, autoClose, recipients })
     notify.success(`Broadcast delivered to ${r.successful}/${r.total} server(s)`)

@@ -1,8 +1,5 @@
-/* The read API every page uses. Two implementations satisfy it: mockSource
- * (fixtures, no hub) and liveSource (readonly GETs + adapters). getDataSource()
- * picks one from VITE_DATA_MODE. Pages call these; they never touch raw hub JSON. */
-import { isMock } from './dataMode'
-import { mockSource } from './mockSource'
+/* The read API every page uses. liveSource (readonly GETs + adapters) satisfies
+ * it. Pages call these; they never touch raw hub JSON. */
 import { liveSource } from './hub/liveSource'
 import type {
   EffectiveGrant,
@@ -50,5 +47,5 @@ export interface DataSource {
 }
 
 export function getDataSource(): DataSource {
-  return isMock() ? mockSource : liveSource
+  return liveSource
 }

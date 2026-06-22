@@ -1,7 +1,7 @@
 /* Client-side file downloads - the real "Export" / "Report" actions. A pure
  * browser save (Blob + object URL), no backend: the data is already in hand, so
- * this works identically in live and mock mode (it saves whatever the source
- * holds). Used by the groups export and the fleet activity report. */
+ * it saves whatever the source holds. Used by the groups export and the fleet
+ * activity report. */
 
 function triggerDownload(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob)

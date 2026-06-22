@@ -4,11 +4,10 @@
  *
  * Uses the library's own dehydrate/hydrate - no extra dependency. Only successful
  * queries are stored; token data is excluded (secrets must not touch localStorage).
- * The blob is namespaced by data mode and capped by age so it self-heals. */
+ * The blob is capped by age so it self-heals. */
 import { dehydrate, hydrate, type QueryClient } from '@tanstack/react-query'
-import { dataMode } from '../services/dataMode'
 
-const KEY = `doh-query-cache-${dataMode()}-v1`
+const KEY = 'doh-query-cache-v1'
 const MAX_AGE_MS = 24 * 60 * 60_000 // a day - older blobs are dropped, not shown
 const EXCLUDE = ['tokens', 'events'] // never persist: token data (one-time secrets); the events audit feed (must be fresh on load, not painted 30s-stale from cache)
 
