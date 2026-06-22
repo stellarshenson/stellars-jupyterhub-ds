@@ -5,7 +5,7 @@
 # so this file only needs the suffix and its metadata.
 #
 # Operators can extend or override these defaults by mounting their own YAML
-# file (same shape) at the path indicated by JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE.
+# file (same shape) at the path indicated by JUPYTERHUB_LAB_VOLUMES_DESCRIPTIONS_FILE.
 # Per-key, per-field merge: if the operator's file omits 'description' for
 # `home` they keep the platform default description; if they redefine `mount`
 # their value wins. Operator-only suffixes (e.g. `models`) get added to the

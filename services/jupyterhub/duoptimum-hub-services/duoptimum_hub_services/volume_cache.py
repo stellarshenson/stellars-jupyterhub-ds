@@ -7,7 +7,7 @@ caches ONLY a COMPLETE pass - one where every matched user volume has a computed
 size - retrying on a short delay until df has gathered them all. The retry loop is
 bounded by BOTH a wall-clock budget and a safety-net attempt cap so a slow/degraded
 df cannot compound across attempts and pin a worker of the shared 4-worker executor
-(a single in-flight df can still run up to JUPYTERHUB_DOCKER_TIMEOUT on top of the
+(a single in-flight df can still run up to JUPYTERHUB_HUB_DOCKER_API_TIMEOUT on top of the
 budget). The df call runs in a background executor thread, so the activity page
 returns cached data immediately and never blocks on it; a threading.Lock makes the
 "refresh already running" check-and-set atomic so two submits never run two loops.
@@ -49,7 +49,7 @@ def _get_volumes_update_interval():
 
 
 def _get_docker_timeout():
-    return int(os.environ.get('JUPYTERHUB_DOCKER_TIMEOUT', 360))
+    return int(os.environ.get('JUPYTERHUB_HUB_DOCKER_API_TIMEOUT', 360))
 
 
 def _get_df_retry_delay():
@@ -66,7 +66,7 @@ def _get_df_max_attempts():
 
 def _get_df_budget():
     # wall-clock cap (seconds) on the whole wait-for-complete retry loop. The attempt
-    # cap alone does NOT bound time: each df can run up to JUPYTERHUB_DOCKER_TIMEOUT
+    # cap alone does NOT bound time: each df can run up to JUPYTERHUB_HUB_DOCKER_API_TIMEOUT
     # (default 360s), so 12 attempts could otherwise hold a worker ~75 min (DEF-7
     # review). This stops the loop once elapsed would exceed the budget; a single
     # in-flight df can still overrun by up to its own timeout.

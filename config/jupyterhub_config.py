@@ -135,7 +135,7 @@ ACTIVITYMON_TARGET_HOURS = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_TARGET_HOU
 ACTIVITYMON_SAMPLE_INTERVAL = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL', 600))  # sampling interval in seconds (10min)
 
 # Docker
-JUPYTERHUB_DOCKER_TIMEOUT = int(os.environ.get("JUPYTERHUB_DOCKER_TIMEOUT", 360))               # Docker API timeout in seconds
+JUPYTERHUB_HUB_DOCKER_API_TIMEOUT = int(os.environ.get("JUPYTERHUB_HUB_DOCKER_API_TIMEOUT", 360))               # Docker API timeout in seconds
 JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB = int(os.environ.get("JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB", 10))  # max writable layer in GB before warning
 JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB = int(os.environ.get("JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB", 50))        # max total volume size in GB before warning
 JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION = float(os.environ.get("JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION", 0.25))  # per-user memory warning threshold as fraction of host RAM (default 25%)
@@ -283,14 +283,14 @@ else:
 #
 # Loaded from:
 #   /srv/jupyterhub/volumes_dictionary.yml          - platform defaults (image-baked)
-#   $JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE (if set + exists) - operator overrides
+#   $JUPYTERHUB_LAB_VOLUMES_DESCRIPTIONS_FILE (if set + exists) - operator overrides
 # Per-suffix, per-field merge: operator wins on conflict, missing fields fall
 # back to the platform default, operator-only suffixes are added verbatim.
 VOLUMES_DICTIONARY_PATH = '/srv/jupyterhub/volumes_dictionary.yml'
-JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE = os.environ.get('JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE', '')
+JUPYTERHUB_LAB_VOLUMES_DESCRIPTIONS_FILE = os.environ.get('JUPYTERHUB_LAB_VOLUMES_DESCRIPTIONS_FILE', '')
 USER_VOLUMES = load_merged_user_volumes(
     VOLUMES_DICTIONARY_PATH,
-    JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE,
+    JUPYTERHUB_LAB_VOLUMES_DESCRIPTIONS_FILE,
     JUPYTERHUB_COMPOSE_PROJECT_NAME,
 )
 

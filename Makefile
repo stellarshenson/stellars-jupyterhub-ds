@@ -258,10 +258,9 @@ logs: preflight
 # the suite). Run a single regime or just clean up with the script directly:
 #   tests/functional/run.sh <signup|gpu|env|signup-open|signup-bootstrap|all|clean>
 
-## run the python unit test suites locally (duoptimum-hub-services + duoptimum-docker-proxy)
+## run the python unit test suites locally (duoptimum-hub-services + duoptimum-docker-proxy) with a standardised results table
 test:
-	@cd services/jupyterhub/duoptimum-hub-services && python3 -m pytest tests/ -q
-	@cd services/jupyterhub/duoptimum-docker-proxy && python3 -m pytest tests/ -q
+	@tests/run-unit.sh
 
 ## run the FULL functional UI/scenario harness - every regime (signup, gpu, env, signup-open, signup-bootstrap, traefik), cleaning between each (LOCAL ONLY; single regime/cleanup: tests/functional/run.sh <regime>; PYTEST_ARGS=... selects tests, REMOVE_IMAGES=1 drops pulled images)
 test-functional:

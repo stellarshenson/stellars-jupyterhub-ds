@@ -41,7 +41,7 @@ Set env. Default name is `jupyterhub_config.py`.
 services:
   jupyterhub:
     environment:
-      - JUPYTERHUB_USER_CONFIG_FILE=my_hub_config.py
+      - JUPYTERHUB_HUB_CONFIG_FILE=my_hub_config.py
 ```
 
 ## Different host folder
@@ -60,7 +60,7 @@ services:
 Server files. Stay at `/srv/jupyterhub/`. Hub reads them from there.
 
 - `settings_dictionary.yml`
-- `volumes_dictionary.yml` (use `JUPYTERHUB_USER_VOLUMES_DESCRIPTIONS_FILE` overlay; see [user-volumes.md](user-volumes.md))
+- `volumes_dictionary.yml` (use `JUPYTERHUB_LAB_VOLUMES_DESCRIPTIONS_FILE` overlay; see [user-volumes.md](user-volumes.md))
 - HTML templates
 
 Drop those filenames into `./config/`? Copied to `/srv/config/`. Ignored. Hub reads from `/srv/jupyterhub/`.

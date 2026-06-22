@@ -50,30 +50,88 @@ clean() {
   echo "[functional] cleanup complete (pulled images kept)"
 }
 
+# ── Results table ──────────────────────────────────────────────────────────
+# Each regime appends one TSV record (label<TAB>result<TAB>tests<TAB>secs) to
+# $RESULTS_FILE; _render_results_table draws a standardised box table with a
+# TOTAL row. run_all owns the file (one table for the whole suite); a standalone
+# regime owns its own (one-row table). Atomic test count = pytest passed+failed+errors.
+_rep() { local n=$1 c=$2 s=''; while [ "$n" -gt 0 ]; do s="$s$c"; n=$((n-1)); done; printf '%s' "$s"; }
+
+_record() { printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" >> "$RESULTS_FILE"; }
+
+_count_tests() {  # sum passed+failed+errors from the pytest summary in file $1
+  local f=$1 p fa er
+  p=$(grep -oE '[0-9]+ passed' "$f" | tail -1 | grep -oE '^[0-9]+'); p=${p:-0}
+  fa=$(grep -oE '[0-9]+ failed' "$f" | tail -1 | grep -oE '^[0-9]+'); fa=${fa:-0}
+  er=$(grep -oE '[0-9]+ error'  "$f" | tail -1 | grep -oE '^[0-9]+'); er=${er:-0}
+  echo $((p + fa + er))
+}
+
+_render_results_table() {
+  local file=$1
+  [ -s "$file" ] || return 0
+  local label result tests secs
+  local w_label=6 w_res=6 w_tests=5 w_dur=8 tot_tests=0 tot_secs=0 overall=PASS
+  while IFS=$'\t' read -r label result tests secs; do
+    [ "${#label}" -gt "$w_label" ] && w_label=${#label}
+    tot_tests=$((tot_tests + tests)); tot_secs=$((tot_secs + secs))
+    [ "$result" = PASS ] || overall=FAIL
+  done < "$file"
+  local s_tests="$tot_tests" s_dur="${tot_secs}s"
+  [ "${#s_tests}" -gt "$w_tests" ] && w_tests=${#s_tests}
+  [ "${#s_dur}"   -gt "$w_dur"   ] && w_dur=${#s_dur}
+  local L R T D
+  L=$(_rep $((w_label+2)) ─); R=$(_rep $((w_res+2)) ─); T=$(_rep $((w_tests+2)) ─); D=$(_rep $((w_dur+2)) ─)
+  echo
+  printf '┌%s┬%s┬%s┬%s┐\n' "$L" "$R" "$T" "$D"
+  printf '│ %-*s │ %-*s │ %*s │ %*s │\n' "$w_label" Regime "$w_res" Result "$w_tests" Tests "$w_dur" Duration
+  printf '├%s┼%s┼%s┼%s┤\n' "$L" "$R" "$T" "$D"
+  while IFS=$'\t' read -r label result tests secs; do
+    printf '│ %-*s │ %-*s │ %*s │ %*s │\n' "$w_label" "$label" "$w_res" "$result" "$w_tests" "$tests" "$w_dur" "${secs}s"
+  done < "$file"
+  printf '├%s┼%s┼%s┼%s┤\n' "$L" "$R" "$T" "$D"
+  printf '│ %-*s │ %-*s │ %*s │ %*s │\n' "$w_label" TOTAL "$w_res" "$overall" "$w_tests" "$tot_tests" "$w_dur" "$s_dur"
+  printf '└%s┴%s┴%s┴%s┘\n' "$L" "$R" "$T" "$D"
+}
+
 # boot hub -> (optional provision restart) -> run suite -> clean. ALWAYS cleans,
 # returns the pytest exit code. $1 label, $2 GPU_ENABLED, $3 restart(0/1), rest -f files
 run_regime() {
   local label=$1 gpu=$2 restart=$3; shift 3
   local cf=() f; for f in "$@"; do cf+=(-f "$f"); done
   local dc=(docker compose -p "$PROJECT" "${cf[@]}")
+  local own=0
+  [ -z "${RESULTS_FILE:-}" ] && { RESULTS_FILE=$(mktemp); own=1; }
   local start; start=$(date +%s)
   echo "[functional/$label] booting isolated deployment ($PROJECT) [GPU_ENABLED=$gpu]..."
-  if ! FUNCTEST_GPU_ENABLED=$gpu "${dc[@]}" up -d --wait duoptimum-hub; then clean; return 1; fi
+  if ! FUNCTEST_GPU_ENABLED=$gpu "${dc[@]}" up -d --wait duoptimum-hub; then
+    clean
+    _record "$label" FAIL 0 "$(($(date +%s)-start))"
+    [ "$own" = 1 ] && { _render_results_table "$RESULTS_FILE"; rm -f "$RESULTS_FILE"; }
+    return 1
+  fi
   if [ "$restart" = 1 ]; then
     echo "[functional/$label] restarting hub to provision the env-password admin..."
     FUNCTEST_GPU_ENABLED=$gpu "${dc[@]}" restart duoptimum-hub
     FUNCTEST_GPU_ENABLED=$gpu "${dc[@]}" up -d --wait duoptimum-hub
   fi
-  FUNCTEST_GPU_ENABLED=$gpu "${dc[@]}" run --rm tests
-  local rc=$?
+  local out; out=$(mktemp)
+  FUNCTEST_GPU_ENABLED=$gpu "${dc[@]}" run --rm tests 2>&1 | tee "$out"
+  local rc=${PIPESTATUS[0]}
   clean
-  echo "[functional/$label] total time (boot + tests + teardown): $(($(date +%s)-start))s; test-suite total is the pytest 'in Xs' line above"
+  local dur=$(($(date +%s)-start)) tests; tests=$(_count_tests "$out"); rm -f "$out"
+  local result=PASS; [ "$rc" -eq 0 ] || result=FAIL
+  _record "$label" "$result" "$tests" "$dur"
+  echo "[functional/$label] $result - $tests tests in ${dur}s (boot + tests + teardown)"
+  [ "$own" = 1 ] && { _render_results_table "$RESULTS_FILE"; rm -f "$RESULTS_FILE"; }
   return $rc
 }
 
-# every regime in turn, cleaning between each; report which passed, non-zero if any failed
+# every regime in turn, cleaning between each; report which passed, non-zero if any failed.
+# Owns RESULTS_FILE (exported so each child regime appends its row), renders one table at the end.
 run_all() {
   local overall=0 failed="" setup
+  RESULTS_FILE=$(mktemp); export RESULTS_FILE
   for setup in signup gpu env signup-open signup-bootstrap traefik traefik-closed; do
     echo "==================================================================="
     echo "[functional/all] setup: $setup"
@@ -81,6 +139,7 @@ run_all() {
     "$0" "$setup" || { overall=1; failed="$failed $setup"; }
   done
   echo "==================================================================="
+  _render_results_table "$RESULTS_FILE"; rm -f "$RESULTS_FILE"
   if [ "$overall" -eq 0 ]; then echo "[functional/all] ALL SETUPS PASSED"; else echo "[functional/all] FAILED SETUPS:$failed"; fi
   return $overall
 }

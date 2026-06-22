@@ -221,7 +221,7 @@ Most knobs are env vars on the `duoptimumhub` service in `compose.yml`; deployme
 
 ### Configuration overlay
 
-The bind-mount `./config/:/mnt/user_config:ro` is the operator overlay. A root `jupyterhub_config.py` there (plus any sibling `.py`, importable via `PYTHONPATH=/srv/config`) overrides the built-in config; empty or syntactically broken fails boot loudly (`exit 1`). Override the volume to point elsewhere, or `JUPYTERHUB_USER_CONFIG_FILE` to rename the root file. See [docs/configuration.md](configuration.md).
+The bind-mount `./config/:/mnt/user_config:ro` is the operator overlay. A root `jupyterhub_config.py` there (plus any sibling `.py`, importable via `PYTHONPATH=/srv/config`) overrides the built-in config; empty or syntactically broken fails boot loudly (`exit 1`). Override the volume to point elsewhere, or `JUPYTERHUB_HUB_CONFIG_FILE` to rename the root file. See [docs/configuration.md](configuration.md).
 
 ### GPU
 

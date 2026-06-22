@@ -62,7 +62,7 @@ Path references can be written as `/certs/...` (what Traefik ultimately sees), `
 
 When no operator or persisted certs exist, `mkcert.sh` writes a self-signed RSA cert plus a default `certs.yml` into `/certs`:
 
-- CN `$CERTIFICATE_DOMAIN_NAME` (default `localhost`)
+- CN `$JUPYTERHUB_HUB_CERTIFICATE_GENERATOR_DOMAIN_NAME` (default `localhost`)
 - 2048-bit key, 365-day validity, no SANs
 
 It persists in the `jupyterhub_certs` volume, so the next boot reuses it via the persisted tier rather than regenerating.

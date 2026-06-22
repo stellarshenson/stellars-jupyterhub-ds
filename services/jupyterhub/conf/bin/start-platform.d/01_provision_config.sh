@@ -6,7 +6,7 @@
 #   /srv/config/                            runtime — populated every boot, what JupyterHub reads
 #
 # Trigger: presence of the root file (default jupyterhub_config.py, override
-# via JUPYTERHUB_USER_CONFIG_FILE) under /mnt/user_config.
+# via JUPYTERHUB_HUB_CONFIG_FILE) under /mnt/user_config.
 #   - missing  -> silent fallback to built-in (operator wants stock)
 #   - present  -> strict validation; empty or syntax-broken -> exit 1
 #
@@ -18,7 +18,7 @@
 set -e
 
 USER_CONFIG="${JUPYTERHUB_USER_CONFIG_DIR:-/mnt/user_config}"
-ROOT="${JUPYTERHUB_USER_CONFIG_FILE:-jupyterhub_config.py}"
+ROOT="${JUPYTERHUB_HUB_CONFIG_FILE:-jupyterhub_config.py}"
 RUNTIME="/srv/config"
 BUILTIN="/srv/jupyterhub/jupyterhub_config.py"
 LOG_COMPONENT="Config"
