@@ -247,7 +247,7 @@ export default function DesignLanguage() {
               ))}
             </div>
             {/* bar GLOW steps - a drop-shadow HALO around the bar (currentColor mixed toward white), by radius;
-               the halo glows around the fill and never covers it (the shipped extend glow holds at 5px) */}
+               the halo glows around the fill and never covers it (the shipped extend glow holds at 0.5px) */}
             <div style={{ display: 'flex', gap: 28, alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <span style={{ width: 92, fontSize: 12, color: 'var(--color-text-muted)' }}>bar glow</span>
               {[0, 3, 5, 8, 12].map((r) => (
