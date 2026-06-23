@@ -10,7 +10,8 @@ import { Button, Progress } from 'antd'
 import { useRole } from '../app/RoleContext'
 import { useSpawnProgress } from '../hooks/useSpawnProgress'
 import { useContainerLogTail } from '../hooks/useContainerLogTail'
-import { userServerUrl, portalAssetBase, hubGet } from '../services/hub/client'
+import { userServerUrl, portalAssetBase } from '../services/hub/client'
+import { waitForLabReady } from '../services/hub/labReady'
 
 export default function Starting() {
   const { name = '' } = useParams()
@@ -38,25 +39,13 @@ export default function Starting() {
     }
     // own server: the hub 'ready' flag flips ~1s before the lab actually serves
     // HTTP, so redirecting on it lands on the hub's stock spawn-pending page
-    // (DEF-1). Probe the lab via the silent always-200 endpoint and enter only
-    // once it genuinely answers; last-resort enter after a deadline.
-    let alive = true
-    let timer: number | undefined
-    const deadline = Date.now() + 60_000
-    const enter = () => { if (alive) window.location.assign(userServerUrl(name)) }
-    const probe = async () => {
-      if (!alive) return
-      let ready = false
-      try {
-        const r = await hubGet<{ ready: boolean }>(`/users/${encodeURIComponent(name)}/lab-ready`)
-        ready = r.ready
-      } catch { /* transient - keep polling */ }
-      if (!alive) return
-      if (ready || Date.now() > deadline) { enter(); return }
-      timer = window.setTimeout(probe, 1000)
-    }
-    void probe()
-    return () => { alive = false; if (timer) window.clearTimeout(timer) }
+    // (DEF-1). Wait for the lab to genuinely answer via the shared readiness gate
+    // and enter only then; it enters anyway after the gate's deadline.
+    let aborted = false
+    void waitForLabReady(name, { aborted: () => aborted }).then(() => {
+      if (!aborted) window.location.assign(userServerUrl(name))
+    })
+    return () => { aborted = true }
   }, [phase, isOwn, name, navigate])
 
   const failed = phase === 'failed'

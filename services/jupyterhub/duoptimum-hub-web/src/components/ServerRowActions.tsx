@@ -59,9 +59,12 @@ export function rowActions(r: ServerRow, navigate: NavigateFunction, lf: Lifecyc
       </div>
     )
   }
+  // becoming-ready window (just started/restarted, lab not yet serving): the enter
+  // action shows a spinner and stays disabled until the lab truly answers (DEF-25)
+  const opening = !lf.isServing(r.user)
   return (
     <div className="doh-row doh-actions" style={{ justifyContent: 'flex-end' }}>
-      <IconAction icon="play" title={r.user === me ? 'Enter session' : `Open ${r.user}'s session`} tone="primary" disabled={busy} onClick={() => enterSession(r.user, me)} />
+      <IconAction icon="play" title={opening ? 'Opening…' : r.user === me ? 'Enter session' : `Open ${r.user}'s session`} tone="primary" busy={opening} disabled={busy || opening} onClick={() => enterSession(r.user, me)} />
       <IconAction icon="restart" title="Restart" busy={mode === 'restart'} disabled={busy} onClick={() => lf.restart(r.user)} />
       <IconAction icon="stop" title="Stop" tone="danger" filled busy={mode === 'stop'} disabled={busy} onClick={() => lf.stop(r.user)} />
     </div>
