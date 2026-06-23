@@ -112,7 +112,7 @@ def _connect_hub(client, network):
 def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', container_name=None,
                            container_role_label_key='', container_role_label_value='',
                            container_description_label_key='',
-                           container_description=''):
+                           container_description='', gpu_runtime=None):
     """Ensure the GPU-info sidecar container is running. Never raises.
 
     Returns the sidecar base URL with the ``{hostname}`` placeholder filled in from the
@@ -217,15 +217,16 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', contain
             log.warning(f"[GPUInfo] image '{image}' not present locally; not pulling at boot - GPU off until available")
             return ""
 
-        # Request the nvidia runtime only when the docker host actually registers it.
-        # A real sidecar needs it for GPU access, but asking for an unregistered runtime
-        # just fails the run; on a host without it there are no GPUs anyway (a real
-        # sidecar reports none) and a mock sidecar still starts (used by the functional
-        # tests, which run the mock on any host).
+        # Request the GPU vendor's runtime (from the GPU vendor provider, 'nvidia'
+        # today) only when the docker host actually registers it. A real sidecar
+        # needs it for GPU access, but asking for an unregistered runtime just fails
+        # the run; on a host without it there are no GPUs anyway (a real sidecar
+        # reports none) and a mock sidecar still starts (used by the functional
+        # tests, which run the mock on any host). No vendor runtime -> none requested.
         run_kwargs = {}
         try:
-            if 'nvidia' in ((client.info() or {}).get('Runtimes') or {}):
-                run_kwargs['runtime'] = 'nvidia'
+            if gpu_runtime and gpu_runtime in ((client.info() or {}).get('Runtimes') or {}):
+                run_kwargs['runtime'] = gpu_runtime
         except Exception:
             pass
         container = client.containers.run(

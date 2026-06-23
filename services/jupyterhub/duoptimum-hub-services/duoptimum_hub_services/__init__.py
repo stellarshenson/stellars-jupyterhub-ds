@@ -23,6 +23,7 @@ from .branding import setup_branding
 from .docker_proxy import register_user, unregister_user
 from .events import register_events
 from .gpu import gpu_summary_lines, is_wsl2, resolve_gpu_mode
+from .gpu_vendor import GpuVendorProvider, NvidiaGpuProvider, resolve_gpu_vendor_provider
 from .gpuinfo_sidecar import ensure_gpuinfo_sidecar, resolve_gpuinfo_url, stop_gpuinfo_sidecar
 from .hooks import (
     make_post_stop_hook,
@@ -106,6 +107,9 @@ __all__ = [
     "schedule_policy_startup",
     "register_events",
     "resolve_gpu_mode",
+    "resolve_gpu_vendor_provider",
+    "GpuVendorProvider",
+    "NvidiaGpuProvider",
     "resolve_host_status_provider",
     "HostStatusProvider",
     "DockerHostStatusProvider",

@@ -240,39 +240,37 @@ class GpuPolicy(Policy):
         return {'badge': 'GPU', 'detail': 'GPU: ' + (','.join(str(i) for i in ids) if ids else 'all')}
 
     async def apply(self, spawner, resolved, actx):
-        # GPU device passthrough (per-user). gpu_access is already gated on
-        # hardware availability in the resolver, so on a GPU-less host this branch
-        # is skipped entirely and no device_requests are set - spawns never crash.
+        # GPU device passthrough (per-user), delegated to the spawner's GPU vendor
+        # provider (NVIDIA today). gpu_access is already gated on hardware in the
+        # resolver, so on a GPU-less host no device_requests are set - spawns never
+        # crash. The provider owns the vendor specifics (driver, visibility env);
+        # this stage keeps the access decision and the image-generic ENABLE flags.
         # All GPUs -> Count -1; specific GPUs -> DeviceIDs (index strings). Empty
         # selection falls back to all (the resolver/validator prevent that state).
-        if resolved['gpu_access']:
-            if resolved.get('gpu_all', True) or not resolved.get('gpu_device_ids'):
-                gpu_request = {'Driver': 'nvidia', 'Count': -1, 'Capabilities': [['gpu']]}
-                spawner.environment['NVIDIA_VISIBLE_DEVICES'] = 'all'
-                spawner.environment.pop('CUDA_VISIBLE_DEVICES', None)  # no restriction
+        # On WSL2/Docker Desktop a subset is advisory (single /dev/dxg), enforced
+        # only on native Linux (per-GPU /dev/nvidiaN); CUDA_VISIBLE_DEVICES by UUID
+        # survives in-container re-indexing - both handled inside the provider.
+        from ..gpu_vendor import NvidiaGpuProvider
+
+        provider = actx.gpu_vendor or NvidiaGpuProvider()
+        access = bool(resolved['gpu_access'])
+        all_gpus = bool(resolved.get('gpu_all', True) or not resolved.get('gpu_device_ids'))
+        ids = list(resolved.get('gpu_device_ids') or [])
+        uuid_map = actx.gpu_uuid_by_index or {}
+
+        # Vendor visibility env - a None value means UNSET the var.
+        for k, v in provider.visibility_env(access, all_gpus, ids, uuid_map).items():
+            if v is None:
+                spawner.environment.pop(k, None)
             else:
-                ids = list(resolved['gpu_device_ids'])
-                gpu_request = {'Driver': 'nvidia', 'DeviceIDs': ids, 'Capabilities': [['gpu']]}
-                # NVIDIA_VISIBLE_DEVICES (host indices) is the toolkit's authoritative
-                # selector and overrides the image's baked-in 'all'. It enforces the
-                # subset on native Linux (per-GPU /dev/nvidiaN nodes); on WSL2/Docker
-                # Desktop GPUs come through a single /dev/dxg and it is NOT enforced.
-                spawner.environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(ids)
-                # CUDA_VISIBLE_DEVICES by UUID so CUDA targets the right physical GPU
-                # whether it was re-indexed to 0 (native Linux, only the subset
-                # injected) or all GPUs are visible (WSL2). Soft, app-level: nvidia-smi
-                # still shows all on WSL2 and a user can override it. UUIDs are
-                # order-independent, unlike host indices which break once re-indexed.
-                uuid_map = actx.gpu_uuid_by_index or {}
-                uuids = [uuid_map[i] for i in ids if i in uuid_map]
-                spawner.environment['CUDA_VISIBLE_DEVICES'] = ','.join(uuids) if uuids else ','.join(ids)
-            spawner.extra_host_config['device_requests'] = [gpu_request]
+                spawner.environment[k] = v
+
+        if access:
+            spawner.extra_host_config['device_requests'] = [provider.device_request(all_gpus, ids)]
             spawner.environment['ENABLE_GPU_SUPPORT'] = '1'
             spawner.environment['ENABLE_GPUSTAT'] = '1'
         else:
             spawner.extra_host_config.pop('device_requests', None)
-            spawner.environment['NVIDIA_VISIBLE_DEVICES'] = 'void'  # override image default 'all'
-            spawner.environment.pop('CUDA_VISIBLE_DEVICES', None)
             spawner.environment['ENABLE_GPU_SUPPORT'] = '0'
             spawner.environment['ENABLE_GPUSTAT'] = '0'
 

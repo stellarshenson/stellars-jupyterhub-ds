@@ -90,6 +90,8 @@ class ApplyContext:
     app: object = None
     username: str = ''
     gpu_uuid_by_index: dict = None
+    # GPU vendor provider (driver/runtime/visibility-env); None -> NVIDIA default
+    gpu_vendor: object = None
     compose_project: str = ''
     docker_proxy_socket_dir: str = ''
     docker_proxy_volume_name: str = ''
