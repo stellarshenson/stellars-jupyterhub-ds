@@ -28,8 +28,15 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
 - [DEF-22: Hub connect URL uses ephemeral container id, brittle on redeploy](#def-22-hub-connect-url-uses-ephemeral-container-id-brittle-on-redeploy) - fixed
 - [DEF-23: Hub API bound to the gpuinfo interface after the DEF-22 alias fix - total spawn outage](#def-23-hub-api-bound-to-the-gpuinfo-interface-after-the-def-22-alias-fix---total-spawn-outage) - fixed
 - [DEF-24: GPU undetected (sidecar down) still spawns labs with GPU - crash](#def-24-gpu-undetected-sidecar-down-still-spawns-labs-with-gpu---crash) - fixed
+- [DEF-25: Open-server actions enter the lab before it truly serves](#def-25-open-server-actions-enter-the-lab-before-it-truly-serves) - open
 
 ## Open
+
+### DEF-25: Open-server actions enter the lab before it truly serves
+
+- [ ] **MEDIUM** - the portal "Open Lab" (`ServerHero`) and per-row open / `enterSession` (`ServerRowActions`, own + admin-other) navigate straight to the lab via `window.location.assign(userServerUrl(...))` with NO readiness gate, so opening a running-but-not-yet-serving lab (just spawned, restarting, still booting) lands on the hub's stock spawn-pending / 503 page instead of the lab. The cold-start Starting page already gates entry behind the hub-side `lab-ready` probe (`GET /hub/api/users/{username}/lab-ready`, see [DEF-1](#def-1-start-server-falls-to-stock-spawn-screen-no-logs)) but these direct-open buttons bypass it. Fix: route the Open action through the same `lab-ready` gate (probe-until-ready then navigate, or hand off to the Starting page) before assigning location. `services/jupyterhub/duoptimum-hub-web/src/components/ServerHero.tsx` (Open Lab ~L46), `src/components/ServerRowActions.tsx` (`enterSession` own+other ~L23,L31); ref `src/pages/Starting.tsx`, `handlers/lab_ready.py`. Acc-crit: [acc-crit-open-server-readiness.md](acc-crit-open-server-readiness.md)
+  - log: 2026-06-23 reported (operator: "allow open the server only after it is truly available (doesn't return [an error])")
+  - log: 2026-06-23 scope/decision: Option A (in-place "Opening..." busy state, no Starting-page handoff for a running server); the Open control is ACTIVE only once `lab-ready` confirms serving - gated after start AND restart (restart resets to becoming-ready), on the Servers page rows + Home "Active servers" widget + the ServerHero "Open Lab" button; acc-crit [acc-crit-open-server-readiness.md](acc-crit-open-server-readiness.md)
 
 ### DEF-20: html_templates_enhanced custom Bootstrap layer is a dead relic
 
