@@ -31,6 +31,11 @@ from .hooks import (
     schedule_startup_favicon_callback,
 )
 from .host import resolve_memory_quota_mb
+from .host_status import (
+    DockerHostStatusProvider,
+    HostStatusProvider,
+    resolve_host_status_provider,
+)
 from .hydrate import schedule_startup_hydration, start_activity_refreshers
 from .idle_culler import (
     calc_available_hours,
@@ -101,6 +106,9 @@ __all__ = [
     "schedule_policy_startup",
     "register_events",
     "resolve_gpu_mode",
+    "resolve_host_status_provider",
+    "HostStatusProvider",
+    "DockerHostStatusProvider",
     "resolve_memory_quota_mb",
     "schedule_startup_favicon_callback",
     "schedule_startup_hydration",

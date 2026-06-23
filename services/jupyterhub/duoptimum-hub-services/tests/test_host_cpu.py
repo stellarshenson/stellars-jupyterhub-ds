@@ -10,7 +10,7 @@ active server was CPU-capped below the host. None turns into an explicit
 import builtins
 import io
 
-from duoptimum_hub_services.handlers.activity import _host_cpu_count
+from duoptimum_hub_services.host_status import _host_cpu_count
 
 
 def test_counts_processor_lines_in_cpuinfo(monkeypatch):

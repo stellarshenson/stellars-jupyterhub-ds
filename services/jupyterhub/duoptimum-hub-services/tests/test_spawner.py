@@ -1,8 +1,9 @@
-"""Tests for TimingDockerSpawner's failed-start event recording.
+"""Tests for DuoptimumDockerSpawner's failed-start event recording.
 
 super().start() is stubbed (no real Docker) so we exercise only the wrapper:
 a raised spawn records exactly one 'error' event and re-raises; a successful
 spawn records nothing; the username is HTML-escaped (event text is pre-escaped).
+Also asserts the spawner declares its host-status provider.
 """
 
 import asyncio
@@ -10,8 +11,9 @@ import asyncio
 import pytest
 from dockerspawner import DockerSpawner
 
-from duoptimum_hub_services import timing_spawner
-from duoptimum_hub_services.timing_spawner import TimingDockerSpawner
+from duoptimum_hub_services import spawner
+from duoptimum_hub_services.spawner import DuoptimumDockerSpawner
+from duoptimum_hub_services.host_status import DockerHostStatusProvider
 
 
 class _FakeUser:
@@ -26,7 +28,7 @@ class _FakeLog:
 
 def _make_spawner(name="alice"):
     # skip DockerSpawner's heavy __init__ - we only drive the start() wrapper
-    sp = TimingDockerSpawner.__new__(TimingDockerSpawner)
+    sp = DuoptimumDockerSpawner.__new__(DuoptimumDockerSpawner)
     sp.user = _FakeUser(name)
     sp.log = _FakeLog()
     return sp
@@ -34,8 +36,13 @@ def _make_spawner(name="alice"):
 
 def _capture_events(monkeypatch):
     calls = []
-    monkeypatch.setattr(timing_spawner, "record_event", lambda et, text: calls.append((et, text)))
+    monkeypatch.setattr(spawner, "record_event", lambda et, text: calls.append((et, text)))
     return calls
+
+
+def test_declares_host_status_provider():
+    """The spawner is the single source of its environment's host-status provider."""
+    assert DuoptimumDockerSpawner.host_status_provider_class is DockerHostStatusProvider
 
 
 def test_failed_start_records_one_error_event_and_reraises(monkeypatch):

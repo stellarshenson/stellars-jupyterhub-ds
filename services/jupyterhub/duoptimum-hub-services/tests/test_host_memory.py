@@ -8,7 +8,7 @@ to say I don't know than guess").
 import builtins
 import io
 
-from duoptimum_hub_services.handlers.activity import _host_total_memory_mb
+from duoptimum_hub_services.host_status import _host_total_memory_mb
 
 
 def test_reads_memtotal_from_proc_meminfo(monkeypatch):

@@ -206,6 +206,10 @@ export interface ResourceSnapshot {
   gpuDevices?: GpuDevice[] // real host GPU inventory; drives the device count when utilisation is not sampled
   gpuDisconnected?: boolean // gpuinfo sidecar down - hide the GPU row entirely (inventory may be stale, no live health)
   memTip?: string
+  // which host dimensions the environment's provider exposes - the Host Status
+  // panel renders only present rows, and disappears when none are. Absent (error
+  // path / old backend) -> caller defaults each to shown
+  caps?: { cpu: boolean; mem: boolean; gpu: boolean }
 }
 
 export interface SessionInfo {

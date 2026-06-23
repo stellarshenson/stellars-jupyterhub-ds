@@ -92,6 +92,7 @@ interface RawActivity {
   activity_target_hours?: number // daily active-hours target (uncapped-% denominator)
   gpus?: Array<{ index: string; name: string; uuid?: string; memory_mb?: number; utilization?: number; memory_used_mb?: number; temperature_c?: number; power_w?: number }> // host GPU inventory + live load
   gpu_connected?: boolean // gpuinfo sidecar is live (fresh sample); false = inventory is stale, hide GPU widgets
+  host_capabilities?: string[] // host-status dimensions THIS environment exposes (subset of cpu/mem/gpu); absent on an older backend -> default to all present
   lab_image?: string // spawn image (Lab Container page)
   lab_volumes?: Array<{ suffix: string; mount: string; description?: string; role?: string }> // standard per-user volumes (role = hub.volume.role)
   system_volumes?: Array<{ name: string; mount: string; description?: string; role?: string }> // shared + docker-proxy system volumes (name = resolved docker volume name)
@@ -548,6 +549,15 @@ export const liveSource: DataSource = {
       const cpuBar = hostCores && hostCores > 0 ? clampPct((coresUsed / hostCores) * 100) : 0
       const memBar = memError ? 0 : clampPct((memUsed / totalMb) * 100)
       const svrs = `${active.length} server${active.length === 1 ? '' : 's'}`
+      // provider-declared host dimensions -> which Host Status rows render (and the
+      // panel disappears when none). Absent on an older backend: default all present
+      // so the view is unchanged.
+      const hc = activity.host_capabilities
+      const caps = {
+        cpu: hc ? hc.includes('cpu') : true,
+        mem: hc ? hc.includes('mem') : true,
+        gpu: hc ? hc.includes('gpu') : true,
+      }
       return {
         cpu: cpuBar,
         cpuAggregateLabel: cpuAggregateLabel(cpuSum) ?? undefined, // 'cores' mode: summed cores-used x 100
@@ -562,6 +572,7 @@ export const liveSource: DataSource = {
         gpuDevices,
         gpuDisconnected, // sidecar down -> hide the GPU row entirely (no stale inventory)
         memTip: memError ? 'Host RAM total unavailable' : `${memBar}% used\n${round1(memUsed / 1024)} of ${round1(totalMb / 1024)} GB across ${svrs}`,
+        caps,
       }
     } catch {
       // never fabricate platform facts: on a live error return empty resources
