@@ -40,6 +40,7 @@ from duoptimum_hub_services import (
     prepare_sent_notification_log,          # boot-time self-heal of the sent-notification history table
     register_events,                        # attaches SQLAlchemy listeners for user rename/delete sync
     resolve_gpu_mode,                       # GPU detection: 0=off, otherwise autodetect (default)
+    resolve_host_status_provider,           # reads c.JupyterHub.spawner_class -> instantiates its declared host-status provider (home-screen CPU/MEM/GPU aggregate)
     resolve_memory_quota_mb,                # calc: per-user memory warning threshold MB from host-RAM fraction
     schedule_startup_hydration,             # consolidated startup hydration: warms caches + image-update check + survivor favicon routes/policy, all deferred to the IOLoop
     setup_branding,                         # processes logo/favicon/icon URIs, copies file:// to static dir
@@ -623,12 +624,12 @@ if JUPYTERHUB_SSL_ENABLED == 1:
     c.JupyterHub.ssl_key = '/certs/server.key'
 
 # ── Spawner ──
-# TimingDockerSpawner is a thin subclass of DockerSpawner that logs
-# `[Timing]` lines around start/stop/remove_object/poll. Helpful for
-# diagnosing where time goes during stop/restart (Docker side vs hub
-# polling lag). Drop back to stock dockerspawner.DockerSpawner if you
-# want to silence the timing probes.
-c.JupyterHub.spawner_class = "duoptimum_hub_services.timing_spawner.TimingDockerSpawner"
+# DuoptimumDockerSpawner is the canonical DockerSpawner subclass: `[Timing]`
+# lines around start/stop/remove_object (diagnosing Docker-side vs hub-polling
+# lag) AND a declared host_status_provider_class (the home-screen CPU/MEM/GPU
+# aggregate for this environment, resolved below). Drop back to stock
+# dockerspawner.DockerSpawner to silence the probes (and forgo the host-status panel).
+c.JupyterHub.spawner_class = "duoptimum_hub_services.spawner.DuoptimumDockerSpawner"
 
 # Environment variables injected into every spawned JupyterLab container
 c.DockerSpawner.environment = {
@@ -710,6 +711,16 @@ c.JupyterHub.template_vars = {
     'hub_name': JUPYTERHUB_BRANDING_HUB_NAME,
 }
 
+# ── Host-status provider ──
+# Resolve THIS environment's host-status provider off the configured spawner
+# (DuoptimumDockerSpawner -> DockerHostStatusProvider). The activity handler
+# delegates the home-screen host aggregate (CPU/MEM/GPU) to it; a spawner that
+# declares none yields no host-status panel. gpu_enabled gates the GPU dimension.
+_host_status_provider = resolve_host_status_provider(
+    c.JupyterHub.spawner_class,
+    {'gpu_enabled': bool(gpu_enabled), 'gpu_list': gpu_list},
+)
+
 # ── Tornado settings ──
 # Handler-accessible config via self.settings['stellars_config']
 # Replaces os.environ.get() calls in handlers with explicit typed values
@@ -727,6 +738,7 @@ c.JupyterHub.tornado_settings = {
         'gpu_list': gpu_list,                                 # host GPUs enumerated at startup (GroupsDataHandler, ActivityDataHandler)
         'gpu_available': bool(gpu_enabled),                   # hardware-present gate for resolve_policies (EffectiveGrantsHandler)
         'gpu_isolation_enforced': GPU_ISOLATION_ENFORCED,     # False on WSL2 -> the portal GPU policy section shows the advisory note
+        'host_status_provider': _host_status_provider,        # ActivityDataHandler delegates the host CPU/MEM/GPU aggregate to this (None -> no host-status panel)
         'container_max_extra_space_mb': JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB * 1024,  # threshold in MB for container size warning
         'volume_max_total_size_mb': JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB * 1024,        # threshold in MB for volume size warning
         'memory_max_usage_mb': JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning

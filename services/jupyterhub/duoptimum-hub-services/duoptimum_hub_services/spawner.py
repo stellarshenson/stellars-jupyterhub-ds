@@ -1,12 +1,17 @@
-"""Timing-instrumented DockerSpawner subclass.
+"""Duoptimum's canonical DockerSpawner subclass.
 
-Emits ONE `[Timing]` log line per lifecycle method exit, carrying the
-method name, username, and elapsed seconds. Designed to be low-volume:
-no entry-side logging, no poll-loop logging - just exit summaries.
+`DuoptimumDockerSpawner` carries two hub-specific concerns on top of stock
+`dockerspawner.DockerSpawner`:
 
-Also records a single `error` event in the platform event log when a spawn
-RAISES (the only place a failed start is observable) - otherwise a crashed
-spawn leaves the 'server starting' event with no matching outcome.
+  - `[Timing]` probes - ONE log line per lifecycle method exit (method, username,
+    elapsed seconds). Low-volume: no entry-side logging, no poll-loop logging.
+    Also records ONE `error` event when a spawn RAISES (the only place a failed
+    start is observable) - otherwise a crashed spawn leaves the 'server starting'
+    event with no matching outcome.
+  - host-status provider - `host_status_provider_class` declares this
+    environment's `HostStatusProvider`; the hub resolves it at boot and the
+    activity handler delegates the home-screen host aggregate (CPU/MEM/GPU) to it.
+    A different environment ships its own Duoptimum spawner + provider.
 
 Methods instrumented:
 
@@ -15,14 +20,14 @@ Methods instrumented:
   - ``remove_object()`` actual Docker DELETE call (subset of stop)
 
 The delta ``stop() - remove_object()`` is the hub-side lag (poll cadence,
-post-stop hooks, clear_state) on top of the Docker-side teardown. If that
-delta is large, the bottleneck is the hub, not Docker.
+post-stop hooks, clear_state) on top of the Docker-side teardown.
 
 Activation: ``c.JupyterHub.spawner_class =
-'duoptimum_hub_services.timing_spawner.TimingDockerSpawner'`` in the hub
-config. Drop back to ``dockerspawner.DockerSpawner`` to silence.
+'duoptimum_hub_services.spawner.DuoptimumDockerSpawner'`` in the hub config.
+Drop back to ``dockerspawner.DockerSpawner`` to silence the timing probes (and
+forgo the host-status panel).
 
-Pull the lines after the fact:
+Pull the timing lines after the fact:
     docker logs <hub-container> 2>&1 | grep '\\[Timing\\]'
 """
 
@@ -35,10 +40,15 @@ from typing import Any
 from dockerspawner import DockerSpawner
 
 from .event_log import record_event
+from .host_status import DockerHostStatusProvider
 
 
-class TimingDockerSpawner(DockerSpawner):
-    """DockerSpawner with one-line-per-method `[Timing]` probes."""
+class DuoptimumDockerSpawner(DockerSpawner):
+    """DockerSpawner with `[Timing]` probes and a declared host-status provider."""
+
+    # the home-screen host aggregate (CPU/MEM/GPU) for THIS environment - a local
+    # Docker host. The hub resolves it at boot via resolve_host_status_provider.
+    host_status_provider_class = DockerHostStatusProvider
 
     async def start(self, *args: Any, **kwargs: Any):  # type: ignore[override]
         t0 = time.perf_counter()

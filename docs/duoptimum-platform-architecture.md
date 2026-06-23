@@ -46,7 +46,7 @@ graph TB
     Traefik --> Hub[JupyterHub :8000<br/>+ CHP + React portal]
 
     Hub -->|Authenticates| Auth[NativeAuthenticator<br/>antd login/signup]
-    Hub -->|Spawns via| Spawner[TimingDockerSpawner]
+    Hub -->|Spawns via| Spawner[DuoptimumDockerSpawner]
     Hub -.->|self-starts, separate net| GPUInfo[gpuinfo-nvidia sidecar]
 
     Spawner -->|Creates| Lab1[JupyterLab<br/>alice]
@@ -93,7 +93,7 @@ The admin/user UI is a React SPA served by the `duoptimum_hub_web` package, not 
 
 - **Authenticator** - `BootstrapAdminAuthenticator`, a subclass of `DuoptimumHubAuthenticator` (NativeAuthenticator + antd login/signup); `open_signup=False`
 - **Admin bootstrap** - two modes: signup-window (first admin self-signs-up on an empty DB) or env-seeded (`JUPYTERHUB_ADMIN_PASSWORD`, initial-only, bcrypt-verified); admin role granted at login by `post_auth_hook`
-- **Spawner** - `duoptimum_hub_services.timing_spawner.TimingDockerSpawner` (DockerSpawner with timing logs); `name_template=jupyterlab-{username}`, `remove=True`, per-user `volumes`
+- **Spawner** - `duoptimum_hub_services.spawner.DuoptimumDockerSpawner` (DockerSpawner with timing logs, declares the host-status provider); `name_template=jupyterlab-{username}`, `remove=True`, per-user `volumes` (see [Host status providers](#host-status-providers))
 - **pre_spawn_hook** - resolves the user's groups into an effective policy and applies it (Docker access, GPU, env, CPU/mem, sudo, downloads, volume mounts, API-key slot), registers the user with the docker-proxy, and adds CHP favicon + compose-project labels
 - **post_stop_hook** - unregisters the docker-proxy user and releases the API-key slot
 - **Managed service** - an always-on activity sampler (background process) records per-user activity
@@ -159,6 +159,17 @@ The admin dashboard reads warm snapshots, never a synchronous Docker gather on t
 - **Volume size cache** - `volume_cache.py`, every `JUPYTERHUB_ACTIVITYMON_VOLUMES_UPDATE_INTERVAL` (default 3600s)
 - **CPU/memory bars** - per-server bars read against the server's assigned ceiling (CPU limit / memory limit), the host bars against host cores / host RAM; see [docs/acc-crit-resource-bars.md](acc-crit-resource-bars.md)
 - See [docs/activity-tracking-methodology.md](activity-tracking-methodology.md)
+
+## Host status providers
+
+See [design-host-status-provider.md](design-host-status-provider.md) and its [acceptance criteria](acceptance-criteria/acc-crit-host-status-provider.md).
+
+The host-status view (host CPU, memory, GPU on the admin dashboard) is decoupled from the local-Docker assumption so other environments - HPC/cluster, Kubernetes, remote host - can package into the hub. The view sits behind a `HostStatusProvider` associated with the spawner.
+
+- **Contract** - `capabilities()` returns any subset of `{CPU, MEM, GPU}`; `get_status()` returns the present dimensions, each tagged `ok | degraded | unavailable`; an empty result renders no panel
+- **Association** - the spawner subclass declares its provider; `DuoptimumDockerSpawner` declares `DockerHostStatusProvider`, which wraps the `/proc` + container-stats + sidecar logic moved out of the activity handler. The hub resolves the provider at boot off `c.JupyterHub.spawner_class` into `stellars_config`
+- **Data, not widgets** - the provider returns the fixed schema as JSON (`host_capabilities` + the host CPU/MEM/GPU fields); the portal renders the known widgets presence-gated, so a new environment needs no portal rebuild
+- **Scope** - the seam plus the Docker reference provider; HPC/k8s providers, a per-server view, and de-NVIDIA-ifying the GPU device-request plumbing are out (future work)
 
 ## User self-service
 
@@ -356,6 +367,7 @@ Then add it by name in a group's Volume Mounts (`jupyterhub_shared_nas` -> `/mnt
 - [Working with Docker in JupyterHub](jupyterhub-working-with-docker.md)
 - [Activity tracking methodology](activity-tracking-methodology.md)
 - [Resource bars acceptance criteria](acc-crit-resource-bars.md)
+- [Host status provider design](design-host-status-provider.md) - planned spawner-associated resource-view abstraction
 - [Custom branding](custom-branding.md)
 - [User volumes](user-volumes.md)
 - [duoptimum-hub-services package](duoptimum-hub-package.md)

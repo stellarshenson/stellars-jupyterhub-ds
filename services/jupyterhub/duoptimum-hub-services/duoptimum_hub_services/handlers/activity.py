@@ -16,43 +16,9 @@ from ..activity.helpers import (
 )
 
 
-def _host_total_memory_mb():
-    """Total physical host RAM in MB - the denominator for the "% of host" memory
-    figure (a mem-limited user's memory_total_mb is their ceiling, not the host).
-    Reads /proc/meminfo directly. NO fallback: returns None on any read failure so
-    the frontend shows an explicit "unavailable" state rather than fabricating a
-    denominator (operator: better to say "I don't know" than guess)."""
-    try:
-        with open('/proc/meminfo') as f:
-            for line in f:
-                if line.startswith('MemTotal:'):
-                    return round(int(line.split()[1]) / 1024, 1)  # MemTotal is in kB
-    except Exception:
-        pass
-    return None
-
-
-def _host_cpu_count():
-    """Total logical CPU cores on the host - the denominator for the "% of host"
-    CPU figure. A CPU-limited user's cpu_cores is their assigned ceiling, NOT the
-    host's core count, so the Host Status bar must divide by THIS, not by the
-    largest per-server assignment. That old approximation only equalled the host
-    count when an unlimited server happened to be active; with every active server
-    CPU-capped it read ~2x high (the host bar exceeding the user's own). Counts
-    `processor` entries in /proc/cpuinfo directly (host-transparent inside a
-    container). NO fallback: returns None on any read failure so the frontend shows
-    an explicit "unavailable" rather than fabricating a denominator."""
-    try:
-        with open('/proc/cpuinfo') as f:
-            count = sum(1 for line in f if line.startswith('processor'))
-        return count or None
-    except Exception:
-        pass
-    return None
 from ..docker_utils import encode_username_for_docker, newer_lab_image_available
 from ..container_size_cache import get_container_sizes_with_refresh
 from ..container_stats_cache import get_container_stats_with_refresh
-from ..gpu_cache import get_gpu_utilization_with_refresh, gpu_sidecar_connected
 from ..hydrate import start_activity_refreshers
 from ..idle_culler import calc_ceiling, remaining_seconds_for
 from ..volume_cache import get_volume_sizes_with_refresh
@@ -210,31 +176,18 @@ class ActivityDataHandler(BaseHandler):
         volume_max = stellars_config.get('volume_max_total_size_mb', 51200)
         memory_max = stellars_config.get('memory_max_usage_mb', 0)
 
-        # Host GPU inventory enumerated once at startup (cached read, no container
-        # spin per request); empty when GPU is disabled or none are present. Live
-        # per-GPU utilisation is sampled in the background by GpuUtilizationRefresher
-        # (querying the GPU-info sidecar) and merged in by index - so each device
-        # carries its real load, used memory and the processes holding it when a
-        # sample exists, and falls back to inventory-only otherwise.
-        gpu_list = stellars_config.get('gpu_list', []) or []
-        gpu_util = get_gpu_utilization_with_refresh() if gpu_list else {}
-        gpus = []
-        for g in gpu_list:
-            idx = g.get("index")
-            entry = {
-                "index": idx,
-                "name": g.get("name"),
-                "uuid": g.get("uuid"),
-                "memory_mb": g.get("memory_mb", 0),
-            }
-            sample = gpu_util.get(str(idx)) if idx is not None else None
-            if sample:
-                entry["utilization"] = sample.get("utilization")
-                entry["memory_used_mb"] = sample.get("memory_used_mb")
-                entry["temperature_c"] = sample.get("temperature_c")
-                entry["power_w"] = sample.get("power_w")
-                entry["processes"] = sample.get("processes", [])
-            gpus.append(entry)
+        # Home-screen host aggregate (host CPU cores, host RAM, GPU inventory +
+        # liveness) comes from THIS environment's host-status provider, resolved at
+        # boot off the configured spawner. The handler only delegates + serialises;
+        # the per-user server rows above stay here (hub-generic, not provider-owned).
+        # A spawner that declares no provider -> empty aggregate -> no host panel.
+        provider = stellars_config.get('host_status_provider')
+        host = provider.get_status() if provider else {}
+        host_capabilities = sorted(provider.capabilities()) if provider else []
+        _cpu = host.get('cpu') or {}
+        _mem = host.get('mem') or {}
+        _gpu = host.get('gpu') or {}
+        gpus = _gpu.get('devices', [])
 
         # Lab Container page facts: the spawn image and the standard per-user
         # volumes every lab gets (cached config reads). Shared/extra volumes are
@@ -248,14 +201,16 @@ class ActivityDataHandler(BaseHandler):
             "container_max_extra_space_mb": container_max,
             "volume_max_total_size_mb": volume_max,
             "memory_max_usage_mb": memory_max,
-            "memory_host_total_mb": _host_total_memory_mb(),
-            "cpu_host_total": _host_cpu_count(),
+            "memory_host_total_mb": _mem.get('host_total_mb'),
+            "cpu_host_total": _cpu.get('host_total_cores'),
             "activity_target_hours": get_activity_target_hours(),
+            # which host dimensions THIS environment exposes - the portal renders
+            # only these rows, and no panel when the set is empty (presence-gated)
+            "host_capabilities": host_capabilities,
             "gpus": gpus,
-            # live gpuinfo-sidecar reachability: the inventory above is enumerated at
-            # startup (persisted, can be hours old) and outlives the sidecar, so the
-            # UI gates GPU widgets on THIS, hiding them when the sidecar is down
-            "gpu_connected": gpu_sidecar_connected() if gpu_list else False,
+            # live gpuinfo-sidecar reachability: inventory can be stale (persisted,
+            # outlives the sidecar), so the UI gates GPU widgets on THIS
+            "gpu_connected": _gpu.get('connected', False),
             "lab_image": lab_image,
             "lab_volumes": lab_volumes,
             "system_volumes": system_volumes,

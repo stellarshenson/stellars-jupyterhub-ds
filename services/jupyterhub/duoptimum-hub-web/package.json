@@ -1,7 +1,7 @@
 {
   "name": "duoptimum-hub-web",
   "private": true,
-  "version": "4.0.13",
+  "version": "4.0.14",
   "type": "module",
   "engines": {
     "node": ">=20"

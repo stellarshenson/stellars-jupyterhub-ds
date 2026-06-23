@@ -187,6 +187,24 @@ function AdminHome() {
   const s = stats?.servers
   const u = stats?.users
 
+  // Host Status rows gated on the provider's declared capabilities (total.caps).
+  // caps absent (error path / old backend) -> each defaults to shown, so the view
+  // is unchanged. GPU row also needs real data (matches ServerHero). No rows ->
+  // the panel is hidden entirely.
+  const hostRows = total
+    ? [
+        ...(total.caps?.cpu !== false
+          ? [{ label: 'CPU', value: total.cpu, valueLabel: hostCpuMode === 'cores' && total.cpuAggregateLabel ? total.cpuAggregateLabel : `${total.cpu}%`, tip: total.cpuTip, error: total.cpuError }]
+          : []),
+        ...(total.caps?.mem !== false
+          ? [{ label: 'Memory', value: total.mem, tip: total.memTip, error: total.memError }]
+          : []),
+        ...(total.caps?.gpu !== false && (total.gpus !== undefined || total.gpuDevices !== undefined)
+          ? [{ label: 'GPU', value: total.gpu, gpus: total.gpus, gpuDevices: total.gpuDevices }]
+          : []),
+      ]
+    : []
+
   return (
     <>
       <PageHeader title="Home" sub="Platform at a glance - what is running and what needs attention" />
@@ -235,22 +253,14 @@ function AdminHome() {
             }
           />
         )}
-        <Card style={{ gridColumn: 'span 2' }}>
-          <h3 style={{ fontSize: 14, margin: '0 0 12px' }}>Host Status</h3>
-          {total && (
-            <ResourceBars
-              rows={[
-                { label: 'CPU', value: total.cpu, valueLabel: hostCpuMode === 'cores' && total.cpuAggregateLabel ? total.cpuAggregateLabel : `${total.cpu}%`, tip: total.cpuTip, error: total.cpuError },
-                { label: 'Memory', value: total.mem, tip: total.memTip, error: total.memError },
-                // GPU row only when there is real GPU data (matches ServerHero); a bare
-                // GPU row must not leak when GPU is off or the sidecar is down
-                ...(total.gpus !== undefined || total.gpuDevices !== undefined
-                  ? [{ label: 'GPU', value: total.gpu, gpus: total.gpus, gpuDevices: total.gpuDevices }]
-                  : []),
-              ]}
-            />
-          )}
-        </Card>
+        {/* show the titled card while loading (total not yet in) and when there are
+            rows; hide it only once loaded with an empty capability set (no panel) */}
+        {(!total || hostRows.length > 0) && (
+          <Card style={{ gridColumn: 'span 2' }}>
+            <h3 style={{ fontSize: 14, margin: '0 0 12px' }}>Host Status</h3>
+            {total && <ResourceBars rows={hostRows} />}
+          </Card>
+        )}
       </div>
 
       <PendingCallout count={u?.pending ?? 0} />
