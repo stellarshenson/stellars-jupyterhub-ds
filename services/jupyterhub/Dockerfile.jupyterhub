@@ -54,10 +54,10 @@ RUN uv pip install /dist/duoptimum_docker_proxy-*.whl pytest pytest-asyncio \
 # and vite emits a clean bundle. Placed after the wheel builds so a frontend-only
 # change does not bust their cached layers.
 COPY services/jupyterhub/duoptimum-hub-web/ /web/
+WORKDIR /web
 RUN <<-EOF
     echo "building Duoptimum Hub SPA bundle (npm ci + vite build:hub)"
     set -e
-    cd /web
     npm ci
     npm run build:hub
 EOF

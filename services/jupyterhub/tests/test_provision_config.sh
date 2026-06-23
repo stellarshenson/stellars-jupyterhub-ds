@@ -13,9 +13,16 @@ set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_UNDER_TEST="${SCRIPT_DIR}/../conf/bin/start-platform.d/01_provision_config.sh"
+# The script sources the shared logger from the image-absolute /platform-log.sh, which
+# does not exist in the test sandbox / CI; point the patched copy at the real helper.
+LOG_HELPER="${SCRIPT_DIR}/../conf/bin/platform-log.sh"
 
 if [ ! -f "$SCRIPT_UNDER_TEST" ]; then
     echo "ERROR: script under test not found at $SCRIPT_UNDER_TEST" >&2
+    exit 2
+fi
+if [ ! -f "$LOG_HELPER" ]; then
+    echo "ERROR: log helper not found at $LOG_HELPER" >&2
     exit 2
 fi
 
@@ -45,6 +52,7 @@ run_script() {
     local patched="$WORK/script_$name.sh"
     sed -e "s|RUNTIME=\"/srv/config\"|RUNTIME=\"$rt\"|" \
         -e "s|BUILTIN=\"/srv/jupyterhub/jupyterhub_config.py\"|BUILTIN=\"$BUILTIN_DIR/jupyterhub_config.py\"|" \
+        -e "s|source /platform-log.sh|source $LOG_HELPER|" \
         "$SCRIPT_UNDER_TEST" > "$patched"
     JUPYTERHUB_USER_CONFIG_DIR="$user_dir" \
     JUPYTERHUB_HUB_CONFIG_FILE="$user_file" \
@@ -239,6 +247,7 @@ echo "STALE_HELPER = True" > "$rt/old_helper.py"
 patched="$WORK/script_s11.sh"
 sed -e "s|RUNTIME=\"/srv/config\"|RUNTIME=\"$rt\"|" \
     -e "s|BUILTIN=\"/srv/jupyterhub/jupyterhub_config.py\"|BUILTIN=\"$BUILTIN_DIR/jupyterhub_config.py\"|" \
+    -e "s|source /platform-log.sh|source $LOG_HELPER|" \
     "$SCRIPT_UNDER_TEST" > "$patched"
 JUPYTERHUB_USER_CONFIG_DIR="$WORK/nonexistent" \
 JUPYTERHUB_HUB_CONFIG_FILE="jupyterhub_config.py" \
