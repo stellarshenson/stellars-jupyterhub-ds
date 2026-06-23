@@ -40,6 +40,8 @@ from duoptimum_hub_services import (
     prepare_sent_notification_log,          # boot-time self-heal of the sent-notification history table
     register_events,                        # attaches SQLAlchemy listeners for user rename/delete sync
     resolve_gpu_mode,                       # GPU detection: 0=off, otherwise autodetect (default)
+    resolve_gpu_vendor_provider,            # GPU vendor provider (driver/runtime/visibility-env); NVIDIA reference today, threaded to GPU policy + sidecar
+    NvidiaGpuProvider,                       # reference GPU vendor; boot fallback so vendor resolution never strands boot (mirrors the GpuPolicy.apply fallback)
     resolve_host_status_provider,           # reads c.JupyterHub.spawner_class -> instantiates its declared host-status provider (home-screen CPU/MEM/GPU aggregate)
     resolve_memory_quota_mb,                # calc: per-user memory warning threshold MB from host-RAM fraction
     schedule_startup_hydration,             # consolidated startup hydration: warms caches + image-update check + survivor favicon routes/policy, all deferred to the IOLoop
@@ -553,6 +555,15 @@ async def _admin_post_auth_hook(authenticator, handler, authentication):
 # It returns the sidecar's base URL with {hostname} filled in from the address it discovers
 # for the container it just created (its IP on the dedicated network) - the host is
 # obtained at runtime, never hardcoded - or '' when the sidecar isn't up.
+# GPU vendor provider (NVIDIA reference today) - resolved once at boot, threaded to
+# the per-user GPU policy (device request + visibility env, via ApplyContext) and to
+# the sidecar launcher (its container runtime). A second vendor = register it in
+# gpu_vendor._VENDORS and drive the selection; nothing else in the spawn path changes.
+# Falls back to NVIDIA (mirrors the GpuPolicy.apply fallback) so resolution can never
+# return None and crash boot - the subsystem degrades, never dies. The no-arg call is
+# total today (nvidia always registered); when selection becomes env/detection-driven,
+# decide the unknown-vendor policy here (fail-loud or GPU-off), not this silent default.
+GPU_VENDOR = resolve_gpu_vendor_provider() or NvidiaGpuProvider()
 _gpuinfo_url = (
     ensure_gpuinfo_sidecar(
         JUPYTERHUB_GPUINFO_NVIDIA_IMAGE, JUPYTERHUB_GPUINFO_NETWORK_NAME, JUPYTERHUB_GPUINFO_NVIDIA_URL,
@@ -561,6 +572,7 @@ _gpuinfo_url = (
         container_role_label_value=JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO,
         container_description_label_key=JUPYTERHUB_LABEL_CONTAINER_DESCRIPTION,  # hub.container.description key (env-sourced, not hardcoded in the sidecar code)
         container_description="GPU-info sidecar - GPU detection, utilisation and per-GPU processes",
+        gpu_runtime=GPU_VENDOR.runtime_name(),  # vendor's docker runtime (nvidia today); requested only if the host registers it
     )
     if JUPYTERHUB_GPU_ENABLED != 0 else ""
 )
@@ -832,6 +844,7 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     favicon_busy_target=branding['favicon_busy_target'],    # non-empty activates the favicon-busy CHP route; empty = JupyterLab default busy frames
     gpu_available=bool(gpu_enabled),                         # hardware present - required for per-group GPU grant
     gpu_uuid_by_index=GPU_UUID_BY_INDEX,                     # index->UUID for CUDA_VISIBLE_DEVICES
+    gpu_vendor=GPU_VENDOR,                                   # GPU vendor provider (device request + visibility env) threaded to the GPU policy
     reserved_env_var_names=RESERVED_ENV_VAR_NAMES,           # names groups cannot override
     reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,     # prefixes reserved for JupyterHub/platform
     compose_project=JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME,     # compose project label on spawned labs (defaults to the hub project; overridable to differ)

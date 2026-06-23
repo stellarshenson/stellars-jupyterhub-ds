@@ -89,6 +89,30 @@ class TestGpuApply:
         assert s.environment['ENABLE_GPU_SUPPORT'] == '0'
         assert s.environment['ENABLE_GPUSTAT'] == '0'
 
+    def test_delegates_to_vendor_provider(self):
+        # the stage uses the provider's device request + visibility env, not a
+        # hardcoded nvidia shape - proves the seam is live, not a fallback.
+        class _FakeVendor:
+            def runtime_name(self): return 'fakert'
+            def device_request(self, all_gpus, ids):
+                return {'Driver': 'fake', 'all': all_gpus, 'ids': list(ids)}
+            def visibility_env(self, access, all_gpus, ids, uuid_map):
+                return {'FAKE_VISIBLE': 'yes' if access else 'no'}
+        s = _apply('gpu', {'gpu_access': True, 'gpu_all': True, 'gpu_device_ids': []},
+                   actx=_actx(gpu_vendor=_FakeVendor()))
+        assert s.extra_host_config['device_requests'] == [{'Driver': 'fake', 'all': True, 'ids': []}]
+        assert s.environment['FAKE_VISIBLE'] == 'yes'
+        assert 'NVIDIA_VISIBLE_DEVICES' not in s.environment  # provider chose its own naming
+        assert s.environment['ENABLE_GPU_SUPPORT'] == '1'  # image-generic flags stay caller-side
+
+    def test_provider_none_value_pops_preexisting_env(self):
+        # the all-case provider returns CUDA_VISIBLE_DEVICES=None -> the stage must
+        # UNSET a stale value, not leave it.
+        s = FakeSpawner()
+        s.environment['CUDA_VISIBLE_DEVICES'] = 'stale'
+        _apply('gpu', {'gpu_access': True, 'gpu_all': True, 'gpu_device_ids': []}, spawner=s)
+        assert 'CUDA_VISIBLE_DEVICES' not in s.environment
+
 
 # ── docker ───────────────────────────────────────────────────────────────────
 

@@ -123,10 +123,11 @@ class _FakeNetworks:
 
 
 class _FakeClient:
-    def __init__(self, *, run_container, image_present=True, network_present=True):
+    def __init__(self, *, run_container, image_present=True, network_present=True, runtimes=None):
         self.containers = _FakeContainers(run_container)
         self.networks = _FakeNetworks(present=network_present)
         self._image_present = image_present
+        self._runtimes = runtimes or {}  # registered docker runtimes; default none (CPU host / mock)
 
     @property
     def images(self):
@@ -140,7 +141,7 @@ class _FakeClient:
         return _Images()
 
     def info(self):
-        return {"Runtimes": {}}  # no nvidia runtime registered (CPU host / mock)
+        return {"Runtimes": dict(self._runtimes)}
 
     def close(self):
         pass
@@ -239,6 +240,44 @@ def test_ensure_stamps_container_role_label_and_passes_no_env(monkeypatch):
     kw = client.containers.last_run_kwargs
     assert kw["labels"]["hub.container.role"] == "gpuinfo"
     assert "environment" not in kw
+
+
+def test_ensure_requests_vendor_runtime_when_registered(monkeypatch):
+    # gpu_runtime (the vendor provider's runtime, 'nvidia' today) is requested ONLY
+    # when the docker host registers it.
+    container = _Container(name="gpuinfo-nvidia", networks={"gpuinfo-net": {"IPAddress": "172.20.0.7"}})
+    client = _FakeClient(run_container=container, runtimes={"nvidia": {}})
+    _install_fake_docker(monkeypatch, client=client)
+    ensure_gpuinfo_sidecar(
+        "img:latest", "gpuinfo-net", "http://{hostname}:8000",
+        container_name="gpuinfo-nvidia", gpu_runtime="nvidia",
+    )
+    assert client.containers.last_run_kwargs["runtime"] == "nvidia"
+
+
+def test_ensure_omits_runtime_when_not_registered(monkeypatch):
+    # vendor runtime asked for but the host does not register it -> not requested
+    # (asking for an unregistered runtime would just fail the run).
+    container = _Container(name="gpuinfo-nvidia", networks={"gpuinfo-net": {"IPAddress": "172.20.0.7"}})
+    client = _FakeClient(run_container=container)  # no runtimes registered
+    _install_fake_docker(monkeypatch, client=client)
+    ensure_gpuinfo_sidecar(
+        "img:latest", "gpuinfo-net", "http://{hostname}:8000",
+        container_name="gpuinfo-nvidia", gpu_runtime="nvidia",
+    )
+    assert "runtime" not in client.containers.last_run_kwargs
+
+
+def test_ensure_omits_runtime_when_no_vendor(monkeypatch):
+    # no vendor runtime (gpu_runtime=None) -> never requested even if one is registered
+    container = _Container(name="gpuinfo-nvidia", networks={"gpuinfo-net": {"IPAddress": "172.20.0.7"}})
+    client = _FakeClient(run_container=container, runtimes={"nvidia": {}})
+    _install_fake_docker(monkeypatch, client=client)
+    ensure_gpuinfo_sidecar(
+        "img:latest", "gpuinfo-net", "http://{hostname}:8000",
+        container_name="gpuinfo-nvidia", gpu_runtime=None,
+    )
+    assert "runtime" not in client.containers.last_run_kwargs
 
 
 def test_ensure_stamps_container_description_label(monkeypatch):

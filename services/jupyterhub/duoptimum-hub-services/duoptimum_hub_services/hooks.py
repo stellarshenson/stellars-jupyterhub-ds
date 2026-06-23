@@ -36,6 +36,7 @@ def make_pre_spawn_hook(
     favicon_busy_target='',
     gpu_available=False,
     gpu_uuid_by_index=None,
+    gpu_vendor=None,
     reserved_env_var_names=frozenset(),
     reserved_env_var_prefixes=(),
     compose_project='',
@@ -66,6 +67,7 @@ def make_pre_spawn_hook(
     # Static apply context (per-spawn fields app/username are filled in the hook).
     base_actx = ApplyContext(
         gpu_uuid_by_index=gpu_uuid_by_index,
+        gpu_vendor=gpu_vendor,
         compose_project=compose_project,
         docker_proxy_socket_dir=docker_proxy_socket_dir,
         docker_proxy_volume_name=docker_proxy_volume_name,
