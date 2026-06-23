@@ -52,6 +52,7 @@ The home-screen host-status view is decoupled behind a `HostStatusProvider` asso
 - [x] **GPU capability gated** - GPU absent from `capabilities()` when GPU mode is off at boot (not merely reported unavailable)
   - log: 2026-06-22 criterion added
   - log: 2026-06-23 done; gated on `gpu_enabled` (`resolve_gpu_mode` guarantees `gpu_enabled` iff `gpu_list` non-empty); functional `test_activity_reports_host_capabilities` asserts gpu cap == platform GPU flag
+  - log: 2026-06-23 gpu regime: `test_host_capabilities_includes_gpu_when_live` asserts gpu in host_capabilities + GPU row renders when the sidecar is live
 - [x] **Handler delegates** - `activity.py` calls `provider.get_status()` for the host aggregate and keeps per-user server rows as-is
   - log: 2026-06-22 criterion added
   - log: 2026-06-23 done; functional `test_activity_reports_host_capabilities`; per-user rows untouched
@@ -67,6 +68,7 @@ The home-screen host-status view is decoupled behind a `HostStatusProvider` asso
 - [x] **Presence-gated render** - the Host Status panel renders CPU, memory and GPU rows independently, each only when present
   - log: 2026-06-22 criterion added
   - log: 2026-06-23 verified functional `test_panel_renders_only_capable_rows` (cpu-only -> CPU shown, Memory/GPU dropped)
+  - log: 2026-06-23 complement covered `test_panel_gpu_only_via_caps` (gpu regime: gpu-only -> GPU shown, CPU/Memory dropped)
 - [x] **Unchanged when full** - all three dimensions present and ok -> the live admin view is identical to before
   - log: 2026-06-22 criterion added
   - log: 2026-06-23 verified; `test_host_status` + `test_resource_bars` pass unchanged against the rebuilt image
@@ -97,6 +99,7 @@ The home-screen host-status view is decoupled behind a `HostStatusProvider` asso
 - [x] **Unit - provider** - tests for `DockerHostStatusProvider`: capabilities set, full status shape, each-dimension-degraded, GPU-gated-off
   - log: 2026-06-22 criterion added
   - log: 2026-06-23 done `test_host_status_provider.py` (12 tests); full unit suite 989 passed
+  - log: 2026-06-23 expanded: none/empty context defaults, GPU device live-sample merge + inventory-only-without-sample, resolve passes context (17 tests)
 - [x] **Unit - null provider** - a no-capability provider yields an empty status; handler emits no host aggregate
   - log: 2026-06-22 criterion added
   - log: 2026-06-23 done `test_resolve_none_when_spawner_declares_no_provider` + handler guard

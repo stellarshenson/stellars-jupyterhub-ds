@@ -124,6 +124,43 @@ def test_serializable(monkeypatch):
     json.dumps(p.get_status())  # raises if not serializable
 
 
+def test_none_context_defaults_gpu_off():
+    """No context -> GPU not a capability, no crash (a dumb/no-info spawner)."""
+    p = DockerHostStatusProvider(None)
+    assert p.capabilities() == {CPU, MEM}
+
+
+def test_empty_context_defaults_gpu_off():
+    p = DockerHostStatusProvider({})
+    assert GPU not in p.capabilities()
+
+
+def test_gpu_device_merges_live_sample(monkeypatch):
+    """A live sample is merged onto the inventory device by index."""
+    _patch_proc(monkeypatch)
+    util = {"0": {"utilization": 77, "memory_used_mb": 2048, "temperature_c": 55, "power_w": 200, "processes": [{"pid": 1}]}}
+    _patch_gpu_cache(monkeypatch, connected=True, util=util)
+    p = DockerHostStatusProvider({"gpu_enabled": True, "gpu_list": _ONE_GPU})
+    dev = p.get_status()[GPU]["devices"][0]
+    assert dev["utilization"] == 77
+    assert dev["memory_used_mb"] == 2048
+    assert dev["temperature_c"] == 55
+    assert dev["power_w"] == 200
+    assert dev["processes"] == [{"pid": 1}]
+
+
+def test_gpu_device_inventory_only_without_sample(monkeypatch):
+    """Connected but no per-index sample -> inventory fields only, no util keys."""
+    _patch_proc(monkeypatch)
+    _patch_gpu_cache(monkeypatch, connected=True, util={})
+    p = DockerHostStatusProvider({"gpu_enabled": True, "gpu_list": _ONE_GPU})
+    dev = p.get_status()[GPU]["devices"][0]
+    assert dev["name"] == "NVIDIA A100"
+    assert dev["uuid"] == "GPU-abc"
+    assert dev["memory_mb"] == 81920
+    assert "utilization" not in dev
+
+
 # ── resolve_host_status_provider ──────────────────────────────────────────────
 
 class _SpawnerWithProvider:
@@ -150,3 +187,15 @@ def test_resolve_imports_dotted_string():
         {"gpu_enabled": False},
     )
     assert isinstance(p, DockerHostStatusProvider)
+
+
+def test_resolve_passes_context_to_provider():
+    """The resolved provider reflects the boot context it was constructed with."""
+    p = resolve_host_status_provider(_SpawnerWithProvider, {"gpu_enabled": True, "gpu_list": _ONE_GPU})
+    assert p.capabilities() == {CPU, MEM, GPU}
+
+
+def test_resolve_none_context_ok():
+    p = resolve_host_status_provider(_SpawnerWithProvider, None)
+    assert isinstance(p, DockerHostStatusProvider)
+    assert p.capabilities() == {CPU, MEM}

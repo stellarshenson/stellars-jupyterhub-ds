@@ -87,3 +87,39 @@ def test_panel_hidden_when_no_capabilities(admin_portal):
     _route_host_capabilities(admin_portal.page, [])
     page = admin_portal.goto("/home", ready=".ant-layout")
     expect(_host_card(page)).to_have_count(0)
+
+
+@pytest.mark.gpu
+@pytest.mark.acc_crit(
+    "host-status-provider::GPU capability gated",
+    "host-status-provider::Handler delegates",
+)
+def test_host_capabilities_includes_gpu_when_live(admin_portal, base_url, admin_api):
+    # GPU regime: the provider advertises gpu in host_capabilities and the GPU row
+    # renders via the capability path.
+    page = admin_portal.goto("/home", ready=".doh-res-row")
+    if not _gpu_enabled(page):
+        pytest.skip("GPU not enabled on this stack (run the gpu regime / mock sidecar)")
+    caps = admin_api.get(f"{base_url}/hub/api/activity", timeout=30).json().get("host_capabilities")
+    assert isinstance(caps, list) and "gpu" in caps, f"gpu must be a capability when the platform has GPU: {caps}"
+    card = _host_card(page)
+    expect(card.locator(".doh-res-label", has_text="GPU")).to_have_count(1)
+
+
+@pytest.mark.gpu
+@pytest.mark.acc_crit(
+    "host-status-provider::Presence-gated render",
+    "host-status-provider::Frontend test",
+)
+def test_panel_gpu_only_via_caps(admin_portal):
+    # GPU regime: provider exposes GPU only -> the Host Status panel shows the GPU row
+    # and drops CPU and Memory (the complement of the cpu-only subset case).
+    page0 = admin_portal.goto("/home", ready=".doh-res-row")
+    if not _gpu_enabled(page0):
+        pytest.skip("GPU not enabled on this stack")
+    _route_host_capabilities(admin_portal.page, ["gpu"])
+    page = admin_portal.goto("/home", ready=".doh-res-row")
+    card = _host_card(page)
+    expect(card.locator(".doh-res-label", has_text="GPU")).to_have_count(1)
+    expect(card.locator(".doh-res-label", has_text="CPU")).to_have_count(0)
+    expect(card.locator(".doh-res-label", has_text="Memory")).to_have_count(0)
