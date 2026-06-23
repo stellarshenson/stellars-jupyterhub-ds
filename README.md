@@ -1,7 +1,7 @@
 # Stellars JupyterHub for Data Science Platform
 ![GitHub Actions](https://github.com/stellarshenson/stellars-jupyterhub-ds/actions/workflows/docker-build.yml/badge.svg)
-![Docker Image](https://img.shields.io/docker/image-size/stellars/duoptimumhub/latest?style=flat)
-![Docker Pulls](https://img.shields.io/docker/pulls/stellars/duoptimumhub?style=flat)
+![Docker Image](https://img.shields.io/docker/image-size/stellars/duoptimum-hub/latest?style=flat)
+![Docker Pulls](https://img.shields.io/docker/pulls/stellars/duoptimum-hub?style=flat)
 ![JupyterLab 4](https://img.shields.io/badge/JupyterLab-%20%20%20%204%20%20%20%20-orange?style=flat)
 [![Brought To You By KOLOMOLO](https://img.shields.io/badge/Brought%20To%20You%20By-KOLOMOLO-00ffff?style=flat)](https://kolomolo.com)
 [![Donate PayPal](https://img.shields.io/badge/Donate-PayPal-blue?style=flat)](https://www.paypal.com/donate/?hosted_button_id=B4KPBJDLLXTSA)
@@ -9,6 +9,9 @@
 Multi-user JupyterHub 4 deployment platform with data science stack, GPU support, and NativeAuthenticator. The platform spawns isolated JupyterLab environments per user using DockerSpawner, backed by the [stellars/stellars-jupyterlab-ds](https://hub.docker.com/r/stellars/stellars-jupyterlab-ds) image (from [stellars-jupyterlab-ds](https://github.com/stellarshenson/stellars-jupyterlab-ds) project).
 
 Despite the JupyterHub foundation, Duoptimum Hub now makes only very limited use of core JupyterHub - the spawner abstraction (DockerSpawner), the authenticator hook points (NativeAuthenticator), and the Configurable HTTP Proxy for request routing, sitting on the Hub's REST API and ORM. Everything above that thin core is its own: Duoptimum Hub introduces new user-management, group-policy, and server-management paradigms, a per-user security and Docker-access layer, and a number of other features documented below - all served through a React portal that replaces the stock JupyterHub UI.
+
+> [!WARNING]
+> **Docker image renamed since v4.0**: the hub image is now [`stellars/duoptimum-hub`](https://hub.docker.com/r/stellars/duoptimum-hub) (previously `stellars/duoptimumhub`), and the GPU-info sidecar is [`stellars/duoptimum-gpuinfo-nvidia`](https://hub.docker.com/r/stellars/duoptimum-gpuinfo-nvidia). Update any pinned `image:` references or `docker pull` commands - the old `stellars/duoptimumhub` name is no longer published.
 
 > [!TIP]
 > **Fastest way to spin up a deployment**: use the [Copier deployment template](https://github.com/stellarshenson/copier-stellars-jupyterhub-ds). One `copier copy` command answers a handful of questions and renders a working overlay (branding, hostname / TLS, admin user, optional CIFS) that clones this platform read-only - so your deployment stays upgradeable. See [Quickstart -> Copier](#copier-recommended).
@@ -519,10 +522,10 @@ services:
 
 ```yaml
 services:
-  duoptimumhub:
+  hub:
     labels:
-      - "traefik.http.middlewares.duoptimumhub-inflight.inflightreq.amount=400"
-      - "traefik.http.routers.duoptimumhub-rtr.middlewares=duoptimumhub-ratelimit,duoptimumhub-inflight"
+      - "traefik.http.middlewares.hub-inflight.inflightreq.amount=400"
+      - "traefik.http.routers.hub-rtr.middlewares=hub-alias-redirect,hub-ratelimit,hub-inflight"
 ```
 
 **Caveats**: this is L7 protection only - true volumetric L3/L4 DDoS (SYN floods, amplification) must be absorbed upstream (Cloudflare, ISP scrubbing); a single host cannot defend against it. For behavioural banning (credential stuffing, scanner detection, community blocklists), a CrowdSec sidecar with the Traefik bouncer plugin is the natural next step - it requires Traefik access logs, which are not currently enabled.
