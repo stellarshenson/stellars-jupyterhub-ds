@@ -65,6 +65,9 @@ EOF
 # ---- portal wheel ----------------------------------------------------------
 # Build the Duoptimum Hub portal wheel: the Python integration package plus the SPA
 # bundle built above, packaged together (UI shipped inside the wheel).
+# leave /web first: its source tree carries a duoptimum_hub_web/ dir that would
+# shadow the installed wheel on the smoke-test's python -c (cwd is on sys.path).
+WORKDIR /src
 COPY services/jupyterhub/duoptimum-hub-web/pyproject.toml services/jupyterhub/duoptimum-hub-web/README.md /src/duoptimum-hub-web/
 COPY services/jupyterhub/duoptimum-hub-web/duoptimum_hub_web /src/duoptimum-hub-web/duoptimum_hub_web
 RUN <<-EOF
