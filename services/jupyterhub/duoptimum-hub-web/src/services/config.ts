@@ -85,6 +85,10 @@ export const COL_HELP = {
   },
 }
 
+// Host-status GPU card name: show the full device name (starts "NVIDIA"),
+// truncated to this many leading words. Visual setting, same for everyone.
+export const GPU_NAME_MAX_WORDS = 4
+
 // UI animation timings (milliseconds) - tunable here without touching the
 // components or CSS. The TTL extend value drives the rAF bar-fill + count-up
 // hold timer; the glow ramp is threaded to global.css via `--doh-ttl-glow`.

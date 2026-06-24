@@ -6,7 +6,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { Button, Popover, Progress, Slider } from 'antd'
 import { Icon } from './Icon'
 import { fmtMinutes } from '../lib/format'
-import { ANIMATION, BAR_COLOR, TTL_COLOR } from '../services/config'
+import { ANIMATION, BAR_COLOR, GPU_NAME_MAX_WORDS, TTL_COLOR } from '../services/config'
 import { gpuSupported } from '../app/capabilities'
 import { useTheme } from '../theme/ThemeProvider'
 import { PALETTES } from '../theme/tokens'
@@ -103,15 +103,13 @@ export function GpuMeter({ gpus, devices }: { gpus: number[]; devices?: GpuDevic
 // real GPU inventory: one accent chip per physical device (index + short name).
 // Used when host GPU utilisation is not sampled - shows the true device count
 // without claiming a load. Memory total goes in the row value.
-// mini GPU name: drop vendor/brand boilerplate, keep the distinguishing model
-// ("NVIDIA GeForce RTX 5090" -> "5090", "NVIDIA RTX 5000 Ada Generation" ->
-// "5000 Ada"). Falls back to the raw name if stripping leaves nothing.
-function shortGpuName(name: string): string {
-  const s = name
-    .replace(/\b(NVIDIA|GeForce|RTX|GTX|Tesla|Quadro|Generation|Laptop GPU)\b/gi, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-  return s || name
+// GPU card name: keep the full device name (starts "NVIDIA"), truncated to the
+// first N words ("NVIDIA GeForce RTX 4090 Laptop GPU" -> "NVIDIA GeForce RTX
+// 4090" at N=4). Shorter names render whole; falls back to the raw name if the
+// split yields nothing.
+function shortGpuName(name: string, maxWords = GPU_NAME_MAX_WORDS): string {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  return words.length ? words.slice(0, maxWords).join(' ') : name
 }
 
 // multiline GPU tooltip as a plain newline-joined string for the native `title`

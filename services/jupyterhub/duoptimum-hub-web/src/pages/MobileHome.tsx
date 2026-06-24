@@ -14,7 +14,6 @@ import { useRole } from '../app/RoleContext'
 import { useServerLifecycle } from '../app/ServerLifecycle'
 import { useServerHero, useServers } from '../hooks/queries'
 import { extendSession } from '../services/ops'
-import { userServerUrl } from '../services/hub/client'
 
 const adminTag = { background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4, marginInlineStart: 6 }
 // mobile home is Home, so its sub-screens (Start, Manage volumes) return to Home
@@ -44,7 +43,8 @@ function MyServerCard() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 20 }}>
         {running ? (
           <>
-            <Button type="primary" block size="large" icon={<Icon name="play" size={15} filled />} disabled={busy} onClick={() => window.location.assign(userServerUrl(hero.user))}>Open Lab</Button>
+            {/* no Open-Lab on mobile: there is nowhere useful to go on a phone - the
+             * mobile surface is status + the lightweight switches, not a way into the lab */}
             <Button block size="large" icon={<Icon name="restart" size={16} />} disabled={busy} onClick={() => lifecycle.restart(hero.user)}>Restart</Button>
             <Button danger block size="large" icon={<Icon name="stop" size={14} filled />} disabled={busy} onClick={() => lifecycle.stop(hero.user)}>Stop</Button>
           </>

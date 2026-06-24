@@ -205,15 +205,23 @@ export function AppLayout() {
       {!isMobile && <SiderHandle collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />}
       <div style={{ maxWidth: 1320, margin: '0 auto', width: '100%' }}>
         <div className="doh-topbar">
-          <Breadcrumbs />
+          {/* mobile drops the sider (and the brand logo it carries), so the topbar
+           * shows the logo here instead. Everything else in the header is desktop
+           * chrome: on a phone the header is just logo + language + theme - nothing
+           * that steals the vertical space the status gauges and switches need. */}
+          {isMobile
+            ? <Link to="/home" title={hubName()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, paddingInline: 4 }}><img src={logoSrc} alt={hubName()} style={{ height: 28, width: 'auto', objectFit: 'contain', display: 'block' }} /></Link>
+            : <Breadcrumbs />}
           {/* header controls live top-right: side layout renders no ProLayout
            * header (Header returns null), so actionsRender would drop these in
            * the sider - keep them in this topbar row instead. Order: language,
-           * theme, then the stage badge rightmost. */}
+           * theme, connection (desktop only - mobile uses HubConnectionIndicator),
+           * stage badge. The stage badge stays on mobile: it is a critical env cue
+           * next to the mobile Stop/Restart controls (operator: env cue is critical). */}
           <div className="doh-header-actions" style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
             <LanguageControl />
             <ThemeControl />
-            <ConnectionStatusPill />
+            {!isMobile && <ConnectionStatusPill />}
             <StageBadge />
           </div>
         </div>
