@@ -13,7 +13,7 @@ import { ActivityMeter } from '../components/meters'
 import { ScopeFilterPills } from '../components/ScopeFilterPills'
 import { rowActions } from '../components/ServerRowActions'
 import { Icon } from '../components/Icon'
-import { Link, useNavigate, type NavigateFunction } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { timeAgoShort, exactDate } from '../lib/format'
 import { downloadCsv } from '../lib/download'
 import { useServers } from '../hooks/queries'
@@ -27,8 +27,6 @@ import { useServerLifecycle } from '../app/ServerLifecycle'
 import type { ServerRow, ServerStatus } from '../services/types'
 import { quotaColor } from '../services/hub/serverMetrics'
 import { COL_HELP } from '../services/config'
-
-type Lifecycle = ReturnType<typeof useServerLifecycle>
 
 // spawning sorts just under active (it is becoming active) and is counted in the
 // Active scope - consistent bucketing between the sort order and the scope pills
@@ -92,10 +90,11 @@ function ServerDetail({ row }: { row: ServerRow }) {
   )
 }
 
-// mobile servers view - a card list mirroring the old JupyterHub admin mobile
-// info (user + admin badge, server status, last activity) plus the row actions;
-// tapping a card opens the same detail drawer
-function MobileServerList({ rows, nav, lf, me, onDetail }: { rows: ServerRow[]; nav: NavigateFunction; lf: Lifecycle; me: string; onDetail: (r: ServerRow) => void }) {
+// mobile servers view - a READ-ONLY admin fleet glance: user (+ admin badge),
+// status, last activity, and a compact CPU / memory / activity readout. No row
+// actions: on a phone you control only your OWN server (from the Home card),
+// never someone else's; tapping a card opens the same read-only detail drawer.
+function MobileServerList({ rows, cpuMode, onDetail }: { rows: ServerRow[]; cpuMode: string; onDetail: (r: ServerRow) => void }) {
   if (!rows.length) return <div className="doh-muted" style={{ padding: '12px 4px' }}>No servers in scope</div>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -110,7 +109,13 @@ function MobileServerList({ rows, nav, lf, me, onDetail }: { rows: ServerRow[]; 
             </div>
             <StatusPill status={r.status} label={r.statusLabel} />
           </div>
-          <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>{rowActions(r, nav, lf, me, SERVERS_ORIGIN)}</div>
+          {/* read-only telemetry glance - the load picture an admin scans without
+           * tapping each card; null metrics (offline) render as a dash */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 10, fontSize: 12 }}>
+            <span className="doh-muted">CPU {r.cpu == null ? dash : <b className="doh-num" title={r.cpuTip} style={{ color: quotaColor(r.cpuQuotaPct) }}>{cpuMode === 'cores' ? r.cpu : (r.cpuAssignedPct ?? r.cpu)}%</b>}</span>
+            <span className="doh-muted">Mem {r.mem == null ? dash : <b className="doh-num" title={r.memTip} style={{ color: quotaColor(r.memQuotaPct) }}>{r.mem} GB</b>}</span>
+            <span className="doh-muted" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>Act <ActivityMeter value={r.activity} hours={r.activityHours} pct={r.activityPct} /></span>
+          </div>
         </Card>
       ))}
     </div>
@@ -288,18 +293,22 @@ export default function Servers() {
     <>
       <PageHeader
         title="Servers"
+        // Start All / Stop All act on everyone's servers - desktop only; mobile is a
+        // read-only fleet glance (you control only your own server, from the Home card)
         actions={
-          <>
-            <Button icon={<Icon name="play" size={14} />} disabled={!offlineUsers.length} onClick={startAll}>Start All</Button>
-            <Button danger icon={<Icon name="stop" size={14} filled />} disabled={!runningUsers.length} onClick={stopAll}>Stop All</Button>
-          </>
+          isMobile ? undefined : (
+            <>
+              <Button icon={<Icon name="play" size={14} />} disabled={!offlineUsers.length} onClick={startAll}>Start All</Button>
+              <Button danger icon={<Icon name="stop" size={14} filled />} disabled={!runningUsers.length} onClick={stopAll}>Stop All</Button>
+            </>
+          )
         }
       />
       {isMobile ? (
         <>
           <div style={{ marginBottom: 12 }}><ScopeFilterPills value={scope} onChange={setScope} scopes={scopes} /></div>
           <div style={{ marginBottom: 12 }}>{search}</div>
-          <MobileServerList rows={filtered} nav={navigate} lf={lifecycle} me={me} onDetail={setDetail} />
+          <MobileServerList rows={filtered} cpuMode={String(listCpuMode)} onDetail={setDetail} />
         </>
       ) : (
         <ProTable<ServerRow>
@@ -325,9 +334,12 @@ export default function Servers() {
       <Drawer
         open={!!detail}
         onClose={() => setDetail(null)}
-        width={440}
+        // full-width on a phone (the drawer is the only way to inspect a server on
+        // the read-only mobile Servers page); fixed 440 on desktop
+        width={isMobile ? '100%' : 440}
         title={detail ? `${detail.user} - activity report` : ''}
-        extra={detail ? <span onClick={(e) => e.stopPropagation()}>{rowActions(detail, navigate, lifecycle, me, SERVERS_ORIGIN)}</span> : null}
+        // desktop only: the mobile Servers page is read-only - own-server control lives on the Home card
+        extra={detail && !isMobile ? <span onClick={(e) => e.stopPropagation()}>{rowActions(detail, navigate, lifecycle, me, SERVERS_ORIGIN)}</span> : null}
       >
         {detail && <ServerDetail row={detail} />}
       </Drawer>
