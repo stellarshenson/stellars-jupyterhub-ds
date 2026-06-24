@@ -133,7 +133,7 @@ export const RADIUS = { sm: '4px', md: '6px', lg: '10px', full: '9999px' }
 export const TEXT = { xs: '12px', sm: '13px', base: '14px', lg: '16px', xl: '20px', xxl: '26px' }
 export const FONT = {
   sans: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-  mono: 'ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, monospace',
+  mono: '"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace',
 }
 
 export const SIDEBAR_W = 248

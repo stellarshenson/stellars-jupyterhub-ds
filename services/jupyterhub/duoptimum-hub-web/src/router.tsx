@@ -27,7 +27,6 @@ import SettingsReference from './pages/SettingsReference'
 import Tokens from './pages/Tokens'
 import Roles from './pages/Roles'
 import DesignSystem from './pages/DesignSystem'
-import DesignLanguage from './pages/DesignLanguage'
 
 // Runtime-derived from the hub-injected shell (window.jhdata.base_url), so one
 // build serves any base_url (/, /jupyterhub). Mock/dev falls back to BASE_URL.
@@ -64,7 +63,6 @@ export const router = createBrowserRouter(
         // their OWN server here; the backend endpoints enforce admin-or-self.
         { path: 'servers/:name/starting', handle: { crumb: 'Starting server' }, element: <Starting /> },
         { path: 'design-system', handle: { crumb: 'Design system' }, element: <DesignSystem /> },
-        { path: 'design-language', handle: { crumb: 'Design language' }, element: <DesignLanguage /> },
 
         // Admin-only surfaces. RequireAdmin bounces non-admins to /home before
         // any admin-only query mounts. Server-side enforcement is the real

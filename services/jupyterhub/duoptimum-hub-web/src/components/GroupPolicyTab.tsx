@@ -276,7 +276,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
   }
 
   return (
-    <div style={{ border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: '4px 16px' }}>
+    <div style={{ border: '1px solid var(--color-border-subtle)', borderRadius: 'var(--radius-lg)', padding: '4px 16px' }}>
       {/* Environment variables */}
       <Section icon="code" title="Environment Variables" on={on.env_vars ?? false} onToggle={toggle('env_vars')}>
         <div className="doh-pol-hint">Set in members' containers. On a name clash across groups, the highest-priority group wins.</div>
