@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme:dark;
+    --color-bg:#252b32; --color-bg-subtle:#2a313a; --color-surface:#303841; --color-surface-hover:#374049; --color-surface-active:#404b54; --color-surface-raised:#343d47; --color-overlay:rgba(15,18,22,.66);
+    --color-border-subtle:#363f49; --color-border:#404b54; --color-border-strong:#4d5a65;
+    --color-text:#c3c3c3; --color-text-muted:#a5a5a5; --color-text-subtle:#7d8791;
+    --color-accent:#21a8e4; --color-accent-hover:#46bcf0; --color-accent-active:#0e93cf; --color-accent-fg:#ffffff; --color-accent-soft:rgba(0,150,209,.14); --color-accent-ring:rgba(0,150,209,.45); --color-accent-2:#da8230; --color-accent-2-soft:rgba(218,130,48,.16);
+    --color-success:#3fb950; --color-success-fg:#0b1410; --color-success-soft:rgba(63,185,80,.15);
+    --color-warning:#da8230; --color-warning-fg:#1a1209; --color-warning-soft:rgba(218,130,48,.16);
+    --color-danger:#ef4444; --color-danger-fg:#1a0c0b; --color-danger-soft:rgba(239,68,68,.15);
+    --color-info:#0096d1; --color-info-fg:#06141a; --color-info-soft:rgba(0,150,209,.15);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.35); --shadow-md:0 6px 18px rgba(0,0,0,.4); --shadow-overlay:0 16px 48px rgba(0,0,0,.5);
+    --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--space-6:32px;--space-8:48px;
+    --radius-sm:4px;--radius-md:6px;--radius-lg:10px;--radius-full:9999px;
+    --text-xs:12px;--text-sm:13px;--text-base:14px;--text-lg:16px;--text-xl:20px;--text-2xl:26px;
+    --font-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --font-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+    --doh-green:var(--color-success); --doh-green-dim:color-mix(in srgb,var(--color-success) 45%,var(--color-surface)); --doh-green-bright:color-mix(in srgb,var(--color-success) 80%,var(--color-text));
+    --doh-cyan:var(--color-accent); --doh-cyan-dim:color-mix(in srgb,var(--color-accent) 45%,var(--color-surface)); --doh-cyan-bright:color-mix(in srgb,var(--color-accent) 80%,var(--color-text));
+    --doh-red:var(--color-danger); --doh-red-dim:color-mix(in srgb,var(--color-danger) 45%,var(--color-surface)); --doh-red-bright:color-mix(in srgb,var(--color-danger) 80%,var(--color-text));
+    --doh-orange:var(--color-warning); --doh-orange-dim:color-mix(in srgb,var(--color-warning) 45%,var(--color-surface)); --doh-orange-bright:color-mix(in srgb,var(--color-warning) 80%,var(--color-text));
+    --doh-gray:var(--color-text-subtle); --doh-gray-dim:color-mix(in srgb,var(--color-text-subtle) 45%,var(--color-surface)); --doh-gray-bright:color-mix(in srgb,var(--color-text-subtle) 80%,var(--color-text));
+    --doh-ttl-blue:color-mix(in srgb,var(--color-accent) 84%,black); --doh-ttl-red:color-mix(in srgb,var(--color-danger) 70%,var(--color-text-muted));
+  }
+  [data-theme="light"]{
+    color-scheme:light;
+    --color-bg:#f5f7fa; --color-bg-subtle:#eef1f5; --color-surface:#ffffff; --color-surface-hover:#f1f4f7; --color-surface-active:#e6ebf0; --color-surface-raised:#ffffff; --color-overlay:rgba(26,35,41,.38);
+    --color-border-subtle:#e7ecf1; --color-border:#d4dde3; --color-border-strong:#b7c4cc;
+    --color-text:#1a3540; --color-text-muted:#46606c; --color-text-subtle:#6c828d;
+    --color-accent:#06709c; --color-accent-hover:#0a82b8; --color-accent-active:#05607f; --color-accent-fg:#ffffff; --color-accent-soft:rgba(10,130,184,.10); --color-accent-ring:rgba(10,130,184,.35); --color-accent-2:#b5641b; --color-accent-2-soft:rgba(181,100,27,.12);
+    --color-success:#1a7f37; --color-success-fg:#ffffff; --color-success-soft:rgba(26,127,55,.12);
+    --color-warning:#9a6700; --color-warning-fg:#ffffff; --color-warning-soft:rgba(154,103,0,.12);
+    --color-danger:#d94851; --color-danger-fg:#ffffff; --color-danger-soft:rgba(217,72,81,.10);
+    --color-info:#0a82b8; --color-info-fg:#ffffff; --color-info-soft:rgba(10,130,184,.12);
+    --shadow-sm:0 1px 2px rgba(16,40,56,.08); --shadow-md:0 6px 18px rgba(16,40,56,.10); --shadow-overlay:0 16px 48px rgba(16,40,56,.18);
+  }
+  *{box-sizing:border-box;}
+  ::selection{background:var(--color-accent-ring);}
+  @keyframes doh-pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  @keyframes doh-pulse-calm{0%,100%{opacity:1;}50%{opacity:.6;}}
+  @keyframes doh-pulse-alert{0%,100%{opacity:1;}50%{opacity:.25;}}
+  @keyframes doh-ttl-glow{0%,100%{filter:drop-shadow(0 0 1px color-mix(in srgb,currentColor 60%,transparent));opacity:.85;}50%{filter:drop-shadow(0 0 5px currentColor) drop-shadow(0 0 9px color-mix(in srgb,currentColor 70%,transparent));opacity:1;}}
+  @keyframes doh-ttl-glow-soft{0%,100%{filter:drop-shadow(0 0 0 transparent);}50%{filter:drop-shadow(0 0 3px color-mix(in srgb,currentColor 55%,transparent));}}
+  @keyframes doh-ttl-boost-bar{0%{width:8%;filter:brightness(1);box-shadow:0 0 0 transparent;}8.3%{width:46%;filter:brightness(1.55) saturate(1.25);box-shadow:0 0 11px 1px color-mix(in srgb,var(--color-accent) 80%,transparent);}91.7%{width:46%;filter:brightness(1.3) saturate(1.15);box-shadow:0 0 8px 1px color-mix(in srgb,var(--color-accent) 60%,transparent);}100%{width:8%;filter:brightness(1);box-shadow:0 0 0 transparent;}}
+  @keyframes doh-ttl-boost-num{0%{filter:blur(0);opacity:1;transform:translateY(0) scale(1);}45%{filter:blur(0);opacity:1;transform:translateY(0) scale(1);}72%{filter:blur(1.4px);opacity:.85;transform:translateY(1px) scale(.99);}90%{filter:blur(.5px);opacity:1;transform:translateY(0) scale(1);}100%{filter:blur(0);opacity:1;transform:translateY(0) scale(1);}}
+  @keyframes doh-ttl-boost-clock{0%{filter:drop-shadow(0 0 0 transparent);}8.3%{filter:drop-shadow(0 0 6px currentColor) drop-shadow(0 0 10px color-mix(in srgb,currentColor 70%,transparent));}91.7%{filter:drop-shadow(0 0 4px color-mix(in srgb,currentColor 80%,transparent));}100%{filter:drop-shadow(0 0 0 transparent);}}
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--color-text) 18%,transparent);border-radius:9999px;border:2px solid transparent;background-clip:padding-box;}
+  ::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--color-text) 32%,transparent);}
+</style>
+</helmet>
+<div ref="{{ rootRef }}" data-theme="{{ theme }}" style="min-height:100vh;display:flex;background:var(--color-bg);color:var(--color-text);font-family:var(--font-sans);font-size:14px;line-height:1.5;">
+
+  <aside style="width:248px;flex:none;position:sticky;top:0;align-self:flex-start;height:100vh;display:flex;flex-direction:column;background:var(--color-bg-subtle);border-right:1px solid var(--color-border-subtle);">
+    <div style="height:64px;flex:none;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--color-border-subtle);">
+      <div style="width:28px;height:28px;border-radius:8px;background:var(--color-accent);display:grid;place-items:center;color:#fff;font-weight:800;font-size:15px;letter-spacing:-.5px;">D</div>
+      <div style="line-height:1.15;">
+        <div style="font-weight:650;letter-spacing:.2px;color:var(--color-text);">Duoptimum Hub</div>
+        <div style="font-size:11px;color:var(--color-text-subtle);">stellars-tech.eu</div>
+      </div>
+    </div>
+    <nav style="flex:1;overflow:auto;padding:12px 10px;display:flex;flex-direction:column;gap:2px;">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;color:var(--color-text-muted);font-size:13px;cursor:pointer;" style-hover="background:var(--color-surface-hover);color:var(--color-text);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"></path></svg>Overview</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;color:var(--color-text-muted);font-size:13px;cursor:pointer;" style-hover="background:var(--color-surface-hover);color:var(--color-text);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v6H4zM4 13h16v6H4z M8 8h.01M8 16h.01"></path></svg>Servers</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;color:var(--color-text-muted);font-size:13px;cursor:pointer;" style-hover="background:var(--color-surface-hover);color:var(--color-text);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M16 19v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 19v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11"></path></svg>Users</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;color:var(--color-text-muted);font-size:13px;cursor:pointer;" style-hover="background:var(--color-surface-hover);color:var(--color-text);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20v-2a4 4 0 0 0-3-3.87M5 20v-2a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2M10 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M17 11a3 3 0 1 0-2-5.2"></path></svg>Groups</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;color:var(--color-text-muted);font-size:13px;cursor:pointer;" style-hover="background:var(--color-surface-hover);color:var(--color-text);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 8-8 11-4.5-3-8-6-8-11V5z M9 12l2 2 4-4"></path></svg>Policies</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;color:var(--color-text-muted);font-size:13px;cursor:pointer;" style-hover="background:var(--color-surface-hover);color:var(--color-text);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>Activity</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;color:var(--color-text-muted);font-size:13px;cursor:pointer;" style-hover="background:var(--color-surface-hover);color:var(--color-text);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82z"></path></svg>Settings</div>
+      <div style="margin:12px 10px 6px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--color-text-subtle);">Reference</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;background:var(--color-accent-soft);color:var(--color-accent);font-size:13px;font-weight:600;cursor:pointer;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m18 16 4-4-4-4M6 8l-4 4 4 4M14.5 4l-5 16"></path></svg>Design language</div>
+    </nav>
+    <div style="flex:none;display:flex;align-items:center;gap:12px;padding:12px;border-top:1px solid var(--color-border-subtle);">
+      <div style="width:30px;height:30px;border-radius:50%;background:var(--color-surface-active);display:grid;place-items:center;color:var(--color-text-muted);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8"></path></svg></div>
+      <div style="flex:1;min-width:0;line-height:1.2;"><div style="font-size:13px;color:var(--color-text);">admin</div><div style="font-size:11px;color:var(--color-text-subtle);">Administrator</div></div>
+      <div style="display:inline-flex;gap:2px;padding:2px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:6px;">
+        <button data-theme-btn="light" onClick="{{ onTheme }}" title="Light" style="width:26px;height:26px;display:inline-grid;place-items:center;padding:0;border:0;background:transparent;border-radius:4px;color:var(--color-text-subtle);cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"></path></svg></button>
+        <button data-theme-btn="dark" onClick="{{ onTheme }}" title="Dark" style="width:26px;height:26px;display:inline-grid;place-items:center;padding:0;border:0;background:transparent;border-radius:4px;color:var(--color-text-subtle);cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg></button>
+      </div>
+    </div>
+  </aside>
+
+  <main style="flex:1;min-width:0;padding:0 32px 72px;">
+    <div style="display:flex;align-items:center;height:64px;margin-bottom:24px;border-bottom:1px solid var(--color-border-subtle);position:sticky;top:0;background:var(--color-bg);z-index:5;">
+      <div style="font-size:13px;color:var(--color-text-subtle);">Stellars <span style="margin:0 6px;opacity:.6;">/</span> <span style="color:var(--color-text);">Design language</span></div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:12px;">
+        <span style="display:inline-flex;align-items:center;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border:1px solid var(--color-success);color:var(--color-success);border-radius:4px;line-height:1.6;">DEV</span>
+        <button data-conn-toggle onClick="{{ onConn }}" title="Click to toggle connection state" style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;letter-spacing:.02em;padding:1px 9px;border:1px solid currentColor;border-radius:4px;line-height:1.6;background:transparent;cursor:pointer;font-family:inherit;color:var(--color-success);">
+          <span data-conn-diode style="position:relative;width:8px;height:8px;border-radius:50%;background:currentColor;animation:doh-pulse-calm 3.6s ease-in-out infinite;"><span style="position:absolute;inset:0;border-radius:50%;box-shadow:0 0 4px 2px color-mix(in srgb,currentColor 50%,transparent);"></span></span>
+          <span data-conn-label>Connected</span>
+        </button>
+      </div>
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <h1 style="font-size:26px;font-weight:650;margin:0 0 4px;color:var(--color-text);letter-spacing:-.2px;">Design language</h1>
+      <div style="color:var(--color-text-subtle);font-size:14px;">Every token, pill, control and widget on one page — check the system in both themes.</div>
+    </div>
+
+    <div style="display:flex;gap:8px;padding:10px 14px;border:1px dashed var(--color-border-strong);border-radius:6px;color:var(--color-text-muted);font-size:12px;margin-bottom:16px;">
+      <span><b style="color:var(--color-text-subtle);font-weight:600;">Unlisted:</b> reachable only by URL (<code style="font-family:var(--font-mono);">/hub/design-language</code>), not part of the product. The JupyterHub metaphors — pills, meters, bars — are custom and themed by the same <code style="font-family:var(--font-mono);">--color-*</code> tokens that carry the antd surface, so a theme flip restyles everything at once.</span>
+    </div>
+
+    <!-- ============ COLOUR TOKENS ============ -->
+    <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Colour tokens</div>
+      <div style="padding:6px 24px 18px;">
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Accent</div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;">
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-accent);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">accent</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-accent-soft);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">accent-soft</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-accent-ring);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">accent-ring</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-accent-2);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">accent-2</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-accent-2-soft);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">accent-2-soft</div></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">State</div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;">
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-success);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">success</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-success-soft);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">success-soft</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-warning);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">warning</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-warning-soft);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">warning-soft</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-danger);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">danger</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-danger-soft);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">danger-soft</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-info);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">info</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-info-soft);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">info-soft</div></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Surface</div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;">
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-bg);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">bg</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-bg-subtle);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">bg-subtle</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-surface);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">surface</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-surface-hover);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">surface-hover</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-surface-active);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">surface-active</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-surface-raised);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">surface-raised</div></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Border + text</div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;">
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-border-subtle);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">border-subtle</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-border);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">border</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-border-strong);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">border-strong</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-text);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">text</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-text-muted);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">text-muted</div></div>
+            <div style="width:112px;"><div style="height:44px;border-radius:8px;background:var(--color-text-subtle);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">text-subtle</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ TYPE + SCALES ============ -->
+    <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Type, scale &amp; normal text</div>
+      <div style="padding:6px 24px 18px;">
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Sans (UI)</div>
+          <div style="font-family:var(--font-sans);"><span style="font-size:26px;font-weight:650;">Aa</span> <span style="color:var(--color-text-muted);margin-left:10px;">system-ui — the interface face</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Mono (data / IDs)</div>
+          <div style="font-family:var(--font-mono);"><span style="font-size:24px;font-weight:600;">0123</span> <span style="color:var(--color-text-muted);margin-left:10px;font-size:13px;">JetBrains Mono · tabular-nums</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:baseline;padding:14px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Type scale</div>
+          <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:baseline;">
+            <span style="font-size:12px;color:var(--color-text-muted);">12 xs</span>
+            <span style="font-size:13px;color:var(--color-text-muted);">13 sm</span>
+            <span style="font-size:14px;">14 base</span>
+            <span style="font-size:16px;">16 lg</span>
+            <span style="font-size:20px;">20 xl</span>
+            <span style="font-size:26px;font-weight:650;">26 2xl</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:14px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Radius &amp; spacing</div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
+            <div style="width:46px;height:34px;background:var(--color-accent-soft);border:1px solid var(--color-accent);border-radius:4px;"></div>
+            <div style="width:46px;height:34px;background:var(--color-accent-soft);border:1px solid var(--color-accent);border-radius:6px;"></div>
+            <div style="width:46px;height:34px;background:var(--color-accent-soft);border:1px solid var(--color-accent);border-radius:10px;"></div>
+            <div style="width:46px;height:34px;background:var(--color-accent-soft);border:1px solid var(--color-accent);border-radius:9999px;"></div>
+            <span style="color:var(--color-text-subtle);font-size:12px;font-family:var(--font-mono);">4 · 6 · 10 · full</span>
+            <span style="margin-left:8px;color:var(--color-text-subtle);font-size:12px;font-family:var(--font-mono);">space 4·8·12·16·24·32·48</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Text colour taxonomy</div>
+          <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;">
+            <span style="color:var(--color-text);">neutral</span>
+            <span style="color:var(--color-accent);">link</span>
+            <span style="color:var(--color-success);">success</span>
+            <span style="color:var(--color-warning);">warning</span>
+            <span style="color:var(--color-danger);">dangerous</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ NAMED PALETTE ============ -->
+    <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Named palette — dim / normal / bright</div>
+      <div style="padding:6px 24px 18px;">
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:11px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">green <span style="color:var(--color-text-subtle);opacity:.7;">(success)</span></div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;">
+            <div style="width:112px;"><div style="height:40px;border-radius:8px;background:var(--doh-green-dim);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">dim</div></div>
+            <div style="width:112px;"><div style="height:40px;border-radius:8px;background:var(--doh-green);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">normal</div></div>
+            <div style="width:112px;"><div style="height:40px;border-radius:8px;background:var(--doh-green-bright);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">bright</div></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:11px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">cyan <span style="color:var(--color-text-subtle);opacity:.7;">(accent / blue)</span></div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;">
+            <div style="width:112px;"><div style="height:40px;border-radius:8px;background:var(--doh-cyan-dim);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">dim</div></div>
+            <div style="width:112px;"><div style="height:40px;border-radius:8px;background:var(--doh-cyan);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">normal</div></div>
+            <div style="width:112px;"><div style="height:40px;border-radius:8px;background:var(--doh-cyan-bright);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">bright</div></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:11px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">red <span style="color:var(--color-text-subtle);opacity:.7;">(danger)</span></div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;">
+            <div style="width:112px;"><div style="height:40px;border-radius:8px;background:var(--doh-red-dim);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">dim</div></div>
+            <div style="width:112px;"><div style="height:40px;border-radius:8px;background:var(--doh-red);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">normal</div></div>
+            <div style="width:112px;"><div style="height:40px;border-radius:8px;background:var(--doh-red-bright);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">bright</div></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:11px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">orange <span style="color:var(--color-text-subtle);opacity:.7;">(warning)</span></div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;">
+            <div style="width:112px;"><div style="height:40px;border-radius:8px;background:var(--doh-orange-dim);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">dim</div></div>
+            <div style="width:112px;"><div style="height:40px;border-radius:8px;background:var(--doh-orange);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">normal</div></div>
+            <div style="width:112px;"><div style="height:40px;border-radius:8px;background:var(--doh-orange-bright);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">bright</div></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:11px 0;">
+          <div style="color:var(--color-text-subtle);font-size:13px;">gray <span style="color:var(--color-text-subtle);opacity:.7;">(text-subtle)</span></div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;">
+            <div style="width:112px;"><div style="height:40px;border-radius:8px;background:var(--doh-gray-dim);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">dim</div></div>
+            <div style="width:112px;"><div style="height:40px;border-radius:8px;background:var(--doh-gray);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">normal</div></div>
+            <div style="width:112px;"><div style="height:40px;border-radius:8px;background:var(--doh-gray-bright);border:1px solid var(--color-border-subtle);"></div><div style="font-size:11px;margin-top:5px;color:var(--color-text-muted);">bright</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ BUTTONS ============ -->
+    <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Action buttons</div>
+      <div style="padding:6px 24px 18px;">
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">page (primary / secondary / danger / disabled)</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <button style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 15px;border-radius:6px;border:1px solid var(--color-accent);background:var(--color-accent);color:#fff;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;" style-hover="background:var(--color-accent-hover);border-color:var(--color-accent-hover);">Save</button>
+            <button style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 15px;border-radius:6px;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;" style-hover="border-color:var(--color-accent);color:var(--color-accent);">Cancel</button>
+            <button style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 15px;border-radius:6px;border:1px solid var(--color-danger);background:var(--color-danger);color:#fff;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;">Remove user</button>
+            <button disabled style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 15px;border-radius:6px;border:1px solid var(--color-border);background:var(--color-bg-subtle);color:var(--color-text-subtle);font-size:14px;font-weight:500;cursor:not-allowed;font-family:inherit;">Save</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">with icon</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <button style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 15px;border-radius:6px;border:1px solid var(--color-accent);background:var(--color-accent);color:#fff;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="color-mix(in srgb,currentColor,black 55%)" stroke-width="1" stroke-linejoin="round"><path d="M5 3l14 9-14 9z"></path></svg>Open lab</button>
+            <button style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 15px;border-radius:6px;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"></path></svg>Restart</button>
+            <button style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 15px;border-radius:6px;border:1px solid var(--color-danger);background:var(--color-danger);color:#fff;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="color-mix(in srgb,currentColor,black 55%)" stroke-width="1" stroke-linejoin="round"><path d="M6 6h12v12H6z"></path></svg>Stop</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">list (small)</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <button style="display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:6px;border:1px solid var(--color-accent);background:var(--color-accent);color:#fff;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;">Authorize</button>
+            <button style="display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:6px;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;">Reset samples</button>
+            <button style="display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:6px;border:1px solid var(--color-danger);background:transparent;color:var(--color-danger);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;">Discard</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">action icons (tones)</div>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
+              <span style="width:96px;flex:none;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--color-text-subtle);">Standalone<br><span style="text-transform:none;letter-spacing:0;opacity:.75;">filled</span></span>
+              <button title="primary — go-to" style="width:30px;height:30px;display:inline-grid;place-items:center;border-radius:6px;border:1px solid var(--color-border-subtle);background:transparent;color:var(--color-accent);cursor:pointer;" style-hover="background:var(--color-surface-hover);"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="color-mix(in srgb,currentColor,black 55%)" stroke-width="1" stroke-linejoin="round"><path d="M5 3l14 9-14 9z"></path></svg></button>
+              <button title="secondary — neutral" style="width:30px;height:30px;display:inline-grid;place-items:center;border-radius:6px;border:1px solid var(--color-border-subtle);background:transparent;color:var(--color-text-muted);cursor:pointer;" style-hover="background:var(--color-surface-hover);"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M5.45 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.9A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.1z"></path><path fill="none" stroke="color-mix(in srgb,currentColor,black 60%)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M22 12H2M6 16h.01M10 16h.01"></path></svg></button>
+              <button title="danger — destructive" style="width:30px;height:30px;display:inline-grid;place-items:center;border-radius:6px;border:1px solid var(--color-border-subtle);background:transparent;color:var(--color-danger);cursor:pointer;" style-hover="background:var(--color-surface-hover);"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="color-mix(in srgb,currentColor,black 55%)" stroke-width="1" stroke-linejoin="round"><path d="M6 6h12v12H6z"></path></svg></button>
+              <button title="warning — caution" style="width:30px;height:30px;display:inline-grid;place-items:center;border-radius:6px;border:1px solid var(--color-border-subtle);background:transparent;color:var(--color-warning);cursor:pointer;" style-hover="background:var(--color-surface-hover);"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2.6a1.7 1.7 0 0 1 1.48.86l8.1 14.02A1.7 1.7 0 0 1 20.1 20H3.9a1.7 1.7 0 0 1-1.48-2.52l8.1-14.02A1.7 1.7 0 0 1 12 2.6zM11 9h2v5h-2V9zm0 7h2v2h-2v-2z"></path></svg></button>
+            </div>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
+              <span style="width:96px;flex:none;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--color-text-subtle);">In-list<br><span style="text-transform:none;letter-spacing:0;opacity:.75;">stroke only</span></span>
+              <button title="primary — go-to" style="width:30px;height:30px;display:inline-grid;place-items:center;border-radius:6px;border:1px solid var(--color-border-subtle);background:transparent;color:var(--color-accent);cursor:pointer;" style-hover="background:var(--color-surface-hover);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l13 8-13 8z"></path></svg></button>
+              <button title="secondary — neutral" style="width:30px;height:30px;display:inline-grid;place-items:center;border-radius:6px;border:1px solid var(--color-border-subtle);background:transparent;color:var(--color-text-muted);cursor:pointer;" style-hover="background:var(--color-surface-hover);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12H2M5.45 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.9A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.1z M6 16h.01M10 16h.01"></path></svg></button>
+              <button title="danger — destructive" style="width:30px;height:30px;display:inline-grid;place-items:center;border-radius:6px;border:1px solid var(--color-border-subtle);background:transparent;color:var(--color-danger);cursor:pointer;" style-hover="background:var(--color-surface-hover);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6h12v12H6z"></path></svg></button>
+              <button title="warning — caution" style="width:30px;height:30px;display:inline-grid;place-items:center;border-radius:6px;border:1px solid var(--color-border-subtle);background:transparent;color:var(--color-warning);cursor:pointer;" style-hover="background:var(--color-surface-hover);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg></button>
+              <span style="width:1px;height:22px;background:var(--color-border);margin:0 2px;"></span>
+              <button title="ghost / text" style="height:30px;padding:0 12px;display:inline-flex;align-items:center;gap:6px;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--color-accent);font-size:14px;cursor:pointer;font-family:inherit;" style-hover="background:var(--color-accent-soft);">View all</button>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;padding:10px 14px;border:1px dashed var(--color-border-strong);border-radius:6px;color:var(--color-text-muted);font-size:12px;margin-top:8px;">
+          <span><b style="color:var(--color-text-subtle);font-weight:600;">Icons:</b> wireframe by default, filled on demand. Tones — primary (cyan, go-to), secondary (gray, neutral), dangerous (red, destructive), warning (orange, caution). List icons stay wireframe and fill only for emphasis; button icons use the filled glyph when one exists.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PILLS, TAGS, CHIPS ============ -->
+    <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Pills, tags &amp; chips</div>
+      <div style="padding:6px 24px 18px;">
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Status pills (lifecycle)</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:4px;line-height:1.5;background:var(--color-success-soft);color:var(--color-success);"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-success);box-shadow:0 0 0 3px var(--color-success-soft);"></span>active</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:4px;line-height:1.5;background:var(--color-warning-soft);color:var(--color-warning);"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-warning);"></span>idle</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:4px;line-height:1.5;background:var(--color-info-soft);color:var(--color-info);"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-info);animation:doh-pulse 1.2s ease-in-out infinite;"></span>spawning</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:4px;line-height:1.5;background:var(--color-bg-subtle);color:var(--color-text-subtle);"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-text-subtle);"></span>offline</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:4px;line-height:1.5;background:var(--color-danger-soft);color:var(--color-danger);"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-danger);"></span>error</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Notification pills</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:4px;line-height:1.5;background:var(--color-success-soft);color:var(--color-success);"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-success);"></span>success</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:4px;line-height:1.5;background:var(--color-warning-soft);color:var(--color-warning);"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-warning);"></span>warning</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:4px;line-height:1.5;background:var(--color-info-soft);color:var(--color-info);"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-info);"></span>info</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:4px;line-height:1.5;background:var(--color-bg-subtle);color:var(--color-text-subtle);"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-text-subtle);"></span>passive</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:4px;line-height:1.5;background:var(--color-danger-soft);color:var(--color-danger);"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-danger);"></span>dangerous</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:4px;line-height:1.5;background:var(--color-info-soft);color:var(--color-info);"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-info);animation:doh-pulse 1.2s ease-in-out infinite;"></span>in-progress</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Tags</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <span style="font-size:12px;padding:1px 9px;border-radius:4px;background:var(--color-accent-soft);color:var(--color-accent);">accent</span>
+            <span style="font-size:12px;padding:1px 9px;border-radius:4px;background:var(--color-success-soft);color:var(--color-success);">ok</span>
+            <span style="font-size:12px;padding:1px 9px;border-radius:4px;background:var(--color-warning-soft);color:var(--color-warning);">warn</span>
+            <span style="font-size:12px;padding:1px 9px;border-radius:4px;background:var(--color-danger-soft);color:var(--color-danger);">danger</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Capped chips (+N)</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+            <span style="font-size:12px;padding:1px 9px;border-radius:4px;background:var(--color-bg-subtle);color:var(--color-text-muted);border:1px solid var(--color-border-subtle);">research</span>
+            <span style="font-size:12px;padding:1px 9px;border-radius:4px;background:var(--color-bg-subtle);color:var(--color-text-muted);border:1px solid var(--color-border-subtle);">data-science</span>
+            <span style="font-size:12px;padding:1px 9px;border-radius:4px;background:var(--color-bg-subtle);color:var(--color-text-muted);border:1px solid var(--color-border-subtle);">gpu</span>
+            <span style="font-size:12px;padding:1px 9px;border-radius:4px;background:transparent;color:var(--color-text-subtle);border:1px dashed var(--color-border);">+3</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Scope filter pills (dim → lit)</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <span data-scope="active" onClick="{{ onScope }}" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:4px;line-height:1.5;cursor:pointer;background:var(--color-success-soft);color:var(--color-success);"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-success);"></span>Active 18</span>
+            <span data-scope="idle" onClick="{{ onScope }}" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:4px;line-height:1.5;cursor:pointer;background:var(--color-warning-soft);color:var(--color-warning);"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-warning);"></span>Idle 4</span>
+            <span data-scope="offline" onClick="{{ onScope }}" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:4px;line-height:1.5;cursor:pointer;background:var(--color-bg-subtle);color:var(--color-text-subtle);"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-text-subtle);"></span>Offline 109</span>
+            <span data-scope="all" onClick="{{ onScope }}" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:4px;line-height:1.5;cursor:pointer;background:var(--color-accent-soft);color:var(--color-accent);"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-accent);"></span>All 131</span>
+            <span style="color:var(--color-text-subtle);font-size:12px;margin-left:4px;">— click to select; active lights with an accent ring</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CONNECTION DIODE ============ -->
+    <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Connection status — pulsing diode</div>
+      <div style="padding:14px 24px 18px;">
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
+          <span style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;padding:1px 9px;border:1px solid currentColor;border-radius:4px;line-height:1.6;color:var(--color-success);">
+            <span style="position:relative;width:8px;height:8px;border-radius:50%;background:currentColor;animation:doh-pulse-calm 3.6s ease-in-out infinite;"><span style="position:absolute;inset:0;border-radius:50%;box-shadow:0 0 4px 2px color-mix(in srgb,currentColor 50%,transparent);"></span></span>Connected
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;padding:1px 9px;border:1px solid color-mix(in srgb,var(--color-warning) 55%,transparent);border-radius:4px;line-height:1.6;color:var(--color-warning);background:color-mix(in srgb,var(--color-warning) 14%,transparent);">
+            <span style="position:relative;width:8px;height:8px;border-radius:50%;background:currentColor;animation:doh-pulse-alert 1.2s ease-in-out infinite;"><span style="position:absolute;inset:0;border-radius:50%;box-shadow:0 0 4px 2px color-mix(in srgb,currentColor 50%,transparent);"></span></span>Not responding · 2m
+          </span>
+        </div>
+        <div style="display:flex;gap:8px;padding:10px 14px;border:1px dashed var(--color-border-strong);border-radius:6px;color:var(--color-text-muted);font-size:12px;margin-top:14px;">
+          <span><b style="color:var(--color-text-subtle);font-weight:600;">Diode:</b> the core dot and its halo blink together with a single opacity fade — no scaling, no layout shift. Connected fades gently and slowly (subtle, 3.6s); Not responding fades hard and 3× faster (1.2s), the same cadence as the in-progress pill. Honours <code style="font-family:var(--font-mono);">prefers-reduced-motion</code> with a steady halo.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ METERS, BARS, WIDGETS ============ -->
+    <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Meters, bars &amp; widgets</div>
+      <div style="padding:6px 24px 18px;">
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Activity meter (high / mid / low)</div>
+          <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center;">
+            <span style="display:inline-flex;gap:2px;" title="96% of the daily activity target"><i style="display:block;width:4px;height:12px;border-radius:1px;background:var(--color-success);"></i><i style="display:block;width:4px;height:12px;border-radius:1px;background:var(--color-success);"></i><i style="display:block;width:4px;height:12px;border-radius:1px;background:var(--color-success);"></i><i style="display:block;width:4px;height:12px;border-radius:1px;background:var(--color-success);"></i><i style="display:block;width:4px;height:12px;border-radius:1px;background:var(--color-success);"></i></span>
+            <span style="display:inline-flex;gap:2px;" title="45%"><i style="display:block;width:4px;height:12px;border-radius:1px;background:var(--color-warning);"></i><i style="display:block;width:4px;height:12px;border-radius:1px;background:var(--color-warning);"></i><i style="display:block;width:4px;height:12px;border-radius:1px;background:var(--color-border-strong);"></i><i style="display:block;width:4px;height:12px;border-radius:1px;background:var(--color-border-strong);"></i><i style="display:block;width:4px;height:12px;border-radius:1px;background:var(--color-border-strong);"></i></span>
+            <span style="display:inline-flex;gap:2px;" title="12%"><i style="display:block;width:4px;height:12px;border-radius:1px;background:var(--doh-red-dim);"></i><i style="display:block;width:4px;height:12px;border-radius:1px;background:var(--color-border-strong);"></i><i style="display:block;width:4px;height:12px;border-radius:1px;background:var(--color-border-strong);"></i><i style="display:block;width:4px;height:12px;border-radius:1px;background:var(--color-border-strong);"></i><i style="display:block;width:4px;height:12px;border-radius:1px;background:var(--color-border-strong);"></i></span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Spark (stacked)</div>
+          <div style="display:flex;height:6px;border-radius:9999px;overflow:hidden;background:var(--color-bg-subtle);width:220px;">
+            <span style="display:block;height:100%;width:30%;background:var(--color-success);"></span>
+            <span style="display:block;height:100%;width:15%;border-radius:0 9999px 9999px 0;background:var(--color-warning);"></span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Resource bars (calm → warn → danger)</div>
+          <div style="display:flex;flex-direction:column;gap:12px;width:340px;">
+            <div style="display:flex;align-items:center;gap:12px;font-size:13px;"><span style="width:64px;color:var(--color-text-muted);">CPU</span><span style="flex:1;height:8px;border-radius:9999px;background:var(--color-bg-subtle);overflow:hidden;"><i style="display:block;height:100%;width:41%;border-radius:9999px;background:var(--color-accent);"></i></span><span style="width:84px;text-align:right;color:var(--color-text-muted);font-variant-numeric:tabular-nums;">41%</span></div>
+            <div style="display:flex;align-items:center;gap:12px;font-size:13px;"><span style="width:64px;color:var(--color-text-muted);">Memory</span><span style="flex:1;height:8px;border-radius:9999px;background:var(--color-bg-subtle);overflow:hidden;"><i style="display:block;height:100%;width:78%;border-radius:9999px;background:var(--color-warning);"></i></span><span style="width:84px;text-align:right;color:var(--color-text-muted);font-variant-numeric:tabular-nums;">78%</span></div>
+            <div style="display:flex;align-items:center;gap:12px;font-size:13px;"><span style="width:64px;color:var(--color-text-muted);">Disk</span><span style="flex:1;height:8px;border-radius:9999px;background:var(--color-bg-subtle);overflow:hidden;"><i style="display:block;height:100%;width:93%;border-radius:9999px;background:var(--color-danger);"></i></span><span style="width:84px;text-align:right;color:var(--color-text-muted);font-variant-numeric:tabular-nums;">93%</span></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">GPU meter (per device)<div style="color:var(--color-text-subtle);opacity:.75;font-size:12px;margin-top:3px;">10 fixed hue stripes · cycles past 10</div></div>
+          <div style="display:flex;flex-direction:column;gap:5px;width:320px;">
+            <sc-for list="{{ gpus }}" as="g" hint-placeholder-count="12">
+              <div style="display:flex;align-items:center;gap:7px;"><small style="width:118px;font-size:11px;color:var(--color-text-subtle);font-variant-numeric:tabular-nums;">{{ g.label }}</small><span style="flex:1;height:6px;border-radius:9999px;background:var(--color-bg-subtle);overflow:hidden;"><i style="display:block;height:100%;width:{{ g.pct }};border-radius:9999px;background-color:{{ g.base }};background-image:{{ g.stripes }};"></i></span><small style="width:34px;text-align:right;font-size:11px;color:var(--color-text-subtle);font-variant-numeric:tabular-nums;">{{ g.pct }}</small></div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:flex-start;padding:14px 0;">
+          <div style="color:var(--color-text-subtle);font-size:13px;">TTL gadget (ample → warn → end)</div>
+          <div style="display:flex;flex-direction:column;gap:12px;width:380px;">
+            <div style="display:flex;align-items:center;gap:14px;"><span style="flex:1;height:8px;border-radius:9999px;background:var(--color-bg-subtle);overflow:hidden;"><i style="display:block;height:100%;width:100%;border-radius:9999px;background:var(--doh-ttl-blue);"></i></span><span style="display:inline-flex;align-items:center;gap:5px;min-width:74px;color:var(--doh-ttl-blue);font-size:13px;font-variant-numeric:tabular-nums;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v5l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"></path></svg><b style="color:var(--doh-ttl-blue);">4h 0m</b></span><button style="height:24px;padding:0 10px;border-radius:6px;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);font-size:12px;cursor:pointer;font-family:inherit;">Extend</button></div>
+            <div style="display:flex;align-items:center;gap:14px;"><span style="flex:1;height:8px;border-radius:9999px;background:var(--color-bg-subtle);overflow:hidden;"><i style="display:block;height:100%;width:28%;border-radius:9999px;background:var(--color-warning);"></i></span><span style="display:inline-flex;align-items:center;gap:5px;min-width:74px;color:var(--color-warning);font-size:13px;font-variant-numeric:tabular-nums;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="animation:doh-ttl-glow-soft 2.4s ease-in-out infinite;"><path d="M12 7v5l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"></path></svg><b style="color:var(--color-warning);">1h 7m</b></span><button style="height:24px;padding:0 10px;border-radius:6px;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);font-size:12px;cursor:pointer;font-family:inherit;">Extend</button></div>
+            <div style="display:flex;align-items:center;gap:14px;"><span style="flex:1;height:8px;border-radius:9999px;background:var(--color-bg-subtle);overflow:hidden;"><i style="display:block;height:100%;width:8%;border-radius:9999px;background:var(--doh-ttl-red);"></i></span><span style="display:inline-flex;align-items:center;gap:5px;min-width:74px;color:var(--doh-ttl-red);font-size:13px;font-variant-numeric:tabular-nums;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="animation:doh-ttl-glow 1s ease-in-out infinite;"><path d="M12 7v5l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"></path></svg><b style="color:var(--doh-ttl-red);">6m</b></span><button style="height:24px;padding:0 10px;border-radius:6px;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);font-size:12px;cursor:pointer;font-family:inherit;">Extend</button></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:flex-start;padding:14px 0;border-top:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">TTL boost (captured mid-extend)</div>
+          <div style="display:flex;flex-direction:column;gap:12px;width:380px;">
+            <div style="display:flex;align-items:center;gap:14px;"><span style="flex:1;height:8px;border-radius:9999px;background:var(--color-bg-subtle);overflow:hidden;"><i style="display:block;height:100%;width:46%;border-radius:9999px;background:var(--color-accent);animation:doh-ttl-boost-bar 3s linear infinite;"></i></span><span style="display:inline-flex;align-items:center;gap:5px;min-width:74px;color:var(--color-accent);font-size:13px;font-variant-numeric:tabular-nums;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="animation:doh-ttl-boost-clock 3s linear infinite;"><path d="M12 7v5l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"></path></svg><b style="color:var(--color-accent);display:inline-block;animation:doh-ttl-boost-num 3s linear infinite;">+2h 0m</b></span><button style="height:24px;padding:0 10px;border-radius:6px;border:1px solid var(--color-accent);background:var(--color-accent);color:#fff;font-size:12px;cursor:pointer;font-family:inherit;">Extending…</button></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;padding:10px 14px;border:1px dashed var(--color-border-strong);border-radius:6px;color:var(--color-text-muted);font-size:12px;margin-top:8px;">
+          <span><b style="color:var(--color-text-subtle);font-weight:600;">Colour thresholds:</b> usage bars (high = bad) are calm accent below 70%, full warning at ≥70%, full danger at ≥90%. <b style="color:var(--color-text-subtle);font-weight:600;">GPU bars are the exception</b> — every device keeps the calm accent-blue base; only the 45° stripe overlay carries one of 10 fixed identity colours spread across the whole wheel (cyan, orange, green, violet, a neutral gray, magenta, blue, amber, teal) and tuned on hue + value so each device stays distinct at a glance. Past 10 GPUs the colours cycle (marked ↻). The TTL bar is reversed — blue while ample, warning under 30% of base, dim red under 10% (a low timer is the normal end state, not an alarm). As time runs out the clock glyph picks up a soft glowing-blur pulse — barely there at warn, bright and fast at the end — so a near-expiry server catches the eye without a hard alert. Exact values live in a tooltip on hover, never as static text.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ NOTICES + ALERTS + GRANT/FEED ============ -->
+    <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Notices, alerts, grants &amp; feed</div>
+      <div style="padding:6px 24px 18px;">
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Notices (left-edge)</div>
+          <div style="display:flex;flex-direction:column;gap:8px;width:460px;max-width:100%;">
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:4px;border-left:3px solid var(--color-success);background:var(--color-bg-subtle);color:var(--color-text-muted);font-size:13px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="M20 6L9 17l-5-5"></path></svg>Image pulled and verified — ready to spawn</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:4px;border-left:3px solid var(--color-warning);background:var(--color-bg-subtle);color:var(--color-text-muted);font-size:13px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>Sharing is not running — link works on this network only</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:4px;border-left:3px solid var(--color-info);background:var(--color-bg-subtle);color:var(--color-text-muted);font-size:13px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--color-info)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="M12 7v5l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"></path></svg>Sampling resumes when the server becomes active</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:4px;border-left:3px solid var(--color-danger);background:var(--color-bg-subtle);color:var(--color-text-muted);font-size:13px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="M18 6 6 18M6 6l12 12"></path></svg>Could not reach the server — try again</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Banner alert</div>
+          <div style="display:flex;align-items:center;gap:10px;width:460px;max-width:100%;padding:9px 14px;border-radius:8px;background:var(--color-info-soft);border:1px solid color-mix(in srgb,var(--color-info) 35%,transparent);color:var(--color-text);font-size:13px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-info)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="M12 7v5l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"></path></svg>Read-only reference — every action here is illustrative.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Effective-policy grants</div>
+          <div style="width:420px;max-width:100%;">
+            <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-subtle);font-size:13px;"><span style="width:28px;height:28px;flex:none;border-radius:6px;display:grid;place-items:center;background:var(--color-accent-soft);color:var(--color-accent);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18v12H3zM8 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M14 10h4M14 14h4"></path></svg></span><div>GPU<div style="color:var(--color-text-subtle);font-size:12px;">from gpu</div></div><span style="margin-left:auto;color:var(--color-text-muted);font-variant-numeric:tabular-nums;">all devices</span></div>
+            <div style="display:flex;align-items:center;gap:12px;padding:8px 0;font-size:13px;"><span style="width:28px;height:28px;flex:none;border-radius:6px;display:grid;place-items:center;background:var(--color-accent-soft);color:var(--color-accent);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h18v8H3zM7 11v2M11 11v2M15 11v2M6 16v2M10 16v2M14 16v2M18 16v2"></path></svg></span><div>Memory<div style="color:var(--color-text-subtle);font-size:12px;">from gpu</div></div><span style="margin-left:auto;color:var(--color-text-muted);font-variant-numeric:tabular-nums;">32 GB</span></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:flex-start;padding:12px 0;">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Activity feed (icon bg = category)</div>
+          <div style="width:420px;max-width:100%;display:flex;flex-direction:column;">
+            <div style="display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--color-border-subtle);">
+              <div style="width:28px;height:28px;border-radius:9999px;flex:none;display:grid;place-items:center;background:var(--color-success-soft);color:var(--color-success);"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="display:block;"><path d="M6 4l13 8-13 8z"></path></svg></div>
+              <div style="font-size:13px;flex:1;"><div><b style="color:var(--color-text);">milan</b> started a server with <b style="color:var(--color-text);">gpu</b></div><div style="color:var(--color-text-subtle);font-size:12px;margin-top:1px;">2m ago</div></div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--color-border-subtle);">
+              <div style="width:28px;height:28px;border-radius:9999px;flex:none;display:grid;place-items:center;background:var(--color-info-soft);color:var(--color-info);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"></path></svg></div>
+              <div style="font-size:13px;flex:1;"><div><b style="color:var(--color-text);">alice</b> is spawning <b style="color:var(--color-text);">research</b></div><div style="color:var(--color-text-subtle);font-size:12px;margin-top:1px;">4m ago</div></div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--color-border-subtle);">
+              <div style="width:28px;height:28px;border-radius:9999px;flex:none;display:grid;place-items:center;background:var(--color-warning-soft);color:var(--color-warning);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg></div>
+              <div style="font-size:13px;flex:1;"><div><b style="color:var(--color-text);">karl</b>'s server is approaching its memory limit</div><div style="color:var(--color-text-subtle);font-size:12px;margin-top:1px;">11m ago</div></div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--color-border-subtle);">
+              <div style="width:28px;height:28px;border-radius:9999px;flex:none;display:grid;place-items:center;background:var(--color-danger-soft);color:var(--color-danger);"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="display:block;"><path d="M6 6h12v12H6z"></path></svg></div>
+              <div style="font-size:13px;flex:1;"><div><b style="color:var(--color-text);">sofia</b>'s server failed to start</div><div style="color:var(--color-text-subtle);font-size:12px;margin-top:1px;">26m ago</div></div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;padding:9px 0;">
+              <div style="width:28px;height:28px;border-radius:9999px;flex:none;display:grid;place-items:center;background:var(--color-accent-soft);color:var(--color-accent);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M7 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M11 12h10M17 12v3M21 12v4"></path></svg></div>
+              <div style="font-size:13px;flex:1;"><div><b style="color:var(--color-text);">admin</b> updated the <b style="color:var(--color-text);">gpu</b> policy</div><div style="color:var(--color-text-subtle);font-size:12px;margin-top:1px;">1h ago</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FORM CONTROLS ============ -->
+    <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Form controls</div>
+      <div style="padding:6px 24px 18px;">
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Text / disabled</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <input value="editable" style="height:32px;padding:0 11px;border-radius:6px;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);font-size:14px;font-family:inherit;width:220px;outline:none;" style-focus="border-color:var(--color-accent);box-shadow:0 0 0 3px var(--color-accent-soft);">
+            <input value="locked value" disabled style="height:32px;padding:0 11px;border-radius:6px;border:1px solid var(--color-border);background:var(--color-bg-subtle);color:var(--color-text-subtle);font-size:14px;font-family:var(--font-mono);width:220px;outline:none;">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Select / number</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <div style="position:relative;width:200px;">
+              <select style="appearance:none;width:100%;height:32px;padding:0 30px 0 11px;border-radius:6px;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);font-size:14px;font-family:inherit;cursor:pointer;outline:none;"><option>single</option><option>pair</option></select>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-subtle)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;right:9px;top:8px;pointer-events:none;transform:rotate(90deg);"><path d="M9 18l6-6-6-6"></path></svg>
+            </div>
+            <div style="display:inline-flex;align-items:center;height:32px;border-radius:6px;border:1px solid var(--color-border);background:var(--color-surface);overflow:hidden;">
+              <input value="8" style="width:54px;height:30px;padding:0 10px;border:0;background:transparent;color:var(--color-text);font-size:14px;font-family:inherit;outline:none;text-align:center;">
+              <div style="display:flex;flex-direction:column;border-left:1px solid var(--color-border);"><button style="height:15px;width:22px;border:0;border-bottom:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text-subtle);cursor:pointer;font-size:9px;line-height:1;">▲</button><button style="height:15px;width:22px;border:0;background:var(--color-surface);color:var(--color-text-subtle);cursor:pointer;font-size:9px;line-height:1;">▼</button></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Radio (solid) / segmented</div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+            <div style="display:inline-flex;border-radius:6px;overflow:hidden;border:1px solid var(--color-border);">
+              <button data-radio="raw" onClick="{{ onRadio }}" style="height:32px;padding:0 14px;border:0;border-right:1px solid var(--color-border);background:var(--color-accent);color:#fff;font-size:13px;cursor:pointer;font-family:inherit;">Raw</button>
+              <button data-radio="limited" onClick="{{ onRadio }}" style="height:32px;padding:0 14px;border:0;background:var(--color-surface);color:var(--color-text);font-size:13px;cursor:pointer;font-family:inherit;">Limited</button>
+            </div>
+            <div style="display:inline-flex;gap:2px;padding:3px;background:var(--color-bg-subtle);border-radius:7px;">
+              <button data-seg="day" onClick="{{ onSeg }}" style="height:26px;padding:0 14px;border:0;border-radius:5px;background:var(--color-accent-soft);color:var(--color-accent);font-size:13px;cursor:pointer;font-family:inherit;">Day</button>
+              <button data-seg="week" onClick="{{ onSeg }}" style="height:26px;padding:0 14px;border:0;border-radius:5px;background:transparent;color:var(--color-text-muted);font-size:13px;cursor:pointer;font-family:inherit;">Week</button>
+              <button data-seg="month" onClick="{{ onSeg }}" style="height:26px;padding:0 14px;border:0;border-radius:5px;background:transparent;color:var(--color-text-muted);font-size:13px;cursor:pointer;font-family:inherit;">Month</button>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Switch / checkbox</div>
+          <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;">
+            <span data-switch="sw1" onClick="{{ onSwitch }}" style="position:relative;display:inline-block;width:40px;height:22px;border-radius:9999px;background:var(--color-accent);cursor:pointer;transition:background .15s;"><span data-knob style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.3);transform:translateX(18px);"></span></span>
+            <span data-switch="sw2" onClick="{{ onSwitch }}" style="position:relative;display:inline-block;width:40px;height:22px;border-radius:9999px;background:var(--color-border-strong);cursor:pointer;transition:background .15s;"><span data-knob style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.3);transform:translateX(0);"></span></span>
+            <span data-check="c1" onClick="{{ onCheck }}" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;color:var(--color-text);"><span data-box style="width:16px;height:16px;border-radius:4px;border:1px solid var(--color-accent);display:grid;place-items:center;background:var(--color-accent);"><svg data-tick width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:1;"><path d="M20 6L9 17l-5-5"></path></svg></span>Authorise now</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Combo (typeahead chips)</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:360px;max-width:100%;min-height:32px;padding:5px 8px;border-radius:6px;border:1px solid var(--color-border);background:var(--color-surface);">
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:1px 6px 1px 9px;border-radius:4px;background:var(--color-accent-soft);color:var(--color-accent);">research <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="cursor:pointer;opacity:.7;"><path d="M18 6 6 18M6 6l12 12"></path></svg></span>
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:1px 6px 1px 9px;border-radius:4px;background:var(--color-accent-soft);color:var(--color-accent);">gpu <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="cursor:pointer;opacity:.7;"><path d="M18 6 6 18M6 6l12 12"></path></svg></span>
+            <input placeholder="Add group…" style="flex:1;min-width:90px;height:22px;border:0;background:transparent;color:var(--color-text);font-size:14px;font-family:inherit;outline:none;">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ NAV + FEEDBACK ============ -->
+    <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Navigation &amp; feedback</div>
+      <div style="padding:6px 24px 18px;">
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Tabs</div>
+          <div style="display:flex;gap:0;border-bottom:1px solid var(--color-border-subtle);width:360px;max-width:100%;">
+            <div style="padding:8px 14px;font-size:14px;color:var(--color-accent);border-bottom:2px solid var(--color-accent);margin-bottom:-1px;cursor:pointer;">General</div>
+            <div style="padding:8px 14px;font-size:14px;color:var(--color-text-muted);cursor:pointer;">Policy</div>
+            <div style="padding:8px 14px;font-size:14px;color:var(--color-text-muted);cursor:pointer;">Members</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Badge / progress</div>
+          <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
+            <span style="position:relative;display:inline-flex;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"></path></svg><span style="position:absolute;top:-6px;right:-7px;min-width:16px;height:16px;padding:0 4px;border-radius:9999px;background:var(--color-danger);color:#fff;font-size:10px;font-weight:600;display:grid;place-items:center;">5</span></span>
+            <span style="flex:1;max-width:180px;height:6px;border-radius:9999px;background:var(--color-bg-subtle);overflow:hidden;"><i style="display:block;height:100%;width:63%;border-radius:9999px;background:var(--color-accent);"></i></span>
+            <span style="width:44px;height:44px;border-radius:50%;background:conic-gradient(var(--color-accent) 0 41%,var(--color-bg-subtle) 41% 100%);display:grid;place-items:center;"><span style="width:32px;height:32px;border-radius:50%;background:var(--color-surface);display:grid;place-items:center;font-size:11px;color:var(--color-text-muted);font-variant-numeric:tabular-nums;">41</span></span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Dropdown / pagination</div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+            <button style="display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 13px;border-radius:6px;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);font-size:14px;cursor:pointer;font-family:inherit;">Language <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-subtle)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(90deg);"><path d="M9 18l6-6-6-6"></path></svg></button>
+            <div style="display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--color-text-muted);">
+              <button style="width:28px;height:28px;display:grid;place-items:center;border-radius:6px;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text-subtle);cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg);"><path d="M9 18l6-6-6-6"></path></svg></button>
+              <span style="font-variant-numeric:tabular-nums;">1 / 24</span>
+              <button style="width:28px;height:28px;display:grid;place-items:center;border-radius:6px;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text-subtle);cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CONVENTIONS ============ -->
+    <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Conventions</div>
+      <div style="padding:6px 24px 18px;">
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Relative time (always short)</div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;color:var(--color-text-subtle);font-size:13px;font-family:var(--font-mono);"><span>now</span><span>2m</span><span>5h</span><span>3d</span><span>4mo</span><span>1y</span><span style="font-family:var(--font-sans);color:var(--color-text-subtle);opacity:.8;">— one format everywhere; exact timestamp on hover</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Alternating rows (zebra)</div>
+          <div style="width:360px;max-width:100%;border:1px solid var(--color-border-subtle);border-radius:6px;overflow:hidden;font-size:13px;">
+            <div style="padding:7px 12px;color:var(--color-text);">alice — Active</div>
+            <div style="padding:7px 12px;color:var(--color-text);background:color-mix(in srgb,var(--color-text) 3%,transparent);">milan — Idle</div>
+            <div style="padding:7px 12px;color:var(--color-text);">sofia — Offline</div>
+            <div style="padding:7px 12px;color:var(--color-text);background:color-mix(in srgb,var(--color-text) 3%,transparent);">karl — Active</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">State = colour</div>
+          <div style="color:var(--color-text-muted);font-size:13px;">Status and type are always shown as coloured pills on one shared palette — never colour-only, never an ad-hoc tag colour.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Label casing (Title Case)</div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;"><span style="font-family:var(--font-mono);font-size:13px;">Add User</span><span style="font-family:var(--font-mono);font-size:13px;">Manage Volumes</span><span style="font-family:var(--font-mono);font-size:13px;">Clear Events</span><span style="color:var(--color-text-subtle);font-size:12px;">— minor words stay lowercase; acronyms (API, GPU) &amp; units (7h) kept as-is</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ICON SET ============ -->
+    <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:0;overflow:hidden;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Icon set <span style="color:var(--color-text-subtle);font-weight:400;font-size:13px;">— Remix-style glyphs, 24×24, currentColor</span></div>
+      <div style="padding:18px 24px 6px;">
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:flex-start;padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">Two weights, one rule<div style="color:var(--color-text-subtle);opacity:.75;font-size:12px;margin-top:3px;">filled = standalone / primary · line = in-list</div></div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <sc-for list="{{ dualIcons }}" as="ic" hint-placeholder-count="5">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:96px;padding:12px 4px;border:1px solid var(--color-border-subtle);border-radius:8px;">
+                  <div style="display:flex;align-items:center;gap:12px;">
+                    <span style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;background:var(--color-accent-soft);color:var(--color-accent);" title="standalone — filled"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="{{ ic.filled }}"></path></svg></span>
+                    <span style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;border:1px solid var(--color-border-subtle);color:var(--color-text-muted);" title="in-list — line"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="{{ ic.line }}"></path></svg></span>
+                  </div>
+                  <span style="font-size:11px;color:var(--color-text-subtle);">{{ ic.name }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:8px;padding:10px 14px;border:1px dashed var(--color-border-strong);border-radius:6px;color:var(--color-text-muted);font-size:12px;">
+              <span>A standalone or primary icon (a status glyph, a card avatar, a play/stop control) carries the <b style="color:var(--color-text-subtle);font-weight:600;">filled</b> weight so it reads as a solid object. The same concept inside a dense list, table row or menu uses the <b style="color:var(--color-text-subtle);font-weight:600;">line</b> weight to stay quiet next to text. Tone (cyan / gray / red / orange) is independent of weight.</span>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--color-text-subtle);margin-bottom:12px;">Line set <span style="text-transform:none;letter-spacing:0;opacity:.8;">— the in-list / wireframe library</span></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;">
+          <sc-for list="{{ icons }}" as="ic" hint-placeholder-count="36">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border:1px solid var(--color-border-subtle);border-radius:8px;color:var(--color-text);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="{{ ic.d }}"></path></svg>
+              <span style="font-size:11px;color:var(--color-text-subtle);">{{ ic.name }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;defaultTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#21a8e4&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.rootRef = React.createRef();
+    this.state = {
+      theme: 'dark',
+      scope: 'active',
+      seg: 'day',
+      radio: 'raw',
+      sw: { sw1: true, sw2: false },
+      checks: { c1: true },
+      conn: 'up',
+    };
+    this.onConn = this.onConn.bind(this);
+    this.onTheme = this.onTheme.bind(this);
+    this.onScope = this.onScope.bind(this);
+    this.onSeg = this.onSeg.bind(this);
+    this.onRadio = this.onRadio.bind(this);
+    this.onSwitch = this.onSwitch.bind(this);
+    this.onCheck = this.onCheck.bind(this);
+  }
+
+  componentDidMount() {
+    let t = null;
+    try { t = localStorage.getItem('doh-ds-theme'); } catch (e) {}
+    if (!t) t = this.props.defaultTheme || 'dark';
+    if (t !== this.state.theme) this.setState({ theme: t });
+    this.syncUI();
+  }
+  componentDidUpdate() { this.syncUI(); }
+
+  onTheme(e) {
+    const t = e.currentTarget.dataset.themeBtn;
+    this.setState({ theme: t });
+    try { localStorage.setItem('doh-ds-theme', t); } catch (err) {}
+  }
+  onScope(e) { this.setState({ scope: e.currentTarget.dataset.scope }); }
+  onSeg(e) { this.setState({ seg: e.currentTarget.dataset.seg }); }
+  onRadio(e) { this.setState({ radio: e.currentTarget.dataset.radio }); }
+  onSwitch(e) { const k = e.currentTarget.dataset.switch; this.setState((s) => ({ sw: { ...s.sw, [k]: !s.sw[k] } })); }
+  onCheck(e) { const k = e.currentTarget.dataset.check; this.setState((s) => ({ checks: { ...s.checks, [k]: !s.checks[k] } })); }
+  onConn() { this.setState((s) => ({ conn: s.conn === 'up' ? 'down' : 'up' })); }
+
+  syncUI() {
+    const r = this.rootRef.current;
+    if (!r) return;
+    const T = this.state;
+
+    // accent override tweak (applies to both themes)
+    const ac = this.props.accent;
+    if (ac) {
+      r.style.setProperty('--color-accent', ac);
+      r.style.setProperty('--color-accent-soft', 'color-mix(in srgb, ' + ac + ' 14%, transparent)');
+      r.style.setProperty('--color-accent-ring', 'color-mix(in srgb, ' + ac + ' 45%, transparent)');
+    }
+
+    const cup = T.conn === 'up';
+    const pill = r.querySelector('[data-conn-toggle]');
+    if (pill) {
+      pill.style.color = cup ? 'var(--color-success)' : 'var(--color-warning)';
+      pill.style.borderColor = cup ? 'currentColor' : 'color-mix(in srgb,var(--color-warning) 55%,transparent)';
+      pill.style.background = cup ? 'transparent' : 'color-mix(in srgb,var(--color-warning) 14%,transparent)';
+      const diode = pill.querySelector('[data-conn-diode]');
+      if (diode) diode.style.animation = cup ? 'doh-pulse-calm 3.6s ease-in-out infinite' : 'doh-pulse-alert 1.2s ease-in-out infinite';
+      const label = pill.querySelector('[data-conn-label]');
+      if (label) label.textContent = cup ? 'Connected' : 'Not responding · 2m';
+    }
+    r.querySelectorAll('[data-theme-btn]').forEach((el) => {
+      const on = el.dataset.themeBtn === T.theme;
+      el.style.background = on ? 'var(--color-accent-soft)' : 'transparent';
+      el.style.color = on ? 'var(--color-accent)' : 'var(--color-text-subtle)';
+    });
+    r.querySelectorAll('[data-scope]').forEach((el) => {
+      const on = el.dataset.scope === T.scope;
+      el.style.opacity = on ? '1' : '.55';
+      el.style.boxShadow = on ? '0 0 0 2px var(--color-accent-ring)' : 'none';
+    });
+    r.querySelectorAll('[data-seg]').forEach((el) => {
+      const on = el.dataset.seg === T.seg;
+      el.style.background = on ? 'var(--color-accent-soft)' : 'transparent';
+      el.style.color = on ? 'var(--color-accent)' : 'var(--color-text-muted)';
+    });
+    r.querySelectorAll('[data-radio]').forEach((el) => {
+      const on = el.dataset.radio === T.radio;
+      el.style.background = on ? 'var(--color-accent)' : 'var(--color-surface)';
+      el.style.color = on ? '#fff' : 'var(--color-text)';
+    });
+    r.querySelectorAll('[data-switch]').forEach((el) => {
+      const on = !!T.sw[el.dataset.switch];
+      el.style.background = on ? 'var(--color-accent)' : 'var(--color-border-strong)';
+      const k = el.querySelector('[data-knob]');
+      if (k) k.style.transform = on ? 'translateX(18px)' : 'translateX(0)';
+    });
+    r.querySelectorAll('[data-check]').forEach((el) => {
+      const on = !!T.checks[el.dataset.check];
+      const b = el.querySelector('[data-box]');
+      const tk = el.querySelector('[data-tick]');
+      if (b) { b.style.background = on ? 'var(--color-accent)' : 'transparent'; b.style.borderColor = on ? 'var(--color-accent)' : 'var(--color-border-strong)'; }
+      if (tk) tk.style.opacity = on ? '1' : '0';
+    });
+  }
+
+  renderVals() {
+    const icons = [
+      { name: 'grid', d: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z' },
+      { name: 'server', d: 'M4 5h16v6H4zM4 13h16v6H4z M8 8h.01M8 16h.01' },
+      { name: 'users', d: 'M16 19v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 19v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11' },
+      { name: 'group', d: 'M17 20v-2a4 4 0 0 0-3-3.87M5 20v-2a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2M10 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M17 11a3 3 0 1 0-2-5.2' },
+      { name: 'shield', d: 'M12 2l8 3v6c0 5-3.5 8-8 11-4.5-3-8-6-8-11V5z M9 12l2 2 4-4' },
+      { name: 'activity', d: 'M22 12h-4l-3 9L9 3l-3 9H2' },
+      { name: 'settings', d: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82z' },
+      { name: 'search', d: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3' },
+      { name: 'sun', d: 'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4' },
+      { name: 'moon', d: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z' },
+      { name: 'monitor', d: 'M3 4h18v12H3zM8 20h8M12 16v4' },
+      { name: 'clock', d: 'M12 7v5l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z' },
+      { name: 'plus', d: 'M12 5v14M5 12h14' },
+      { name: 'bell', d: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0' },
+      { name: 'play', d: 'M5 3l14 9-14 9z' },
+      { name: 'restart', d: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5' },
+      { name: 'stop', d: 'M6 6h12v12H6z' },
+      { name: 'megaphone', d: 'M3 11l18-5v12L3 14v-3z M11.6 16.8a3 3 0 1 1-5.8-1.6' },
+      { name: 'logout', d: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9' },
+      { name: 'dots', d: 'M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2M19 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2M5 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2' },
+      { name: 'key', d: 'M7 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M11 12h10M17 12v3M21 12v4' },
+      { name: 'user', d: 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8' },
+      { name: 'cpu', d: 'M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3M5 5h14v14H5zM9 9h6v6H9z' },
+      { name: 'check', d: 'M20 6L9 17l-5-5' },
+      { name: 'arrowup', d: 'M12 19V5M5 12l7-7 7 7' },
+      { name: 'arrowdown', d: 'M12 5v14M5 12l7 7 7-7' },
+      { name: 'chevron', d: 'M9 18l6-6-6-6' },
+      { name: 'close', d: 'M18 6 6 18M6 6l12 12' },
+      { name: 'grip', d: 'M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01' },
+      { name: 'disk', d: 'M22 12H2M5.45 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.9A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.1z M6 16h.01M10 16h.01' },
+      { name: 'gpu', d: 'M3 6h18v12H3zM8 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M14 10h4M14 14h4' },
+      { name: 'memory', d: 'M3 8h18v8H3zM7 11v2M11 11v2M15 11v2M6 16v2M10 16v2M14 16v2M18 16v2' },
+      { name: 'download', d: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3' },
+      { name: 'upload', d: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12' },
+      { name: 'box', d: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96 12 12.01l8.73-5.05M12 22.08V12' },
+      { name: 'code', d: 'm18 16 4-4-4-4M6 8l-4 4 4 4M14.5 4l-5 16' },
+    ];
+    const dualIcons = [
+      { name: 'play', filled: 'M5 3l14 9-14 9z', line: 'M5 3l14 9-14 9z' },
+      { name: 'stop', filled: 'M6 6h12v12H6z', line: 'M6 6h12v12H6z' },
+      { name: 'bell', filled: 'M12 2a6 6 0 0 0-6 6c0 7-3 9-3 9h18s-3-2-3-9a6 6 0 0 0-6-6zM10.3 21a2 2 0 0 0 3.4 0', line: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0' },
+      { name: 'shield', filled: 'M12 2l8 3v6c0 5-3.5 8-8 11-4.5-3-8-6-8-11V5z', line: 'M12 2l8 3v6c0 5-3.5 8-8 11-4.5-3-8-6-8-11V5z M9 12l2 2 4-4' },
+      { name: 'box', filled: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z', line: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96 12 12.01l8.73-5.05M12 22.08V12' },
+      { name: 'user', filled: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1z', line: 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8' },
+    ];
+    // Base stays the accent blue for every GPU; only the diagonal stripe overlay varies.
+    // 10 fixed stripe hues confined to the cool half of the wheel (cyan→green→blue→violet→magenta)
+    // — deliberately NO red/orange/yellow, which would read as warning / high usage.
+    // Identity palette across the FULL wheel — cool hues plus oranges, greens and a neutral
+    // gray. [hue, saturation, lightness]; per-entry saturation lets the gray desaturate.
+    // Kept dark enough to stripe clearly over the blue base; tuned so no two read alike.
+    const gpuStripes = [
+      [197, 95, 32], [26, 95, 42], [140, 80, 32], [262, 90, 44], [212, 10, 47],
+      [322, 90, 42], [95, 85, 38], [225, 95, 42], [45, 95, 40], [170, 90, 31],
+    ];
+    const usage = [62, 41, 18, 9, 74, 33, 88, 27, 55, 12, 47, 70];
+    const gpus = usage.map((pct, i) => {
+      const sw = gpuStripes[i % gpuStripes.length];
+      const stripe = 'hsl(' + sw[0] + ' ' + sw[1] + '% ' + sw[2] + '%)';
+      const wrapped = i >= gpuStripes.length;
+      return {
+        label: 'GPU ' + i + ' · 5090' + (wrapped ? ' ↻' : ''),
+        pct: pct + '%',
+        base: 'var(--color-accent)',
+        stripes: 'repeating-linear-gradient(45deg,' + stripe + ' 0 3px,transparent 3px 7px)',
+      };
+    });
+    return {
+      rootRef: this.rootRef,
+      theme: this.state.theme,
+      icons,
+      dualIcons,
+      gpus,
+      onTheme: this.onTheme,
+      onScope: this.onScope,
+      onSeg: this.onSeg,
+      onRadio: this.onRadio,
+      onSwitch: this.onSwitch,
+      onCheck: this.onCheck,
+      onConn: this.onConn,
+    };
+  }
+}
+</script>
+</body>
+</html>

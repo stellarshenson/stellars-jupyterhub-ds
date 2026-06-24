@@ -123,7 +123,7 @@ function SiderHandle({ collapsed, onToggle }: { collapsed: boolean; onToggle: ()
         aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         style={{
           position: 'fixed', left: collapsed ? SIDER_COLLAPSED_WIDTH : SIDER_WIDTH, top: '50%', transform: 'translate(-50%, -50%)',
-          width: 6, height: 44, padding: 0, border: 0, borderRadius: 3,
+          width: 6, height: 44, padding: 0, border: 0, borderRadius: 'var(--radius-sm)',
           cursor: 'pointer', zIndex: 101, transition: 'left .2s, background-color .12s',
         }}
       />
@@ -181,6 +181,12 @@ export function AppLayout() {
       location={{ pathname }}
       route={{ path: '/', routes: [] }}
       menuRender={isMobile ? false : undefined}
+      // mobile: ProLayout collapses to a top-header layout and renders its OWN
+      // brand-logo header, which doubled with the in-content doh-topbar (the
+      // double header). Kill the ProLayout header on mobile so the doh-topbar
+      // (logo + language + theme + stage) is the single header on every screen.
+      // Desktop side-layout already renders no ProLayout header.
+      headerRender={isMobile ? false : undefined}
       menuContentRender={(props) => <SiderMenu collapsed={!!props?.collapsed} />}
       menuHeaderRender={(_logo, _title, props) => (
         <Link to="/home" style={{ display: 'flex', alignItems: 'center', justifyContent: props?.collapsed ? 'center' : 'flex-start', height: '100%', flex: 1, minWidth: 0 }} title={hubName()}>

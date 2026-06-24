@@ -38,7 +38,7 @@ function RecipientPicker({ users, value, onChange }: { users: string[]; value: s
     onChange([...next])
   }
   return (
-    <div style={{ border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: 8 }}>
+    <div style={{ border: '1px solid var(--color-border-subtle)', borderRadius: 'var(--radius-lg)', padding: 8 }}>
       <Input size="small" allowClear placeholder="Filter users…" value={q} onChange={(e) => setQ(e.target.value)} style={{ marginBottom: 8 }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 6, borderBottom: '1px solid var(--color-border-subtle)' }}>
         <Checkbox checked={allOn} indeterminate={someOn && !allOn} onChange={(e) => toggleAll(e.target.checked)}>

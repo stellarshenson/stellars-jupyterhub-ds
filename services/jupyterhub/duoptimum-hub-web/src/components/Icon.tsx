@@ -1,7 +1,14 @@
 /* Shared icon set - the static mock's line glyphs ported verbatim (Remix-style,
  * 24x24, currentColor stroke), so events / grants / nav / quick-actions render
  * identically to the HTML mock. antd's own icons are used where a stock glyph
- * fits; this set covers the JupyterHub-specific ones. */
+ * fits; this set covers the JupyterHub-specific ones.
+ *
+ * Dual weight (design language): every glyph has a LINE weight (default,
+ * wireframe, in-list) and many also a FILLED weight (standalone / primary). A
+ * line path with open arcs or interior detail fills WRONG (open bell, buried
+ * shield check, cutout box), so the dual-weight glyphs carry a separate solid
+ * body in FILLED; simple closed shapes (play / stop / check) just fill the line
+ * path. See docs/design - section "Two weights, one rule". */
 import type { CSSProperties } from 'react'
 
 export type IconKey =
@@ -9,7 +16,7 @@ export type IconKey =
   | 'search' | 'sun' | 'moon' | 'monitor' | 'clock' | 'plus' | 'bell' | 'play'
   | 'restart' | 'stop' | 'megaphone' | 'logout' | 'dots' | 'key' | 'user' | 'cpu'
   | 'check' | 'arrowup' | 'arrowdown' | 'chevron' | 'close' | 'grip' | 'disk'
-  | 'gpu' | 'memory' | 'download' | 'upload' | 'box' | 'code'
+  | 'gpu' | 'memory' | 'download' | 'upload' | 'box' | 'code' | 'warning'
 
 const PATHS: Record<IconKey, string> = {
   grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
@@ -48,6 +55,21 @@ const PATHS: Record<IconKey, string> = {
   upload: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
   box: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96 12 12.01l8.73-5.05M12 22.08V12',
   code: 'm18 16 4-4-4-4M6 8l-4 4 4 4M14.5 4l-5 16',
+  // warning sign - filled triangle with the exclamation punched out via even-odd
+  warning: 'M12 2.6a1.7 1.7 0 0 1 1.48.86l8.1 14.02A1.7 1.7 0 0 1 20.1 20H3.9a1.7 1.7 0 0 1-1.48-2.52l8.1-14.02A1.7 1.7 0 0 1 12 2.6zM11 9h2v5h-2V9zm0 7h2v2h-2v-2z',
+}
+
+/* Filled-weight variants (design-language dual-weight set). `body` is a solid
+ * shape filled with currentColor; optional `detail` is a line drawn over it at a
+ * darker same-hue stroke (e.g. the disk's seam + dots). Glyphs absent here fall
+ * back to filling their line path - correct for simple closed shapes. */
+type FilledSpec = { body: string; detail?: string }
+const FILLED: Partial<Record<IconKey, FilledSpec>> = {
+  bell: { body: 'M12 2a6 6 0 0 0-6 6c0 7-3 9-3 9h18s-3-2-3-9a6 6 0 0 0-6-6z', detail: 'M10.3 21a2 2 0 0 0 3.4 0' },
+  shield: { body: 'M12 2l8 3v6c0 5-3.5 8-8 11-4.5-3-8-6-8-11V5z' },
+  box: { body: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z' },
+  user: { body: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1z' },
+  disk: { body: 'M5.45 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.9A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.1z', detail: 'M22 12H2M6 16h.01M10 16h.01' },
 }
 
 export function Icon({
@@ -61,23 +83,35 @@ export function Icon({
   size?: number
   className?: string
   style?: CSSProperties
-  filled?: boolean // solid fill instead of line stroke (play / stop / disk); filled glyphs also carry a darker same-hue stroke so complex shapes show contour, not a flat blob
+  filled?: boolean // solid weight instead of line stroke; dual-weight glyphs (FILLED) render a proper solid body, simple closed shapes just fill the line path
 }) {
+  const spec = filled ? FILLED[name] : undefined
+  const common = { className, width: size, height: size, viewBox: '0 0 24 24', style: { flex: 'none', ...style }, 'aria-hidden': true } as const
+  // dual-weight filled glyph: solid body + optional darker line detail over it
+  if (spec) {
+    return (
+      <svg {...common} fill="none" stroke="none">
+        <path d={spec.body} fill="currentColor" />
+        {spec.detail && (
+          <path d={spec.detail} fill="none" stroke="color-mix(in srgb, currentColor, black 60%)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+        )}
+      </svg>
+    )
+  }
+  // single-path: line weight, or filled simple closed shape (play/stop/check) with
+  // a darker same-hue contour. warning is a self-contained filled sign: even-odd
+  // punches its exclamation out as holes, and it carries no contour stroke.
+  const isWarning = name === 'warning'
   return (
     <svg
-      className={className}
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
+      {...common}
       fill={filled ? 'currentColor' : 'none'}
-      stroke={filled ? 'color-mix(in srgb, currentColor, black 55%)' : 'currentColor'}
+      stroke={isWarning && filled ? 'none' : filled ? 'color-mix(in srgb, currentColor, black 55%)' : 'currentColor'}
       strokeWidth={filled ? 1 : 1.7}
       strokeLinecap="round"
       strokeLinejoin="round"
-      style={{ flex: 'none', ...style }}
-      aria-hidden
     >
-      <path d={PATHS[name]} />
+      <path d={PATHS[name]} fillRule={isWarning ? 'evenodd' : undefined} clipRule={isWarning ? 'evenodd' : undefined} />
     </svg>
   )
 }

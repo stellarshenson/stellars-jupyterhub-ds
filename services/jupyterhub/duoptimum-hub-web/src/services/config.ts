@@ -19,7 +19,7 @@ export const IDLE_CULLER = {
 // a dim brown): normal accent below `warnPct`, full (normal) warning at/above
 // `warnPct`, full danger at/above `dangerPct`; only the warn..danger span blends
 // (warm warning -> red). Drives meters.barColor for every CPU/memory bar (host
-// status, server hero, servers table). Stated as a rule on /design-language.
+// status, server hero, servers table). Stated as a rule on /design-system.
 export const BAR_COLOR = {
   warnPct: 70, // at or above (and below danger): full warning (amber)
   dangerPct: 90, // at or above: full danger (red)

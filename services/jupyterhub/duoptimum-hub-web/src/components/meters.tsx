@@ -168,7 +168,7 @@ export interface ResourceRow {
 // below `warnPct`, full (normal) warning at/above `warnPct`, full danger at/above
 // `dangerPct`. Only the warn..danger span blends - and that's warm warning -> red
 // (adjacent hues) so it stays saturated, never the dim brown that warning-mixed-
-// with-blue produced. Thresholds in `BAR_COLOR`; stated on /design-language.
+// with-blue produced. Thresholds in `BAR_COLOR`; stated on /design-system.
 export function barColor(pct: number): string | undefined {
   const { warnPct, dangerPct } = BAR_COLOR
   if (pct < warnPct) return undefined // calm: CSS default accent, no tint

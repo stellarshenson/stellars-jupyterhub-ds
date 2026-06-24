@@ -25,7 +25,7 @@ function countBadge(n: number) {
         fontSize: 11,
         fontWeight: 600,
         padding: '0 6px',
-        borderRadius: 9,
+        borderRadius: 'var(--radius-full)',
         background: 'var(--color-surface-active)',
         color: 'var(--color-text-muted)',
       }}
