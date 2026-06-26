@@ -12,10 +12,11 @@ import { Icon } from '../components/Icon'
 import { timeAgoShort } from '../lib/format'
 import { useRole } from '../app/RoleContext'
 import { useServerLifecycle } from '../app/ServerLifecycle'
-import { useServerHero, useServers } from '../hooks/queries'
+import { useServerHero, useServers, useUserVolumes } from '../hooks/queries'
+import { hasVolumes } from '../lib/volumes'
 import { extendSession } from '../services/ops'
 
-const adminTag = { background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4, marginInlineStart: 6 }
+const adminTag = { background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 'var(--radius-sm)', marginInlineStart: 6 }
 // mobile home is Home, so its sub-screens (Start, Manage volumes) return to Home
 const HOME_ORIGIN = { to: '/home', label: 'Home' }
 
@@ -26,6 +27,8 @@ function MyServerCard() {
   const { data: hero } = useServerHero(username)
   const lifecycle = useServerLifecycle()
   const navigate = useNavigate()
+  // Manage Volumes is always shown but DISABLED when the user has no volumes (operator)
+  const { data: userVolumes = [] } = useUserVolumes(hero?.user ?? '')
   if (!hero) return null
   const running = hero.status === 'active' || hero.status === 'idle'
   const busy = !!lifecycle.busyOf(hero.user)
@@ -34,6 +37,7 @@ function MyServerCard() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <h2 style={{ fontSize: 16, margin: 0 }}>Server Control</h2>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* the "Update available" advisory sits to the LEFT of the status pill (operator) */}
           {running && hero.upgradeAvailable && (
             <NotificationPill type="info" label="Update available" title="A newer lab image is available locally - stop your server and start a new one to update" />
           )}
@@ -51,13 +55,13 @@ function MyServerCard() {
         ) : (
           <>
             <Button type="primary" block size="large" icon={<Icon name="play" size={15} filled />} disabled={busy} onClick={() => navigate(`/servers/${hero.user}/starting`, { state: { from: HOME_ORIGIN } })}>Start Server</Button>
-            {role === 'admin' && <Button block size="large" icon={<Icon name="disk" size={15} />} disabled={busy} onClick={() => navigate(`/servers/${hero.user}/volumes`, { state: { from: HOME_ORIGIN } })}>Manage Volumes</Button>}
+            {role === 'admin' && <Button block size="large" icon={<Icon name="disk" size={15} />} disabled={busy || !hasVolumes(userVolumes)} title={hasVolumes(userVolumes) ? undefined : 'No volumes to manage'} onClick={() => navigate(`/servers/${hero.user}/volumes`, { state: { from: HOME_ORIGIN } })}>Manage Volumes</Button>}
           </>
         )}
       </div>
       {running && (
         <div style={{ marginTop: 16 }}>
-          <TtlGadget timeLeftMin={hero.ttl.timeLeftMin} baseMin={hero.ttl.baseMin} maxAddHours={hero.ttl.maxAddHours} uptimeLabel={hero.startedISO ? timeAgoShort(hero.startedISO) : undefined} onExtend={(h) => extendSession(hero.user, h)} />
+          <TtlGadget timeLeftMin={hero.ttl.timeLeftMin} baseMin={hero.ttl.baseMin} maxAddHours={hero.ttl.maxAddHours} uptimeLabel={hero.startedISO ? timeAgoShort(hero.startedISO) : undefined} uptimeSince={hero.startedISO ?? undefined} onExtend={(h) => extendSession(hero.user, h)} />
         </div>
       )}
     </Card>
@@ -76,13 +80,15 @@ function MobileServersWidget() {
         <span className="doh-muted">No active servers</span>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {active.map((s) => (
-            <div key={s.user} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          {active.map((s, i) => (
+            // zebra the rows (the desktop active-servers table is striped; keep parity)
+            <div key={s.user} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '4px 6px', borderRadius: 'var(--radius-sm)', background: i % 2 ? 'color-mix(in srgb, var(--color-text) 3%, transparent)' : undefined }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {s.user}{s.admin && <Tag bordered={false} style={adminTag}>admin</Tag>}
                 </div>
-                <div className="doh-muted" style={{ fontSize: 12 }}>{s.lastActivityISO ? `active ${timeAgoShort(s.lastActivityISO)}` : '-'}</div>
+                {/* uptime, not last-activity: the status pill already carries the relative time */}
+                {s.startedISO && <div className="doh-muted" style={{ fontSize: 12 }} title="Server uptime">up {timeAgoShort(s.startedISO)}</div>}
               </div>
               <StatusPill status={s.status} label={s.statusLabel} />
             </div>

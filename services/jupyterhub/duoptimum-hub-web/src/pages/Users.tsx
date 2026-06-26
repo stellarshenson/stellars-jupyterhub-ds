@@ -17,6 +17,7 @@ import { invalidate } from '../services/actions'
 import { setUserAuthorization, discardUser } from '../services/ops'
 import { isAdminUser } from '../app/capabilities'
 import { exactDate, timeAgoShort } from '../lib/format'
+import { useResponsiveColumns } from '../lib/useResponsiveColumns'
 import type { UserRow } from '../services/types'
 
 const accentTag = { background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4, marginInlineStart: 6 }
@@ -95,7 +96,7 @@ export default function Users() {
     [main, scope, q],
   )
 
-  const columns: ProColumns<UserRow>[] = [
+  const columns: ProColumns<UserRow>[] = useResponsiveColumns([
     {
       title: <Tooltip title={COL_HELP.users.user}><span>User</span></Tooltip>,
       dataIndex: 'name',
@@ -131,12 +132,14 @@ export default function Users() {
     {
       title: <Tooltip title={COL_HELP.users.created}><span>Created</span></Tooltip>,
       dataIndex: 'createdISO',
+      responsive: ['xl'], // time metadata: first to drop on tablet (<1200)
       sorter: (a, b) => a.createdISO.localeCompare(b.createdISO),
       render: (_, u) => <span title={exactDate(u.createdISO)}>{timeAgoShort(u.createdISO)}</span>,
     },
     {
       title: <Tooltip title={COL_HELP.users.lastSeen}><span>Last Seen</span></Tooltip>,
       dataIndex: 'lastSeenISO',
+      responsive: ['xl'], // time metadata: drops first on tablet (<1200)
       sorter: (a, b) => (a.lastSeenISO ?? '').localeCompare(b.lastSeenISO ?? ''),
       render: (_, u) =>
         u.lastSeenISO ? <span title={exactDate(u.lastSeenISO)}>{timeAgoShort(u.lastSeenISO)}</span> : <span className="doh-muted" title="never signed in">-</span>,
@@ -144,15 +147,17 @@ export default function Users() {
     {
       title: <Tooltip title={COL_HELP.users.activity}><span>Activity</span></Tooltip>,
       dataIndex: 'activity',
+      responsive: ['lg'], // secondary: drops next (<992)
       sorter: (a, b) => a.activity - b.activity,
       render: (_, u) => <ActivityMeter value={u.activity} hours={u.activityHours} pct={u.activityPct} />,
     },
     {
       title: <Tooltip title={COL_HELP.users.groups}><span>Groups</span></Tooltip>,
       dataIndex: 'groups',
+      responsive: ['lg'], // secondary: drops next (<992)
       render: (_, u) => <CappedTags items={u.groups.map((g) => ({ key: g, label: g }))} cap={5} />,
     },
-  ]
+  ])
 
   return (
     <>

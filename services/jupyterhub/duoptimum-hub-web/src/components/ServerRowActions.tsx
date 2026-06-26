@@ -3,12 +3,24 @@
  * other, enter, restart, stop, manage volumes, spawning cancel). `from` (optional)
  * tags the navigation origin so the sub-screen it opens (Manage volumes) and its
  * breadcrumb return to where the action was invoked, not a hardcoded parent. */
-import { Modal, Spin } from 'antd'
+import { Spin } from 'antd'
 import type { NavigateFunction } from 'react-router-dom'
 import { IconAction } from './IconAction'
 import { userServerUrl } from '../services/hub/client'
+import { appModal } from '../services/actions'
+import { useUserVolumes } from '../hooks/queries'
+import { hasVolumes } from '../lib/volumes'
 import type { useServerLifecycle } from '../app/ServerLifecycle'
 import type { ServerRow } from '../services/types'
+
+// the Manage-volumes affordance is ALWAYS present but DISABLED when the user has no volumes
+// (a brand-new or just-reset user has none) - own per-row volume query; the icon keeps its place
+// with an explanatory tooltip rather than vanishing, so the action row is predictable.
+function ManageVolumesAction({ user, busy, onOpen }: { user: string; busy: boolean; onOpen: () => void }) {
+  const { data: volumes } = useUserVolumes(user)
+  const none = !hasVolumes(volumes)
+  return <IconAction icon="disk" title={none ? 'No volumes to manage' : 'Manage volumes'} disabled={busy || none} onClick={onOpen} />
+}
 
 type Lifecycle = ReturnType<typeof useServerLifecycle>
 export interface NavOrigin {
@@ -23,10 +35,10 @@ export function enterSession(user: string, me: string) {
     window.location.assign(userServerUrl(user))
     return
   }
-  Modal.confirm({
+  appModal.confirm({
     title: `Open ${user}'s server?`,
-    content: `You are about to enter another user's lab. Everything you do happens inside ${user}'s environment.`,
-    okText: `Open ${user}'s server`,
+    content: `You are about to enter another user's lab. Everything you do happens inside ${user}'s environment. JupyterHub will ask you to authorize the access.`,
+    okText: 'Open',
     cancelText: 'Cancel',
     onOk: () => window.location.assign(userServerUrl(user)),
   })
@@ -55,7 +67,7 @@ export function rowActions(r: ServerRow, navigate: NavigateFunction, lf: Lifecyc
     return (
       <div className="doh-row doh-actions" style={{ justifyContent: 'flex-end' }}>
         <IconAction icon="play" title={r.user === me ? 'Start server' : `Start ${r.user}'s server`} busy={mode === 'start'} disabled={busy} onClick={() => lf.start(r.user)} />
-        <IconAction icon="disk" title="Manage volumes" disabled={busy} onClick={() => nav(`/servers/${r.user}/volumes`)} />
+        <ManageVolumesAction user={r.user} busy={busy} onOpen={() => nav(`/servers/${r.user}/volumes`)} />
       </div>
     )
   }

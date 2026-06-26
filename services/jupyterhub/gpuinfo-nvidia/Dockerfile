@@ -5,7 +5,7 @@
 #
 # The CUDA base is parameterised so this sidecar tracks the platform's GPU base
 # image (JUPYTERHUB_GPUINFO_NVIDIA_BASE_IMAGE).
-ARG NVIDIA_BASE_IMAGE=nvidia/cuda:13.0.2-base-ubuntu24.04
+ARG NVIDIA_BASE_IMAGE=nvidia/cuda:13.2.0-base-ubuntu24.04
 
 ##############################################################################
 # STAGE 1 - build + test the wheel (tests gate the image build)

@@ -54,7 +54,7 @@
   @keyframes doh-pulse-alert{0%,100%{opacity:1;}50%{opacity:.25;}}
   @keyframes doh-ttl-glow{0%,100%{filter:drop-shadow(0 0 1px color-mix(in srgb,currentColor 60%,transparent));opacity:.85;}50%{filter:drop-shadow(0 0 5px currentColor) drop-shadow(0 0 9px color-mix(in srgb,currentColor 70%,transparent));opacity:1;}}
   @keyframes doh-ttl-glow-soft{0%,100%{filter:drop-shadow(0 0 0 transparent);}50%{filter:drop-shadow(0 0 3px color-mix(in srgb,currentColor 55%,transparent));}}
-  @keyframes doh-ttl-boost-bar{0%{width:8%;filter:brightness(1);box-shadow:0 0 0 transparent;}8.3%{width:46%;filter:brightness(1.55) saturate(1.25);box-shadow:0 0 11px 1px color-mix(in srgb,var(--color-accent) 80%,transparent);}91.7%{width:46%;filter:brightness(1.3) saturate(1.15);box-shadow:0 0 8px 1px color-mix(in srgb,var(--color-accent) 60%,transparent);}100%{width:8%;filter:brightness(1);box-shadow:0 0 0 transparent;}}
+  @keyframes doh-ttl-boost-bar{0%{width:8%;filter:brightness(1);box-shadow:0 0 0 0 transparent;}8.3%{width:46%;filter:brightness(1.18) saturate(1.08);box-shadow:18px 0 22px 4px color-mix(in srgb,var(--color-accent) 28%,transparent);}91.7%{width:46%;filter:brightness(1.08) saturate(1.04);box-shadow:14px 0 18px 3px color-mix(in srgb,var(--color-accent) 16%,transparent);}100%{width:8%;filter:brightness(1);box-shadow:0 0 0 0 transparent;}}
   @keyframes doh-ttl-boost-num{0%{filter:blur(0);opacity:1;transform:translateY(0) scale(1);}45%{filter:blur(0);opacity:1;transform:translateY(0) scale(1);}72%{filter:blur(1.4px);opacity:.85;transform:translateY(1px) scale(.99);}90%{filter:blur(.5px);opacity:1;transform:translateY(0) scale(1);}100%{filter:blur(0);opacity:1;transform:translateY(0) scale(1);}}
   @keyframes doh-ttl-boost-clock{0%{filter:drop-shadow(0 0 0 transparent);}8.3%{filter:drop-shadow(0 0 6px currentColor) drop-shadow(0 0 10px color-mix(in srgb,currentColor 70%,transparent));}91.7%{filter:drop-shadow(0 0 4px color-mix(in srgb,currentColor 80%,transparent));}100%{filter:drop-shadow(0 0 0 transparent);}}
   ::-webkit-scrollbar{width:10px;height:10px;}
@@ -62,6 +62,16 @@
   ::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--color-text) 18%,transparent);border-radius:9999px;border:2px solid transparent;background-clip:padding-box;}
   ::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--color-text) 32%,transparent);}
 </style>
+<template id="__bundler_thumbnail" data-bg-color="#252b32">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#252b32"></rect>
+    <rect x="360" y="240" width="480" height="120" rx="22" fill="#21a8e4"></rect>
+    <text x="600" y="322" font-family="system-ui,sans-serif" font-size="78" font-weight="700" fill="#ffffff" text-anchor="middle">D</text>
+    <rect x="360" y="392" width="300" height="22" rx="11" fill="#3fb950"></rect>
+    <rect x="360" y="430" width="420" height="22" rx="11" fill="#404b54"></rect>
+    <rect x="360" y="468" width="220" height="22" rx="11" fill="#da8230"></rect>
+  </svg>
+</template>
 </helmet>
 <div ref="{{ rootRef }}" data-theme="{{ theme }}" style="min-height:100vh;display:flex;background:var(--color-bg);color:var(--color-text);font-family:var(--font-sans);font-size:14px;line-height:1.5;">
 
@@ -117,7 +127,7 @@
 
     <!-- ============ COLOUR TOKENS ============ -->
     <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
-      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Colour tokens</div>
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);"><div style="font-weight:600;font-size:15px;">Colour tokens</div><div style="font-weight:400;font-size:12px;color:var(--color-text-subtle);margin-top:3px;max-width:780px;line-height:1.55;">The single source of truth. Every colour in the product resolves to a <code style="font-family:var(--font-mono);">--color-*</code> variable — never a literal hex in a component. <b style="color:var(--color-text-muted);font-weight:600;">-soft</b> variants are ~10–16% tints for fills and backgrounds; <b style="color:var(--color-text-muted);font-weight:600;">-ring</b> is the focus halo. Theming = overriding these vars on <code style="font-family:var(--font-mono);">[data-theme]</code>; components stay untouched.</div></div>
       <div style="padding:6px 24px 18px;">
         <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
           <div style="color:var(--color-text-subtle);font-size:13px;">Accent</div>
@@ -165,11 +175,12 @@
           </div>
         </div>
       </div>
+      <div style="padding:13px 24px 16px;border-top:1px solid var(--color-border-subtle);background:var(--color-bg-subtle);"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--color-text-subtle);margin-bottom:7px;">Build notes</div><div style="font-size:12px;color:var(--color-text-muted);line-height:1.65;">Tokens are CSS custom properties on the <code style="font-family:var(--font-mono);color:var(--color-text);">[data-theme]</code> root; components read <code style="font-family:var(--font-mono);color:var(--color-text);">var(--color-x)</code> only. A theme is a second <code style="font-family:var(--font-mono);color:var(--color-text);">[data-theme="light"]</code> block overriding the <i>same</i> names — no per-component light/dark branches. <code style="font-family:var(--font-mono);color:var(--color-text);">-soft</code>/<code style="font-family:var(--font-mono);color:var(--color-text);">-ring</code> are pre-baked rgba / <code style="font-family:var(--font-mono);color:var(--color-text);">color-mix</code>, not element opacity (opacity bleeds text + borders). Swatch = 44px div. <b style="color:var(--color-text-subtle);font-weight:600;">Watchout:</b> never hardcode a hex in markup — a literal won't flip with the theme.</div></div>
     </section>
 
     <!-- ============ TYPE + SCALES ============ -->
     <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
-      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Type, scale &amp; normal text</div>
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);"><div style="font-weight:600;font-size:15px;">Type, scale &amp; normal text</div><div style="font-weight:400;font-size:12px;color:var(--color-text-subtle);margin-top:3px;max-width:780px;line-height:1.55;">Two faces only — a system sans for all UI, JetBrains Mono for data, IDs and timers (always with <code style="font-family:var(--font-mono);">tabular-nums</code>). Font sizes, radii and spacing must come from the fixed scales shown here; don't introduce off-scale values. Text colour carries meaning: neutral / link / success / warning / danger.</div></div>
       <div style="padding:6px 24px 18px;">
         <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
           <div style="color:var(--color-text-subtle);font-size:13px;">Sans (UI)</div>
@@ -212,11 +223,12 @@
           </div>
         </div>
       </div>
+      <div style="padding:13px 24px 16px;border-top:1px solid var(--color-border-subtle);background:var(--color-bg-subtle);"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--color-text-subtle);margin-bottom:7px;">Build notes</div><div style="font-size:12px;color:var(--color-text-muted);line-height:1.65;">Two families: <code style="font-family:var(--font-mono);color:var(--color-text);">--font-sans</code> (system-ui) for UI, <code style="font-family:var(--font-mono);color:var(--color-text);">--font-mono</code> (JetBrains Mono, loaded once in <code style="font-family:var(--font-mono);color:var(--color-text);">&lt;helmet&gt;</code>) for data. Numbers/timers add <code style="font-family:var(--font-mono);color:var(--color-text);">font-variant-numeric:tabular-nums</code> so digits don't jitter on tick. Sizes/radii/spacing come from <code style="font-family:var(--font-mono);color:var(--color-text);">--text-*</code>/<code style="font-family:var(--font-mono);color:var(--color-text);">--radius-*</code>/<code style="font-family:var(--font-mono);color:var(--color-text);">--space-*</code> — pull, don't type px. <b style="color:var(--color-text-subtle);font-weight:600;">Watchout:</b> pills use <code style="font-family:var(--font-mono);color:var(--color-text);">9999px</code>, not <code style="font-family:var(--font-mono);color:var(--color-text);">50%</code>, to stay capsule at any width.</div></div>
     </section>
 
     <!-- ============ NAMED PALETTE ============ -->
     <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
-      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Named palette — dim / normal / bright</div>
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);"><div style="font-weight:600;font-size:15px;">Named palette — dim / normal / bright</div><div style="font-weight:400;font-size:12px;color:var(--color-text-subtle);margin-top:3px;max-width:780px;line-height:1.55;">Each semantic colour has three steps, derived with <code style="font-family:var(--font-mono);">color-mix</code> against surface and text — so they track the theme automatically. Use <b style="color:var(--color-text-muted);font-weight:600;">dim</b> for inactive / empty, <b style="color:var(--color-text-muted);font-weight:600;">normal</b> for the resting state, <b style="color:var(--color-text-muted);font-weight:600;">bright</b> for hover / emphasis. Never hand-pick an intermediate shade.</div></div>
       <div style="padding:6px 24px 18px;">
         <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:11px 0;border-bottom:1px solid var(--color-border-subtle);">
           <div style="color:var(--color-text-subtle);font-size:13px;">green <span style="color:var(--color-text-subtle);opacity:.7;">(success)</span></div>
@@ -259,11 +271,12 @@
           </div>
         </div>
       </div>
+      <div style="padding:13px 24px 16px;border-top:1px solid var(--color-border-subtle);background:var(--color-bg-subtle);"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--color-text-subtle);margin-bottom:7px;">Build notes</div><div style="font-size:12px;color:var(--color-text-muted);line-height:1.65;">Steps are <code style="font-family:var(--font-mono);color:var(--color-text);">color-mix(in srgb, &lt;token&gt; X%, var(--color-surface))</code> for dim and <code style="font-family:var(--font-mono);color:var(--color-text);">… var(--color-text))</code> for bright — computed + theme-aware, never separate hex. Consume as <code style="font-family:var(--font-mono);color:var(--color-text);">var(--doh-green-dim)</code> etc. dim = inactive/empty, normal = resting, bright = hover/emphasis. <b style="color:var(--color-text-subtle);font-weight:600;">Watchout:</b> the right-hand mix colour must be a real surface/text token — mixing toward <code style="font-family:var(--font-mono);color:var(--color-text);">transparent</code> just lowers alpha, it won't dim.</div></div>
     </section>
 
     <!-- ============ BUTTONS ============ -->
     <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
-      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Action buttons</div>
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);"><div style="font-weight:600;font-size:15px;">Action buttons</div><div style="font-weight:400;font-size:12px;color:var(--color-text-subtle);margin-top:3px;max-width:780px;line-height:1.55;">Three intents — primary (accent fill), secondary (outline), danger — at two sizes: 32px on pages, 24px in list rows. At most one primary per view; reserve danger for destructive, irreversible actions. Icon weight follows the standalone-vs-list rule below.</div></div>
       <div style="padding:6px 24px 18px;">
         <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
           <div style="color:var(--color-text-subtle);font-size:13px;">page (primary / secondary / danger / disabled)</div>
@@ -315,11 +328,12 @@
           <span><b style="color:var(--color-text-subtle);font-weight:600;">Icons:</b> wireframe by default, filled on demand. Tones — primary (cyan, go-to), secondary (gray, neutral), dangerous (red, destructive), warning (orange, caution). List icons stay wireframe and fill only for emphasis; button icons use the filled glyph when one exists.</span>
         </div>
       </div>
+      <div style="padding:13px 24px 16px;border-top:1px solid var(--color-border-subtle);background:var(--color-bg-subtle);"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--color-text-subtle);margin-bottom:7px;">Build notes</div><div style="font-size:12px;color:var(--color-text-muted);line-height:1.65;">Flex row, <code style="font-family:var(--font-mono);color:var(--color-text);">gap</code> for icon+label spacing (never margins). Heights are fixed: 32px page / 24px list, <code style="font-family:var(--font-mono);color:var(--color-text);">border-radius:var(--radius-md)</code>. Primary = accent bg+border; secondary = surface+border, accent on hover; danger = danger bg. Disabled = bg-subtle + <code style="font-family:var(--font-mono);color:var(--color-text);">cursor:not-allowed</code>, no hover. Icon weight follows the standalone(fill)/list(stroke) rule. <b style="color:var(--color-text-subtle);font-weight:600;">Watchout:</b> set <code style="font-family:var(--font-mono);color:var(--color-text);">font-family:inherit</code> on <code style="font-family:var(--font-mono);color:var(--color-text);">&lt;button&gt;</code> or it renders in UA serif.</div></div>
     </section>
 
     <!-- ============ PILLS, TAGS, CHIPS ============ -->
     <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
-      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Pills, tags &amp; chips</div>
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);"><div style="font-weight:600;font-size:15px;">Pills, tags &amp; chips</div><div style="font-weight:400;font-size:12px;color:var(--color-text-subtle);margin-top:3px;max-width:780px;line-height:1.55;">Status is <b style="color:var(--color-text-muted);font-weight:600;">always</b> a coloured pill from the shared state palette — soft fill + matching dot, never colour-only text. Transient states (spawning / in-progress) pulse the dot. Tags are flat labels; chips cap overflow with <code style="font-family:var(--font-mono);">+N</code>; scope pills are clickable filters that light with an accent ring when selected.</div></div>
       <div style="padding:6px 24px 18px;">
         <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
           <div style="color:var(--color-text-subtle);font-size:13px;">Status pills (lifecycle)</div>
@@ -371,11 +385,12 @@
           </div>
         </div>
       </div>
+      <div style="padding:13px 24px 16px;border-top:1px solid var(--color-border-subtle);background:var(--color-bg-subtle);"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--color-text-subtle);margin-bottom:7px;">Build notes</div><div style="font-size:12px;color:var(--color-text-muted);line-height:1.65;">Inline-flex, <code style="font-family:var(--font-mono);color:var(--color-text);">gap:6px</code>, soft bg + matching text + 7px dot. Transient pulse = <code style="font-family:var(--font-mono);color:var(--color-text);">@keyframes doh-pulse</code> on the dot only (opacity), nothing that shifts layout. Scope filters are <code style="font-family:var(--font-mono);color:var(--color-text);">&lt;button data-scope&gt;</code>; JS toggles <code style="font-family:var(--font-mono);color:var(--color-text);">opacity</code> + <code style="font-family:var(--font-mono);color:var(--color-text);">box-shadow:0 0 0 2px var(--color-accent-ring)</code> for the active ring. <code style="font-family:var(--font-mono);color:var(--color-text);">+N</code> chip = dashed border, no fill. <b style="color:var(--color-text-subtle);font-weight:600;">Watchout:</b> colour alone never carries status — always dot + label.</div></div>
     </section>
 
     <!-- ============ CONNECTION DIODE ============ -->
     <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
-      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Connection status — pulsing diode</div>
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);"><div style="font-weight:600;font-size:15px;">Connection status — pulsing diode</div><div style="font-weight:400;font-size:12px;color:var(--color-text-subtle);margin-top:3px;max-width:780px;line-height:1.55;">A liveness indicator where severity is encoded in <b style="color:var(--color-text-muted);font-weight:600;">cadence</b>, not just colour. Core dot and halo fade together (opacity only, no scale): Connected is subtle and slow (3.6s); Not responding is pronounced and 3× faster (1.2s). Click the topbar pill to toggle the two states.</div></div>
       <div style="padding:14px 24px 18px;">
         <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
           <span style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;padding:1px 9px;border:1px solid currentColor;border-radius:4px;line-height:1.6;color:var(--color-success);">
@@ -389,11 +404,12 @@
           <span><b style="color:var(--color-text-subtle);font-weight:600;">Diode:</b> the core dot and its halo blink together with a single opacity fade — no scaling, no layout shift. Connected fades gently and slowly (subtle, 3.6s); Not responding fades hard and 3× faster (1.2s), the same cadence as the in-progress pill. Honours <code style="font-family:var(--font-mono);">prefers-reduced-motion</code> with a steady halo.</span>
         </div>
       </div>
+      <div style="padding:13px 24px 16px;border-top:1px solid var(--color-border-subtle);background:var(--color-bg-subtle);"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--color-text-subtle);margin-bottom:7px;">Build notes</div><div style="font-size:12px;color:var(--color-text-muted);line-height:1.65;">Two nested spans: solid core dot + absolutely-positioned halo (<code style="font-family:var(--font-mono);color:var(--color-text);">box-shadow</code> blur). Both ride one shared keyframe, <b>opacity only</b> — <code style="font-family:var(--font-mono);color:var(--color-text);">doh-pulse-calm 3.6s</code> alive, <code style="font-family:var(--font-mono);color:var(--color-text);">doh-pulse-alert 1.2s</code> (3×) down. Severity = cadence; JS swaps it by reassigning <code style="font-family:var(--font-mono);color:var(--color-text);">style.animation</code>. <b style="color:var(--color-text-subtle);font-weight:600;">Watchout:</b> animate opacity, not <code style="font-family:var(--font-mono);color:var(--color-text);">transform:scale</code> (scaling nudges the pill baseline); freeze under <code style="font-family:var(--font-mono);color:var(--color-text);">prefers-reduced-motion</code>.</div></div>
     </section>
 
     <!-- ============ METERS, BARS, WIDGETS ============ -->
     <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
-      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Meters, bars &amp; widgets</div>
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);"><div style="font-weight:600;font-size:15px;">Meters, bars &amp; widgets</div><div style="font-weight:400;font-size:12px;color:var(--color-text-subtle);margin-top:3px;max-width:780px;line-height:1.55;">All bars share one shape — a rounded track with a rounded fill. Usage bars (high = bad) go accent → warning at ≥70% → danger at ≥90%. <b style="color:var(--color-text-muted);font-weight:600;">GPU bars are the exception:</b> they keep the accent base and vary only the stripe hue (10 fixed cool hues, cycling) so colour identifies a device, not its load. TTL is reversed — a low timer is the normal end state, never an alarm.</div></div>
       <div style="padding:6px 24px 18px;">
         <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
           <div style="color:var(--color-text-subtle);font-size:13px;">Activity meter (high / mid / low)</div>
@@ -406,8 +422,8 @@
         <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
           <div style="color:var(--color-text-subtle);font-size:13px;">Spark (stacked)</div>
           <div style="display:flex;height:6px;border-radius:9999px;overflow:hidden;background:var(--color-bg-subtle);width:220px;">
-            <span style="display:block;height:100%;width:30%;background:var(--color-success);"></span>
-            <span style="display:block;height:100%;width:15%;border-radius:0 9999px 9999px 0;background:var(--color-warning);"></span>
+            <span style="display:block;height:100%;width:30%;background:var(--color-success);border-right:1.5px solid var(--color-bg-subtle);"></span>
+            <span style="display:block;height:100%;width:15%;border-radius:0 9999px 9999px 0;background:var(--color-warning);border-right:1.5px solid var(--color-bg-subtle);"></span>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--color-border-subtle);">
@@ -420,9 +436,9 @@
         </div>
         <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--color-border-subtle);">
           <div style="color:var(--color-text-subtle);font-size:13px;">GPU meter (per device)<div style="color:var(--color-text-subtle);opacity:.75;font-size:12px;margin-top:3px;">10 fixed hue stripes · cycles past 10</div></div>
-          <div style="display:flex;flex-direction:column;gap:5px;width:320px;">
+          <div style="display:flex;flex-direction:column;gap:5px;width:340px;">
             <sc-for list="{{ gpus }}" as="g" hint-placeholder-count="12">
-              <div style="display:flex;align-items:center;gap:7px;"><small style="width:118px;font-size:11px;color:var(--color-text-subtle);font-variant-numeric:tabular-nums;">{{ g.label }}</small><span style="flex:1;height:6px;border-radius:9999px;background:var(--color-bg-subtle);overflow:hidden;"><i style="display:block;height:100%;width:{{ g.pct }};border-radius:9999px;background-color:{{ g.base }};background-image:{{ g.stripes }};"></i></span><small style="width:34px;text-align:right;font-size:11px;color:var(--color-text-subtle);font-variant-numeric:tabular-nums;">{{ g.pct }}</small></div>
+              <div style="display:flex;align-items:center;gap:7px;"><small style="width:148px;font-size:11px;color:var(--color-text-subtle);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ g.label }}</small><span style="flex:1;height:6px;border-radius:9999px;background:var(--color-bg-subtle);overflow:hidden;"><i style="display:block;height:100%;width:{{ g.pct }};border-radius:9999px;background-color:{{ g.base }};background-image:{{ g.stripes }};"></i></span><small style="width:34px;text-align:right;font-size:11px;color:var(--color-text-subtle);font-variant-numeric:tabular-nums;">{{ g.pct }}</small></div>
             </sc-for>
           </div>
         </div>
@@ -440,15 +456,25 @@
             <div style="display:flex;align-items:center;gap:14px;"><span style="flex:1;height:8px;border-radius:9999px;background:var(--color-bg-subtle);overflow:hidden;"><i style="display:block;height:100%;width:46%;border-radius:9999px;background:var(--color-accent);animation:doh-ttl-boost-bar 3s linear infinite;"></i></span><span style="display:inline-flex;align-items:center;gap:5px;min-width:74px;color:var(--color-accent);font-size:13px;font-variant-numeric:tabular-nums;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="animation:doh-ttl-boost-clock 3s linear infinite;"><path d="M12 7v5l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"></path></svg><b style="color:var(--color-accent);display:inline-block;animation:doh-ttl-boost-num 3s linear infinite;">+2h 0m</b></span><button style="height:24px;padding:0 10px;border-radius:6px;border:1px solid var(--color-accent);background:var(--color-accent);color:#fff;font-size:12px;cursor:pointer;font-family:inherit;">Extending…</button></div>
           </div>
         </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:flex-start;padding:14px 0;border-top:1px solid var(--color-border-subtle);">
+          <div style="color:var(--color-text-subtle);font-size:13px;">TTL spec (read before building)</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--color-text-muted);line-height:1.55;max-width:560px;">
+            <div style="display:flex;gap:9px;"><span style="flex:none;width:78px;color:var(--color-text-subtle);font-weight:600;">Fraction</span><span><code style="font-family:var(--font-mono);">f = remaining / base</code> where <code style="font-family:var(--font-mono);">base</code> is the lifetime the server was <i>granted</i> (e.g. 4h) — NOT a fixed max, NOT the wall-clock day. Bar width = <code style="font-family:var(--font-mono);">f</code>. It only ever shrinks; extending raises <code style="font-family:var(--font-mono);">base</code> and <code style="font-family:var(--font-mono);">remaining</code> together.</span></div>
+            <div style="display:flex;gap:9px;"><span style="flex:none;width:78px;color:var(--color-text-subtle);font-weight:600;">Reversed</span><span>Low is the normal end of life, so colour goes the opposite way to a usage bar: <b style="color:var(--doh-ttl-blue);">blue</b> while <code style="font-family:var(--font-mono);">f ≥ 0.30</code>, <b style="color:var(--color-warning);">warning</b> when <code style="font-family:var(--font-mono);">f &lt; 0.30</code>, <b style="color:var(--doh-ttl-red);">dim red</b> when <code style="font-family:var(--font-mono);">f &lt; 0.10</code>. Never full danger-red, never a flashing alarm — a server reaching its TTL is expected.</span></div>
+            <div style="display:flex;gap:9px;"><span style="flex:none;width:78px;color:var(--color-text-subtle);font-weight:600;">Glow</span><span>The clock glyph (not the bar) gets a soft glowing-blur pulse that scales with urgency: none while blue, faint at warn (2.4s), bright + fast at the end (1s). Pure <code style="font-family:var(--font-mono);">filter: drop-shadow</code> — no layout shift, honours reduced-motion.</span></div>
+            <div style="display:flex;gap:9px;"><span style="flex:none;width:78px;color:var(--color-text-subtle);font-weight:600;">Label</span><span>Short duration (<code style="font-family:var(--font-mono);">4h 0m</code>, <code style="font-family:var(--font-mono);">6m</code>) in mono + tabular-nums, coloured to match the bar. Exact expiry timestamp on hover only.</span></div>
+          </div>
+        </div>
         <div style="display:flex;gap:8px;padding:10px 14px;border:1px dashed var(--color-border-strong);border-radius:6px;color:var(--color-text-muted);font-size:12px;margin-top:8px;">
           <span><b style="color:var(--color-text-subtle);font-weight:600;">Colour thresholds:</b> usage bars (high = bad) are calm accent below 70%, full warning at ≥70%, full danger at ≥90%. <b style="color:var(--color-text-subtle);font-weight:600;">GPU bars are the exception</b> — every device keeps the calm accent-blue base; only the 45° stripe overlay carries one of 10 fixed identity colours spread across the whole wheel (cyan, orange, green, violet, a neutral gray, magenta, blue, amber, teal) and tuned on hue + value so each device stays distinct at a glance. Past 10 GPUs the colours cycle (marked ↻). The TTL bar is reversed — blue while ample, warning under 30% of base, dim red under 10% (a low timer is the normal end state, not an alarm). As time runs out the clock glyph picks up a soft glowing-blur pulse — barely there at warn, bright and fast at the end — so a near-expiry server catches the eye without a hard alert. Exact values live in a tooltip on hover, never as static text.</span>
         </div>
       </div>
+      <div style="padding:13px 24px 16px;border-top:1px solid var(--color-border-subtle);background:var(--color-bg-subtle);"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--color-text-subtle);margin-bottom:7px;">Build notes</div><div style="font-size:12px;color:var(--color-text-muted);line-height:1.65;">Track = rounded <code style="font-family:var(--font-mono);color:var(--color-text);">bg-subtle</code> span; fill = inner <code style="font-family:var(--font-mono);color:var(--color-text);">&lt;i&gt;</code> with <code style="font-family:var(--font-mono);color:var(--color-text);">width:%</code> + <code style="font-family:var(--font-mono);color:var(--color-text);">border-radius:9999px</code>. Usage colour by threshold (accent &lt;70, warning ≥70, danger ≥90). GPU = accent base + <code style="font-family:var(--font-mono);color:var(--color-text);">repeating-linear-gradient(45deg, hsl(…) 0 3px, transparent 3px 7px)</code> stripe, hue/sat/light per device, cycles past 10. TTL is reversed (see its spec row). Boost glow = forward-only <code style="font-family:var(--font-mono);color:var(--color-text);">box-shadow</code> (+x offset, −spread) on the fill, cropped by track <code style="font-family:var(--font-mono);color:var(--color-text);">overflow:hidden</code>. <b style="color:var(--color-text-subtle);font-weight:600;">Watchout:</b> round every fill end for one shape language.</div></div>
     </section>
 
     <!-- ============ NOTICES + ALERTS + GRANT/FEED ============ -->
     <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
-      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Notices, alerts, grants &amp; feed</div>
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);"><div style="font-weight:600;font-size:15px;">Notices, alerts, grants &amp; feed</div><div style="font-weight:400;font-size:12px;color:var(--color-text-subtle);margin-top:3px;max-width:780px;line-height:1.55;">Inline messaging, all keyed to the state palette. Notices use a 3px coloured left edge + matching leading icon on a subtle fill. Banners are full soft-tint blocks. Feed-item icons sit centred in a category-tinted circle. The colour always names the state — green done, info in-flight, amber caution, red failure.</div></div>
       <div style="padding:6px 24px 18px;">
         <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
           <div style="color:var(--color-text-subtle);font-size:13px;">Notices (left-edge)</div>
@@ -496,11 +522,12 @@
           </div>
         </div>
       </div>
+      <div style="padding:13px 24px 16px;border-top:1px solid var(--color-border-subtle);background:var(--color-bg-subtle);"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--color-text-subtle);margin-bottom:7px;">Build notes</div><div style="font-size:12px;color:var(--color-text-muted);line-height:1.65;">Notice = <code style="font-family:var(--font-mono);color:var(--color-text);">border-left:3px solid &lt;state&gt;</code> + leading icon on a subtle fill. Banner = full <code style="font-family:var(--font-mono);color:var(--color-text);">*-soft</code> bg + 1px state border. Feed icon = 28px circle, <code style="font-family:var(--font-mono);color:var(--color-text);">display:grid;place-items:center</code>, bg = category <code style="font-family:var(--font-mono);color:var(--color-text);">*-soft</code>; SVGs are <code style="font-family:var(--font-mono);color:var(--color-text);">display:block</code> so they centre true. <b style="color:var(--color-text-subtle);font-weight:600;">Watchout:</b> tint the bg from the <i>same</i> state token as the icon stroke — a mismatched pair reads as a bug.</div></div>
     </section>
 
     <!-- ============ FORM CONTROLS ============ -->
     <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
-      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Form controls</div>
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);"><div style="font-weight:600;font-size:15px;">Form controls</div><div style="font-weight:400;font-size:12px;color:var(--color-text-subtle);margin-top:3px;max-width:780px;line-height:1.55;">Inputs are 32px tall, 6px radius, with a 3px accent-soft focus ring. Disabled controls drop to a bg-subtle fill + subtle text (mono for locked/identifier values). Switches, checkboxes and radios fill with accent when on. Segmented controls use a soft-fill active cell, not a hard border.</div></div>
       <div style="padding:6px 24px 18px;">
         <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
           <div style="color:var(--color-text-subtle);font-size:13px;">Text / disabled</div>
@@ -553,11 +580,12 @@
           </div>
         </div>
       </div>
+      <div style="padding:13px 24px 16px;border-top:1px solid var(--color-border-subtle);background:var(--color-bg-subtle);"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--color-text-subtle);margin-bottom:7px;">Build notes</div><div style="font-size:12px;color:var(--color-text-muted);line-height:1.65;">32px height, 6px radius. Focus via <code style="font-family:var(--font-mono);color:var(--color-text);">style-focus</code> → <code style="font-family:var(--font-mono);color:var(--color-text);">box-shadow:0 0 0 3px var(--color-accent-soft)</code> (ring, not <code style="font-family:var(--font-mono);color:var(--color-text);">outline</code>). Switch/checkbox/radio are <code style="font-family:var(--font-mono);color:var(--color-text);">data-*</code> buttons; JS flips bg + knob <code style="font-family:var(--font-mono);color:var(--color-text);">transform:translateX</code>. Select caret = absolutely-positioned SVG over <code style="font-family:var(--font-mono);color:var(--color-text);">appearance:none</code>. Disabled = bg-subtle + mono. <b style="color:var(--color-text-subtle);font-weight:600;">Watchout:</b> keep the focus ring on <code style="font-family:var(--font-mono);color:var(--color-text);">box-shadow</code> so it follows the radius.</div></div>
     </section>
 
     <!-- ============ NAV + FEEDBACK ============ -->
     <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
-      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Navigation &amp; feedback</div>
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);"><div style="font-weight:600;font-size:15px;">Navigation &amp; feedback</div><div style="font-weight:400;font-size:12px;color:var(--color-text-subtle);margin-top:3px;max-width:780px;line-height:1.55;">Tabs underline the active item in accent (no pill). Count badges sit top-right in danger. Progress reuses the rounded meter bar; the donut mirrors it (accent fill on a track). Pagination and dropdown triggers reuse the secondary-button shell so chrome stays consistent.</div></div>
       <div style="padding:6px 24px 18px;">
         <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
           <div style="color:var(--color-text-subtle);font-size:13px;">Tabs</div>
@@ -587,11 +615,12 @@
           </div>
         </div>
       </div>
+      <div style="padding:13px 24px 16px;border-top:1px solid var(--color-border-subtle);background:var(--color-bg-subtle);"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--color-text-subtle);margin-bottom:7px;">Build notes</div><div style="font-size:12px;color:var(--color-text-muted);line-height:1.65;">Active tab = <code style="font-family:var(--font-mono);color:var(--color-text);">border-bottom:2px solid accent</code> + <code style="font-family:var(--font-mono);color:var(--color-text);">margin-bottom:-1px</code> to sit on the track line. Badge = absolute top-right, danger, <code style="font-family:var(--font-mono);color:var(--color-text);">min-width</code> so single digits stay round. Donut = <code style="font-family:var(--font-mono);color:var(--color-text);">conic-gradient(accent 0 N%, bg-subtle N% 100%)</code> with a surface-filled inner circle punching the hole. Progress reuses the meter bar. <b style="color:var(--color-text-subtle);font-weight:600;">Watchout:</b> pagination + dropdown reuse the secondary-button shell — don't restyle them apart.</div></div>
     </section>
 
     <!-- ============ CONVENTIONS ============ -->
     <section style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
-      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);font-weight:600;font-size:15px;">Conventions</div>
+      <div style="padding:14px 24px;border-bottom:1px solid var(--color-border-subtle);"><div style="font-weight:600;font-size:15px;">Conventions</div><div style="font-weight:400;font-size:12px;color:var(--color-text-subtle);margin-top:3px;max-width:780px;line-height:1.55;">Cross-cutting rules that keep screens coherent: one short relative-time format everywhere (exact stamp on hover); zebra rows at a 3% text tint; state always shown as a coloured pill (never colour-only); button and label text in Title Case, with acronyms (API, GPU) and units (7h) preserved.</div></div>
       <div style="padding:6px 24px 18px;">
         <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--color-border-subtle);">
           <div style="color:var(--color-text-subtle);font-size:13px;">Relative time (always short)</div>
@@ -615,6 +644,7 @@
           <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;"><span style="font-family:var(--font-mono);font-size:13px;">Add User</span><span style="font-family:var(--font-mono);font-size:13px;">Manage Volumes</span><span style="font-family:var(--font-mono);font-size:13px;">Clear Events</span><span style="color:var(--color-text-subtle);font-size:12px;">— minor words stay lowercase; acronyms (API, GPU) &amp; units (7h) kept as-is</span></div>
         </div>
       </div>
+      <div style="padding:13px 24px 16px;border-top:1px solid var(--color-border-subtle);background:var(--color-bg-subtle);"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--color-text-subtle);margin-bottom:7px;">Build notes</div><div style="font-size:12px;color:var(--color-text-muted);line-height:1.65;">Relative time: one short unit (<code style="font-family:var(--font-mono);color:var(--color-text);">2m</code>, <code style="font-family:var(--font-mono);color:var(--color-text);">5h</code>, <code style="font-family:var(--font-mono);color:var(--color-text);">3d</code>), exact stamp in <code style="font-family:var(--font-mono);color:var(--color-text);">title</code>. Zebra = <code style="font-family:var(--font-mono);color:var(--color-text);">color-mix(in srgb, var(--color-text) 3%, transparent)</code> (a tint, so it tracks the theme — not a fixed gray). Labels Title Case, acronyms/units verbatim. <b style="color:var(--color-text-subtle);font-weight:600;">Watchout:</b> enforce these once at the table/list layer, not per cell.</div></div>
     </section>
 
     <!-- ============ ICON SET ============ -->
@@ -650,6 +680,7 @@
           </sc-for>
         </div>
       </div>
+      <div style="padding:13px 24px 16px;border-top:1px solid var(--color-border-subtle);background:var(--color-bg-subtle);"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--color-text-subtle);margin-bottom:7px;">Build notes</div><div style="font-size:12px;color:var(--color-text-muted);line-height:1.65;">24×24 viewBox, one <code style="font-family:var(--font-mono);color:var(--color-text);">&lt;path&gt;</code>, 1.7 stroke, round caps/joins. Line = <code style="font-family:var(--font-mono);color:var(--color-text);">fill:none;stroke:currentColor</code>; standalone = <code style="font-family:var(--font-mono);color:var(--color-text);">fill:currentColor;stroke:none</code>. Colour inherits via <code style="font-family:var(--font-mono);color:var(--color-text);">currentColor</code> from the parent. Open paths (chevrons, activity zig-zag) MUST stay <code style="font-family:var(--font-mono);color:var(--color-text);">fill:none</code> — filling them is meaningless; standalone fills need closed shapes, with detail dots/lines re-added as a second stroked path over the solid body. <b style="color:var(--color-text-subtle);font-weight:600;">Watchout:</b> never fill an open polyline.</div></div>
     </section>
 
   </main>
@@ -815,13 +846,14 @@ class Component extends DCLogic {
       [197, 95, 32], [26, 95, 42], [140, 80, 32], [262, 90, 44], [212, 10, 47],
       [322, 90, 42], [95, 85, 38], [225, 95, 42], [45, 95, 40], [170, 90, 31],
     ];
+    const gpuModels = ['NVIDIA 5090', 'NVIDIA A4000', 'NVIDIA A4500 Pro', 'NVIDIA 4090', 'NVIDIA A100', 'NVIDIA H100', 'NVIDIA RTX 6000 Ada', 'NVIDIA L40S', 'NVIDIA A5000', 'NVIDIA 3090'];
     const usage = [62, 41, 18, 9, 74, 33, 88, 27, 55, 12, 47, 70];
     const gpus = usage.map((pct, i) => {
       const sw = gpuStripes[i % gpuStripes.length];
       const stripe = 'hsl(' + sw[0] + ' ' + sw[1] + '% ' + sw[2] + '%)';
       const wrapped = i >= gpuStripes.length;
       return {
-        label: 'GPU ' + i + ' · 5090' + (wrapped ? ' ↻' : ''),
+        label: gpuModels[i % gpuModels.length] + (wrapped ? ' ↻' : ''),
         pct: pct + '%',
         base: 'var(--color-accent)',
         stripes: 'repeating-linear-gradient(45deg,' + stripe + ' 0 3px,transparent 3px 7px)',

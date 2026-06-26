@@ -37,6 +37,7 @@ GPU_MISSING_OVERLAY=tests/functional/compose.functional-gpu-missing.yml
 TRAEFIK_OVERLAY=tests/functional/compose.functional-traefik.yml
 GPUINFO_MOCK_IMAGE=stellars/duoptimum-gpuinfo-mock:latest
 FUNCTEST_IMAGES="quay.io/jupyterhub/singleuser:latest mcr.microsoft.com/playwright/python:v1.49.0-noble"
+REPORTS_DIR=tests/functional/reports
 
 # tear down everything the harness created - idempotent. gpuinfo-nvidia and the
 # per-user functestadmin volumes are hub-created, not labelled with the project.
@@ -96,6 +97,19 @@ _render_results_table() {
   printf '└%s┴%s┴%s┴%s┘\n' "$L" "$R" "$T" "$D"
 }
 
+# ── HTML sign-off report ─────────────────────────────────────────────────────
+# EVERY run renders reports/signoff.html from the per-regime JSON sidecars the
+# conftest writes (results + acceptance-criteria coverage) + the board TSV.
+_reset_reports() { mkdir -p "$REPORTS_DIR"; rm -f "$REPORTS_DIR"/regime-*.json 2>/dev/null || true; }
+_gen_report() {
+  local board=$1 img
+  img=$(docker image inspect stellars/duoptimum-hub:latest --format '{{.Id}}' 2>/dev/null | sed 's/sha256://' | cut -c1-19)
+  python3 tests/functional/gen_signoff.py --board "$board" --reports-dir "$REPORTS_DIR" \
+    --out "$REPORTS_DIR/signoff.html" --image "${img:-unknown}" \
+    --timestamp "$(date '+%Y-%m-%d %H:%M:%S %Z')" \
+    && echo "[functional] sign-off report -> $REPORTS_DIR/signoff.html"
+}
+
 # boot hub -> (optional provision restart) -> run suite -> clean. ALWAYS cleans,
 # returns the pytest exit code. $1 label, $2 GPU_ENABLED, $3 restart(0/1), rest -f files
 run_regime() {
@@ -103,13 +117,13 @@ run_regime() {
   local cf=() f; for f in "$@"; do cf+=(-f "$f"); done
   local dc=(docker compose -p "$PROJECT" "${cf[@]}")
   local own=0
-  [ -z "${RESULTS_FILE:-}" ] && { RESULTS_FILE=$(mktemp); own=1; }
+  [ -z "${RESULTS_FILE:-}" ] && { RESULTS_FILE=$(mktemp); own=1; _reset_reports; }
   local start; start=$(date +%s)
   echo "[functional/$label] booting isolated deployment ($PROJECT) [GPU_ENABLED=$gpu]..."
   if ! FUNCTEST_GPU_ENABLED=$gpu "${dc[@]}" up -d --wait duoptimum-hub; then
     clean
     _record "$label" FAIL 0 "$(($(date +%s)-start))"
-    [ "$own" = 1 ] && { _render_results_table "$RESULTS_FILE"; rm -f "$RESULTS_FILE"; }
+    [ "$own" = 1 ] && { _render_results_table "$RESULTS_FILE"; _gen_report "$RESULTS_FILE"; rm -f "$RESULTS_FILE"; }
     return 1
   fi
   if [ "$restart" = 1 ]; then
@@ -118,14 +132,14 @@ run_regime() {
     FUNCTEST_GPU_ENABLED=$gpu "${dc[@]}" up -d --wait duoptimum-hub
   fi
   local out; out=$(mktemp)
-  FUNCTEST_GPU_ENABLED=$gpu "${dc[@]}" run --rm tests 2>&1 | tee "$out"
+  FUNCTEST_GPU_ENABLED=$gpu FUNCTEST_REGIME=$label "${dc[@]}" run --rm tests 2>&1 | tee "$out"
   local rc=${PIPESTATUS[0]}
   clean
   local dur=$(($(date +%s)-start)) tests; tests=$(_count_tests "$out"); rm -f "$out"
   local result=PASS; [ "$rc" -eq 0 ] || result=FAIL
   _record "$label" "$result" "$tests" "$dur"
   echo "[functional/$label] $result - $tests tests in ${dur}s (boot + tests + teardown)"
-  [ "$own" = 1 ] && { _render_results_table "$RESULTS_FILE"; rm -f "$RESULTS_FILE"; }
+  [ "$own" = 1 ] && { _render_results_table "$RESULTS_FILE"; _gen_report "$RESULTS_FILE"; rm -f "$RESULTS_FILE"; }
   return $rc
 }
 
@@ -134,6 +148,7 @@ run_regime() {
 run_all() {
   local overall=0 failed="" setup
   RESULTS_FILE=$(mktemp); export RESULTS_FILE
+  _reset_reports
   for setup in signup gpu gpu-missing env signup-open signup-bootstrap traefik traefik-closed; do
     echo "==================================================================="
     echo "[functional/all] setup: $setup"
@@ -141,7 +156,7 @@ run_all() {
     "$0" "$setup" || { overall=1; failed="$failed $setup"; }
   done
   echo "==================================================================="
-  _render_results_table "$RESULTS_FILE"; rm -f "$RESULTS_FILE"
+  _render_results_table "$RESULTS_FILE"; _gen_report "$RESULTS_FILE"; rm -f "$RESULTS_FILE"
   if [ "$overall" -eq 0 ]; then echo "[functional/all] ALL SETUPS PASSED"; else echo "[functional/all] FAILED SETUPS:$failed"; fi
   return $overall
 }

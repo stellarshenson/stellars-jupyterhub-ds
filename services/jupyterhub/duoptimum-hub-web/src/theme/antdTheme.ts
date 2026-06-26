@@ -31,6 +31,7 @@ export function buildAntdTheme(mode: ResolvedTheme, p: Palette): ThemeConfig {
       colorTextSecondary: p.textMuted,
       colorTextTertiary: p.textSubtle,
       colorTextQuaternary: p.textSubtle,
+      colorTextDisabled: p.textDisabled, // disabled controls read clearly inert (was too close to active)
 
       borderRadius: 6,
       borderRadiusLG: 10,

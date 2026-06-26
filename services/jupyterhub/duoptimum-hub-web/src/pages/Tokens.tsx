@@ -2,7 +2,8 @@
  * revoke hit the real hub tokens API. */
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
-import { Button, Modal, Typography } from 'antd'
+import { Button, Typography } from 'antd'
+import { appModal } from '../services/actions'
 import { PageHeader } from '../components/PageHeader'
 import { IconAction } from '../components/IconAction'
 import { Icon } from '../components/Icon'
@@ -10,6 +11,7 @@ import { useRole } from '../app/RoleContext'
 import { useTokens } from '../hooks/queries'
 import { createToken, revokeToken } from '../services/ops'
 import { exactDate, timeAgoShort } from '../lib/format'
+import { useResponsiveColumns } from '../lib/useResponsiveColumns'
 import type { TokenRow } from '../services/types'
 
 export default function Tokens() {
@@ -21,7 +23,7 @@ export default function Tokens() {
   const requestToken = async () => {
     const r = await createToken(username, 'portal-token')
     if (r?.token) {
-      Modal.success({
+      appModal.success({
         title: 'New API Token',
         content: (
           <>
@@ -33,21 +35,21 @@ export default function Tokens() {
     }
   }
 
-  const tokenCols: ProColumns<TokenRow>[] = [
+  const tokenCols: ProColumns<TokenRow>[] = useResponsiveColumns([
     { title: 'Note', dataIndex: 'note', render: (_, t) => <span className="doh-mono">{t.note}</span> },
-    { title: 'Scopes', dataIndex: 'scopes', render: (_, t) => <span className="doh-muted">{t.scopes ?? '-'}</span> },
-    { title: 'Created', dataIndex: 'createdISO', render: (_, t) => <span title={exactDate(t.createdISO)}>{timeAgoShort(t.createdISO)}</span> },
-    { title: 'Last Used', dataIndex: 'lastUsedISO', render: (_, t) => <span title={t.lastUsedISO ? exactDate(t.lastUsedISO) : 'never'}>{timeAgoShort(t.lastUsedISO)}</span> },
-    { title: 'Expires', dataIndex: 'expiresISO', render: (_, t) => (t.expiresISO ? exactDate(t.expiresISO) : <span className="doh-muted">never</span>) },
+    { title: 'Scopes', dataIndex: 'scopes', responsive: ['lg'], render: (_, t) => <span className="doh-muted">{t.scopes ?? '-'}</span> }, // secondary: drops next (<992)
+    { title: 'Created', dataIndex: 'createdISO', responsive: ['xl'], render: (_, t) => <span title={exactDate(t.createdISO)}>{timeAgoShort(t.createdISO)}</span> }, // time metadata: drops first on tablet (<1200)
+    { title: 'Last Used', dataIndex: 'lastUsedISO', responsive: ['xl'], render: (_, t) => <span title={t.lastUsedISO ? exactDate(t.lastUsedISO) : 'never'}>{timeAgoShort(t.lastUsedISO)}</span> }, // time metadata: drops first on tablet (<1200)
+    { title: 'Expires', dataIndex: 'expiresISO', responsive: ['lg'], render: (_, t) => (t.expiresISO ? exactDate(t.expiresISO) : <span className="doh-muted">never</span>) }, // secondary: drops next (<992)
     { title: 'Actions', align: 'right', width: 80, render: (_, t) => <IconAction icon="close" title="Revoke" tone="danger" onClick={() => revokeToken(username, t.id, t.note)} /> },
-  ]
+  ])
 
-  const appCols: ProColumns<TokenRow>[] = [
+  const appCols: ProColumns<TokenRow>[] = useResponsiveColumns([
     { title: 'Application', dataIndex: 'note', render: (_, t) => t.note },
-    { title: 'Authorised', dataIndex: 'createdISO', render: (_, t) => <span title={exactDate(t.createdISO)}>{timeAgoShort(t.createdISO)}</span> },
-    { title: 'Last Used', dataIndex: 'lastUsedISO', render: (_, t) => <span title={t.lastUsedISO ? exactDate(t.lastUsedISO) : 'never'}>{timeAgoShort(t.lastUsedISO)}</span> },
+    { title: 'Authorised', dataIndex: 'createdISO', responsive: ['xl'], render: (_, t) => <span title={exactDate(t.createdISO)}>{timeAgoShort(t.createdISO)}</span> }, // time metadata: drops first on tablet (<1200)
+    { title: 'Last Used', dataIndex: 'lastUsedISO', responsive: ['xl'], render: (_, t) => <span title={t.lastUsedISO ? exactDate(t.lastUsedISO) : 'never'}>{timeAgoShort(t.lastUsedISO)}</span> }, // time metadata: drops first on tablet (<1200)
     { title: 'Actions', align: 'right', width: 80, render: (_, t) => <IconAction icon="close" title="Revoke access" tone="danger" onClick={() => revokeToken(username, t.id, t.note)} /> },
-  ]
+  ])
 
   return (
     <>

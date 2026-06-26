@@ -3,13 +3,15 @@
 import { useMemo, useState } from 'react'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
-import { Button, Input, Modal, Segmented } from 'antd'
+import { Button, Input, Segmented } from 'antd'
+import { appModal } from '../services/actions'
 import { PageHeader } from '../components/PageHeader'
 import { ScopeFilterPills, TONE_CLASS } from '../components/ScopeFilterPills'
 import { Icon } from '../components/Icon'
 import { clearEvents } from '../services/ops'
 import { useEvents } from '../hooks/queries'
 import { timeAgoShort, exactDate } from '../lib/format'
+import { useResponsiveColumns } from '../lib/useResponsiveColumns'
 import type { EventRow, EventType } from '../services/types'
 
 type Range = '24h' | '7d' | '30d'
@@ -49,7 +51,7 @@ export default function Events() {
 
   // clearing the persisted audit log is destructive + irreversible -> confirm first
   const clearLog = () =>
-    Modal.confirm({
+    appModal.confirm({
       title: 'Clear the event log?',
       content: 'This permanently deletes every recorded event. This cannot be undone.',
       okText: 'Clear Events',
@@ -57,7 +59,7 @@ export default function Events() {
       onOk: () => clearEvents(),
     })
 
-  const columns: ProColumns<EventRow>[] = [
+  const columns: ProColumns<EventRow>[] = useResponsiveColumns([
     {
       title: 'Event',
       dataIndex: 'text',
@@ -79,12 +81,13 @@ export default function Events() {
     {
       title: 'When',
       dataIndex: 'whenISO',
+      responsive: ['xl'], // time metadata: drops first on tablet (<1200)
       width: 160,
       align: 'right',
       sorter: (a, b) => b.whenISO.localeCompare(a.whenISO),
       render: (_, e) => <span title={exactDate(e.whenISO)} className="doh-muted">{timeAgoShort(e.whenISO)}</span>,
     },
-  ]
+  ])
 
   return (
     <>

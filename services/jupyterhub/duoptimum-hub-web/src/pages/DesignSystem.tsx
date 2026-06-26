@@ -144,8 +144,15 @@ export default function DesignSystem() {
           <IconAction icon="stop" title="list-dangerous - red" tone="danger" />
           <IconAction icon="warning" title="list-warning - orange" tone="warning" />
         </Row>
+        <Row label="disabled vs active (disabled reads clearly inert)">
+          <IconAction icon="disk" title="active - Manage volumes" tone="secondary" />
+          <IconAction icon="disk" title="disabled - No volumes to manage" tone="secondary" disabled />
+          <Button>Active</Button>
+          <Button disabled>Disabled</Button>
+        </Row>
         <div className="doh-note" style={{ marginTop: 4 }}>
           <b>Icons:</b> wireframe by default, filled on demand. Tones - primary (blue, active / go-to), secondary (gray, neutral), dangerous (red, destructive), warning (orange, caution). List icons stay wireframe and fill only for emphasis (e.g. stop); non-list / button icons use the filled glyph when one is available.
+          <br /><b>Disabled:</b> a disabled control drops to <code>colorTextDisabled</code> - clearly dimmer than the active secondary tone, so a gated action (e.g. Manage volumes with no volumes) reads as inert, not active.
         </div>
         <Row label="text / link">
           <Button type="text" icon={<GlobalOutlined />} />
@@ -218,15 +225,17 @@ export default function DesignSystem() {
           </span>
         </Row>
         <div className="doh-note" style={{ marginTop: 4 }}>
-          <b>Connection diode:</b> a solid core dot with a soft halo that pulses - severity rides BOTH speed and amplitude. Connected (good) is <b>slow and calm</b>: the halo dips a little and returns. Down (warning) <b>swings hard and 3x faster</b>: a deep fade + bigger expand, clearly more urgent, not merely quicker. The pulse is opacity + scale (the ring grows and fades, never shifts layout); honours <code>prefers-reduced-motion</code> with a steady halo.
+          <b>Connection diode:</b> a solid core dot with a soft halo that pulses - severity rides CADENCE. Connected (good) is <b>slow and calm</b> (3.6s): the halo dips a little and returns. Down (warning) <b>runs 3x faster</b> (1.2s) and dips deeper, clearly more urgent. The pulse is opacity only - no scale, so the ring never shifts the pill baseline; honours <code>prefers-reduced-motion</code> with a steady halo.
         </div>
       </Card>
 
       <Card title="Meters, bars and widgets" style={{ marginBottom: 16 }}>
-        <Row label="Activity meter (high/mid/low)">
+        <Row label="Activity meter (5 / 4 / 3 / 2 / 1 bars - green at 4+, orange 2-3, pale red 1)">
           <ActivityMeter value={96} />
-          <ActivityMeter value={45} />
-          <ActivityMeter value={12} />
+          <ActivityMeter value={76} />
+          <ActivityMeter value={56} />
+          <ActivityMeter value={36} />
+          <ActivityMeter value={16} />
         </Row>
         <Row label="Spark (stacked)">
           <Spark style={{ width: 220 }} segments={[{ width: 30, color: 'var(--color-success)' }, { width: 15, color: 'var(--color-warning)' }, { width: 55, color: 'var(--color-border)' }]} />
@@ -236,10 +245,10 @@ export default function DesignSystem() {
             <ResourceBars rows={[{ label: 'CPU', value: 41 }, { label: 'Memory', value: 63 }, { label: 'GPU', value: 33, gpus: [62, 41, 18, 9] }]} />
           </div>
         </Row>
-        <Row label="GPU meter (1 / 2 / 4 devices)">
-          <div style={{ width: 120 }}><GpuMeter gpus={[78]} /></div>
-          <div style={{ width: 160 }}><GpuMeter gpus={[82, 40]} /></div>
-          <div style={{ width: 220 }}><GpuMeter gpus={[62, 41, 18, 9]} /></div>
+        <Row label="GPU meter (1 / 2 / 4 devices) - full model name, identity stripe, % right-aligned">
+          <div style={{ width: 340 }}><GpuMeter gpus={[78]} devices={[{ index: '0', name: 'NVIDIA RTX 6000 Ada', memoryMb: 49140 }]} /></div>
+          <div style={{ width: 340 }}><GpuMeter gpus={[82, 40]} devices={[{ index: '0', name: 'NVIDIA A100', memoryMb: 81920 }, { index: '1', name: 'NVIDIA H100', memoryMb: 81920 }]} /></div>
+          <div style={{ width: 340 }}><GpuMeter gpus={[62, 41, 18, 9]} devices={[{ index: '0', name: 'NVIDIA 5090', memoryMb: 32768 }, { index: '1', name: 'NVIDIA A4000', memoryMb: 16384 }, { index: '2', name: 'NVIDIA A4500 Pro', memoryMb: 24564 }, { index: '3', name: 'NVIDIA 4090', memoryMb: 24564 }]} /></div>
         </Row>
         <Row label="TTL gadget - behaviour matrix (full / ample / warn / danger / banked-draining / at-ceiling)">
           <div style={{ width: 320 }}><TtlGadget timeLeftMin={240} baseMin={240} maxAddHours={12} /></div>
@@ -249,40 +258,25 @@ export default function DesignSystem() {
           <div style={{ width: 320 }}><TtlGadget timeLeftMin={300} baseMin={240} maxAddHours={6} displayCeilingMin={360} /></div>
           <div style={{ width: 320 }}><TtlGadget timeLeftMin={360} baseMin={240} maxAddHours={0} displayCeilingMin={360} /></div>
         </Row>
-        <Row label="TTL glow/blur calibration (static steps - tune colours + amounts)">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, width: '100%' }}>
-            {/* counter BLUR steps - the counter ships blur-only (no glow); shipped default .5px at the peak */}
-            <div style={{ display: 'flex', gap: 28, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-              <span style={{ width: 92, fontSize: 12, color: 'var(--color-text-muted)' }}>counter blur</span>
-              {[0.1, 0.25, 0.5, 0.75, 1].map((px) => (
-                <div key={px} style={{ textAlign: 'center' }}>
-                  <span className="doh-ttl-val" style={{ minWidth: 'auto', color: 'var(--doh-ttl-blue)', filter: px ? `blur(${px}px)` : 'none' }}>
-                    <Icon name="clock" size={14} /><b style={{ color: 'var(--doh-ttl-blue)' }}>9h 58m</b>
-                  </span>
-                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{px}px</div>
-                </div>
-              ))}
-            </div>
-            {/* bar GLOW steps - the original first-ever flourish: a brief accent drop-shadow AROUND the
-               bar that peaks then fades (one-shot, not a held halo), by radius; the fill keeps its tone
-               and the glow never covers it (the shipped extend flourish peaks at 4px accent) */}
-            <div style={{ display: 'flex', gap: 28, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-              <span style={{ width: 92, fontSize: 12, color: 'var(--color-text-muted)' }}>bar glow</span>
-              {[0, 3, 4, 8, 12].map((r) => (
-                <div key={r} style={{ textAlign: 'center' }}>
-                  <span className="doh-ttl-bar" style={{ display: 'inline-block', width: 150, position: 'relative', color: 'var(--doh-ttl-blue)', filter: r ? `drop-shadow(0 0 ${r}px var(--color-accent))` : 'none' }}>
-                    <Progress percent={80} status="normal" showInfo={false} strokeColor="var(--doh-ttl-blue)" trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
-                  </span>
-                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{r}px</div>
-                </div>
-              ))}
-            </div>
+        <Row label="TTL boost (captured mid-extend) - accent recolour + contained fill bloom/sheen, counter blur, clock glow">
+          {/* static snapshot of the extend boost; the doh-ttl-boost classes apply the
+            * pure-CSS artifact motion (the live gadget toggles the same classes on extend) */}
+          <div className="doh-ttl" style={{ width: 320 }}>
+            <span className="doh-ttl-bar doh-ttl-boost" style={{ flex: 1, minWidth: 0, color: 'var(--color-accent)' }}>
+              <span className="doh-ttl-track"><span className="doh-ttl-fill" style={{ width: '46%' }} /></span>
+            </span>
+            <span className="doh-ttl-val doh-ttl-boost" style={{ color: 'var(--color-accent)' }}>
+              <Icon name="clock" size={14} className="doh-ttl-clock-boost" />
+              <b style={{ color: 'var(--color-accent)' }}>8h 0m</b>
+            </span>
+            <Button size="small" disabled>Extend</Button>
           </div>
         </Row>
         <div className="doh-note" style={{ marginTop: 4 }}>
           <b>Colour thresholds (fixed rule):</b> resource / usage bars (high = bad) - normal accent below 70%, full warning (amber) at &gt;= 70%, full danger (red) at &gt;= 90%. TTL bar (reverse, low time = the end) - blue above 30% of base left, full warning at &lt;= 30%, dim red at &lt;= 10% (a low timer is the normal end state, not an alarm). Warning is ALWAYS the normal warning colour - never dimmed by blending with the accent; only the warn-&gt;danger span blends (warm hues, stays saturated).
           <br /><b>Progress bars:</b> the standard bar (antd Progress) is base-relative; the resource bars are the same family. The <b>alternative striped bars</b> (one per GPU) are for multi-device load - a labelled bar per device rather than a single aggregate. The TTL extend is an hours slider whose last tick "max" tops the session to the ceiling.
           <br /><b>Tooltips, not static text:</b> precise values (exact GB, %, dates, breakdowns) live in a tooltip on hover, never as wasteful static text under the control - the control shows the glanceable shape, the tooltip the precise number.
+          <br /><b>TTL motion:</b> as the timer empties the clock glyph glows - soft at warn (&lt;= 30% of base), bright and fast at the end (&lt;= 10%); on extend the whole gadget recolours to the accent hue, the bar fill lifts brightness/saturation on that hue and lights an inner glow while a bright sheen sweeps the whole bar - all CONTAINED inside the track (overflow:hidden), so it glows as a whole even when the fill is full and cannot grow yet never bleeds onto the controls; the counter blurs and the clock glows, and the button is disabled (label stays "Extend") - all pure-CSS keyframes off the compositor, no JS loop. All honour prefers-reduced-motion.
         </div>
       </Card>
 
@@ -295,7 +289,7 @@ export default function DesignSystem() {
             ]} />
           </div>
         </Row>
-        <Row label="Usage bar colour ramp - calm to 50%, then accent -> warning -> danger">
+        <Row label="Usage bar colour ramp - calm to 70%, then warning -> danger">
           <div style={{ width: 320 }}>
             <ResourceBars rows={[{ label: '30%', value: 30 }, { label: '60%', value: 60 }, { label: '90%', value: 90 }]} />
           </div>

@@ -6,7 +6,8 @@ import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
-import { Button, Card, Drawer, Input, Modal, Tag, Tooltip } from 'antd'
+import { Button, Card, Drawer, Input, Tag, Tooltip } from 'antd'
+import { appModal } from '../services/actions'
 import { PageHeader } from '../components/PageHeader'
 import { StatusPill } from '../components/StatusPill'
 import { ActivityMeter } from '../components/meters'
@@ -15,6 +16,7 @@ import { rowActions } from '../components/ServerRowActions'
 import { Icon } from '../components/Icon'
 import { Link, useNavigate } from 'react-router-dom'
 import { timeAgoShort, exactDate } from '../lib/format'
+import { useResponsiveColumns } from '../lib/useResponsiveColumns'
 import { downloadCsv } from '../lib/download'
 import { useServers } from '../hooks/queries'
 import { invalidate, notify } from '../services/actions'
@@ -84,6 +86,7 @@ function ServerDetail({ row }: { row: ServerRow }) {
       {gpuSupported() && <Metric label="GPU" value={row.gpu ?? <span className="doh-muted">not tracked per-server</span>} />}
       <Metric label="Volumes" value={!row.volumesGB ? dash : `${row.volumesGB} GB`} detail={row.volumesTip} over={row.volumesOver} />
       <Metric label="System" value={row.systemGB == null ? dash : `+${row.systemGB} GB`} detail={row.systemTip} over={row.systemOver} />
+      <Metric label="Uptime" value={running && row.startedISO ? timeAgoShort(row.startedISO) : dash} detail={running && row.startedISO ? exactDate(row.startedISO) : undefined} />
       <Metric label="Time left" value={running ? (row.timeLeftLabel ?? dash) : dash} />
       <Metric label="Last activity" value={row.lastActivityISO ? timeAgoShort(row.lastActivityISO) : dash} detail={row.lastActivityISO ? exactDate(row.lastActivityISO) : undefined} />
     </div>
@@ -105,15 +108,21 @@ function MobileServerList({ rows, cpuMode, onDetail }: { rows: ServerRow[]; cpuM
               <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {r.user}{r.admin && <Tag bordered={false} style={accentTag}>admin</Tag>}
               </div>
-              <div className="doh-muted" style={{ fontSize: 12 }}>{r.lastActivityISO ? timeAgoShort(r.lastActivityISO) : '-'}</div>
+              {/* uptime, not last-activity: the status pill already carries the relative
+               * time ("Active 1m"), so the only non-redundant time here is how long it has run */}
+              {(r.status === 'active' || r.status === 'idle') && r.startedISO && (
+                <div className="doh-muted" style={{ fontSize: 12 }} title="Server uptime">up {timeAgoShort(r.startedISO)}</div>
+              )}
             </div>
             <StatusPill status={r.status} label={r.statusLabel} />
           </div>
           {/* read-only telemetry glance - the load picture an admin scans without
-           * tapping each card; null metrics (offline) render as a dash */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 10, fontSize: 12 }}>
+           * tapping each card; the four metrics sit in equal columns so CPU / Mem /
+           * Vol / Act line up across cards; null metrics (offline) render as a dash */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12 }}>
             <span className="doh-muted">CPU {r.cpu == null ? dash : <b className="doh-num" title={r.cpuTip} style={{ color: quotaColor(r.cpuQuotaPct) }}>{cpuMode === 'cores' ? r.cpu : (r.cpuAssignedPct ?? r.cpu)}%</b>}</span>
             <span className="doh-muted">Mem {r.mem == null ? dash : <b className="doh-num" title={r.memTip} style={{ color: quotaColor(r.memQuotaPct) }}>{r.mem} GB</b>}</span>
+            <span className="doh-muted">Vol {!r.volumesGB ? dash : <b className={r.volumesOver ? 'doh-cell-warn' : 'doh-num'} title={r.volumesTip}>{r.volumesGB} GB</b>}</span>
             <span className="doh-muted" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>Act <ActivityMeter value={r.activity} hours={r.activityHours} pct={r.activityPct} /></span>
           </div>
         </Card>
@@ -161,7 +170,7 @@ export default function Servers() {
     notify.success(`Exported activity report (${filtered.length} server${filtered.length === 1 ? '' : 's'})`)
   }
 
-  const columns: ProColumns<ServerRow>[] = [
+  const columns: ProColumns<ServerRow>[] = useResponsiveColumns([
     {
       title: <Tooltip title={COL_HELP.servers.user}><span>User</span></Tooltip>,
       dataIndex: 'user',
@@ -189,6 +198,7 @@ export default function Servers() {
     {
       title: <Tooltip title={COL_HELP.servers.lastActivity}><span>Last Activity</span></Tooltip>,
       dataIndex: 'lastActivityISO',
+      responsive: ['xl'], // time metadata: drops first on tablet (<1200)
       width: 128,
       sorter: (a, b) => (a.lastActivityISO ?? '').localeCompare(b.lastActivityISO ?? ''),
       render: (_, r) =>
@@ -197,6 +207,7 @@ export default function Servers() {
     {
       title: <Tooltip title={COL_HELP.servers.activity}><span>Activity</span></Tooltip>,
       dataIndex: 'activity',
+      responsive: ['lg'], // secondary: drops next (<992)
       align: 'center',
       sorter: (a, b) => (a.activity ?? -1) - (b.activity ?? -1),
       render: (_, r) => <ActivityMeter value={r.activity} hours={r.activityHours} pct={r.activityPct} />,
@@ -218,6 +229,7 @@ export default function Servers() {
     ...(gpuSupported() && data.some((r) => r.gpu) ? [{
       title: <Tooltip title={COL_HELP.servers.gpu}><span>GPU</span></Tooltip>,
       dataIndex: 'gpu',
+      responsive: ['lg'], // secondary: drops next (<992)
       align: 'center' as const,
       width: 96,
       render: (_: unknown, r: ServerRow) => (r.gpu ? <Tag bordered={false} style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4, marginInlineEnd: 0 }}>{r.gpu}</Tag> : <span className="doh-muted">-</span>),
@@ -225,6 +237,7 @@ export default function Servers() {
     {
       title: <Tooltip title={COL_HELP.servers.vol}><span>Vol</span></Tooltip>,
       dataIndex: 'volumesGB',
+      responsive: ['lg'], // secondary: drops next (<992)
       align: 'right',
       sorter: (a, b) => (a.volumesGB ?? -1) - (b.volumesGB ?? -1),
       render: (_, r) =>
@@ -233,10 +246,25 @@ export default function Servers() {
     {
       title: <Tooltip title={COL_HELP.servers.sys}><span>Sys</span></Tooltip>,
       dataIndex: 'systemGB',
+      responsive: ['xl'], // time metadata: drops first on tablet (<1200)
       align: 'right',
       sorter: (a, b) => (a.systemGB ?? -1) - (b.systemGB ?? -1),
       render: (_, r) =>
         r.systemGB == null ? <span className="doh-muted">-</span> : <span className={r.systemOver ? 'doh-cell-warn' : 'doh-num'} title={r.systemTip}>+{r.systemGB} GB</span>,
+    },
+    {
+      title: <Tooltip title={COL_HELP.servers.uptime}><span>Uptime</span></Tooltip>,
+      dataIndex: 'startedISO',
+      responsive: ['xl'], // time metadata: drops first on tablet (<1200)
+      align: 'right',
+      width: 104,
+      sorter: (a, b) => (a.startedISO ?? '').localeCompare(b.startedISO ?? ''),
+      render: (_, r) => {
+        const running = r.status === 'active' || r.status === 'idle'
+        return running && r.startedISO
+          ? <span className="doh-num" title={exactDate(r.startedISO)}>{timeAgoShort(r.startedISO)}</span>
+          : <span className="doh-muted">-</span>
+      },
     },
     {
       title: <Tooltip title={COL_HELP.servers.timeLeft}><span>Time Left</span></Tooltip>,
@@ -260,7 +288,7 @@ export default function Servers() {
       },
     },
     { title: 'Actions', align: 'right', render: (_, r) => <span onClick={(e) => e.stopPropagation()}>{rowActions(r, navigate, lifecycle, me, SERVERS_ORIGIN)}</span> },
-  ]
+  ])
 
   const scopes = [
     { key: 'active', label: 'Active', count: counts.active, tone: 'ok' as const },
@@ -271,14 +299,14 @@ export default function Servers() {
   const offlineUsers = data.filter((r) => r.status === 'offline').map((r) => r.user)
   const runningUsers = data.filter((r) => r.status === 'active' || r.status === 'idle').map((r) => r.user)
   const startAll = () =>
-    Modal.confirm({
+    appModal.confirm({
       title: 'Start all stopped servers?',
       content: `This starts ${offlineUsers.length} stopped lab(s).`,
       okText: 'Start All',
       onOk: () => startAllServers(offlineUsers),
     })
   const stopAll = () =>
-    Modal.confirm({
+    appModal.confirm({
       title: 'Stop all running servers?',
       content: `This stops ${runningUsers.length} running lab(s).`,
       okText: 'Stop All',

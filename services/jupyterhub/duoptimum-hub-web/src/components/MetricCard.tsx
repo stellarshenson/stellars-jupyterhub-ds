@@ -25,7 +25,7 @@ export function MetricCard({
 }) {
   return (
     <Link to={to} style={{ display: 'block', height: '100%' }}>
-      <Card hoverable styles={{ body: { padding: 16 } }} style={{ height: '100%' }}>
+      <Card hoverable styles={{ body: { padding: 'var(--space-4)' } }} style={{ height: '100%' }}>
         <div className="doh-m-top">
           <span className="doh-m-ic">
             <Icon name={icon} size={18} />

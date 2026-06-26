@@ -581,8 +581,10 @@
     const globalNameGet = compileAttr(
       el.getAttribute("component-from-global-scope") || ""
     );
-    const exportNameGet = compileAttr(el.getAttribute("component") || "");
-    const url = el.getAttribute("from") || "";
+    const exportNameGet = compileAttr(
+      el.getAttribute("component") || el.getAttribute("name") || ""
+    );
+    const url = el.getAttribute("from") || el.getAttribute("src") || el.getAttribute("import") || "";
     const kind = /\.(jsx|tsx)(\?|#|$)/i.test(url) ? "jsx" : "js";
     const tplId = el.getAttribute("data-dc-tpl");
     const styleRaw = el.getAttribute("style");

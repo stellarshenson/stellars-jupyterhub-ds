@@ -13,6 +13,7 @@ button labels. ``networkidle`` is unusable (the SPA polls in the background), so
 readiness is a per-page DOM signal instead.
 """
 
+import json
 import os
 import re
 import time
@@ -113,9 +114,39 @@ def pytest_runtest_makereport(item, call):
         _ACC_OUTCOMES[nid] = "skipped"
 
 
+def _write_signoff_json(terminalreporter, crit):
+    """Write a per-regime sidecar consumed by gen_signoff.py to build the HTML sign-off
+    report. Best-effort - a failure here NEVER fails the test run."""
+    try:
+        regime = os.environ.get("FUNCTEST_REGIME") or AUTH_MODE
+
+        def _n(k):
+            return len(terminalreporter.stats.get(k, []))
+
+        criteria = []
+        for ref in sorted(crit):
+            e = crit[ref]
+            status = "UNMET" if e["failed"] else "MET" if e["passed"] else "NOT RUN"
+            tests = sorted(set(e["failed"] or e["passed"] or e["other"]))
+            criteria.append({"ref": ref, "status": status, "tests": tests})
+        data = {
+            "regime": regime,
+            "auth_mode": AUTH_MODE,
+            "totals": {"passed": _n("passed"), "failed": _n("failed"), "skipped": _n("skipped"), "error": _n("error")},
+            "criteria": criteria,
+            "tests": [{"nodeid": nid, "outcome": oc} for nid, oc in sorted(_ACC_OUTCOMES.items())],
+        }
+        reports = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports")
+        os.makedirs(reports, exist_ok=True)
+        with open(os.path.join(reports, f"regime-{regime}.json"), "w") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:  # pragma: no cover - report sidecar is non-critical
+        terminalreporter.write_line(f"  [sign-off] could not write report sidecar: {e}")
+
+
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
     """Print which acceptance criteria this run met / left unmet, derived from the
-    per-test acc_crit declarations and their outcomes."""
+    per-test acc_crit declarations and their outcomes; also write the sign-off sidecar."""
     crit = {}
     for nid, refs in _ACC_DECL.items():
         outcome = _ACC_OUTCOMES.get(nid, "skipped")
@@ -124,6 +155,7 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
             e = crit.setdefault(ref, {"passed": [], "failed": [], "other": []})
             bucket = "passed" if outcome == "passed" else "failed" if outcome == "failed" else "other"
             e[bucket].append(short)
+    _write_signoff_json(terminalreporter, crit)
     if not crit:
         return
     tr = terminalreporter

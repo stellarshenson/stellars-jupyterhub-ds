@@ -8,7 +8,7 @@
  * line path with open arcs or interior detail fills WRONG (open bell, buried
  * shield check, cutout box), so the dual-weight glyphs carry a separate solid
  * body in FILLED; simple closed shapes (play / stop / check) just fill the line
- * path. See docs/design - section "Two weights, one rule". */
+ * path. See docs/design-system - section "Two weights, one rule". */
 import type { CSSProperties } from 'react'
 
 export type IconKey =

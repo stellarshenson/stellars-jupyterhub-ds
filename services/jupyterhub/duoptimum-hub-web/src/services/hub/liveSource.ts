@@ -317,6 +317,7 @@ export const liveSource: DataSource = {
         // spawning has no last_activity so it stays a bare "Spawning"
         statusLabel: `${cap(status)}${a?.last_activity ? ` ${timeAgoShort(a.last_activity)}` : ''}`,
         lastActivityISO: a?.last_activity ?? null,
+        startedISO: a?.server_started ?? srv?.started ?? null,
         // 7-day engagement meter - NOT gated on `running` (see activityFields)
         ...activityFields(a, target),
         cpu: cpuVal,
@@ -411,7 +412,9 @@ export const liveSource: DataSource = {
         description: g.description,
         members: g.member_count ?? g.members?.length ?? 0,
         memberNames: g.members ?? [],
-        policies: (g.policy_summary ?? []).map((s) => ({ key: s.key, label: s.badge || POLICY_LABELS[s.key] || s.key, detail: s.detail })),
+        // chips name WHICH policies are configured, not their value/state - use the clean policy
+        // label ("Sudo", "Downloads"), never the backend badge that carries the on/off/value ("Sudo off")
+        policies: (g.policy_summary ?? []).map((s) => ({ key: s.key, label: POLICY_LABELS[s.key] || s.badge || s.key, detail: s.detail })),
         // raw flat config for the export bundle (the live payload carries it)
         config: (g.config ?? {}) as GroupRow['config'],
       }))

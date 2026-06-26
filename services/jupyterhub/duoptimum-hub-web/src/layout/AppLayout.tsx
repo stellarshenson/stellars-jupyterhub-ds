@@ -136,7 +136,7 @@ function SiderHandle({ collapsed, onToggle }: { collapsed: boolean; onToggle: ()
 // footer lives in ProLayout's content column (offset right by the sider), so a plain
 // justify-center lands it right of the true page centre; shift the centred content left
 // by half the offset so the banner reads as centred across the WHOLE page, not the panel.
-function VersionFooter({ siderOffsetPx }: { siderOffsetPx: number }) {
+function VersionFooter({ siderOffsetPx, isMobile }: { siderOffsetPx: number; isMobile: boolean }) {
   const { data: hub } = useHubInfo()
   const tag = { background: 'var(--color-surface-active)', color: 'var(--color-text-muted)', borderRadius: 4, marginInline: 4 }
   // click the version to copy the full version + build id to the clipboard
@@ -145,12 +145,20 @@ function VersionFooter({ siderOffsetPx }: { siderOffsetPx: number }) {
     if (!navigator.clipboard) { notify.error('Clipboard unavailable'); return }
     navigator.clipboard.writeText(fullVersion).then(() => notify.success('Version copied'), () => notify.error('Copy failed'))
   }
+  const ver = <>Duoptimum Hub<Tag bordered={false} style={tag}>v{__APP_VERSION__}</Tag></>
+  // desktop: click-to-copy with a build-id tooltip. mobile: plain text - no copy
+  // affordance and no hover tooltip (nothing to hover/copy with on a touch screen).
+  const brand = isMobile
+    ? <span>{ver}</span>
+    : (
+      <Tooltip title={`build ${__BUILD_ID__}`}>
+        <span className="doh-version-copy" onClick={copyVersion} style={{ cursor: 'pointer' }}>{ver}</span>
+      </Tooltip>
+    )
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 12, padding: '14px 0', color: 'var(--color-text-subtle)', fontSize: 12, transform: `translateX(-${siderOffsetPx / 2}px)`, transition: 'transform .2s' }}>
       <span>
-        <Tooltip title={`build ${__BUILD_ID__}`}>
-          <span onClick={copyVersion} style={{ cursor: 'pointer' }}>Duoptimum Hub<Tag bordered={false} style={tag}>v{__APP_VERSION__}</Tag></span>
-        </Tooltip>
+        {brand}
         <span style={{ margin: '0 6px' }}>·</span>
         JupyterHub<Tag bordered={false} style={tag}>v{hub?.version ?? '…'}</Tag>
       </span>
@@ -197,7 +205,7 @@ export function AppLayout() {
       )}
       menuFooterRender={(props) => (props?.collapsed ? null : <SiderFoot />)}
       collapsedButtonRender={false}
-      footerRender={() => <VersionFooter siderOffsetPx={isMobile ? 0 : (collapsed ? SIDER_COLLAPSED_WIDTH : SIDER_WIDTH)} />}
+      footerRender={() => <VersionFooter siderOffsetPx={isMobile ? 0 : (collapsed ? SIDER_COLLAPSED_WIDTH : SIDER_WIDTH)} isMobile={isMobile} />}
       token={{
         bgLayout: p.bg,
         header: { colorBgHeader: p.bg, heightLayoutHeader: 64 },

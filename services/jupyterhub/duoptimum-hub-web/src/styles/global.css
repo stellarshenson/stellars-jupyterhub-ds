@@ -103,7 +103,9 @@ body { margin: 0; font-family: var(--font-sans); }
 .doh-meter.fill i { flex: 1; width: auto; height: 8px; }
 
 /* ---- spark (proportional stacked bar) ---- */
-.doh-spark { display: flex; height: 6px; border-radius: var(--radius-full); overflow: hidden; background: var(--color-bg-subtle); }
+/* gap shows the track between segments as a 1px divider, so adjacent saturated
+   segments (e.g. accent beside success) stay distinguishable at 6px height */
+.doh-spark { display: flex; gap: 1px; height: 6px; border-radius: var(--radius-full); overflow: hidden; background: var(--color-bg-subtle); }
 .doh-spark > span { display: block; height: 100%; }
 
 /* ---- resource bars (CPU / Memory / GPU / Activity) ---- */
@@ -111,14 +113,20 @@ body { margin: 0; font-family: var(--font-sans); }
 .doh-res-row { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-sm); }
 .doh-res-row .doh-res-label { width: 64px; flex: none; color: var(--color-text-muted); }
 .doh-res-row .doh-res-bar { flex: 1; height: 8px; border-radius: var(--radius-full); background: var(--color-bg-subtle); overflow: hidden; }
-.doh-res-row .doh-res-bar > i { display: block; height: 100%; background: var(--color-accent); }
+.doh-res-row .doh-res-bar > i { display: block; height: 100%; background: var(--color-accent); border-radius: var(--radius-full); } /* round every fill end (design: one shape language) */
 .doh-res-row .doh-res-val { width: 84px; flex: none; text-align: right; font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
-/* per-GPU bars - one labelled horizontal bar per device, fill width = load */
-.doh-gpurows { flex: 1; display: flex; flex-direction: column; gap: 5px; }
-.doh-gpurow { display: flex; align-items: center; gap: 7px; }
-.doh-gpurow > small { width: 112px; flex: none; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; line-height: 1.3; color: var(--color-text-subtle); }
-.doh-gpurow > .track { flex: 1; height: 6px; border-radius: var(--radius-full); background: var(--color-bg-subtle); overflow: hidden; }
+/* per-GPU bars - one labelled horizontal bar per device, fill width = load. A 3-col grid
+   (name | bar | %) whose rows share the columns via subgrid: the name column is `max-content`,
+   so it sizes to the WIDEST name across all rows and EVERY bar starts at the same x (bars are
+   comparable). The 84px %-column + --space-3 gap MATCH the resource row, so the bar track also
+   ENDS at the same x as the CPU/Mem/Vol bars above it. Names show in full (nowrap, no ellipsis). */
+.doh-gpurows { flex: 1; display: grid; grid-template-columns: max-content 1fr 84px; column-gap: var(--space-3); row-gap: 5px; align-items: center; }
+.doh-gpurow { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; align-items: center; }
+.doh-gpurow > small { text-align: left; white-space: nowrap; font-size: 11px; line-height: 1.3; color: var(--color-text-subtle); }
+.doh-gpurow > .track { height: 6px; border-radius: var(--radius-full); background: var(--color-bg-subtle); overflow: hidden; }
 .doh-gpurow > .track > i { display: block; height: 100%; background-color: var(--color-accent); border-radius: var(--radius-full); }
+/* per-device load % beside the bar (shown only when utilisation is sampled) */
+.doh-gpurow > small.doh-gpurow-val { text-align: right; overflow: visible; }
 
 /* ---- Start-server page (spawn progress + container-log tail) ---- */
 .doh-starting { display: flex; justify-content: center; align-items: flex-start; padding: 48px 16px; }
@@ -145,28 +153,98 @@ body { margin: 0; font-family: var(--font-sans); }
    ("9h 0m" vs "9h 58m"); tabular-nums keeps digits uniform. */
 .doh-ttl-val { display: inline-flex; align-items: center; justify-content: flex-start; gap: 5px; white-space: nowrap; min-width: 84px; font-size: var(--text-sm); color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .doh-ttl-val b { color: var(--color-text); }
-/* extend animation. the bar fill GROWS from its current position to the target over the
-   fill window - driven frame-by-frame by rAF in meters.tsx (in lockstep with the counter),
-   NOT a CSS width transition: a same-frame class+value change does not reliably animate, so
-   the bar used to flip straight to 100% (DEF-15). antd's own width transition is killed below
-   so rAF is the sole driver. on extend the BAR also glows: the ORIGINAL first-ever flourish -
-   a one-shot accent drop-shadow (doh-ttl-pulse) that peaks at 45% then fades over the fill
-   window (--doh-ttl-anim). a brief glow AROUND the bar, never a held halo and never a colour
-   change to the fill: the fill keeps its threshold tone (#476), the filter only haloes the
-   edge then clears. the held white box-shadow this replaced read as the thin bar getting
-   brighter, not haloed; every later variant (tint overlay, box-shadow radius retunes) was
-   worse than this first version. the COUNTER does not glow - it only blurs .5px (transition
-   lives inline in meters.tsx beside the colour transition). extend-only (doh-ttl-boost),
-   never on a tick. */
+/* TTL boost = ONE ramp-up / steady / ramp-down envelope, NO pulsing. the bar fill GROWS and the
+   counter COUNTS from the current value to the new value (driven by rAF in meters.tsx, since both
+   need data-driven values); riding the SAME envelope, FOUR one-shot CSS keyframes ramp the EFFECT
+   AMPLITUDE up over the first quarter, hold it steady through the middle, then ramp it down: the
+   fill brightens on the accent hue (boost-bar), the WHOLE bar throws an accent halo (boost-glow, on
+   the bar wrapper so it is NOT clipped by the track - this is what earns the boost its keep when the
+   fill is already full and CANNOT grow: it glows as a whole instead), the COUNTER number blurs
+   (boost-num), the CLOCK glyph glows (boost-clock). one-shot (no `infinite`) so it rises-holds-falls
+   exactly once per extend - a repeat would read as a pulse. antd's width transition (killed below
+   only while boosting) returns to settle the bar onto the new remaining. separately, as time runs
+   out the clock glyph picks up an expiry glow - soft at warn, bright + fast at the end. all gated by
+   prefers-reduced-motion below. */
 .doh-ttl-bar { display: inline-block; position: relative; }
-.doh-ttl-boost .ant-progress-bg { transition: none !important; }
-.doh-ttl-bar.doh-ttl-boost { animation: doh-ttl-pulse var(--doh-ttl-anim, 3s) ease; }
-@keyframes doh-ttl-pulse {
-  0%   { filter: none; }
-  45%  { filter: drop-shadow(0 0 4px var(--color-accent)); }
-  100% { filter: none; }
+/* custom clipped bar (replaces antd Progress): the TRACK clips its fill and the boost glow
+   (overflow:hidden), so the extend bloom is contained INSIDE the bar footprint and can NEVER
+   bleed onto the buttons / Extend the way the old wrapper box-shadow did (the "awful glow",
+   DEF-29). height/radius approximate the former antd line bar. */
+.doh-ttl-track { display: block; position: relative; height: 10px; border-radius: var(--radius-full); background: var(--color-bg-subtle); overflow: hidden; }
+.doh-ttl-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: var(--radius-full); background: currentColor; transition: width .4s ease; }
+/* --doh-ttl-anim is always set inline by meters.tsx from ANIMATION.ttlExtendMs; the `3s` fallback
+   is dead unless that breaks and MUST stay equal to the ttlExtendMs default (3000ms). */
+/* boost fill flare: width is data-driven (set inline from displayPct; transition killed so the rAF
+   owns the grow), and a one-shot keyframe lifts brightness/saturation on the SAME accent hue and
+   lights an inner core (inset glow, clipped to the fill) - a glow, not a hue change. */
+.doh-ttl-bar.doh-ttl-boost .doh-ttl-fill { transition: none; animation: doh-ttl-fill-boost var(--doh-ttl-anim, 3s) linear; }
+/* boost sheen: a bright band sweeps the WHOLE track once (fill + trail), fully cropped by the
+   track overflow:hidden - the contained replacement for the old bleeding wrapper halo, and it
+   reads as the bar "charging" so the boost still earns its keep at a full bar that cannot grow. */
+.doh-ttl-bar.doh-ttl-boost .doh-ttl-track::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(105deg, transparent 38%, var(--doh-ttl-sheen) 50%, transparent 62%); animation: doh-ttl-sweep var(--doh-ttl-anim, 3s) ease-in-out; }
+.doh-ttl-val.doh-ttl-boost b { animation: doh-ttl-boost-num var(--doh-ttl-anim, 3s) linear; display: inline-block; }
+/* clock glyph: mid-extend glow (one-shot boost envelope) OR the expiry ramp (soft at warn, bright at
+   end). these three classes are MUTUALLY EXCLUSIVE - meters.tsx sets exactly one (boost wins, else
+   end at <=dangerFrac, else warn at <=warnFrac, else none), so the equal-specificity single-class
+   rules never collide and source order does not matter. */
+.doh-ttl-clock-boost { animation: doh-ttl-boost-clock var(--doh-ttl-anim, 3s) linear; }
+.doh-ttl-clock-warn { animation: doh-ttl-glow-soft 2.4s ease-in-out infinite; }
+.doh-ttl-clock-end { animation: doh-ttl-glow 1s ease-in-out infinite; }
+/* boost brightness + inner-glow core are GENUINELY THEME-AWARE (the values differ). on DARK the accent
+   #21a8e4 is already bright, so a modest 1.35 lift adds glow without a saturated high-luminance patch
+   held ~1.5s (an afterimage risk the ux review flagged); on LIGHT the accent #06709c is a dark navy
+   that lifts toward the pale surface, so it needs a bigger 1.65 multiplier to flare at all. --doh-ttl-
+   glow-core is the inner inset bloom colour, --doh-ttl-sheen the sweep band - both solid rgba so the
+   keyframe ramps them smoothly from transparent (Chromium keeps the hue, ramps alpha; color-mix would
+   discrete-step). */
+:root { --doh-ttl-boost-bright: 1.35; --doh-ttl-glow-core: rgba(188, 234, 255, .85); --doh-ttl-sheen: rgba(255, 255, 255, .42); }
+[data-theme="duoptimum-hub-light"] { --doh-ttl-boost-bright: 1.65; --doh-ttl-glow-core: rgba(120, 200, 236, .92); --doh-ttl-sheen: rgba(255, 255, 255, .6); }
+/* fill flare: brightness/saturation lift on the SAME accent hue (theme-aware --doh-ttl-boost-bright,
+   never a hue change) PLUS an inner inset bloom (clipped to the fill, never bleeds). 25/75 stops so the
+   amplitude rises, HOLDS through the middle, falls IN LOCKSTEP with the rAF count (rampEase a=0.25 =
+   peak velocity 25-75%). */
+@keyframes doh-ttl-fill-boost {
+  0% { filter: brightness(1) saturate(1); box-shadow: inset 0 0 0 0 transparent; }
+  25% { filter: brightness(var(--doh-ttl-boost-bright)) saturate(1.15); box-shadow: inset 0 0 9px 1px var(--doh-ttl-glow-core); }
+  75% { filter: brightness(var(--doh-ttl-boost-bright)) saturate(1.15); box-shadow: inset 0 0 9px 1px var(--doh-ttl-glow-core); }
+  100% { filter: brightness(1) saturate(1); box-shadow: inset 0 0 0 0 transparent; }
 }
-.doh-ttl-val.doh-ttl-boost { filter: blur(.5px); }
+/* sheen sweep: a bright band travels left->right ONCE across the whole track, cropped by the track
+   overflow:hidden - the contained replacement for the old bleeding wrapper halo. ease-in-out so it
+   accelerates in and eases out rather than scrolling at a constant, mechanical rate. */
+@keyframes doh-ttl-sweep {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+/* counter blur envelope: ramps up to the target blur, holds while the count cruises at full speed,
+   then ramps back to crisp as the count decelerates onto the final value (sharp at rest) */
+/* blur only (no transform - a 1% scale was imperceptible, ux review); 0.83px reads as a soft mid-count
+   blur on the ~13px tabular digits without smearing them, crisp at rest (operator: -25% from 1.1px) */
+@keyframes doh-ttl-boost-num {
+  0% { filter: blur(0); }
+  25% { filter: blur(0.83px); }
+  75% { filter: blur(0.83px); }
+  100% { filter: blur(0); }
+}
+/* both shadows use currentColor and ramp ONLY the blur radius (0 -> 3/5px -> 0; operator: halo -50%). a headless probe
+   proved Chromium ramps drop-shadow with currentColor / transparent / solid rgb, but discrete-falls-
+   back the WHOLE filter list if any shadow contains color-mix() - that earlier color-mix outer shadow
+   is exactly what made the clock blink on/off at the segment midpoints. no color-mix -> smooth ramp,
+   in lockstep with the bar + counter. at 0 radius the shadow sits behind the glyph -> invisible. */
+@keyframes doh-ttl-boost-clock {
+  0% { filter: drop-shadow(0 0 0 currentColor) drop-shadow(0 0 0 currentColor); }
+  25% { filter: drop-shadow(0 0 3px currentColor) drop-shadow(0 0 5px currentColor); }
+  75% { filter: drop-shadow(0 0 3px currentColor) drop-shadow(0 0 5px currentColor); }
+  100% { filter: drop-shadow(0 0 0 currentColor) drop-shadow(0 0 0 currentColor); }
+}
+@keyframes doh-ttl-glow-soft {
+  0%, 100% { filter: drop-shadow(0 0 0 transparent); }
+  50% { filter: drop-shadow(0 0 3px color-mix(in srgb, currentColor 55%, transparent)); }
+}
+@keyframes doh-ttl-glow {
+  0%, 100% { filter: drop-shadow(0 0 1px color-mix(in srgb, currentColor 60%, transparent)); opacity: .85; }
+  50% { filter: drop-shadow(0 0 5px currentColor) drop-shadow(0 0 9px color-mix(in srgb, currentColor 70%, transparent)); opacity: 1; }
+}
 /* extend-popover slider: a brighter slide line (rail + track) and an info-toned drag knob,
    so the control reads clearly against the popover (default antd rail is too faint here). */
 .doh-ttl-slider .ant-slider-rail { background: var(--color-border-strong) !important; }
@@ -261,49 +339,56 @@ body { margin: 0; font-family: var(--font-sans); }
 ::-webkit-scrollbar-corner { background: transparent; }
 
 /* ---- hub-connection status: header pill (desktop) + in-flow warning panel (mobile) ----
-   reads as a WARNING when down, never a red system error. Motion carries meaning, in BOTH
-   speed and amplitude: a solid core diode + a soft halo ring (on ::after) that pulses.
-   connected = doh-pulse-calm: a gentle dip-and-return (opacity 1->.55, scale 1->1.25), slow
-   (period --doh-status-pulse, ANIMATION.statusPulseMs in services/config.ts). down =
-   doh-pulse-alert: a hard swing (opacity 1->.15, scale 1->1.7) at 3x the speed (CSS calc /3) -
-   clearly more urgent than the calm pulse, not just faster; the dip floors above zero (the solid
-   core dot stays lit) so it reads as an urgent pulse, never a strobe. opacity + transform only (both
-   interpolate reliably; the earlier box-shadow-colour pulse was too faint to read). */
+   reads as a WARNING when down, never a red system error. Motion carries meaning through CADENCE
+   (per the design artifact): a solid core diode + a soft halo ring (on ::after) that pulses on
+   OPACITY ONLY - no scale (scaling nudges the pill baseline). connected = doh-pulse-calm: a gentle
+   opacity dip-and-return, slow (period --doh-status-pulse = 3.6s, ANIMATION.statusPulseMs). down =
+   doh-pulse-alert: a deeper opacity dip at 3x the speed (CSS calc /3 = 1.2s) - the urgency reads in
+   the faster cadence; the dip floors above zero so the solid core stays lit, never a strobe. */
 
 /* desktop header pill - sized to the StageBadge's vertical metrics (1px pad, 1.6 line, 1px
    border) so the two sit level; the down state fills with warning to draw attention */
 .doh-conn-pill { display: inline-flex; align-items: center; gap: 7px; font-size: var(--text-xs); font-weight: 600; letter-spacing: .02em; padding: 1px 9px; border: 1px solid currentColor; border-radius: var(--radius-sm); line-height: 1.6; white-space: nowrap; }
 .doh-conn-pill .doh-conn-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }  /* solid core diode (always present) */
-/* halo ring on ::after: a static colour-mix box-shadow that PULSES via opacity + scale (the ring
+/* halo ring on ::after: a static colour-mix box-shadow that PULSES via opacity only (the ring
    never covers the core and never shifts layout); connected slow, .down 3x faster */
 .doh-conn-pill .doh-conn-dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 4px 2px color-mix(in srgb, currentColor 50%, transparent); animation: doh-pulse-calm var(--doh-status-pulse, 3s) ease-in-out infinite; }
 .doh-conn-pill.ok { color: var(--color-success); }                                                            /* healthy: calm outlined success pill, diode dips gently */
 /* down: standard WARNING text + amber border + diode + pale fill - matches the mobile panel */
 .doh-conn-pill.down { color: var(--color-warning); border-color: color-mix(in srgb, var(--color-warning) 55%, transparent); background: color-mix(in srgb, var(--color-warning) 14%, transparent); }
 .doh-conn-pill.down .doh-conn-dot { color: var(--color-warning); }
-.doh-conn-pill.down .doh-conn-dot::after { animation: doh-pulse-alert calc(var(--doh-status-pulse, 3s) / 3) ease-in-out infinite; }  /* down: stronger swing AND 3x faster (urgency) */
+.doh-conn-pill.down .doh-conn-dot::after { animation: doh-pulse-alert calc(var(--doh-status-pulse, 3s) / 3) ease-in-out infinite; }  /* down: deeper opacity dip, 3x faster (urgency = cadence) */
 
 /* mobile: in-flow warning panel at the top of the content; pale warning surface so it never washes out the text */
 .doh-hub-warn-panel { display: flex; align-items: flex-start; margin: 12px 0; padding: 12px 14px; border-radius: var(--radius-md); color: var(--color-text); background: color-mix(in srgb, var(--color-warning) 12%, var(--color-surface)); border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent); }
 .doh-hub-warn-diode { position: relative; display: inline-block; flex: none; width: 8px; height: 8px; margin-top: 5px; margin-inline-end: 10px; border-radius: 50%; color: var(--color-warning); background: currentColor; }  /* down-only panel diode (solid core) */
-.doh-hub-warn-diode::after { content: ''; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 4px 2px color-mix(in srgb, currentColor 50%, transparent); animation: doh-pulse-alert calc(var(--doh-status-pulse, 3s) / 3) ease-in-out infinite; }  /* down: strong swing + 3x faster, matches the pill down diode */
+.doh-hub-warn-diode::after { content: ''; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 4px 2px color-mix(in srgb, currentColor 50%, transparent); animation: doh-pulse-alert calc(var(--doh-status-pulse, 3s) / 3) ease-in-out infinite; }  /* down: deeper opacity dip + 3x faster, matches the pill down diode */
 .doh-hub-warn-title { font-weight: 600; color: var(--color-warning); }
 .doh-hub-warn-body { font-size: var(--text-sm); color: var(--color-text-muted); margin-top: 2px; }
 
-/* two halo pulses, amplitude encodes severity - opacity + transform only (both interpolate
-   reliably; the static box-shadow colour is not interpolated). calm = a gentle dip and return
-   (connected, all good); alert = a hard fade + expand (down, urgent), also run 3x faster. */
+/* two halo pulses - OPACITY ONLY (no scale), per the design artifact: severity is encoded in
+   CADENCE, not amplitude. calm = a gentle opacity dip and return (connected); alert = a deeper
+   dip (down, urgent) run 3x faster. scaling is avoided - it nudges the pill baseline. */
 @keyframes doh-pulse-calm {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%      { opacity: .55; transform: scale(1.25); }
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .6; }
 }
 @keyframes doh-pulse-alert {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%      { opacity: .15; transform: scale(1.7); }
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .25; }
 }
 /* reduced motion: no pulse, but keep a steady visible halo so the diode still reads as live */
 @media (prefers-reduced-motion: reduce) {
-  .doh-conn-pill .doh-conn-dot::after, .doh-hub-warn-diode::after { animation: none; opacity: .6; transform: none; }
+  .doh-conn-pill .doh-conn-dot::after, .doh-hub-warn-diode::after { animation: none; opacity: .6; }
+  /* the INFINITE expiry glows respect reduced motion (continuous, ambient); the one-shot extend
+     BOOST is intentionally EXEMPT - it is a deliberate user-triggered confirmation the operator wants
+     in all cases, and gating it here (plus the JS hold) was what collapsed it to ~0s under OS
+     "reduce motion" (the root cause of "lasts a fraction of a second"). */
+  .doh-ttl-clock-warn, .doh-ttl-clock-end { animation: none !important; filter: none !important; }
+  /* spawning / in-progress pill dot: steady, no blink */
+  .doh-pill.spawning .doh-dot { animation: none !important; }
+  /* resource + GPU bar fills: no slide/recolour on a live refresh */
+  .doh-res-bar > i, .doh-gpurow .track > i { transition: none !important; }
 }
 
 /* screen-reader-only: kept in the a11y tree, removed from view + layout (zero box) - used
