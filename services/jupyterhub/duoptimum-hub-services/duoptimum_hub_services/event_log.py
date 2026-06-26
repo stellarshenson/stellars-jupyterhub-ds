@@ -13,7 +13,7 @@ import os
 import threading
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, Integer, String, Text, create_engine
+from sqlalchemy import Column, Integer, String, Text, create_engine, inspect
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -32,6 +32,10 @@ class Event(EventLogBase):
     ts = Column(String(40), nullable=False)
     type = Column(String(40), nullable=False)
     text = Column(Text, nullable=False, default='')
+    # optional per-event glyph (IconKey) so the feed shows the SPECIFIC action - a server
+    # STOP gets a stop glyph, an EXTEND a clock - not the type's single default. NULL for
+    # rows recorded before this column existed and for events that use the type default.
+    icon = Column(String(40), nullable=True)
 
 
 class EventLogManager:
@@ -60,15 +64,27 @@ class EventLogManager:
         db_url = f'sqlite:///{path}'
         self._engine = create_engine(db_url)
         EventLogBase.metadata.create_all(self._engine)
+        self._ensure_schema()
         self._session_factory = sessionmaker(bind=self._engine)
         log.info(f'[EventLog] Database initialized: {db_url}')
         return self._session_factory()
 
-    def record(self, event_type, text):
-        """Append an event (ts stamped here). Prunes to the most recent _MAX_ROWS."""
+    def _ensure_schema(self):
+        """Additive migration: deployments created before the `icon` column have an
+        `events` table without it, and create_all never adds columns - so add it
+        idempotently here on first connect (NULL for existing rows)."""
+        cols = {c['name'] for c in inspect(self._engine).get_columns('events')}
+        if 'icon' not in cols:
+            with self._engine.begin() as conn:
+                conn.exec_driver_sql('ALTER TABLE events ADD COLUMN icon VARCHAR(40)')
+            log.info('[EventLog] migrated: added events.icon column')
+
+    def record(self, event_type, text, icon=None):
+        """Append an event (ts stamped here). Prunes to the most recent _MAX_ROWS.
+        `icon` is an optional per-event glyph override; None uses the type default."""
         db = self._get_db()
         try:
-            db.add(Event(ts=datetime.now(timezone.utc).isoformat(), type=str(event_type), text=str(text)))
+            db.add(Event(ts=datetime.now(timezone.utc).isoformat(), type=str(event_type), text=str(text), icon=str(icon) if icon else None))
             db.commit()
             # bound the table: delete everything older than the newest _MAX_ROWS
             cutoff = db.query(Event.id).order_by(Event.id.desc()).offset(_MAX_ROWS).first()
@@ -86,7 +102,7 @@ class EventLogManager:
         db = self._get_db()
         try:
             rows = db.query(Event).order_by(Event.id.desc()).limit(limit).all()
-            return [{'id': str(r.id), 'ts': r.ts, 'type': r.type, 'text': r.text or ''} for r in rows]
+            return [{'id': str(r.id), 'ts': r.ts, 'type': r.type, 'text': r.text or '', 'icon': r.icon or ''} for r in rows]
         finally:
             db.close()
 
@@ -104,9 +120,10 @@ class EventLogManager:
             db.close()
 
 
-def record_event(event_type, text):
-    """Best-effort event recording - never raises into the caller's request/hook."""
+def record_event(event_type, text, icon=None):
+    """Best-effort event recording - never raises into the caller's request/hook.
+    `icon` optionally overrides the feed glyph for this specific event."""
     try:
-        EventLogManager.get_instance().record(event_type, text)
+        EventLogManager.get_instance().record(event_type, text, icon=icon)
     except Exception as e:  # pragma: no cover - defensive
         log.warning(f'[EventLog] failed to record {event_type} event: {e}')

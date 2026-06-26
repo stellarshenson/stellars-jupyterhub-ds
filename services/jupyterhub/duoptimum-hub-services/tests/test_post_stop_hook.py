@@ -49,8 +49,8 @@ def test_happy_path_calls_all_three(monkeypatch):
                     calls['release'] = name
             return _Inst()
 
-    def fake_record(kind, msg):
-        calls['event'] = (kind, msg)
+    def fake_record(kind, msg, icon=None):
+        calls['event'] = (kind, msg, icon)
 
     monkeypatch.setattr(hooks, "unregister_user", fake_unregister)
     monkeypatch.setattr(hooks, "PoolManager", _Pool)
@@ -62,6 +62,7 @@ def test_happy_path_calls_all_three(monkeypatch):
     assert calls['unregister'] == ("alice", "/run/sockets")  # configured socket_dir threaded through
     assert calls['release'] == "alice"
     assert calls['event'][0] == 'server' and 'alice' in calls['event'][1]
+    assert calls['event'][2] == 'stop'  # per-event glyph: a stop reads as a stop, not the type-default play
     assert sp.log.warnings == []  # no warnings on the happy path
 
 
@@ -74,7 +75,7 @@ def test_best_effort_swallows_all_failures(monkeypatch):
         def get_instance():
             raise RuntimeError("pool down")
 
-    def boom_record(kind, msg):
+    def boom_record(kind, msg, icon=None):
         raise RuntimeError("db down")
 
     monkeypatch.setattr(hooks, "unregister_user", boom_unregister)

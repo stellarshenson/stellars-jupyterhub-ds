@@ -282,6 +282,12 @@ body { margin: 0; font-family: var(--font-sans); }
 .doh-feed-item { display: flex; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border-subtle); }
 .doh-feed-item:last-child { border-bottom: 0; }
 .doh-feed-ic { width: 28px; height: 28px; border-radius: var(--radius-full); flex: none; display: grid; place-items: center; background: var(--color-bg-subtle); color: var(--color-text-muted); }
+/* category colour (design system "Activity feed"): bg-tint and icon colour from the SAME
+   tone token; the neutral base above is the fallback for an unknown category */
+.doh-feed-ic.ok { background: var(--color-success-soft); color: var(--color-success); }
+.doh-feed-ic.warn { background: var(--color-warning-soft); color: var(--color-warning); }
+.doh-feed-ic.danger { background: var(--color-danger-soft); color: var(--color-danger); }
+.doh-feed-ic.accent { background: var(--color-accent-soft); color: var(--color-accent); }
 .doh-feed-body { font-size: var(--text-sm); min-width: 0; }
 .doh-feed-body .when { color: var(--color-text-subtle); font-size: var(--text-xs); margin-top: 1px; }
 

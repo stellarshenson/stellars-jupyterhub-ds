@@ -306,7 +306,7 @@ def make_post_stop_hook(socket_dir):
             spawner.log.warning("[ApiKeys] tentative release failed: %s", e)
         # Record a server-stop event for the portal events feed (best-effort).
         try:
-            record_event('server', f'<b>{html.escape(str(spawner.user.name))}</b> server stopped')
+            record_event('server', f'<b>{html.escape(str(spawner.user.name))}</b> server stopped', icon='stop')
         except Exception:
             pass
 

@@ -12,21 +12,11 @@ import { clearEvents } from '../services/ops'
 import { useEvents } from '../hooks/queries'
 import { timeAgoShort, exactDate } from '../lib/format'
 import { useResponsiveColumns } from '../lib/useResponsiveColumns'
-import type { EventRow, EventType } from '../services/types'
+import { EVENT_TONE, glyphFilled } from '../lib/eventVisual'
+import type { EventRow } from '../services/types'
 
 type Range = '24h' | '7d' | '30d'
 const RANGE_MS: Record<Range, number> = { '24h': 864e5, '7d': 6.048e8, '30d': 2.592e9 }
-
-const TYPE_TONE: Record<EventType, 'ok' | 'warn' | 'grey' | 'accent' | 'danger'> = {
-  server: 'ok',
-  user: 'accent',
-  group: 'accent',
-  policy: 'warn',
-  broadcast: 'accent',
-  cull: 'danger',
-  volume: 'warn',
-  error: 'danger',
-}
 
 export default function Events() {
   const { data = [], isLoading } = useEvents()
@@ -65,8 +55,8 @@ export default function Events() {
       dataIndex: 'text',
       render: (_, e) => (
         <div className="doh-row">
-          <span className="doh-feed-ic">
-            <Icon name={e.icon as 'play'} size={15} />
+          <span className={`doh-feed-ic ${EVENT_TONE[e.type]}`}>
+            <Icon name={e.icon as 'play'} size={15} filled={glyphFilled(e.icon)} />
           </span>
           <span dangerouslySetInnerHTML={{ __html: e.text }} />
         </div>
@@ -76,7 +66,7 @@ export default function Events() {
       title: 'Type',
       dataIndex: 'type',
       width: 120,
-      render: (_, e) => <span className={`doh-pill ${TONE_CLASS[TYPE_TONE[e.type]]}`}>{e.type}</span>,
+      render: (_, e) => <span className={`doh-pill ${TONE_CLASS[EVENT_TONE[e.type]]}`}>{e.type}</span>,
     },
     {
       title: 'When',
@@ -110,7 +100,7 @@ export default function Events() {
               { key: 'server', label: 'Server', count: counts.server, tone: 'ok' },
               { key: 'user', label: 'User', count: counts.user, tone: 'accent' },
               { key: 'group', label: 'Group', count: counts.group, tone: 'accent' },
-              { key: 'policy', label: 'Policy', count: counts.policy, tone: 'warn' },
+              { key: 'policy', label: 'Policy', count: counts.policy, tone: 'accent' },
               { key: 'broadcast', label: 'Broadcast', count: counts.broadcast, tone: 'accent' },
               { key: 'cull', label: 'Culled', count: counts.cull, tone: 'danger' },
               { key: 'volume', label: 'Volume', count: counts.volume, tone: 'warn' },

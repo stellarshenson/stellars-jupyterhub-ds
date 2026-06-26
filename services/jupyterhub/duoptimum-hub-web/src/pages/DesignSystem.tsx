@@ -324,11 +324,19 @@ export default function DesignSystem() {
             <div className="doh-grant"><span className="doh-g-ic"><Icon name="memory" size={16} /></span><div>Memory<div className="doh-g-from">from gpu</div></div><span className="doh-g-val">32 GB</span></div>
           </div>
         </Row>
-        <Row label="Feed item">
+        <Row label="Feed item (category colour - bg-tint = icon token; terminal events filled)">
           <div className="doh-feed" style={{ width: 420 }}>
             <div className="doh-feed-item">
-              <div className="doh-feed-ic"><Icon name="play" size={15} /></div>
+              <div className="doh-feed-ic ok"><Icon name="play" size={15} filled /></div>
               <div className="doh-feed-body"><div className="t"><b>milan</b> started a server with <b>gpu</b></div><div className="when">2m ago</div></div>
+            </div>
+            <div className="doh-feed-item">
+              <div className="doh-feed-ic accent"><Icon name="user" size={15} /></div>
+              <div className="doh-feed-body"><div className="t"><b>admin</b> authorised <b>natalia</b></div><div className="when">14m ago</div></div>
+            </div>
+            <div className="doh-feed-item">
+              <div className="doh-feed-ic danger"><Icon name="stop" size={15} filled /></div>
+              <div className="doh-feed-body"><div className="t"><b>kuba</b>'s session was culled (idle)</div><div className="when">1h ago</div></div>
             </div>
           </div>
         </Row>

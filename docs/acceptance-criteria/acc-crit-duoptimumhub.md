@@ -1165,6 +1165,21 @@ A spawn has three outcomes in the feed: starting, stopped, and (new) failed. The
 - [ ] **Runtime: a real failed spawn shows a Failed row** - on the live system, a spawn that crashes records a "<user> server failed to start" row visible under the Failed pill
   - log: 2026-06-22 functional/live verify pending rebuild (tasks #466, #473)
 
+### Feed icons (category colour + per-event glyph)
+
+The activity feed (Overview "Recent events" + Events page) follows the design-system "Activity feed": each row's 28px circle is colour-coded by category - the bg-tint and the icon colour come from the SAME tone token - and a terminal/standalone event renders a FILLED glyph. Single source: `lib/eventVisual.ts` (`EVENT_TONE`, `glyphFilled`).
+
+- [ ] **Circle is category-coloured** - the feed circle (`.doh-feed-ic`) is no longer neutral grey; bg = `<tone>-soft`, icon = `<tone>`, from one `EVENT_TONE` token per category (started/server=success, identity/group/policy/broadcast=accent, storage/volume=warning, failed/cull/error=danger)
+  - log: 2026-06-26 operator "take the activity icons glyphs and colours from the design system"; `eventVisual.ts` + `.doh-feed-ic.<tone>` classes; Home + Events; tsc clean, live verify pending
+- [ ] **bg-tint == icon token (no drift)** - the circle background and the icon stroke always resolve from the same tone, shared by the feed circle, the Events type pill (`TONE_CLASS[EVENT_TONE]`) and the scope-filter chips; Policy realigned warn -> accent per the design-system "config/policy = accent"
+  - log: 2026-06-26 single `EVENT_TONE` source consumed by all three
+- [ ] **Per-event glyph for specific actions** - the hub carries an optional per-event `icon` so a server STOP shows a `stop` glyph and an EXTEND a `clock`, not the type's single default; absent one the client falls back to `EVENT_ICON[type]`
+  - log: 2026-06-26 `event_log.py` Event.icon column + `record_event(..., icon=)`; `hooks.py` stop -> icon='stop', `session.py` extend -> icon='clock'; `liveSource` uses `e.icon || type default`; unit-tested (icon round-trip), live end-to-end verify pending
+- [ ] **Filled weight for terminal glyphs** - closed-shape terminal glyphs (play, stop) render FILLED via `glyphFilled(icon)`; open glyphs (x, clock, restart, megaphone) stay stroked (never fill an open polyline)
+  - log: 2026-06-26 `glyphFilled` keyed by GLYPH not type, so one server event fills play on start, stop on stop
+- [x] **Edge: legacy events (pre-icon column)** - rows recorded before the `icon` column read `icon=''` and fall back to the type-default glyph; no crash, no missing icon
+  - log: 2026-06-26 `_ensure_schema` idempotent `ALTER TABLE events ADD COLUMN icon` + NULL-tolerant `recent()`; `test_legacy_table_without_icon_is_migrated` green
+
 ### Clear action
 
 - [x] **Clear button in the Events panel** - the Events toolbar has a danger-toned "Clear log" button (close icon), disabled when the feed is already empty
