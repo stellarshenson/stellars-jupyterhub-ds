@@ -3,7 +3,7 @@
  * actions, recent events). A plain user sees the launchpad (their server hero,
  * their groups, effective access). */
 import { useEffect } from 'react'
-import { Card, Tag, Tooltip } from 'antd'
+import { Card, Grid, Tag, Tooltip } from 'antd'
 import { Link, useNavigate } from 'react-router-dom'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
@@ -20,6 +20,7 @@ import { EVENT_TONE, glyphFilled } from '../lib/eventVisual'
 import { useRole } from '../app/RoleContext'
 import { usePref } from '../app/PrefsContext'
 import { useIsMobile } from '../lib/useIsMobile'
+import { useResponsiveColumns } from '../lib/useResponsiveColumns'
 import MobileHome from './MobileHome'
 import { timeAgoShort } from '../lib/format'
 import { useEffectiveGrants, useEvents, useServerHero, useServers, useStats, useTotalResources, useUser } from '../hooks/queries'
@@ -64,8 +65,9 @@ function ActiveServersPreview() {
   const listCpuMode = usePref('cpuModeServersList') // 'cores' shows docker/top %, 'normalized' shows % of assigned
   const top = [...data].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]).slice(0, 10)
   // minimal info on the home preview - the detailed CPU/mem/vol/sys breakdowns
-  // live in the Servers screen drawer now
-  const columns: ProColumns<ServerRow>[] = [
+  // live in the Servers screen drawer now. Same responsive tiers as the Servers
+  // list: Activity drops below lg (992) once the list runs full-width on a tablet.
+  const columns: ProColumns<ServerRow>[] = useResponsiveColumns([
     {
       title: 'User',
       dataIndex: 'user',
@@ -83,7 +85,7 @@ function ActiveServersPreview() {
       ),
     },
     { title: 'Status', width: 92, render: (_, r) => <StatusPill status={r.status} label={r.statusLabel} /> },
-    { title: 'Activity', render: (_, r) => <ActivityMeter value={r.activity} hours={r.activityHours} pct={r.activityPct} /> },
+    { title: 'Activity', responsive: ['lg'], render: (_, r) => <ActivityMeter value={r.activity} hours={r.activityHours} pct={r.activityPct} /> },
     {
       title: <Tooltip title={SERVERS_COL_HELP.cpu}><span>CPU</span></Tooltip>,
       align: 'right',
@@ -106,7 +108,7 @@ function ActiveServersPreview() {
       // tagged with Home as the origin so sub-screens return here
       render: (_, r) => rowActions(r, navigate, lifecycle, me, HOME_ORIGIN),
     },
-  ]
+  ])
   return (
     <Card>
       <CardHeadLink title="Active Servers" to="/servers" suffix="· top 10 by status" />
@@ -189,6 +191,11 @@ function AdminHome() {
   const hostCpuMode = usePref('cpuModeHostStatus') // 'cores' = summed cores-used label; bar fill unchanged
   const s = stats?.servers
   const u = stats?.users
+  // below xl (1200) the Quick Actions + Recent Events side column is dropped and the
+  // servers list runs full-width; default to the wide layout until the breakpoints
+  // resolve so a desktop never flashes the narrow view (mirrors useResponsiveColumns)
+  const screens = Grid.useBreakpoint()
+  const sideColumn = !Object.values(screens).some(Boolean) || screens.xl
 
   // Host Status rows gated on the provider's declared capabilities (total.caps).
   // caps absent (error path / old backend) -> each defaults to shown, so the view
@@ -268,13 +275,19 @@ function AdminHome() {
 
       <PendingCallout count={u?.pending ?? 0} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 16, marginTop: 24 }}>
-        <ActiveServersPreview />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <QuickActions />
-          <RecentEvents />
+      {sideColumn ? (
+        <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 16, marginTop: 24 }}>
+          <ActiveServersPreview />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <QuickActions />
+            <RecentEvents />
+          </div>
         </div>
-      </div>
+      ) : (
+        <div style={{ marginTop: 24 }}>
+          <ActiveServersPreview />
+        </div>
+      )}
     </>
   )
 }
