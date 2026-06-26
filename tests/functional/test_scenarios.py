@@ -86,7 +86,7 @@ def test_priority_reorder(admin_portal):
     page = _create_group_via_ui(admin_portal, b)
 
     def order():
-        names = page.locator("tr.ant-table-row td:nth-child(2) a").evaluate_all(
+        names = page.locator("tr.ant-table-row td:nth-child(3) a").evaluate_all(
             "els => els.map(e => e.textContent)")
         return [n for n in names if n in (a, b)]
 
@@ -96,5 +96,5 @@ def test_priority_reorder(admin_portal):
 
     # Move the lower row up; the list reorders optimistically.
     _row(page, lower).get_by_role("button", name="Move up").click()
-    expect(page.locator("tr.ant-table-row td:nth-child(2) a").first).to_have_text(lower)
+    expect(page.locator("tr.ant-table-row td:nth-child(3) a").first).to_have_text(lower)
     assert order()[0] == lower

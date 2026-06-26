@@ -23,6 +23,7 @@ export interface Palette {
   text: string
   textMuted: string
   textSubtle: string
+  textDisabled: string
   accent: string
   accentHover: string
   accentActive: string
@@ -61,7 +62,8 @@ export const DARK: Palette = {
   borderStrong: '#4d5a65',
   text: '#c3c3c3',
   textMuted: '#a5a5a5',
-  textSubtle: '#7d8791',
+  textSubtle: '#9aa4ae', // WCAG AA on surface (4.69:1); was #7d8791 at 3.25:1
+  textDisabled: '#5e676f', // clearly dimmer than textSubtle so a disabled control reads inert
   accent: '#21a8e4',
   accentHover: '#46bcf0',
   accentActive: '#0e93cf',
@@ -100,7 +102,8 @@ export const LIGHT: Palette = {
   borderStrong: '#b7c4cc',
   text: '#1a3540',
   textMuted: '#46606c',
-  textSubtle: '#6c828d',
+  textSubtle: '#607782', // WCAG AA on surface (4.71:1); was #6c828d at 4.03:1
+  textDisabled: '#aab6bd', // clearly lighter/greyer than textSubtle so a disabled control reads inert
   accent: '#06709c',
   accentHover: '#0a82b8',
   accentActive: '#05607f',

@@ -2,7 +2,7 @@
 
 A near-full CPU/memory bar must read as the strong danger red - the same
 --color-danger token as the server-controls Stop button (antd colorError) - not a
-pale orange. The /design-language reference page renders a 90% bar through the same
+pale orange. The /design-system reference page renders a 90% bar through the same
 ResourceBars/barColor path used by the Server Status and Host Status widgets, so it
 is the deterministic surface to assert the >=90% colour (live bars need real >=90%
 metrics, which a test cannot force).
@@ -14,7 +14,7 @@ from playwright.sync_api import expect
 
 @pytest.mark.acc_crit("resource-bars::Gradual ramp past 50%")
 def test_bar_at_90pct_uses_danger_token(admin_portal):
-    page = admin_portal.goto("/design-language", ready=".doh-res-row")
+    page = admin_portal.goto("/design-system", ready=".doh-res-row")
     # the demo ResourceBars row labelled "90%" - its fill must use the danger token
     # (barColor saturates to var(--color-danger) at >=90%, == the Stop-button red).
     row = page.locator(".doh-res-row").filter(

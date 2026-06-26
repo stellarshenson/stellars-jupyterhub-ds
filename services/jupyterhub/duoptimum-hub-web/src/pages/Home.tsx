@@ -29,7 +29,7 @@ import { quotaColor } from '../services/hub/serverMetrics'
 import { SERVERS_COL_HELP } from '../services/config'
 
 const STATUS_ORDER: Record<ServerStatus, number> = { active: 1, idle: 2, spawning: 3, offline: 4, error: 5 }
-const accentTag = { background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 4, marginInlineStart: 6 }
+const accentTag = { background: 'var(--color-accent-soft)', color: 'var(--color-accent)', borderRadius: 'var(--radius-sm)', marginInlineStart: 6 }
 
 // the Home widget lists OTHER users' servers too, so its row actions tag Home as
 // the origin -> the Start / Manage-volumes sub-screens + breadcrumb return here
@@ -40,7 +40,7 @@ function PendingCallout({ count }: { count: number }) {
   return (
     <div
       style={{
-        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, marginTop: 16,
+        display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-3) var(--space-4)', borderRadius: 'var(--radius-lg)', marginTop: 'var(--space-4)',
         background: 'var(--color-accent-2-soft)', border: '1px solid color-mix(in srgb, var(--color-accent-2) 30%, transparent)', fontSize: 13,
       }}
     >
@@ -133,7 +133,7 @@ function QuickActions() {
   ]
   return (
     <Card>
-      <h3 style={{ marginBottom: 12 }}>Quick Actions</h3>
+      <h3 style={{ fontSize: 14, fontWeight: 600, margin: '0 0 12px' }}>Quick Actions</h3>
       <div className="doh-qa">
         {items.map((it) => (
           <Link key={it.to} to={it.to} className="doh-qa-btn">
@@ -153,17 +153,19 @@ function RecentEvents() {
   const { data = [] } = useEvents()
   return (
     <Card style={{ flex: 1 }} styles={{ body: { padding: 0 } }}>
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-subtle)' }}>
+      <div style={{ padding: 'var(--space-3) var(--space-4)', borderBottom: '1px solid var(--color-border-subtle)' }}>
         <CardHeadLink title="Recent Events" to="/events" />
       </div>
-      <div className="doh-feed" style={{ padding: '0 16px' }}>
+      <div className="doh-feed" style={{ padding: '0 var(--space-4)' }}>
         {data.slice(0, 5).map((e) => (
           <div className="doh-feed-item" key={e.id}>
             <div className="doh-feed-ic">
               <Icon name={e.icon as 'play'} size={15} />
             </div>
             <div className="doh-feed-body">
-              <div className="t" dangerouslySetInnerHTML={{ __html: e.text }} />
+              {/* backend escapes event text (events.py html.escape); title gives a
+               * plain-text hover/SR fallback for long, truncated entries */}
+              <div className="t" title={e.text.replace(/<[^>]*>/g, '')} dangerouslySetInnerHTML={{ __html: e.text }} />
               <div className="when">{timeAgoShort(e.whenISO)}</div>
             </div>
           </div>
@@ -220,13 +222,13 @@ function AdminHome() {
             segments={[
               { width: segPct(s.running, s.total), color: 'var(--color-success)' },
               { width: segPct(s.idle, s.total), color: 'var(--color-warning)' },
-              { width: segPct(s.offline, s.total), color: 'var(--color-border)' },
+              { width: segPct(s.offline, s.total), color: 'var(--color-border-strong)' },
             ]}
             breakdown={
               <>
                 <span style={{ color: 'var(--color-success)' }} title="Running with recent activity"><b>{s.running}</b> running</span>
                 <span style={{ color: 'var(--color-warning)' }} title="Running but idle"><b>{s.idle}</b> idle</span>
-                <span title="Stopped"><b>{s.offline.toLocaleString()}</b> offline</span>
+                <span style={{ color: 'var(--color-text-subtle)' }} title="Stopped"><b>{s.offline.toLocaleString()}</b> offline</span>
               </>
             }
           />
@@ -248,7 +250,7 @@ function AdminHome() {
                 <span style={{ color: 'var(--color-accent-2)' }} title="Signed up, awaiting authorisation"><b>{u.pending}</b> pending</span>
                 <span style={{ color: 'var(--color-success)' }} title="Activity above 0%"><b>{u.active.toLocaleString()}</b> active</span>
                 <span style={{ color: 'var(--color-accent)' }} title="Authorised but never signed in"><b>{u.new}</b> new</span>
-                <span title="Activity at 0%"><b>{u.inactive}</b> inactive</span>
+                <span style={{ color: 'var(--color-text-subtle)' }} title="Activity at 0%"><b>{u.inactive}</b> inactive</span>
               </>
             }
           />
@@ -288,11 +290,11 @@ function UserHome() {
       {hero && <ServerHero hero={hero} resourcesTitle="Server Status" />}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <Card>
-          <h3 style={{ margin: '0 0 12px' }}>Your Groups</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 600, margin: '0 0 12px' }}>Your Groups</h3>
           <CappedTags items={(me?.groups ?? []).map((g) => ({ key: g, label: g }))} cap={8} />
         </Card>
         <Card>
-          <h3 style={{ margin: '0 0 12px' }}>What your groups grant</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 600, margin: '0 0 12px' }}>What your groups grant</h3>
           {grants.map((g) => (
             <div className="doh-grant" key={g.key}>
               <span className="doh-g-ic"><Icon name={g.key as 'gpu'} size={16} /></span>

@@ -135,3 +135,6 @@ dmypy.json
 
 # Functional-test screenshot scratch (visual sign-off evidence) - never tracked
 /tests/functional/_screens/
+
+# functional-test sign-off reports (generated every run)
+tests/functional/reports/

@@ -3,14 +3,13 @@
  * never inline (per the design language). */
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { Button, Popover, Progress, Slider } from 'antd'
+import { Button, Popover, Slider } from 'antd'
 import { Icon } from './Icon'
 import { fmtMinutes } from '../lib/format'
+import { litBars, meterTone } from '../lib/activityMeter'
 import { ANIMATION, BAR_COLOR, GPU_NAME_MAX_WORDS, TTL_COLOR } from '../services/config'
 import { gpuSupported } from '../app/capabilities'
-import { useTheme } from '../theme/ThemeProvider'
-import { PALETTES } from '../theme/tokens'
-import { gpuStripeColor } from '../lib/gpuStripes'
+import { gpuStripeColor, GPU_STRIPE_COUNT } from '../lib/gpuStripes'
 import type { GpuDevice } from '../services/types'
 
 // Multiline tooltip for the engagement meter: the activity % (uncapped - may
@@ -24,15 +23,15 @@ export function activityTitle(pct: number | null, hours?: number | null): string
   return lines.length ? lines.join('\n') : 'No activity recorded yet'
 }
 
-// 5-segment engagement meter. Fill follows the capped score; the tooltip shows
-// the uncapped `pct` (when supplied) so >100% is visible. The whole meter takes
-// one tone by lit-bar count: 1 bar pale red, 2-3 orange, 4-5 green.
-export function ActivityMeter({ value, hours, pct, title }: { value: number | null; hours?: number | null; pct?: number | null; title?: string }) {
-  if (value == null) return <span className="doh-muted">-</span>
-  const lit = Math.max(0, Math.min(5, Math.round(value / 20)))
-  const tone = lit <= 1 ? 'low' : lit <= 3 ? 'idle' : ''
+// shared 5-segment meter body. The lit-bar COUNT drives one tone for the whole meter:
+// 1 bar pale red, 2-3 orange, 4-5 green. EXACTLY zero activity lights ZERO bars (empty meter) -
+// distinct from null, which callers render as a dash. role=img + aria-label expose the value
+// off-hover (the lit-bar count alone is not reachable by screen reader / keyboard).
+function MeterBody({ value, fill, title }: { value: number; fill?: boolean; title: string }) {
+  const lit = litBars(value)
+  const tone = meterTone(lit)
   return (
-    <span className={`doh-meter ${tone}`} title={title ?? activityTitle(pct ?? value, hours)}>
+    <span className={`doh-meter${fill ? ' fill' : ''}${tone ? ` ${tone}` : ''}`} role="img" aria-label={title} title={title}>
       {[0, 1, 2, 3, 4].map((i) => (
         <i key={i} className={i < lit ? 'on' : ''} />
       ))}
@@ -40,17 +39,16 @@ export function ActivityMeter({ value, hours, pct, title }: { value: number | nu
   )
 }
 
+// 5-segment engagement meter. Fill follows the capped score; the tooltip + aria-label
+// show the uncapped `pct` (when supplied) so >100% is visible. null = a dash.
+export function ActivityMeter({ value, hours, pct, title }: { value: number | null; hours?: number | null; pct?: number | null; title?: string }) {
+  if (value == null) return <span className="doh-muted">-</span>
+  return <MeterBody value={value} title={title ?? activityTitle(pct ?? value, hours)} />
+}
+
 // 5-segment meter stretched to fill a row (resource panels).
 export function ActivityMeterFill({ value, hours, pct, title }: { value: number; hours?: number | null; pct?: number | null; title?: string }) {
-  const lit = Math.max(0, Math.min(5, Math.round(value / 20)))
-  const tone = lit <= 1 ? 'low' : lit <= 3 ? 'idle' : ''
-  return (
-    <span className={`doh-meter fill ${tone}`} title={title ?? activityTitle(pct ?? value, hours)}>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <i key={i} className={i < lit ? 'on' : ''} />
-      ))}
-    </span>
-  )
+  return <MeterBody value={value} fill title={title ?? activityTitle(pct ?? value, hours)} />
 }
 
 export interface SparkSegment {
@@ -58,9 +56,12 @@ export interface SparkSegment {
   color: string
 }
 
+// proportional stacked bar. When a `title` is supplied it is exposed as an accessible
+// image; without one (e.g. the metric-card spark, whose breakdown legend carries the
+// numbers) it is decorative and hidden from the a11y tree.
 export function Spark({ segments, height = 6, title, style }: { segments: SparkSegment[]; height?: number; title?: string; style?: CSSProperties }) {
   return (
-    <div className="doh-spark" style={{ height, ...style }} title={title}>
+    <div className="doh-spark" style={{ height, ...style }} role={title ? 'img' : undefined} aria-label={title} aria-hidden={title ? undefined : true} title={title}>
       {segments.map((s, i) => (
         <span key={i} style={{ width: typeof s.width === 'number' ? `${s.width}%` : s.width, background: s.color }} />
       ))}
@@ -69,30 +70,31 @@ export function Spark({ segments, height = 6, title, style }: { segments: SparkS
 }
 
 // per-GPU bars: one labelled horizontal bar per device, fill width = its load.
-// The index labels make it read unmistakably as N separate GPUs. When device
-// metadata is supplied the tooltip names the GPU and quotes its live load.
-// The bar fill is the standard accent on every device; only the diagonal stripe
-// tint shifts per device. Each stripe colour is computed (`gpuStripeColor`) to
-// CONTRAST with the theme accent (the fill), with the hue rotated per device so
-// the GPUs read distinct while every stripe stays inside the contrast budget.
-export function GpuMeter({ gpus, devices }: { gpus: number[]; devices?: GpuDevice[] }) {
-  const { resolved } = useTheme()
-  const accent = PALETTES[resolved].accent // the bar-fill base the stripes contrast against
+// label = device name capped to GPU_NAME_MAX_WORDS words (vendor+family+model head kept,
+// trailing "Laptop GPU" dropped), shown in FULL - the name takes its natural width and the
+// bar shrinks to fit, so no required segment is ever ellipsis-trimmed. Every device keeps the
+// calm accent base fill (global.css); only the 45-degree stripe overlay carries the device's
+// IDENTITY colour from the fixed 10-hue palette (`gpuStripeColor`), bound to the index so a GPU
+// keeps its colour as the inventory changes; devices past 10 reuse a colour, label marked with a
+// cycle glyph. The per-row % (right-aligned, fixed column) shows when sampled, blank otherwise so
+// the bar ENDS stay aligned with the CPU/Mem/Vol bars; the tooltip names the GPU + its live load.
+export function GpuMeter({ gpus, devices, sampled = true }: { gpus: number[]; devices?: GpuDevice[]; sampled?: boolean }) {
   return (
     <span className="doh-gpurows">
       {gpus.map((g, i) => {
         const d = devices?.[i]
+        const wrapped = i >= GPU_STRIPE_COUNT // identity colours cycle past the 10th device
+        const label = `${d ? shortGpuName(d.name) : `GPU ${i}`}${wrapped ? ' ↻' : ''}`
         return (
           <span className="doh-gpurow" key={i} title={gpuTip(d, g, i)}>
-            <small>{d ? shortGpuName(d.name) : `GPU ${i}`}</small>
+            <small>{label}</small>
             <span className="track">
-              <i
-                style={{
-                  width: `${Math.max(3, g)}%`,
-                  backgroundImage: `repeating-linear-gradient(45deg, ${gpuStripeColor(accent, i, gpus.length)} 0 3px, transparent 3px 7px)`,
-                }}
-              />
+              {/* a 0% GPU reads as EXACTLY empty (the old Math.max(3,g) floor showed a 3% striped
+                  sliver that looked like 1-2% load); a positive load keeps the 3% min-visible width
+                  so a tiny load is still perceptible. identity at 0% comes from the GPU name. */}
+              <i style={{ width: `${g > 0 ? Math.max(3, g) : 0}%`, backgroundImage: `repeating-linear-gradient(45deg, ${gpuStripeColor(i)} 0 3px, transparent 3px 7px)` }} />
             </span>
+            <small className="doh-gpurow-val">{sampled ? `${g}%` : ''}</small>
           </span>
         )
       })}
@@ -210,19 +212,25 @@ export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
             ? (n
               // always the labelled striped per-GPU bars when devices exist; when
               // utilisation is not sampled the bars render at zero fill (empty
-              // striped track) rather than collapsing to inventory chips
-              ? <GpuMeter gpus={utils ?? devices!.map((d) => d.utilizationPct ?? 0)} devices={devices} />
+              // striped track) rather than collapsing to inventory chips, and the
+              // per-device % readout is suppressed (the row value carries total mem)
+              ? <GpuMeter gpus={utils ?? devices!.map((d) => d.utilizationPct ?? 0)} devices={devices} sampled={utils !== undefined || (devices?.some((d) => d.utilizationPct != null) ?? false)} />
               : <span className="doh-res-bar" title={r.tip} />)
             // the detail tooltip rides BOTH the bar and the value, so hovering the
-            // progress bar itself (not only the % readout) shows the breakdown
-            : <span className="doh-res-bar" title={r.tip}><i style={{ width: `${r.value}%`, background: barColor(r.value), transition: 'width .4s ease, background .4s ease' }} /></span>)
+            // progress bar itself (not only the % readout) shows the breakdown. fill
+            // width is clamped to 100% (a >100% reading still shows full, not overflow);
+            // the value label stays uncapped so the real figure shows
+            : <span className="doh-res-bar" title={r.tip}><i style={{ width: `${Math.min(100, r.value)}%`, background: barColor(r.value), transition: 'width .4s ease, background .4s ease' }} /></span>)
         const val = r.valueLabel
           ?? (r.meter ? '' : isGpuRow ? (n ? (invOnly && memGB ? `${memGB} GB` : '') : '-') : `${r.value}%`)
         return (
           <div className="doh-res-row" key={r.label}>
             <span className="doh-res-label">{label}</span>
             {bar}
-            <span className="doh-res-val" title={r.tip}>{val}</span>
+            {/* GPU rows omit the value column so the per-device striped meter spans to the
+              * panel's right edge - each row's own right-aligned % then lines up with the
+              * CPU/Mem/Vol % above it (design: every reading right-aligns to one edge) */}
+            {!isGpuRow && <span className="doh-res-val" title={r.tip}>{val}</span>}
           </div>
         )
       })}
@@ -230,23 +238,17 @@ export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
   )
 }
 
-// CSS `ease` timing function (cubic-bezier(.25,.1,.25,1)) as a JS easing, so a
-// JS-driven number tween moves in lockstep with a CSS width transition that uses
-// `ease`. Compact Newton-Raphson solve for t given progress x, then sample y.
-function EASE(x: number): number {
-  const p1x = 0.25, p1y = 0.1, p2x = 0.25, p2y = 1
-  const cx = 3 * p1x, bx = 3 * (p2x - p1x) - cx, ax = 1 - cx - bx
-  const cy = 3 * p1y, by = 3 * (p2y - p1y) - cy, ay = 1 - cy - by
-  const sx = (t: number) => ((ax * t + bx) * t + cx) * t
-  const sy = (t: number) => ((ay * t + by) * t + cy) * t
-  const dx = (t: number) => (3 * ax * t + 2 * bx) * t + cx
-  let t = x
-  for (let i = 0; i < 5; i++) {
-    const d = dx(t)
-    if (Math.abs(d) < 1e-6) break
-    t -= (sx(t) - x) / d
-  }
-  return sy(t)
+// trapezoidal-velocity ease (the TTL "effort" envelope): speed ramps up over the first quarter,
+// holds full through the middle, ramps down over the last quarter - so a value tweened with this
+// accelerates in, cruises, then decelerates onto its target. returns eased progress 0..1.
+// NOTE: a=0.25 (the quarter) MUST match the 25%/75% stops in the doh-ttl-boost-bar/-num/-clock
+// keyframes (global.css) - that is what keeps the glow/blur amplitude in lockstep with this velocity.
+function rampEase(p: number, a = 0.25): number {
+  const norm = 1 - a
+  if (p < a) return (p * p) / (2 * a * norm)
+  if (p < 1 - a) return (p - a / 2) / norm
+  const q = 1 - p
+  return 1 - (q * q) / (2 * a * norm)
 }
 
 // TTL colour by fraction of base left (reverse of the resource bars; fixed bands).
@@ -267,7 +269,7 @@ function ttlTone(frac: number): string {
 // used-up remainder shows as the gray trail. The whole gadget spans the row
 // (bar + time + Extend). Extend opens an hours slider whose last tick is "max",
 // which tops the session up to the configured ceiling (old-JupyterHub style).
-export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, displayCeilingMin, uptimeLabel, onExtend }: { timeLeftMin: number; baseMin: number; maxAddHours?: number; displayCeilingMin?: number; uptimeLabel?: string; onExtend?: (hours: number) => void | Promise<unknown> }) {
+export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, displayCeilingMin, uptimeLabel, uptimeSince, onExtend }: { timeLeftMin: number; baseMin: number; maxAddHours?: number; displayCeilingMin?: number; uptimeLabel?: string; uptimeSince?: string; onExtend?: (hours: number) => void | Promise<unknown> }) {
   // bar 100% ref. below base: base (fresh ~full, drains in last base window). banked
   // above base: high-water mark = remaining last extended TO (displayCeilingMin), so
   // just-extended reads 100% and drains vs THAT mark, not the far 72h ceiling (old bug:
@@ -294,101 +296,115 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, displayCeilin
   const RECOMMENDED_ADD_H = 4
   const [hours, setHours] = useState(Math.min(RECOMMENDED_ADD_H, maxH))
   const atCeiling = maxAddHours <= 0
-  // extend boost: bar fill (displayPct) grows by rAF from the current fill to the target
-  // vs the NEW high-water mark, in lockstep with the count-up text. holds until refetch
-  // lands a changed value (min-fill window so growth is seen, safety cap so it can't
-  // stick). backend stores the same mark, so the landed % == the target: seamless grow,
-  // never a momentary 100% then drop. displayMin freezes shown time during fill.
+  // extend boost: ONE ramp-up / steady / ramp-down envelope (no pulsing). on extend the bar GROWS
+  // and the counter COUNTS from the current remaining up to the new remaining; their speed ramps up
+  // to full, holds, then ramps down to settle on the new value (rampEase = trapezoidal velocity).
+  // a SINGLE rAF drives bar + counter in lockstep (both need data-driven values JS can supply but
+  // CSS can't). riding the same envelope, the fill glow, the clock glow and the counter blur ramp
+  // their AMPLITUDE up -> steady -> down via one-shot pure-CSS keyframes (off the compositor). the
+  // class is held for the in-flight extend + one envelope, then dropped (bar settles to the new %).
   const [boost, setBoost] = useState(false)
   const [displayMin, setDisplayMin] = useState(timeLeftMin)
-  const [displayPct, setDisplayPct] = useState(0) // bar fill driven by rAF during a boost
-  const baselineMin = useRef(timeLeftMin) // time-left captured at extend click
-  const boostTargetMin = useRef(timeLeftMin) // post-extend time-left captured at click
-  const baselinePct = useRef(0)  // bar fill % at extend click - grow FROM here
-  const boostTargetPct = useRef(0) // post-extend fill % - grow TO here (vs the new mark)
-  const rafRef = useRef<number | null>(null) // count-up animation frame (bar + counter)
-  const minFillDone = useRef(false)       // minimum fill window elapsed
-  const valueLanded = useRef(false)       // refetch delivered a changed value
-  // while NOT boosting, the shown time tracks the live value; once the boost ends
-  // it lands here (the invariant ceiling makes the landed value equal the target)
+  const [displayPct, setDisplayPct] = useState(pct)
+  const fromMin = useRef(timeLeftMin), toMin = useRef(timeLeftMin)
+  const fromPct = useRef(pct), toPct = useRef(pct)
+  const rafRef = useRef<number | null>(null)
+  // the value an in-flight extend is landing on; held across the boost-release until the parent's
+  // refetch catches up to it (see below). null when no extend is pending.
+  const pendingTarget = useRef<number | null>(null)
+  // off-boost the readouts track the live prop - EXCEPT right after an extend, while the parent's
+  // refetch is still in flight (timeLeftMin still shows the pre-extend remaining). settling on the
+  // stale prop there flashes the counter BACKWARD to the old value (most visibly in reduced motion,
+  // which releases boost before the refetch lands). so hold the computed target until the prop rises
+  // past the pre-extend remaining (refetch landed), then resume tracking the live value.
   useEffect(() => {
-    if (!boost) setDisplayMin(timeLeftMin)
-  }, [boost, timeLeftMin])
-  // during the boost, count the shown time UP from the captured baseline to the
-  // post-extend target over the SAME duration and easing as the bar fill, so the
-  // number climbs in lockstep with the bar (CSS `ease` = cubic-bezier(.25,.1,.25,1))
+    if (boost) return
+    if (pendingTarget.current != null && timeLeftMin <= fromMin.current) {
+      setDisplayMin(pendingTarget.current); setDisplayPct(toPct.current); return
+    }
+    pendingTarget.current = null
+    setDisplayMin(timeLeftMin); setDisplayPct(pct)
+  }, [boost, timeLeftMin, pct])
+  // on boost, one rAF tweens the counter integer AND the bar fill from->to over ttlExtendMs with the
+  // trapezoidal-velocity envelope (ramp up to full speed, steady, ramp down); they stay in lockstep
   useEffect(() => {
     if (!boost) return
-    const fromMin = baselineMin.current
-    const toMin = boostTargetMin.current
-    const fromPct = baselinePct.current
-    const toPct = boostTargetPct.current
-    if (toMin === fromMin && toPct === fromPct) return
-    let startTs: number | null = null
+    const m0 = fromMin.current, m1 = toMin.current, p0 = fromPct.current, p1 = toPct.current
+    if (m0 === m1 && p0 === p1) return
+    // the extend boost is a deliberate, one-shot, user-triggered confirmation, so it counts/tweens
+    // REGARDLESS of prefers-reduced-motion (the boost CSS is exempted from the reduced-motion guard
+    // too). only the INFINITE expiry pulses stay reduced-motion-gated.
+    let start: number | null = null
     const step = (ts: number) => {
-      if (startTs === null) startTs = ts
-      const p = Math.min(1, (ts - startTs) / ANIMATION.ttlExtendMs)
-      const e = EASE(p)
-      setDisplayMin(Math.round(fromMin + (toMin - fromMin) * e))
-      // bar grows FROM the current fill TO the target, frame by frame, in lockstep
-      // with the counter - never a flip straight to 100% (DEF-15)
-      setDisplayPct(Math.round(fromPct + (toPct - fromPct) * e))
-      if (p < 1) rafRef.current = requestAnimationFrame(step)
+      if (start === null) start = ts
+      const e = rampEase(Math.min(1, (ts - start) / ANIMATION.ttlExtendMs))
+      setDisplayMin(Math.round(m0 + (m1 - m0) * e))
+      setDisplayPct(Math.round(p0 + (p1 - p0) * e))
+      if (e < 1) rafRef.current = requestAnimationFrame(step)
     }
     rafRef.current = requestAnimationFrame(step)
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
   }, [boost])
-  // end the boost only when the new value has landed AND the fill has had time to play
-  useEffect(() => {
-    if (boost && timeLeftMin !== baselineMin.current) {
-      valueLanded.current = true
-      if (minFillDone.current) setBoost(false)
-    }
-  }, [boost, timeLeftMin])
-  const shownPct = boost ? displayPct : pct
   const apply = () => {
     setOpen(false)
     const add = Math.max(1, Math.min(maxH, hours))
-    // optimistic post-extend remaining = new high-water mark; bar measured vs it
-    // (banked extend -> 100%, sub-base extend -> fills toward base). grows, no flash.
     const targetMin = timeLeftMin + add * 60
-    baselineMin.current = timeLeftMin
-    boostTargetMin.current = targetMin // counter count-up target, in lockstep with the bar
-    baselinePct.current = pct          // bar grows FROM the current fill...
-    boostTargetPct.current = pctFor(targetMin, targetMin) // ...UP TO the target vs the new mark
-    setDisplayPct(pct)                 // seat the first boost frame at the current fill (no flip)
-    minFillDone.current = false
-    valueLanded.current = false
+    fromMin.current = timeLeftMin; toMin.current = targetMin
+    fromPct.current = pct; toPct.current = pctFor(targetMin, targetMin)
+    pendingTarget.current = targetMin // hold this across boost-release until the refetch catches up
+    setDisplayMin(timeLeftMin); setDisplayPct(pct) // seat the first frame at the current values
     setBoost(true)
-    // keep the bar at the target for at least one fill duration so the growth is seen
-    window.setTimeout(() => { minFillDone.current = true; if (valueLanded.current) setBoost(false) }, ANIMATION.ttlExtendMs)
-    // safety: never let the boost hang if the refetch never changes the value
-    window.setTimeout(() => setBoost(false), ANIMATION.ttlExtendMs + 6000)
-    // optimistic fill; if the extend request rejects, drop the boost immediately
-    Promise.resolve(onExtend?.(add)).catch(() => setBoost(false))
+    // hold the class for the in-flight extend AND at least one full envelope so the ramp plays out;
+    // on success the bar then settles to the new remaining (antd's width transition returns once the
+    // class drops), on reject the boost ends immediately. the hold is armed REGARDLESS of reduced
+    // motion - the boost is a one-shot user-triggered confirmation that now plays in all cases (an
+    // earlier reduce-branch nulled this timer, which - combined with the CSS reduced-motion guard -
+    // collapsed the whole boost to ~0s on any machine with OS "reduce motion" on: the real root cause
+    // of the operator's "lasts a fraction of a second").
+    const minCycle = new Promise<void>((resolve) => window.setTimeout(resolve, ANIMATION.ttlExtendMs))
+    Promise.resolve(onExtend?.(add))
+      .then(() => minCycle)
+      .catch(() => { pendingTarget.current = null }) // extend failed: drop the held target, fall back to the live prop
+      .then(() => setBoost(false))
   }
   // slider marks: first hour and the last tick labelled "max" (tops to ceiling)
   const marks: Record<number, ReactNode> = { 1: '1h', [maxH]: 'max' }
   const atMax = hours >= maxH
   // the bar tone (also used by the readout - time number + clock icon): blue normally,
-  // warning/danger as the cull nears. an extend boost does NOT recolour the fill - the
-  // bar keeps its threshold tone and only the halo glows around it; the counter's boost
-  // cue is its blur, not a colour flip.
+  // warning/danger as the cull nears. an extend boost recolours the whole gadget to the accent
+  // hue (fixed) and adds the artifact's motion cues: the fill lifts brightness/saturation on that
+  // hue + throws a forward accent box-shadow cropped by the track (boost-bar), the counter number
+  // blurs (boost-num), and the clock glyph glows (boost-clock); separately the clock picks up an
+  // expiry glow as the timer empties (soft at warn <=warnFrac, bright/fast at end <=dangerFrac).
+  // all gated by prefers-reduced-motion.
+  const frac = baseMin > 0 ? timeLeftMin / baseMin : 1
+  const clockClass = boost
+    ? 'doh-ttl-clock-boost'
+    : frac <= TTL_COLOR.dangerFrac ? 'doh-ttl-clock-end'
+      : frac <= TTL_COLOR.warnFrac ? 'doh-ttl-clock-warn'
+        : undefined
+  // during a boost the whole gadget recolours to the accent hue (fixed); the glow is brightness/
+  // saturation lifted on that hue by the keyframe, never a hue change mid-pulse
+  const tone = boost ? 'var(--color-accent)' : color
   return (
-    <div className="doh-ttl" style={{ '--doh-ttl-glow': `${ANIMATION.ttlGlowMs}ms`, '--doh-ttl-anim': `${ANIMATION.ttlExtendMs}ms` } as CSSProperties}>
-      <span className={boost ? 'doh-ttl-bar doh-ttl-boost' : 'doh-ttl-bar'} style={{ flex: 1, minWidth: 0, color }} title={barTip}>
-        {/* status="normal" pins the status: antd otherwise auto-switches to "success"
-         * at percent>=100 (progress.js), toggling .ant-progress-status-success exactly
-         * at max - which re-animates/restyles the fill (the flicker + slightly-wider
-         * look at max vs almost-max). Pinned, the bar renders identically at 99 and 100. */}
-        <Progress percent={shownPct} status="normal" showInfo={false} strokeColor={color} trailColor="var(--color-bg-subtle)" style={{ margin: 0 }} />
+    <div className="doh-ttl" style={{ '--doh-ttl-anim': `${ANIMATION.ttlExtendMs}ms` } as CSSProperties}>
+      <span className={boost ? 'doh-ttl-bar doh-ttl-boost' : 'doh-ttl-bar'} style={{ flex: 1, minWidth: 0, color: tone }} title={barTip}>
+        {/* custom track+fill (not antd Progress): the track clips the fill and the boost glow so the
+         * extend bloom is contained and never bleeds onto the buttons/Extend (DEF-29). width is the
+         * rAF-driven displayPct while boosting (CSS transition killed), else the live pct. */}
+        <span className="doh-ttl-track">
+          <span className="doh-ttl-fill" style={{ width: `${boost ? displayPct : pct}%` }} />
+        </span>
       </span>
-      <span className={boost ? 'doh-ttl-val doh-ttl-boost' : 'doh-ttl-val'} style={{ color, transition: 'color .4s ease, filter var(--doh-ttl-glow, 250ms) ease' }}>
-        <Icon name="clock" size={14} />
-        <b style={{ color }}>{fmtMinutes(displayMin)}</b>
+      <span className={boost ? 'doh-ttl-val doh-ttl-boost' : 'doh-ttl-val'} style={{ color: tone, transition: 'color .4s ease' }}>
+        <Icon name="clock" size={14} className={clockClass} />
+        {/* the counter is ALWAYS an absolute remaining duration (design "Label" spec, never a
+          * "+delta"); on boost it COUNTS from the current remaining up to the new remaining (rAF
+          * tween on displayMin) and blurs via the pure-CSS doh-ttl-boost-num keyframe */}
+        <b style={{ color: tone }}>{fmtMinutes(displayMin)}</b>
       </span>
       {uptimeLabel && (
-        <span className="doh-muted" title="Server uptime" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+        <span className="doh-muted" title={uptimeSince ? `up since\n${new Date(uptimeSince).toLocaleString([], { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}` : 'Server uptime'} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
           up {uptimeLabel}
         </span>
       )}
@@ -415,7 +431,9 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, displayCeilin
           </div>
         }
       >
-        <Button size="small" disabled={atCeiling} title={atCeiling ? 'Already at the maximum session length' : `Add up to ${maxH}h before your lab is stopped for inactivity`}>
+        {/* label stays "Extend"; the button is just disabled for the in-flight extend so it
+          * can't be re-clicked mid-animation. fixed min-width keeps the flex:1 bar from jumping */}
+        <Button size="small" disabled={atCeiling || boost} style={{ minWidth: 96 }} title={atCeiling ? 'Already at the maximum session length' : `Add up to ${maxH}h before your lab is stopped for inactivity`}>
           Extend
         </Button>
       </Popover>

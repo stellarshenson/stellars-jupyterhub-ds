@@ -106,6 +106,14 @@ def test_lab_setup_page_renders(admin_portal):
 
 
 @pytest.mark.acc_crit("functional-test-harness::SPA page-render smoke")
-def test_design_language_page_renders(admin_portal):
-    page = admin_portal.goto("/design-language")
-    expect(page.get_by_text("Design language", exact=False).first).to_be_visible()
+def test_design_system_page_renders(admin_portal):
+    page = admin_portal.goto("/design-system")
+    expect(page.get_by_text("Design system", exact=False).first).to_be_visible()
+
+
+@pytest.mark.acc_crit("duoptimumhub::Servers desktop shows an Uptime column")
+def test_servers_page_has_uptime_column(admin_portal):
+    # the desktop Servers table carries an Uptime column (how long each server has run),
+    # beside Time Left; the header renders regardless of server state
+    page = admin_portal.goto("/servers", ready=".ant-table")
+    expect(page.get_by_text("Uptime", exact=True).first).to_be_visible()

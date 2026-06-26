@@ -66,6 +66,7 @@ export const COL_HELP = {
     gpu: 'GPU assigned to the server',
     vol: 'Total size of the user volumes',
     sys: 'Extra space used by the container writable layer',
+    uptime: 'How long the server has been running',
     timeLeft: 'Time before idle-culling stops the server',
   },
   users: {
@@ -91,11 +92,10 @@ export const GPU_NAME_MAX_WORDS = 4
 
 // UI animation timings (milliseconds) - tunable here without touching the
 // components or CSS. The TTL extend value drives the rAF bar-fill + count-up
-// hold timer; the glow ramp is threaded to global.css via `--doh-ttl-glow`.
+// hold timer (the bar carries no glow and the counter no blur - clean progressbar family).
 export const ANIMATION = {
   ttlExtendMs: 3000, // TTL extend: bar grows (rAF) from current fill to the new limit over this duration
-  ttlGlowMs: 250, // TTL extend: counter-blur RAMP duration only (ramp-on/ramp-off of the .doh-ttl-val blur transition, via --doh-ttl-glow); does NOT drive the bar glow - the bar runs the one-shot doh-ttl-pulse flourish over --doh-ttl-anim (= ttlExtendMs)
-  statusPulseMs: 3000, // connection-status diode: SLOW (connected) soft-halo pulse period - a gentle dip + slight expand over this span (doh-pulse-calm); the down diode swings harder and runs 3x faster (doh-pulse-alert, CSS calc /3); threaded to CSS via --doh-status-pulse
+  statusPulseMs: 3600, // connection-status diode: SLOW (connected) soft-halo pulse period (artifact: 3.6s) - a gentle OPACITY dip over this span (doh-pulse-calm); the down diode dips deeper and runs 3x faster (doh-pulse-alert, CSS calc /3 = 1.2s); severity = cadence, not amplitude; threaded to CSS via --doh-status-pulse
 }
 
 // Mock-mode display fixtures only. Live mode never reads jupyterhubVersion or

@@ -4,7 +4,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DragSortTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
-import { Button, Input, InputNumber, Modal, Popover, Space, Tooltip } from 'antd'
+import { Button, Input, InputNumber, Popover, Space, Tooltip } from 'antd'
+import { appModal } from '../services/actions'
 import { COL_HELP } from '../services/config'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
@@ -12,6 +13,7 @@ import { CappedTags } from '../components/CappedTags'
 import { IconAction } from '../components/IconAction'
 import { Icon } from '../components/Icon'
 import { useGroups } from '../hooks/queries'
+import { useResponsiveColumns } from '../lib/useResponsiveColumns'
 import { deleteGroup, reorderGroups } from '../services/ops'
 import { GroupImportModal } from '../components/GroupImportModal'
 import type { GroupRow } from '../services/types'
@@ -82,7 +84,7 @@ export default function Groups() {
   // deleting a group drops its config permanently -> confirm first, danger-styled,
   // matching the event-clear / remove-user destructive confirms
   const confirmDelete = (name: string) =>
-    Modal.confirm({
+    appModal.confirm({
       title: 'Delete group',
       content: `Delete "${name}"? Its configuration is removed permanently; members are not deleted. This cannot be undone.`,
       okText: 'Delete',
@@ -90,7 +92,11 @@ export default function Groups() {
       onOk: () => deleteGroup(name),
     })
 
-  const columns: ProColumns<GroupRow>[] = [
+  const columns: ProColumns<GroupRow>[] = useResponsiveColumns([
+    // dedicated drag-handle column: DragSortTable injects the handle into the dragSortKey column's
+    // cell, which (when that was 'priority') pushed the rank number right of its '#' header. With
+    // the handle in its own column the '#' header lines up directly over the numbers.
+    { title: '', dataIndex: 'sort', width: 32 },
     {
       title: <Tooltip title={COL_HELP.groups.priority}><span>#</span></Tooltip>,
       dataIndex: 'priority',
@@ -111,10 +117,11 @@ export default function Groups() {
         </Link>
       ),
     },
-    { title: <Tooltip title={COL_HELP.groups.description}><span>Description</span></Tooltip>, dataIndex: 'description', render: (_, g) => <span className="doh-muted">{g.description}</span> },
+    { title: <Tooltip title={COL_HELP.groups.description}><span>Description</span></Tooltip>, dataIndex: 'description', responsive: ['lg'], render: (_, g) => <span className="doh-muted">{g.description}</span> }, // secondary: drops next (<992)
     {
       title: <Tooltip title={COL_HELP.groups.members}><span>Members</span></Tooltip>,
       dataIndex: 'members',
+      responsive: ['xl'], // time metadata: drops first on tablet (<1200)
       align: 'right',
       sorter: (a, b) => a.members - b.members,
       render: (_, g) => {
@@ -134,6 +141,7 @@ export default function Groups() {
     {
       title: <Tooltip title={COL_HELP.groups.policies}><span>Policies</span></Tooltip>,
       dataIndex: 'policies',
+      responsive: ['lg'], // secondary: drops next (<992)
       render: (_, g) => <CappedTags items={g.policies.map((p) => ({ key: p.key, label: p.label, detail: p.detail }))} cap={4} />,
     },
     {
@@ -151,7 +159,7 @@ export default function Groups() {
         )
       },
     },
-  ]
+  ])
 
   return (
     <>
@@ -174,7 +182,7 @@ export default function Groups() {
         loading={isLoading}
         search={false}
         options={false}
-        dragSortKey="priority"
+        dragSortKey="sort"
         onDragSortEnd={(_b, _a, newData) => {
           if (!q) setRows(newData)
           reorderGroups(newData.map((g, i) => ({ name: g.name, priority: newData.length - i })))

@@ -4,14 +4,17 @@
 import { App } from 'antd'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
-import { bindMessage, bindQueryClient } from '../services/actions'
+import { bindMessage, bindModal, bindQueryClient } from '../services/actions'
 
 export function MessageBinder() {
-  const { message } = App.useApp()
+  const { message, modal } = App.useApp()
   const qc = useQueryClient()
   useEffect(() => {
     bindMessage(message)
   }, [message])
+  useEffect(() => {
+    bindModal(modal)
+  }, [modal])
   useEffect(() => {
     bindQueryClient(qc)
   }, [qc])

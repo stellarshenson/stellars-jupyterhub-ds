@@ -3,15 +3,34 @@
  * - notify: real success/info/error toasts for live operations.
  * - bindQueryClient / invalidate: lets ops.ts refresh the React Query cache after
  *   a successful live write, without each call site threading the query client. */
+import { App, Modal } from 'antd'
 import type { MessageInstance } from 'antd/es/message/interface'
 import type { QueryClient } from '@tanstack/react-query'
 
+type ModalApi = ReturnType<typeof App.useApp>['modal']
+
 let messageApi: MessageInstance | null = null
+let modalApi: ModalApi | null = null
 let queryClient: QueryClient | null = null
 
 // bound once from inside antd's <App> (see layout/MessageBinder)
 export function bindMessage(api: MessageInstance): void {
   messageApi = api
+}
+
+// bound once from inside antd's <App> (see layout/MessageBinder)
+export function bindModal(api: ModalApi): void {
+  modalApi = api
+}
+
+/* Theme-aware antd modal. The STATIC Modal.confirm/success/... render OUTSIDE the
+ * ConfigProvider tree, so they ignore the app's dark theme (a confirm dialog rendered
+ * with antd's default light skin). This proxy delegates to the App-context instance
+ * (themed); it falls back to the static API only if called before the binder mounts -
+ * never in practice. Always use appModal.* instead of Modal.* for imperative dialogs. */
+export const appModal = {
+  confirm: (p: Parameters<ModalApi['confirm']>[0]) => (modalApi ? modalApi.confirm(p) : Modal.confirm(p)),
+  success: (p: Parameters<ModalApi['success']>[0]) => (modalApi ? modalApi.success(p) : Modal.success(p)),
 }
 
 export function bindQueryClient(qc: QueryClient): void {

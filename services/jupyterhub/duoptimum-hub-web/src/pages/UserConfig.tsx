@@ -2,7 +2,8 @@
  * Volumes) with one action footer. The username link on the Users list opens
  * this. All writes mocked. */
 import { useEffect, useState } from 'react'
-import { Button, Card, Form, Input, Modal, Space, Switch, Tabs } from 'antd'
+import { Button, Card, Form, Input, Space, Switch, Tabs } from 'antd'
+import { appModal } from '../services/actions'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { FormFooter } from '../components/FormFooter'
@@ -100,7 +101,7 @@ export default function UserConfig() {
   // profile. The confirm spells out that the account moves but volumes do NOT.
   const doRename = () => {
     const target = renameTo.trim()
-    Modal.confirm({
+    appModal.confirm({
       title: `Rename ${name} to ${target}?`,
       okText: 'Rename',
       okButtonProps: { danger: true },

@@ -13,6 +13,7 @@ export interface ServerRow {
   status: ServerStatus
   statusLabel: string // "Active 1m", "Idle 38m", "Offline 2d", "Spawning"
   lastActivityISO?: string | null // last activity timestamp, for the time-ago column
+  startedISO?: string | null // server (container) start time - drives the uptime readout
   activity: number | null // 0-100 engagement (capped), null when not running
   activityHours?: number | null // real avg active hours/day behind the score
   activityPct?: number | null // uncapped activity % (may exceed 100%), for the tooltip

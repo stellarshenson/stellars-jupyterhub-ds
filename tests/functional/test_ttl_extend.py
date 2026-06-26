@@ -124,18 +124,20 @@ def test_extend_slider_defaults_to_plus_4h(admin_portal, admin_api, base_url):
 
 
 @pytest.mark.acc_crit(
-    "duoptimumhub::Glow is the original one-shot accent drop-shadow flourish",
-    "duoptimumhub::Fill keeps its threshold tone on boost (glow only, no brighten)",
-    "duoptimumhub::Bar glows on extend; counter blurs (no counter glow)",
+    "duoptimumhub::Boost bar glow + fill brightness",
+    "duoptimumhub::Boost counter blur + clock glow",
+    "duoptimumhub::Boost counter shows absolute time + disabled trigger",
+    "duoptimumhub::Boosted gadget recolours to accent (glow on the same hue)",
 )
-def test_extend_glow_is_accent_drop_shadow_flourish(admin_portal, admin_api, base_url):
-    """The extend glow is the restored first-ever flourish: a one-shot accent
-    `drop-shadow` keyframe (`doh-ttl-pulse`) on the bar that peaks then fades - NOT the
-    superseded held white box-shadow on the track (which read as the fill brightening).
-    Asserts the DOM contract: the boost class lands, the bar runs the `doh-ttl-pulse`
-    animation, the track (`.ant-progress-inner`) carries NO box-shadow halo, the fill
-    keeps its threshold tone (never recoloured to the accent, #476), and the counter
-    blurs without glowing."""
+def test_extend_boost_motion(admin_portal, admin_api, base_url):
+    """The extend boost is a pure-CSS flourish (no JS animation loop), CONTAINED inside the
+    track so it never bleeds onto the controls (DEF-29): the FILL runs `doh-ttl-fill-boost`
+    (brightness/saturation lift on the accent hue + an inner inset bloom), a bright sheen sweeps
+    the whole track once (`doh-ttl-sweep` on `.doh-ttl-track::after`), the counter number blurs
+    (`doh-ttl-boost-num`), the clock glyph glows (`doh-ttl-clock-boost` -> `doh-ttl-boost-clock`),
+    the readout shows the absolute remaining time (never a static +delta), and the trigger is
+    disabled (label stays "Extend"). The whole gadget recolours to the accent hue while boosting. Animation-name is
+    stable while the boost class is on, so the checks are race-free."""
     me = admin_api.get(f"{base_url}/hub/api/user", timeout=30).json()["name"]
     _post(admin_api, base_url, f"/hub/api/users/{me}/server")
     assert _wait(lambda: _server_state(admin_api, base_url, me).get("", {}).get("ready")), \
@@ -144,22 +146,20 @@ def test_extend_glow_is_accent_drop_shadow_flourish(admin_portal, admin_api, bas
         page = admin_portal.goto("/home")
         page.get_by_role("button", name="Extend", exact=True).click()
         page.get_by_role("button", name="Extend +4h", exact=True).click()
-        # the boost holds for the fill window; the bar gains doh-ttl-boost and runs the flourish
+        # the boost holds for the fill window; the bar carries the boost class, the FILL runs the motion
         bar = page.locator(".doh-ttl-bar").first
         expect(bar).to_have_class(re.compile(r"doh-ttl-boost"))
-        # the glow is the one-shot accent drop-shadow keyframe (animation-name is stable while boost is on)
-        anim = bar.evaluate("el => getComputedStyle(el).animationName")
-        assert "doh-ttl-pulse" in anim, f"bar must run the doh-ttl-pulse flourish, got animation-name={anim!r}"
-        # the superseded held box-shadow halo on the track is gone
-        inner = bar.locator(".ant-progress-inner").first
-        box_shadow = inner.evaluate("el => getComputedStyle(el).boxShadow")
-        assert box_shadow in ("", "none"), \
-            f"track must carry NO box-shadow halo (superseded), got box-shadow={box_shadow!r}"
-        # the fill keeps its threshold tone - NOT recoloured to the accent (#476). resolve the
-        # accent var to rgb via a probe so the comparison is in the same colour space as the fill.
+        # the fill lifts brightness/saturation on the accent hue + an inner inset bloom (fill-boost)
+        fill = bar.locator(".doh-ttl-fill").first
+        assert "doh-ttl-fill-boost" in fill.evaluate("el => getComputedStyle(el).animationName"), "fill must run the fill-boost brightness lift + inner bloom"
+        # a bright sheen sweeps the WHOLE track once (doh-ttl-sweep on the track ::after), CLIPPED by the
+        # track overflow:hidden so the bar glows as a whole yet never bleeds onto the controls (DEF-29)
+        track = bar.locator(".doh-ttl-track").first
+        assert "doh-ttl-sweep" in track.evaluate("el => getComputedStyle(el, '::after').animationName"), "track ::after must run the clipped sheen sweep"
+        assert track.evaluate("el => getComputedStyle(el).overflow").startswith(("hidden", "clip")), "track must clip (overflow:hidden) so the glow is contained, never a bleeding wrapper box-shadow"
         fill_bg, accent_rgb = bar.evaluate(
             "el => {"
-            " const f = el.querySelector('.ant-progress-bg');"
+            " const f = el.querySelector('.doh-ttl-fill');"
             " const probe = document.createElement('span');"
             " probe.style.color = 'var(--color-accent)';"
             " document.body.appendChild(probe);"
@@ -168,13 +168,21 @@ def test_extend_glow_is_accent_drop_shadow_flourish(admin_portal, admin_api, bas
             " return [f ? getComputedStyle(f).backgroundColor : '', a];"
             "}"
         )
-        assert fill_bg and fill_bg != accent_rgb, \
-            f"fill must keep its threshold tone, not the accent: fill={fill_bg!r} accent={accent_rgb!r}"
-        # the counter blurs but does NOT glow (no drop-shadow on the readout)
-        val = page.locator(".doh-ttl-val").first
-        val_filter = val.evaluate("el => getComputedStyle(el).filter")
-        assert "blur" in val_filter, f"counter must blur on extend, got filter={val_filter!r}"
-        assert "drop-shadow" not in val_filter, f"counter must NOT glow (no halo), got filter={val_filter!r}"
+        assert fill_bg and fill_bg == accent_rgb, \
+            f"boosted fill must be the accent hue (glow = brightness on that hue): fill={fill_bg!r} accent={accent_rgb!r}"
+        # the counter number blurs (boost-num)
+        num = page.locator(".doh-ttl-val.doh-ttl-boost b").first
+        assert "doh-ttl-boost-num" in num.evaluate("el => getComputedStyle(el).animationName"), "counter must run the blur boost"
+        # the readout is the absolute remaining duration (design "Label" spec), blurred but
+        # never a static "+delta" - so it matches a duration and carries no leading '+'
+        txt = num.inner_text()
+        assert re.search(r"\d+\s*[hm]", txt), f"counter must show an absolute duration, got {txt!r}"
+        assert "+" not in txt, f"counter must NOT show a +delta, got {txt!r}"
+        # the clock glyph glows during the boost
+        clock = page.locator(".doh-ttl-clock-boost").first
+        assert "doh-ttl-boost-clock" in clock.evaluate("el => getComputedStyle(el).animationName"), "clock must run the boost glow"
+        # the trigger is disabled during the in-flight extend (label stays "Extend")
+        expect(page.get_by_role("button", name="Extend", exact=True)).to_be_disabled()
     finally:
         _delete(admin_api, base_url, f"/hub/api/users/{me}/server")
         _wait(lambda: not _server_state(admin_api, base_url, me))

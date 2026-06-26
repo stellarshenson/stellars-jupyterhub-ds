@@ -68,6 +68,7 @@ Cross-document conflicts found during consolidation are tracked in [concerns.md]
 - [version sync across subpackages](#version-sync-across-subpackages)
 - [Volume reset confirmation](#volume-reset-confirmation)
 - [Duoptimum Hub portal de-mock + fixes](#duoptimum-hub-portal-de-mock-fixes)
+- [TTL extend envelope + UI polish (2026-06-25)](#ttl-extend-envelope--ui-polish-2026-06-25)
 
 ---
 
@@ -882,8 +883,10 @@ The portal's visual conventions, applied consistently across every screen. `[x]`
   - log: 2026-06-17 documented (design-language note); cells use title tooltips for breakdowns
 - [x] **Progress bars** - the standard bar is base-relative and drains blue -> amber -> red toward the cull; the GPU striped bars are the alternative (one labelled bar per device) for multi-device load
   - log: 2026-06-17 verified (TtlGadget + ResourceBars + GpuMeter; documented on /design-language)
-- [x] **GPU device labels = mini names** - per-GPU bars label each device with its mini name (vendor/brand boilerplate stripped: "NVIDIA GeForce RTX 5090" -> "5090") instead of the bare index; full index + name stay in the hover tooltip
-  - log: 2026-06-17 implemented (shortGpuName strips NVIDIA/GeForce/RTX/Generation; GpuMeter label uses it); typecheck clean, live render pending deploy
+- [x] **GPU device labels = N-word model name, shown in full** - per-GPU bars label each device with the first `GPU_NAME_MAX_WORDS` words of its model name (`shortGpuName(d.name)`, e.g. "NVIDIA RTX 6000 Ada"), never a bare index; the name shows in FULL at its natural width and the bar shrinks to fit (no ellipsis clip), so no required segment is hidden; the full index + name stay in the hover tooltip; device identity is reinforced by the per-device stripe hue, not by a number prefix
+  - log: 2026-06-17 implemented as a stripped "mini name" (shortGpuName first-N-words); superseded below
+  - log: 2026-06-25 operator "added the numbers to GPUs and obscured their names - we MUST show all required segments"; briefly used the full `d.name` clipped at a 148px ellipsis column
+  - log: 2026-06-25 operator "if text doesn't fit make the bars shorter; show full required text (N words max - config)"; `GpuMeter` label = `shortGpuName(d.name)` (`GPU_NAME_MAX_WORDS`=4), `.doh-gpurow > small` natural-width `nowrap` (no fixed width, no ellipsis), bar flexes down, bar ENDS stay aligned with CPU/Mem/Vol; `meters.tsx`, `global.css`
 
 ### Mobile
 
@@ -2622,11 +2625,15 @@ Running checklist for the rapid UI feedback pass: TTL animation, GPU labels + ri
 
 ### GPU labels + tooltip
 
-- [x] **Mini name as bar label** - per-GPU bar labels show the stripped name ("5090") not the index
-  - log: 2026-06-17 implemented (shortGpuName + GpuMeter)
-- [x] **Full name fits before the bar (single line)** - the device-name label column is wide enough for the full short name ("A500 Embedded GPU"), single line, never wrapped/truncated, bar flexes after it
-  - log: 2026-06-17 pending - needs `.oh-gpurow` layout: name `white-space:nowrap` + natural width, bar `flex:1`
-  - log: 2026-06-17 fixed - `.oh-gpurow > small` was 8px (index-sized) so names wrapped/collided; now `width:112px` left-aligned, `nowrap` + ellipsis guard, `flex:1` bar after it (global.css:80)
+- [x] **N-word model name as bar label** - per-GPU bar labels show the first `GPU_NAME_MAX_WORDS` words of the device name (`shortGpuName(d.name)`), not the index; the capped name is shown in full (no ellipsis clip)
+  - log: 2026-06-17 implemented as a stripped mini name (shortGpuName + GpuMeter); superseded 2026-06-25
+  - log: 2026-06-25 operator "we MUST show all required segments"; briefly full `d.name`
+  - log: 2026-06-25 operator "show full required text (N words max - config)"; `GpuMeter` label = `shortGpuName(d.name)` (N=4), no index prefix
+- [x] **Full name fits before the bar (single line); bar shrinks if needed** - the device-name label takes its natural width on a single line (`nowrap`, no fixed width, no ellipsis) and the bar (`flex:1`) shrinks to fit, so the full N-word name always shows; per-device % right-aligns to the panel edge (lines up with the CPU/Mem/Vol %) and the bar ends stay aligned
+  - log: 2026-06-17 fixed - `.doh-gpurow > small` width set, `nowrap` + ellipsis guard, `flex:1` bar after it
+  - log: 2026-06-25 widened 118 -> 148px (artifact); GPU rows drop the trailing value column so the meter spans to the panel right edge and each row's % aligns with the other resource %s (operator: "align the percentages of GPUs with the other percentages"); `meters.tsx`, `global.css`
+  - log: 2026-06-25 track ends aligned too (operator: "GPU progressbars need to end exactly where other resource bars end"); `.doh-gpurow` gap -> `var(--space-3)` (12px), `.doh-gpurow-val` width -> 84px so the gap+value column match the resource row, track right-edge at the same x as CPU/Mem/Vol; `global.css`
+  - log: 2026-06-25 operator "if text doesn't fit make the bars shorter; show full required text"; dropped the fixed 148px + ellipsis on `.doh-gpurow > small` so the N-word name shows at natural width and the bar flexes down; `global.css`
 - [x] **Rich multiline GPU tooltip** - hover shows full info, one field per line, like the old design: full name, UUID, memory total, current utilisation, memory used, temperature, wattage
   - log: 2026-06-17 pending; PARTIAL data only - name/uuid/mem-total/utilisation/mem-used are available (uuid in inventory, dropped by gpu_cache so must be threaded); **temperature + wattage are NOT queried by the sidecar** (`_GPU_QUERY`), so they need: sidecar `_GPU_QUERY += temperature.gpu,power.draw` + schema + image rebuild, then gpu_cache + activity entry + GpuDevice type + tooltip
   - log: 2026-06-17 complete - `gpuTip` renders name/UUID/memory used+total/utilisation/temp/power, one field per line (meters.tsx)
@@ -2961,6 +2968,8 @@ The Host Status CPU/Memory bars aggregate ACTIVE user servers as a % of the host
   - log: 2026-06-17 applied only on the `<i style=width>` branch in `ResourceBars`
 - [x] **Both surfaces** - one helper in `meters.tsx`, used by the "Server status" panel and the "Host status" widget alike
   - log: 2026-06-17
+- [x] **Rounded fill ends** - every bar fill carries `border-radius: var(--radius-full)` (= 9999px) so a partial fill's right end is rounded, not square (artifact: "round every fill end for one shape language"); the GPU striped fill already had it, the usage/resource fill (`.doh-res-bar > i`) was square-ended
+  - log: 2026-06-25 operator "ignored the rounding of the progressbars"; added `border-radius: var(--radius-full)` to `.doh-res-bar > i` in `global.css`
 
 ### Tooltips on every bar
 
@@ -3584,51 +3593,48 @@ Extending the idle-session TTL must move the progress bar immediately on click a
   - log: 2026-06-17 was a fixed 1s timer that fired before the 2-3s refetch; now gated on the value landing
 - [x] **Minimum fill window** - the boost lasts at least `ANIMATION.ttlExtendMs` so the growth is always visible even if the refetch is fast
   - log: 2026-06-17 `minFillDone` ref
-- [x] **3s duration** - the bar fill (rAF) and glow ramp run over 3s
+- [x] **3s duration** - the boost keyframes run over `--doh-ttl-anim` = `ANIMATION.ttlExtendMs` (3s) per cycle
   - log: 2026-06-17 `ANIMATION.ttlExtendMs` 1000 -> 3000 (`services/config.ts`)
   - log: 2026-06-20 DEF-15 - the bar fill is now driven by `requestAnimationFrame` over `ttlExtendMs`, no CSS `--doh-ttl-anim` width transition
-- [x] **Time counter climbs with the bar** - during the boost the shown minutes count UP from the captured baseline to the post-extend target over the SAME `ttlExtendMs` duration and CSS-`ease` easing as the bar fill, so the number climbs in lockstep with the bar; on settle it lands on the live refetched value
+  - log: 2026-06-25 reverted to pure CSS (operator + design system: a CSS keyframe, never a JS/rAF loop) - the three boost keyframes run `var(--doh-ttl-anim) linear infinite`, held by the `.doh-ttl-boost` class for the in-flight extend + one clean cycle; `meters.tsx`, `global.css`
+- [x] **Counter shows the absolute remaining, blurred (no JS count-up)** - during the boost the readout is the live absolute remaining duration (`fmtMinutes(timeLeftMin)`) blurred by the pure-CSS `doh-ttl-boost-num` keyframe; it updates to the new remaining when the refetch lands - no rAF count-up tween
   - log: 2026-06-17 originally the shown minutes FROZE during the boost and revealed the new value only on settle (`displayMin` held)
-  - log: 2026-06-18 changed to a synchronized count-up (operator "animate the time-left counter to climb alongside the bar"): a `requestAnimationFrame` tween in `TtlGadget` drives `displayMin` from `baselineMin` to `boostTargetMin` via `EASE` (cubic-bezier(.25,.1,.25,1), matching the bar's CSS `ease`); cancels on reject/unmount; `meters.tsx`
-- [x] **Bar grows from the current fill (never flips)** - on extend the bar fill grows from its current % up to the target, driven by the SAME `requestAnimationFrame` loop as the counter (true lockstep); it never jumps straight to 100%
-  - log: 2026-06-20 DEF-15 - the fill relied on a CSS width transition enabled in the same commit as the value change, which does not reliably animate, so the bar flipped to 100%; now rAF drives `displayPct` from the captured `baselinePct` to `boostTargetPct` and antd's `.ant-progress-bg` width transition is disabled during the boost; `meters.tsx`, `global.css`
+  - log: 2026-06-18 changed to a synchronized rAF count-up (operator "animate the time-left counter to climb alongside the bar")
+  - log: 2026-06-25 rAF count-up removed (operator + design system: pure CSS, no JS loop) - the readout is the live absolute value, the motion is the CSS blur keyframe only; `displayMin`/`EASE` deleted from `meters.tsx`
+- [x] **Bar pulses then settles (never flips)** - while boosting the fill plays the decorative `doh-ttl-boost-bar` width pulse (8% -> 46% -> 8%) off the compositor; when the class drops, antd's width transition (suppressed only while `.doh-ttl-boost` is on) settles the bar onto the new remaining %; it never jumps straight to 100%
+  - log: 2026-06-20 DEF-15 - the fill relied on a CSS width transition enabled in the same commit as the value change, which does not reliably animate, so the bar flipped to 100%; fixed then with rAF
+  - log: 2026-06-25 replaced the rAF grow with the artifact's pure-CSS width-pulse keyframe (operator + design system: a CSS keyframe, not rAF); the bar pulses while boosting and antd's transition settles it on class-drop; `meters.tsx`, `global.css`
 - [x] **Edge: extend rejected** - if `onExtend` rejects, the boost drops immediately (bar returns to the real %)
   - log: 2026-06-17 `.catch(() => setBoost(false))`
-- [x] **Edge: value never changes** - a safety cap (`ttlExtendMs + 6s`) ends the boost so it can never stick
+- [x] **Edge: value never changes** - the boost ends after the extend request settles plus one keyframe cycle, so it can never stick even if the refetched value never differs
   - log: 2026-06-17 safety timeout in `apply`
+  - log: 2026-06-25 the rAF-era safety cap is gone; the boost now ends on `Promise(onExtend).then(minCycle)` (or immediately on reject), bounded by the request + one cycle; `meters.tsx`
 - [x] **Edge: extend across the base crossover** - extending from below base up past base sets a new high-water mark = the post-extend remaining, so the bar grows to 100% at that mark; no scale-switch drop
   - log: 2026-06-20 DEF-13 - the old absolute-ceiling model dropped the bar on crossover; the high-water-mark model lands at 100%
 - [x] **Counter always shows minutes** - the TTL readout never collapses to a bare hour ("4h"); it always renders the minute component ("4h 0m"), in the hero gadget and every TTL cell/metric (Home/Servers tables, Servers "Time left")
   - log: 2026-06-20 `fmtMinutes` drops the `m ? ... : ...` branch in `lib/format.ts`, `services/hub/liveSource.ts`, `services/mockSource.ts`
-- [x] **Bar glows on extend; counter blurs (no counter glow)** - during the boost the bar (`.doh-ttl-bar`) gets a glow around its outer edge (behind the fill); the time readout (`.doh-ttl-val`) does NOT glow - it only blurs .5px at the peak
-  - log: 2026-06-20 first the counter blurred + glowed (`doh-ttl-val-pulse`); operator "no blur visible" / "counter needs glow" - dropped the blur, both shared the glow-only `doh-ttl-pulse`
-  - log: 2026-06-20 reversed after visual calibration (operator "no counter glow" + "0.75 blur on the counter is also perfect"): bar keeps the glow, counter is blur-only at .75px (`doh-ttl-blur` peak)
-  - log: 2026-06-22 operator "reduce blur of the ttl counter to 0.5px"; counter blur .75px -> .5px
-- [x] **Glow is the original one-shot accent drop-shadow flourish** - the bar glow is the restored first-ever mechanism: a one-shot `@keyframes doh-ttl-pulse` on `.doh-ttl-bar.doh-ttl-boost` (`filter: drop-shadow(0 0 4px var(--color-accent))` peaking at 45%, `none` at 0/100%), run once over the fill window (`--doh-ttl-anim` = `ANIMATION.ttlExtendMs`); a brief accent halo AROUND the bar that fades, never a held halo and never a recolour of the fill; no `box-shadow` on `.ant-progress-inner`
-  - log: 2026-06-20 operator "glow either invisible or same colour as std; needs to be much brighter and semi-transparent" - was `drop-shadow(... var(--color-accent))` (same as the fill)
-  - log: 2026-06-20 briefly a tint overlay (operator "no shadows ... not in the ttl"), then DEF-14 - the overlay washed the bar white; restored a drop-shadow halo (operator "if halo works better like in the past - bring it"), brightened to a 60% white mix
-  - log: 2026-06-22 operator "change default progressbar glow to 0.5px"; drop-shadow halo radius 5px -> 0.5px
-  - log: 2026-06-22 operator "glow shows on top of the progressbar, make it under it" - switched to a held `box-shadow` on `.ant-progress-inner` (outer halo, behind the fill), radius 3px
-  - log: 2026-06-22 operator "still no proper underglow - the progressbar itself becomes brighter ... restore the first-ever implementation version of the progressbar glow ... it was a perfect one and anything we did later was much worse" - the held white box-shadow read as the thin bar brightening; REVERTED to the original `a9623ab` one-shot accent drop-shadow flourish (`doh-ttl-pulse`), removed the `.ant-progress-inner` box-shadow + its transition; fill still keeps its threshold tone (#476)
-- [x] **Fill keeps its threshold tone on boost (glow only, no brighten)** - an extend boost must NOT recolour the bar fill; the `Progress` `strokeColor` and the readout stay the threshold tone (`color` from `ttlTone` - blue/warn/red), and the boost cue is the halo glow + rAF grow + counter blur, never a brighter fill
-  - log: 2026-06-22 operator "progressbar still brighter when glow shows; needs to be normal - just glow around it"; removed `barTone = boost ? var(--color-accent) : color` (which washed the fill to bright accent on extend), `strokeColor`/readout now always `color`; `meters.tsx`
-- [x] **Standard colour slightly darker** - the standard bar + counter blue is `--doh-ttl-blue` = the accent darkened ~16%, so the bright glow stands out against it
+- [ ] **Boost bar glow + fill brightness** - CONTAINED (clipped inside the track, never bleeds): mid-extend the FILL lifts brightness/saturation on the SAME accent hue (theme-aware `--doh-ttl-boost-bright`: dark 1.35, light 1.65 - a glow not a flash) and lights an inner inset bloom (`doh-ttl-fill-boost`, clipped to the fill); a bright sheen sweeps the whole track once (`doh-ttl-sweep`), and the whole gadget recolours to the accent hue. ALL contained inside the `overflow:hidden` track - it glows as a whole even at a pinned-100% fill, but NEVER bleeds onto the buttons/Extend. One-shot over `--doh-ttl-anim` = `ANIMATION.ttlExtendMs`
+  - log: 2026-06-24 REMOVED on a misread of "replace with design from design system" (read as the clean bars)
+  - log: 2026-06-25 RESTORED per the design artifact (operator: "ttl glow and ttl counter blur is explicitly modelled in the design system - see TTL boost")
+  - log: 2026-06-25 REALIGNED to the updated artifact: single `doh-ttl-boost-bar` on the fill (brightness 1.18 + forward box-shadow `18px 0 22px`), ported verbatim from the synced `Design Language.dc.html`; `global.css`, `meters.tsx`
+  - log: 2026-06-25 restored the artifact's width stops + declared `infinite` (operator + design system: pure-CSS keyframe, not rAF); `global.css`
+  - log: 2026-06-26 the box-shadow halo (on the fill, then the wrapper) bled onto the controls and read as "awful" ([DEF-29](defects-duoptimumhub.md)); REPLACED by a custom CLIPPED track+fill gadget - inner inset bloom + brightness lift + one sheen sweep, all inside the `overflow:hidden` track; antd `Progress` dropped from `TtlGadget`; `doh-ttl-boost-bar`/`-glow` keyframes removed; typecheck clean, pending live verify + operator eyeball
+- [x] **Boost counter blur + clock glow** - the counter number blurs mid-extend (`doh-ttl-boost-num` on `.doh-ttl-val.doh-ttl-boost b`) and the clock glyph glows (`doh-ttl-clock-boost` -> `doh-ttl-boost-clock`); separately, as the timer empties the clock picks up the expiry ramp - soft at warn `<=warnFrac` (`doh-ttl-glow-soft`), bright + fast at end `<=dangerFrac` (`doh-ttl-glow`)
+  - log: 2026-06-25 restored + extended: the expiry clock-glow ramp and the boost clock glow were never shipped before; added from the artifact. `meters.tsx` sets the clock class by `frac = timeLeftMin/baseMin`; `global.css` keyframes
+- [x] **Boost counter shows the absolute time + disabled trigger** - mid-extend the readout is ALWAYS the absolute remaining duration ("4h 0m") per the design "Label" spec, blurred by the pure-CSS `doh-ttl-boost-num` keyframe (sharp at rest, never a 0% blur spike), updating to the new remaining when the refetch lands; NEVER a static "+delta". The Extend trigger stays labelled "Extend" and is simply disabled for the in-flight extend (no rename, no accent fill); a fixed `min-width` keeps the bar from reflowing
+  - log: 2026-06-25 first shipped the absolute count-up (checkpoint 4.0.15); a mid-session edit wrongly switched it to a static `+fmtMinutes(boostTarget - baseline)` "+delta" - operator: "why are you displaying +4h instead of the counter, why counter is not changing, why no blur, why does the bar change the whole gadget length"
+  - log: 2026-06-25 dropped the rAF count-up entirely (operator + design system: pure CSS, no JS loop) - the readout is the live absolute `fmtMinutes(timeLeftMin)`, the only motion is the CSS blur keyframe; added the trigger `min-width:96` to kill the Extend/Extending… reflow; `meters.tsx`
+  - log: 2026-06-25 operator "do not change Extend to Extending, just disable it temporarily" - dropped the `loading`/accent-primary state and the label swap; the trigger is now plain `disabled={atCeiling || boost}` with a static "Extend" label; `meters.tsx`, `DesignSystem.tsx`, `test_ttl_extend.py`
+- [x] **Boosted gadget recolours to accent (glow on the same hue)** - an extend boost recolours the whole gadget to `var(--color-accent)` (fixed): the `Progress` `strokeColor`, the readout and the clock all go accent (`tone = boost ? accent : color`); the glow is brightness/saturation lifted on that SAME hue by the keyframe, never a hue change mid-pulse
+  - log: 2026-06-22 operator "progressbar still brighter when glow shows; needs to be normal"; then kept the threshold tone (#476)
+  - log: 2026-06-25 superseded #476 (operator + design system: "the fill keeps its accent background fixed - the glow is brightness/saturation on the same hue"); boost now sets `tone = var(--color-accent)` on fill/clock/counter, the keyframe lifts brightness on it; `meters.tsx`. Functional test flipped to assert `fill == accent`
+- [x] **Motion honours reduced motion** - the boost glows/blur and the expiry clock-glow ramp are all disabled under `prefers-reduced-motion` (the reduced-motion block names the `.doh-ttl-*` boost + clock classes, `animation/filter: none`)
+  - log: 2026-06-25 added the TTL motion (+ spawning pill + resource-bar fill) to the reduced-motion block in `global.css`
+- [x] **Standard colour slightly darker** - the standard bar + counter blue is `--doh-ttl-blue` = the accent darkened ~16%
   - log: 2026-06-20 operator "make the standard colour slightly darker"; `ttlTone` blue anchor -> `--doh-ttl-blue`
-- [x] **Glow is a brief one-shot flourish (spans the fill, then clears)** - the bar glow is a single `doh-ttl-pulse` keyframe run once over the fill window (`--doh-ttl-anim`): rises to its accent drop-shadow peak at ~45% then fades to `none` by 100% while the fill keeps growing under it via rAF; supersedes the DEF-14 transition-held box-shadow envelope, which read as the bar brightening
-  - log: 2026-06-20 DEF-14 - an earlier `@keyframes` pulse outlasted by the boost window left a full-opacity wash; replaced with a transition-held envelope (operator "no pulsing; ramp 100ms")
-  - log: 2026-06-22 operator "restore the first-ever ... glow" - the held envelope is gone; back to the one-shot flourish, now spanning the whole fill window via `--doh-ttl-anim` so it accompanies the rAF grow then clears (the original's white-mix snap-to-100 is NOT restored - #476 and DEF-15 hold)
-- [x] **Counter blur ramp configurable** - the counter blur ramp (on/off) is `ANIMATION.ttlGlowMs` (`config.ts`, default 250ms), threaded to CSS via `--doh-ttl-glow` and applied inline as the `.doh-ttl-val` filter transition in `meters.tsx`, tunable apart from the bar-fill duration; the bar flourish itself spans `--doh-ttl-anim` (`ttlExtendMs`), not `ttlGlowMs`
-  - log: 2026-06-20 operator: "configure the ramp up and ramp down time for glow"
-  - log: 2026-06-22 `ttlGlowMs` 100 -> 250 (operator "ramp up / ramp-down time to 250ms")
-  - log: 2026-06-22 after the glow revert, `--doh-ttl-glow` now ramps only the counter blur (the bar's held box-shadow transition it once drove is removed); `--doh-ttl-anim` (`ttlExtendMs`) drives the one-shot bar flourish
-- [x] **Effect is extend-only** - the glow fires only while `doh-ttl-boost` is set (an extend in flight) and clears when the new value lands; a normal per-minute countdown tick never triggers it
+- [x] **Effect is extend-only** - the boost class (`doh-ttl-boost`) is set only while an extend is in flight and clears when the new value lands; a normal per-minute countdown tick never triggers the boost (the expiry clock-glow is the only non-extend motion, driven by `frac`)
   - log: 2026-06-20 boost state drives the class; confirmed with operator
-- [x] **Glow visible (not killed by reduced motion)** - the extend glow plays for everyone; the reduced-motion guard that disabled the boost is removed (operator wants the cue)
-  - log: 2026-06-20 operator "the blur is invisible" / "doesn't glow when grows" - three causes: (1) reduced-motion guard suppressed the boost; (2) the absolute-ceiling scaling made the bar SHRINK on extend; (3) the glow used the same colour as the bar. All fixed: guard removed, high-water-mark scaling makes the bar GROW, glow recoloured bright + distinct
-- [x] **Glow/blur calibration on /design-language** - a static calibration row shows the counter at stepped blur and the bar at stepped accent drop-shadow radius, so the colours and amounts can be tuned by eye and the page matches the shipped flourish mechanism
-  - log: 2026-06-20 operator "show static bar and counter at different steps of blur and glow ... so we can calibrate"
-  - log: 2026-06-20 retuned to opacity/blur steps (was px glow radii); dropped the counter-glow row after the no-counter-glow decision
-  - log: 2026-06-22 after the glow revert, the bar-glow demo is `drop-shadow(0 0 Npx var(--color-accent))` (0/3/4/8/12px) matching the restored one-shot flourish; counter-blur demo default note .5px
+  - log: 2026-06-25 restored boost cues are one-shot over the fill window; expiry glow loops by `frac`
 - [x] **Extend slider legible (brighter rail + info knob)** - in the Extend popover the slider rail + track are brightened and the drag knob uses the info colour, so the control reads clearly against the popover surface
   - log: 2026-06-20 operator "make the slide line a little brighter, and the knob use one of the normal colors, like info"; `.doh-ttl-slider` in `global.css` (rail `--color-border-strong`, track + knob ring `--color-info`); `meters.tsx` Slider carries the class
 
@@ -4720,7 +4726,7 @@ When the portal cannot reach the hub (`useHubHealth` reports down), it surfaces 
   - log: 2026-06-21 requirement added (operator: "similar style to stage... status pill style with diode")
 - [ ] **Aligned + prominent** - the pill matches the StageBadge height exactly (same vertical metrics, no row mismatch) and is large enough to draw attention in the down state
   - log: 2026-06-21 requirement added (operator: "aligned height-wise with stage indicator... large enough to draw attention")
-- [x] **Soft pulsing halo (slow connected, 3x faster down)** - the diode has a solid core and a soft halo ring on `::after` that pulses, with severity carried in BOTH speed and amplitude via two keyframes: connected = `doh-pulse-calm` (a gentle dip-and-return, opacity 1->.55 + scale 1->1.25) at the full config period (`ANIMATION.statusPulseMs` = 3s, `services/config.ts`, via `--doh-status-pulse`); down = `doh-pulse-alert` (a hard fade + bigger expand, opacity 1->.15 + scale 1->1.7, floored above zero so the solid core stays lit - an urgent pulse, not a strobe) at 3x the speed (`calc(var(--doh-status-pulse) / 3)`, ~1s); the mobile down-panel diode matches the down keyframe + rate
+- [x] **Soft pulsing halo (slow connected, 3x faster down)** - the diode has a solid core and a soft halo ring on `::after` that pulses on OPACITY ONLY (no scale - per the design artifact, severity is carried in CADENCE, not amplitude): connected = `doh-pulse-calm` (a gentle opacity dip 1->.6) at the full config period (`ANIMATION.statusPulseMs` = 3.6s, `services/config.ts`, via `--doh-status-pulse`); down = `doh-pulse-alert` (a deeper opacity dip 1->.25, floored above zero so the solid core stays lit - an urgent pulse, not a strobe) at 3x the speed (`calc(var(--doh-status-pulse) / 3)` = 1.2s); the mobile down-panel diode matches the down keyframe + rate
   - log: 2026-06-21 requirement added (operator: "PULSATING SOFTLY... slowly fading off slightly and back in in 3s pulses - config in config.ts")
   - log: 2026-06-22 operator "connected dot blinks (halo) slowly; connection dropped - 3x faster"; connected went static -> slow pulse, down went 3s -> `calc /3`
   - log: 2026-06-22 operator "the halo is not pulsating" - the prior pulse animated the box-shadow COLOUR between two `color-mix` alphas on the dot element (too faint / unreliable to read as a pulse). Reworked: solid core dot + a halo ring on `::after` whose pulse is driven by `opacity` + `transform: scale` (both interpolate reliably); `box-shadow` halo is a static value given a blur (`0 0 4px 2px`) so it reads as a soft glow, not a hard ring. Same change applied to the mobile warn diode. Survived `/adversarial-review` (architect + ux)
@@ -4730,7 +4736,7 @@ When the portal cannot reach the hub (`useHubHealth` reports down), it surfaces 
   - log: 2026-06-21 requirement added
   - log: 2026-06-22 healthy diode was static; operator now wants it to slow-blink, so it carries the slow pulse (down stays 3x faster)
   - log: 2026-06-22 verified live + by `test_connection_pulse.py` (connected `::after` animation = `doh-pulse-calm`, ~3s; down = `doh-pulse-alert`, ~1s)
-- [x] **Diode pulse demo on /design-language** - the unlisted design-language page carries a "Connection status (pulsing diode)" card showing the connected (good, slow) and down (warning, 3x faster) pills side by side, so the pulse design is documented for reference
+- [x] **Diode pulse demo on /design-system** - the unlisted design-system page carries a "Connection status (pulsing diode)" card showing the connected (good, slow) and down (warning, 3x faster) pills side by side, so the pulse design is documented for reference
   - log: 2026-06-22 operator "add this pulsating good vs warning animation design to design page for reference"; `DesignLanguage.tsx`
 - [ ] **Down state + elapsed** - while down the pill turns warning and shows how long the hub has been unreachable ("not responding for XXXX"), ticking ~every second from `downSince`
   - log: 2026-06-21 requirement added (operator: "not responding for xxxx time")
@@ -4872,3 +4878,88 @@ The admin Servers page bulk actions each require a confirmation popup before run
   - log: 2026-06-21 operator: "do not be inventive about the message, just make it simple"
 - [x] **Edge: empty set** - a button is disabled when its set is empty (no offline labs -> Start All disabled; no running labs -> Stop All disabled), so the popup never opens on zero labs
   - log: 2026-06-21 existing `disabled={!offlineUsers.length}` / `disabled={!runningUsers.length}`; `Servers.tsx`
+
+## TTL extend envelope + UI polish (2026-06-25)
+
+The TTL extend boost is ONE ramp-up / steady / ramp-down envelope (no pulsing): the bar grows and the counter counts to the new value in lockstep, while the fill glow, clock glow and counter blur ramp their amplitude up -> steady -> down. Plus a set of portal refinements. Verified live on image 1763f5393b95.
+
+### TTL extend envelope
+
+- [x] **One envelope, no pulse** - the boost runs ramp-up -> steady -> ramp-down exactly ONCE per extend; the three CSS keyframes (`doh-ttl-boost-bar/-num/-clock`) are one-shot (no `infinite`) so nothing repeats or pulses
+  - log: 2026-06-25 operator "no pulsing; not at all; just ramp up, steady glow, ramp down"; removed `infinite`, reshaped keyframes to the 0/25/75/100 trapezoid envelope; `global.css`
+- [x] **Bar grows + counter counts, in lockstep** - on extend a single rAF tweens the bar fill AND the counter from the current value to the new value with `rampEase` (trapezoidal velocity: speed ramps up, holds full, ramps down); they move together
+  - log: 2026-06-25 operator "ramp up to full counting speed, steady, ramp down"; `displayMin`/`displayPct` driven by one rAF in `meters.tsx::TtlGadget`
+- [x] **Amplitude envelope on the same timeline** - fill brightness 1->1.18->1 (<=1.2, a glow not a flash) + forward accent box-shadow `color-mix(accent 28%)` cropped by the track (boost-bar, glow only - rAF owns width); counter blur 0->1.4px->0 (boost-num, rises with counting speed, falls on ramp down); clock glyph glow (boost-clock); each ramps up by 25%, steady to 75%, ramps down by 100%
+  - log: 2026-06-25 verified rendered (live): ramp-up brightness 1.09 / blur 0.72px, steady 1.18 / 1.4px, ramp-down 1.02 / 0.16px
+- [x] **Glow colour = the design-system accent** - the boosted fill is `var(--color-accent)` and the glow is brightness/saturation on that SAME hue, never a recolour; rendered = rgb(6,112,156) = #06709c (light) / #21a8e4 (dark), matching the design-system tokens exactly
+  - log: 2026-06-25 operator "the colour is not that in the design system" - sampled the rendered pixel, confirmed it IS the accent; the earlier mismatch was the pre-fix boost
+- [x] **Counter = absolute duration counting up** - the readout always shows an absolute remaining ("26h 20m"), counting up to the new value over the envelope; never a "+delta"
+  - log: 2026-06-25 verified counting 24h10m -> 26h11m -> 28h0m on a +4h extend
+- [x] **Extending state** - the trigger reads "Extending…" during the in-flight extend via antd `loading` (keeps the primary accent tone + spinner, non-interactive) rather than `disabled` (which greyed it, disconnected from the accent glow); fixed `min-width` so the swap never reflows the bar
+  - log: 2026-06-25 `min-width:96`; UX review flagged disabled-primary rendering grey -> `loading={boost} disabled={atCeiling}`
+- [x] **Edge: bar already full** - extending a bar already at its high-water mark keeps it at 100% (no room to grow); the counter still climbs and the glow/blur envelope still plays
+  - log: 2026-06-25 verified (live capture, fresh server already at its mark)
+- [x] **Edge: reduced motion** - BOTH the CSS amplitude keyframes AND the rAF value tween are dropped under `prefers-reduced-motion`: the keyframes via the media block, the rAF via a `matchMedia` guard that jumps the bar + counter straight to the new values (WCAG 2.3.3, interaction-triggered motion)
+  - log: 2026-06-25 UX review caught the rAF tween had NO reduced-motion guard (only the CSS was gated); added the `matchMedia` early-return in `meters.tsx`
+- [x] **Edge: extend rejected** - on `onExtend` reject the boost ends immediately
+  - log: 2026-06-25 `.catch(() => {})` then `setBoost(false)`
+
+### UI polish
+
+- [x] **Update-available pill left of status** - the "Update available" advisory renders to the LEFT of the Server Status pill on both Homes
+  - log: 2026-06-25 operator "update available must be displayed to the left of the server status"; swapped order in `ServerHero`, `MobileHome`
+- [x] **GPU bars share a start (comparable)** - per-GPU bars use a subgrid (`max-content 1fr 84px`): the name column = the widest name across rows, so EVERY bar starts at the same x and the tracks end aligned with CPU/Mem/Vol; names still shown in full (nowrap, no ellipsis)
+  - log: 2026-06-25 operator "let them start at the same point, the shortest one, so one can compare them"; `.doh-gpurows`/`.doh-gpurow` -> subgrid; `global.css`
+- [x] **GPU bar reads empty at zero load** - the per-device bar fill is `g > 0 ? Math.max(3, g) : 0`: a 0%-load GPU shows an EXACTLY empty track, a positive load keeps a 3% min-visible sliver; identity at 0% comes from the GPU name, not a striped sliver (DEF-27)
+  - log: 2026-06-25 UX review caught the floor was dropped to `${g}%` (idle GPU lost its stripe); restored `Math.max(3, g)`; `meters.tsx`
+  - log: 2026-06-26 REVERSED (operator "GPU progressbars look like 1-2% while utilisation says 0%") - the 3% floor read as load; 0% is now exactly empty, the min-visible floor applies only to positive loads; `meters.tsx:92` (DEF-27)
+- [x] **Volumes action disabled without volumes** - Manage Volumes is always shown but DISABLED when the user has no volumes (`!useUserVolumes(user).length`), in addition to the existing server-stopped prerequisite
+  - log: 2026-06-25 operator "volumes management action must be displayed only for users who actually have volumes"; `ServerHero`, `MobileHome`
+  - log: 2026-06-26 REVERSED to disabled-not-hidden (operator "bring it back, but make it disabled please"); see [No volumes disables Manage-volumes action]
+- [x] **Uptime tooltip = "up since" over two lines** - the TTL uptime tooltip reads "up since\n<weekday day mon HH:MM>" (absolute reference), not the bare relative; falls back to "Server uptime" when no start time
+  - log: 2026-06-25 operator "uptime tooltip say not the date only but 'up since...' in two lines"; `uptimeSince` prop on `TtlGadget`
+- [x] **Policy chips name WHAT, not HOW** - group policy chips show the policy name ("Sudo", "Downloads"), never the backend badge's value/state ("Sudo off")
+  - log: 2026-06-25 operator "not 'Sudo off' but 'Sudo'... indicators just say what policies are configured, not how"; `liveSource` prefers `POLICY_LABELS[key]` over `s.badge`
+- [x] **Groups '#' header over the numbers** - the Groups table has a dedicated drag-handle column so the DragSortTable handle is no longer injected into the '#'/priority cell; the '#' header lines up over the rank numbers
+  - log: 2026-06-25 operator "header '#' must be lined with the column where there are numbers, not the drag handles"; added a `sort` column + `dragSortKey="sort"`; `Groups.tsx`
+
+## Activity meter zero, volume-action gating, responsive columns, TTL bar brightness (2026-06-26)
+
+Activity meter reads exactly empty at zero; the Manage-volumes action is present but DISABLED when a user has no volumes, everywhere it appears; admin tables progressively drop lower-priority columns at tablet widths while the mobile view is untouched; the TTL boost-bar brightness is theme-aware so the light-theme accent reads as brightly as the dark one.
+
+- [x] **Zero activity lights zero bars** - the 5-segment activity meter lights EXACTLY 0 bars at activity 0 (was floored to one pale-red bar, DEF-26); any positive value still lights >= 1, capped at 5; null still renders the dash. `litBars` / `meterTone` extracted to `lib/activityMeter.ts`, unit-tested
+  - log: 2026-06-26 operator "zero activity ... should be exactly zero" / "A - yes, zero if zero"; 8 vitest cases + `test_activity_zero.py`; verify pending live rebuild
+- [x] **No volumes disables Manage-volumes action** - the Manage-volumes affordance is PRESENT but DISABLED for a user with no volumes, in the admin Servers list row AND the home hero AND mobile - `disabled` driven by `!hasVolumes(useUserVolumes(user))`, the single source of truth; an explanatory tooltip ("No volumes to manage") replaces the active "Manage volumes" tooltip while disabled
+  - log: 2026-06-26 operator "if no volumes then no icon"; `ServerRowActions` gains a `ManageVolumesAction` per-row component; hero / mobile use the shared `hasVolumes`; `test_volume_gate.py`; verify pending live rebuild
+  - log: 2026-06-26 REVERSED (operator "bring it back, but make it disabled please") - the affordance is no longer hidden; it stays in place disabled with the explanatory tooltip; `ServerRowActions` / `ServerHero` / `MobileHome` drop the conditional render for a `disabled` flag; `test_volume_gate.py` flipped to assert present + disabled
+- [x] **Volumes present enables the action** - once a user has volumes the Manage-volumes action is enabled (`hasVolumes` true) with the active "Manage volumes" tooltip
+  - log: 2026-06-26 covered by the `hasVolumes` vitest unit case; NOT functionally tested - functest lists only on-disk docker volumes and its project-namespaced spawner volumes are undetectable, so no functest user ever reports volumes (see `test_volume_gate.py` note)
+- [ ] **Edge: volume query in-flight** - while `useUserVolumes` is pending the action is disabled (treated as no-volumes), enabling only once the query confirms >= 1 volume
+  - log: 2026-06-26 implemented (`data` undefined -> `hasVolumes` false -> disabled)
+- [x] **Disabled controls read clearly inert** - a disabled control (e.g. Manage-volumes with no volumes) drops to `colorTextDisabled`, clearly dimmer than the active secondary tone, so disabled no longer looks active; demonstrated on the design-language page (disabled-vs-active row)
+  - log: 2026-06-26 operator "disabled volumes icon is almost the same colour as active ... design it so it truly looks disabled"; added `textDisabled` palette token (dark `#5e676f` / light `#aab6bd`) + `colorTextDisabled` in `antdTheme`; DesignSystem disabled/active example; verify pending rebuild
+- [x] **Responsive columns drop progressively on tablet** - admin tables (Users, Servers, Groups, Events, Tokens) keep identity / state / actions always; time + metadata columns drop below 1200 (`responsive: ['xl']`), secondary columns below 992 (`responsive: ['lg']`)
+  - log: 2026-06-26 operator "progressively turn off columns (tablet)"; per-column `responsive` props across the five tables; tsc green
+- [x] **Mobile view untouched by the responsive change** - the < 768 mobile breakpoint (MobileHome + dropped sider) is unchanged; column-dropping affects only the desktop tables at tablet widths
+  - log: 2026-06-26 operator "keep mobile intact"; `useIsMobile` (< 768) governs the mobile swap, independent of the table `responsive` breakpoints
+- [x] **Full-bar boost reads as a deliberate ~3s effort** - extending an at/above-base session (bar pinned 100%, no growth) still earns its keep: the whole bar FLARES brightness 1.5 + saturate 1.15 held 20%-80% of the 3s, a layered solid-accent halo (`doh-ttl-boost-glow`) glows around it, and the counter blurs + counts up - so the boost is clearly multi-second, not a flash
+  - log: 2026-06-26 operator "mid animation progressbar colour very bright [spec] vs dimly lit [mine]"; first set theme-conditional brightness 1.18/1.4
+  - log: 2026-06-26 operator x3 "lasts just a fraction of a second" - dark-theme frame-capture proved the root cause was CONTRAST not timing: the glow was the SAME cyan hue as the already-bright full bar (cyan-on-cyan, no contrast) and a 0.35-alpha halo, imperceptible though the animation ran the full 3s
+  - log: 2026-06-26 fix (round 3) - fill brightness raised to 1.5 (both themes), saturate 1.15, held 20-80%; layered solid `--color-accent` halo (`0 0 8px 2px, 0 0 26px 7px`); verified by dark-theme screenshots (rest = medium cyan; peak 1.26-2.1s = bright light-cyan glow, counter counting); live redeployed
+- [ ] **Edge: full-bar boost under reduced-motion** - `prefers-reduced-motion: reduce` collapses the boost (all `doh-ttl-boost-*` animation:none + the JS hold skipped), so it reads as an instant jump - by design (WCAG 2.3.3); if an operator with reduced-motion still wants the cue, that is a separate product decision
+  - log: 2026-06-26 noted as the one environment where the boost is intentionally suppressed; not changed
+
+## Open another user's server: themed confirm (2026-06-26)
+
+Admin opening another user's lab confirms first (you act inside their environment). The confirm is the app's theme-aware dialog (not antd's stock light skin); it WARNS and sets expectation, then JupyterHub's stock OAuth consent page is the actual cross-user authorization gate - consent is NEVER skipped.
+
+- [x] **Confirm dialog is theme-aware** - the "Open <user>'s server?" confirm renders in the app theme (dark/light), via `appModal` (App-context modal bound in `MessageBinder`), not the static `Modal.confirm` which renders OUTSIDE `ConfigProvider` with antd's default light skin
+  - log: 2026-06-26 operator "popup warning ... using wrong theme"; root fix = `appModal` proxy + `bindModal`; `ServerRowActions.enterSession` converted; verify pending live
+- [x] **OK button reads "Open"; content sets expectation** - the confirm OK button reads "Open"; the content warns the admin acts inside the other user's environment and states "JupyterHub will ask you to authorize the access"
+  - log: 2026-06-26 operator first asked to label it "Authorize" (popup-as-authorization, paired with skipping the stock page)
+  - log: 2026-06-26 REVERSED - operator "never skip consent"; the popup is a warning, not the authorization, so "Authorize" would overclaim; button reverted to "Open", the false "Confirming authorizes this access" line replaced
+- [x] **Stock OAuth consent retained (never skipped)** - opening another user's running lab DOES go through JupyterHub's stock OAuth consent page; it is the cross-user authorization gate and is never bypassed
+  - log: 2026-06-26 operator initially "takes me to authorize page ... find a way around it"; planned an admin-only `needs_oauth_confirm` override
+  - log: 2026-06-26 CANCELLED - operator "never skip consent"; no backend change, no `OAuthAuthorizeHandler` subclass; the audited per-access OAuth grant stays intact by design
+- [x] **Other imperative modals are theme-aware too** - all remaining static `Modal.confirm`/`Modal.success` call sites (Servers stop-all x2, Events clear, Notifications, Tokens, Groups delete, UserConfig rename) converted to `appModal`
+  - log: 2026-06-26 infra (`appModal`) in place, then ALL sites converted (grep: no static `Modal.confirm`/`.success`/`.info`/`.warning`/`.error` outside `actions.ts`); verify pending live

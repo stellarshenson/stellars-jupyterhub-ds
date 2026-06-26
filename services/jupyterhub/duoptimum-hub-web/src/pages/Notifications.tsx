@@ -1,7 +1,8 @@
 /* Notifications - broadcast to active labs. Send (left, the composer) and past
  * notifications (right, the sent history). Outgoing only. */
 import { useMemo, useState } from 'react'
-import { Button, Card, Checkbox, Input, Modal, Radio, Segmented, Select, Table } from 'antd'
+import { Button, Card, Checkbox, Input, Radio, Segmented, Select, Table } from 'antd'
+import { appModal } from '../services/actions'
 import { PageHeader } from '../components/PageHeader'
 import { Icon } from '../components/Icon'
 import { NotificationPill } from '../components/NotificationPill'
@@ -86,7 +87,7 @@ export default function Notifications() {
   )
   // clearing the persisted notification history is destructive + irreversible -> confirm first
   const clearHistory = () =>
-    Modal.confirm({
+    appModal.confirm({
       title: 'Clear the notification history?',
       content: 'This permanently deletes every recorded broadcast. This cannot be undone.',
       okText: 'Clear',

@@ -68,6 +68,7 @@ services:
       - ADMIN_PASSWORD=functest-secret
       - PYTEST_ARGS=${PYTEST_ARGS:-}                           # select specific workflows e.g. PYTEST_ARGS="-k priority"
       - FUNCTEST_GPU_ENABLED=${FUNCTEST_GPU_ENABLED:-0}        # conftest collects gpu-marked tests only when this is non-zero (1=autodetect)
+      - FUNCTEST_REGIME=${FUNCTEST_REGIME:-}                   # names the sign-off sidecar reports/regime-<regime>.json
     volumes:
       - ./:/tests
       - /var/run/docker.sock:/var/run/docker.sock:rw          # inspect/exec spawned labs (end-to-end verification)
