@@ -742,15 +742,17 @@ export const liveSource: DataSource = {
     }
   },
 
-  // real platform event log (user/group/policy/broadcast lifecycle); icon derived
-  // from the event type. text is pre-escaped HTML from the hub
+  // real platform event log (user/group/policy/broadcast lifecycle). the hub may carry a
+  // per-event glyph (e.g. a server STOP -> stop, an EXTEND -> clock) so the feed shows the
+  // specific action; absent one, fall back to the type's default glyph. text is pre-escaped
+  // HTML from the hub
   async getEvents(): Promise<EventRow[]> {
     try {
-      const r = await hubGet<{ events: Array<{ id: string; ts: string; type: string; text: string }> }>('/events')
+      const r = await hubGet<{ events: Array<{ id: string; ts: string; type: string; text: string; icon?: string }> }>('/events')
       return r.events.map((e) => ({
         id: e.id,
         type: (EVENT_ICON[e.type] ? e.type : 'server') as EventType,
-        icon: EVENT_ICON[e.type] ?? 'activity',
+        icon: e.icon || EVENT_ICON[e.type] || 'activity',
         text: e.text,
         whenISO: e.ts,
       }))

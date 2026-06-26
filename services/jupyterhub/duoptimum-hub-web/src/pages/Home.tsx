@@ -16,6 +16,7 @@ import { CardHeadLink } from '../components/CardHeadLink'
 import { CappedTags } from '../components/CappedTags'
 import { rowActions } from '../components/ServerRowActions'
 import { Icon } from '../components/Icon'
+import { EVENT_TONE, glyphFilled } from '../lib/eventVisual'
 import { useRole } from '../app/RoleContext'
 import { usePref } from '../app/PrefsContext'
 import { useIsMobile } from '../lib/useIsMobile'
@@ -159,8 +160,8 @@ function RecentEvents() {
       <div className="doh-feed" style={{ padding: '0 var(--space-4)' }}>
         {data.slice(0, 5).map((e) => (
           <div className="doh-feed-item" key={e.id}>
-            <div className="doh-feed-ic">
-              <Icon name={e.icon as 'play'} size={15} />
+            <div className={`doh-feed-ic ${EVENT_TONE[e.type]}`}>
+              <Icon name={e.icon as 'play'} size={15} filled={glyphFilled(e.icon)} />
             </div>
             <div className="doh-feed-body">
               {/* backend escapes event text (events.py html.escape); title gives a

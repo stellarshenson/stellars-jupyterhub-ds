@@ -168,9 +168,9 @@ class ExtendSessionHandler(BaseHandler):
         # acting on another user). Topping to the ceiling reads as "to maximum".
         _who = html.escape(str(username))
         if maxed:
-            record_event('server', f'<b>{_who}</b> session extended to maximum ({ceiling // 3600}h)')
+            record_event('server', f'<b>{_who}</b> session extended to maximum ({ceiling // 3600}h)', icon='clock')
         else:
-            record_event('server', f'<b>{_who}</b> session extended by {hours}h')
+            record_event('server', f'<b>{_who}</b> session extended by {hours}h', icon='clock')
 
         if maxed:
             message = f"Session topped up to maximum ({ceiling // 3600}h)"
