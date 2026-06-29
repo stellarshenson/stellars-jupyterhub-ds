@@ -14,7 +14,7 @@ def test_package_has_version():
 
 
 def test_top_level_imports():
-    from duoptimum_hub_services import StellarsNativeAuthenticator
+    from duoptimum_hub_services import DuoptimumNativeAuthenticator
     from duoptimum_hub_services import setup_branding
     from duoptimum_hub_services import register_events
     from duoptimum_hub_services import resolve_gpu_mode
@@ -188,8 +188,23 @@ def test_handlers():
 
 
 def test_auth():
-    from duoptimum_hub_services.auth import StellarsNativeAuthenticator, CustomAuthorizationAreaHandler
-    assert hasattr(StellarsNativeAuthenticator, 'get_handlers')
+    from duoptimum_hub_services.auth import (
+        DuoptimumNativeAuthenticator,
+        CustomAuthorizationAreaHandler,
+        BootstrapAdminSignUpHandler,
+    )
+    assert hasattr(DuoptimumNativeAuthenticator, 'get_handlers')
+    # the self-contained native authenticator carries its non-secret bootstrap config as traits
+    traits = DuoptimumNativeAuthenticator.class_traits()
+    for name in ('admin_username', 'signup_enabled'):
+        assert name in traits, name
+    # the INITIAL-ONLY admin password is env-sourced, NOT a config trait - keeps the secret
+    # out of --show-config / trait_values() / the Settings page
+    assert 'admin_password' not in traits
+    # ...and owns the bootstrap behaviour directly (no inline config classes anymore)
+    for meth in ('validate_username', 'create_user', '_bootstrap_admin_pending', 'run_post_auth_hook'):
+        assert hasattr(DuoptimumNativeAuthenticator, meth), meth
+    assert isinstance(DuoptimumNativeAuthenticator.__dict__.get('enable_signup'), property)
 
 
 def test_events():

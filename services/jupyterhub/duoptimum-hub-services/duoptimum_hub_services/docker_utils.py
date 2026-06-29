@@ -6,6 +6,7 @@ import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from functools import lru_cache
 
 _docker_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="docker-ops")
 
@@ -446,6 +447,50 @@ def resolve_network_placeholder(value, network):
     if value and '{network}' in value:
         return value.replace('{network}', network or '')
     return value
+
+
+def _resolve_network_env(name_env, role_value_env):
+    """Resolve a {network}-templated network-name env to a concrete net name by role.
+
+    Reads os.environ DIRECTLY (not the config constants) so any consumer can resolve a
+    network on its own, without the value being threaded through config. A literal value
+    (no {network} token) passes through with NO docker inspect - the operator override.
+    The role label KEY is shared (JUPYTERHUB_LABEL_NETWORK_ROLE_KEY); role_value_env
+    (lab vs gpuinfo) selects which net. Propagates the ambiguous-role ValueError from
+    resolve_self_network_by_label (a hard config error the caller must not swallow)."""
+    value = os.environ.get(name_env, '').strip()
+    if '{network}' not in value:
+        return value
+    net = resolve_self_network_by_label(
+        os.environ.get('JUPYTERHUB_LABEL_NETWORK_ROLE_KEY', '').strip(),
+        os.environ.get(role_value_env, '').strip(),
+    ) or ''
+    return resolve_network_placeholder(value, net).strip()
+
+
+@lru_cache(maxsize=1)
+def resolve_lab_network():
+    """Resolved hub<->lab network name, memoized for the hub's lifetime.
+
+    Moves the old config-load `if "{network}" in ...` block into the package so the env
+    stays a raw template and the config just calls this at each push-boundary (spawner
+    net + injected lab env, pre_spawn hook, validator). The {network} token resolves to
+    the role=lab net the hub is attached to; one docker inspect total - cached on first
+    call, reused by every consumer. The hub's net attachments do not change after boot,
+    so the cached value is stable. '' when unresolvable (docker down / no role=lab net) -
+    the validator turns that into a hard boot error (the lab net is REQUIRED). The
+    ambiguous-role ValueError propagates (lru_cache does not cache exceptions)."""
+    return _resolve_network_env('JUPYTERHUB_NETWORK_NAME', 'JUPYTERHUB_LABEL_NETWORK_ROLE_LAB')
+
+
+@lru_cache(maxsize=1)
+def resolve_gpuinfo_network():
+    """Resolved hub<->sidecar (gpuinfo) network name, memoized. Same contract as
+    resolve_lab_network for JUPYTERHUB_GPUINFO_NETWORK_NAME / role=gpuinfo. '' when
+    ABSENT (no role=gpuinfo net) -> the sidecar is unplaceable -> GPU off (a validator
+    WARNING). An AMBIGUOUS role (>1 net carrying it) still RAISES ValueError -> a hard
+    boot error (a config bug, fail-loud), same as the lab net."""
+    return _resolve_network_env('JUPYTERHUB_GPUINFO_NETWORK_NAME', 'JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO')
 
 
 def get_executor():

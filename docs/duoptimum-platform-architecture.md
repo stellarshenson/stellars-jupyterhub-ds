@@ -91,8 +91,8 @@ The admin/user UI is a React SPA served by the `duoptimum_hub_web` package, not 
 
 `config/jupyterhub_config.py` reads env vars, builds data literals, runs setup logic, then applies JupyterHub config.
 
-- **Authenticator** - `BootstrapAdminAuthenticator`, a subclass of `DuoptimumHubAuthenticator` (NativeAuthenticator + antd login/signup); `open_signup=False`
-- **Admin bootstrap** - two modes: signup-window (first admin self-signs-up on an empty DB) or env-seeded (`JUPYTERHUB_ADMIN_PASSWORD`, initial-only, bcrypt-verified); admin role granted at login by `post_auth_hook`
+- **Authenticator** - `duoptimum_hub_services.auth.DuoptimumNativeAuthenticator` (one self-contained NativeAuthenticator wrapper: antd login/signup + first-admin bootstrap + admin promotion), selected by dotted-path string like the spawner; `open_signup=False`
+- **Admin bootstrap** - two modes: signup-window (first admin self-signs-up on an empty DB) or env-seeded (`JUPYTERHUB_ADMIN_PASSWORD`, initial-only, bcrypt-verified); admin role granted at login by the authenticator's `run_post_auth_hook`
 - **Spawner** - `duoptimum_hub_services.spawner.DuoptimumDockerSpawner` (DockerSpawner with timing logs, declares the host-status provider); `name_template=jupyterlab-{username}`, `remove=True`, per-user `volumes` (see [Host status providers](#host-status-providers))
 - **pre_spawn_hook** - resolves the user's groups into an effective policy and applies it (Docker access, GPU, env, CPU/mem, sudo, downloads, volume mounts, API-key slot), registers the user with the docker-proxy, and adds CHP favicon + compose-project labels
 - **post_stop_hook** - unregisters the docker-proxy user and releases the API-key slot
