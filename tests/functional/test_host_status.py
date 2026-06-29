@@ -147,11 +147,16 @@ def test_gpu_hidden_when_sidecar_down(admin_portal, base_url, admin_api, docker_
 
     sidecar.stop()
     try:
-        # the next empty sample flips gpu_connected off (last_ok False); poll the API
-        assert _wait(lambda: not _gpu_connected(admin_api, base_url), timeout=180, interval=5), \
-            "sidecar stopped but gpu_connected stayed true"
-        page = admin_portal.goto("/home", ready=".doh-res-row")
-        assert page.locator(".doh-gpurows").count() == 0, \
+        # DEF-4 contract: once the sidecar is down the GPU row must disappear. The backend
+        # only flips gpu_connected off on its NEXT (failed) sidecar sample, so the row drops
+        # one sample later - poll the RENDERED page until it is gone rather than asserting on
+        # a single reload. Polling the API instead (via the error-tolerant _gpu_connected,
+        # which reads a transient keep-alive reset during stop() as "not connected") returns
+        # early, and a single immediate reload then catches the pre-flip sample with the row
+        # still shown - the source of this test's flakiness.
+        def _gpu_row_gone():
+            return admin_portal.goto("/home", ready=".doh-res-row").locator(".doh-gpurows").count() == 0
+        assert _wait(_gpu_row_gone, timeout=180, interval=5), \
             "GPU row still shown after the sidecar went down (DEF-4)"
     finally:
         sidecar.start()
