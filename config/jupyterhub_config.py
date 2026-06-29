@@ -19,8 +19,6 @@ import nativeauthenticator      # __file__ for template path resolution
 
 # duoptimum_hub_services core functions - pure logic, no side effects on import
 from duoptimum_hub_services import (
-    DuoptimumHubAuthenticator,                # platform authenticator: NativeAuth logic + antd login/signup presentation
-    DuoptimumSignUpHandler,                   # antd-rendering signup handler (base for the bootstrap signup handler)
     apply_abuse_protection,                 # abuse protection: maps env -> spawn/active caps + login lockout onto c.*
     validate_hub_config,                    # central required/consistency validator: conf gathers raw values, this raises on missing/inconsistent + warns on degraded
     configure_gpu_cache,                    # one-time init: sets the CUDA image the background GPU-utilisation sampler uses
@@ -55,16 +53,9 @@ from duoptimum_hub_services.docker_utils import volume_labels  # read a named vo
 from duoptimum_hub_services.docker_utils import build_system_volume_rows  # pure builder: Lab Setup system-volume rows (shared + docker-proxy)
 from duoptimum_hub_services.policy.base import SHARED_MOUNTPOINT  # lab-side shared mount (/mnt/shared)
 from duoptimum_hub_services.docker_proxy import SOCK_MOUNT_DIR  # lab-side docker-proxy socket mount (/run/dockersock)
-from duoptimum_hub_services.docker_utils import (  # net discovery by role label + {network} token resolve; no net-name env
-    resolve_self_network_by_label,
-    resolve_network_placeholder,
-)
-from duoptimum_hub_services.admin_bootstrap import (  # first-admin bootstrap data/decision layer
-    query_admin_state,                  # raw sqlite3 at config-load (ORM not up yet)
-    bootstrap_window_open,              # pure policy: is the signup-off bootstrap window open
-    admin_unreachable,                 # pure policy: no path to a first admin -> fail fast
-    provision_admin_userinfo,           # ORM at authenticator-init (env-password path)
-    first_admin_self_signup_pending,    # ORM at request-time (auto-authorise the first admin's self-signup)
+from duoptimum_hub_services.docker_utils import (  # {network}-token net resolution, memoized in the package; no net-name env mutated here
+    resolve_lab_network,        # role=lab net (hub<->lab), required
+    resolve_gpuinfo_network,    # role=gpuinfo net (hub<->sidecar), optional (GPU off when absent)
 )
 
 # Tornado request handlers - registered via c.DuoptimumHub.registered_handlers
@@ -171,13 +162,9 @@ JUPYTERHUB_LABEL_NETWORK_ROLE_KEY = os.environ.get("JUPYTERHUB_LABEL_NETWORK_ROL
 JUPYTERHUB_LABEL_NETWORK_ROLE_LAB = os.environ.get("JUPYTERHUB_LABEL_NETWORK_ROLE_LAB", "").strip()
 JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO = os.environ.get("JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO", "").strip()
 # Hub<->lab net the labs join (MUST share with hub - labs hit hub API, CHP proxies them).
-# Baked "{network}" token -> role=lab net. Empty after resolve -> validator fails.
-JUPYTERHUB_NETWORK_NAME = os.environ.get("JUPYTERHUB_NETWORK_NAME", "").strip()
-if "{network}" in JUPYTERHUB_NETWORK_NAME:
-    JUPYTERHUB_NETWORK_NAME = resolve_network_placeholder(
-        JUPYTERHUB_NETWORK_NAME,
-        resolve_self_network_by_label(JUPYTERHUB_LABEL_NETWORK_ROLE_KEY, JUPYTERHUB_LABEL_NETWORK_ROLE_LAB) or "",
-    ).strip()  # {network} -> hub<->lab net (role=lab)
+# The env carries the baked "{network}" token; resolve_lab_network() (memoized, in the
+# package) resolves it to the role=lab net at each push-boundary below - the env is never
+# mutated here. Empty after resolve -> validator fails (the lab net is required).
 JUPYTERHUB_LAB_IMAGE = os.environ.get("JUPYTERHUB_LAB_IMAGE", "").strip()                # JupyterLab image to spawn (baked ENV; empty -> validator fails)
 # Deployment NAMESPACE (compose project now; k8s namespace later) - scope every label
 # uniqueness check lives in. Drives volume namespace + hub/sidecar/lab compose labels.
@@ -234,14 +221,10 @@ JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_VALUE = os.environ.get("JUPYTERHUB_LABEL_DOC
 JUPYTERHUB_SHARED_VOLUME_NAME = resolve_self_mount_volume_by_label(
     JUPYTERHUB_LABEL_VOLUME_ROLE_KEY, JUPYTERHUB_LABEL_VOLUME_ROLE_SHARED
 ) or ""
-# Hub<->sidecar net (compose owns it) tagged role=gpuinfo. Baked "{network}" token ->
-# role=gpuinfo net. Empty = sidecar unplaceable -> GPU off (validator WARNS, sidecar degrades).
-JUPYTERHUB_GPUINFO_NETWORK_NAME = os.environ.get("JUPYTERHUB_GPUINFO_NETWORK_NAME", "").strip()
-if "{network}" in JUPYTERHUB_GPUINFO_NETWORK_NAME:
-    JUPYTERHUB_GPUINFO_NETWORK_NAME = resolve_network_placeholder(
-        JUPYTERHUB_GPUINFO_NETWORK_NAME,
-        resolve_self_network_by_label(JUPYTERHUB_LABEL_NETWORK_ROLE_KEY, JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO) or "",
-    ).strip()  # {network} -> hub<->sidecar net (role=gpuinfo)
+# Hub<->sidecar net (compose owns it) tagged role=gpuinfo. The env carries the baked
+# "{network}" token; resolve_gpuinfo_network() (memoized, in the package) resolves it at
+# the sidecar + validator call sites - never mutated here. Empty = sidecar unplaceable ->
+# GPU off (validator WARNS, sidecar degrades).
 JUPYTERHUB_GPUINFO_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_IMAGE", "").strip()  # sidecar image the hub self-starts (baked Dockerfile ENV; empty -> validate_hub_config fails)
 JUPYTERHUB_ADMIN_USERNAME = os.environ.get("JUPYTERHUB_ADMIN_USERNAME", "").strip().lower()                      # admin username; .lower() - JupyterHub normalizes usernames to lowercase, bootstrap lookups/compares use this raw so it must match the DB + login form (auto-authorized on first signup; required; baked image ENV - validated by validate_hub_config)
 
@@ -357,193 +340,14 @@ register_events()
 prepare_sent_notification_log()
 
 
-# ── Admin bootstrap ──────────────────────────────────────────────────────────
-# Two operating modes share this code:
-#
-#   1. Bootstrap-by-signup (default): operator sets only JUPYTERHUB_ADMIN_USERNAME. On a
-#      fresh deployment the signup form is silently re-opened just for the admin
-#      name (BootstrapAdminAuthenticator below rejects every other username with a
-#      clear message). The admin signs up with their own password and our
-#      create_user override flips is_authorized=True directly on the new UserInfo
-#      row (no email, no SMTP, no approval URL). They log in, the post auth hook
-#      promotes them to admin role. Once their UserInfo is in the DB the
-#      bootstrap window closes and signup falls back to the operator's setting.
-#
-#   2. Bootstrap-by-env: operator also sets JUPYTERHUB_ADMIN_PASSWORD. The hub
-#      pre-creates the admin UserInfo with that password on startup. The env value
-#      is INITIAL ONLY: bcrypt.checkpw determines whether the stored hash was
-#      generated from the env value; the moment the admin changes their password
-#      verification fails and env is permanently ignored. JUPYTERHUB_ADMIN_PASSWORD
-#      is intentionally absent from settings_dictionary.yml and so is not exposed
-#      on the Settings page.
-#
-# c.Authenticator.admin_users is intentionally NOT set: setting it makes JupyterHub
-# eagerly insert a User row at startup, which fires duoptimum_hub_services.events' after_insert
-# listener and creates a UserInfo with a random xkcd password the operator cannot
-# retrieve. Admin role is granted purely at login time via post_auth_hook below.
+# ── Admin bootstrap ──
+# First-admin bootstrap (env-provision / signup-off self-signup window / normal-signup
+# auto-authorise, with fail-fast when unreachable) lives entirely in
+# DuoptimumNativeAuthenticator (duoptimum_hub_services/auth.py). The config feeds it two
+# trait inputs (admin_username / signup_enabled) under Authentication below; the INITIAL-ONLY
+# admin password is read by the authenticator straight from os.environ['JUPYTERHUB_ADMIN_PASSWORD']
+# - deliberately NOT a config trait, so the secret never reaches --show-config or the Settings page.
 
-JUPYTERHUB_ADMIN_PASSWORD = os.environ.get("JUPYTERHUB_ADMIN_PASSWORD", "").strip()
-
-# admin_bootstrap is the data layer; this config drives policy. State is read here at
-# config-load (raw sqlite, ORM not up yet); provisioning is deferred to
-# BootstrapAdminAuthenticator.__init__, where users_info is guaranteed to exist.
-_DB_EMPTY_AT_STARTUP, _ADMIN_PRESENT_AT_STARTUP = query_admin_state(JUPYTERHUB_ADMIN_USERNAME)
-_ADMIN_PROVISIONING_REQUESTED = bool(JUPYTERHUB_ADMIN_USERNAME and JUPYTERHUB_ADMIN_PASSWORD)
-
-# Bootstrap window + fail-fast are pure policy in admin_bootstrap (unit-tested across the
-# full state matrix); this config just feeds them the startup state and acts on the result.
-_BOOTSTRAP_WINDOW_OPEN = bootstrap_window_open(
-    JUPYTERHUB_SIGNUP_ENABLED, _ADMIN_PROVISIONING_REQUESTED, _DB_EMPTY_AT_STARTUP, _ADMIN_PRESENT_AT_STARTUP
-)
-_ADMIN_UNREACHABLE = admin_unreachable(
-    JUPYTERHUB_SIGNUP_ENABLED, _ADMIN_PROVISIONING_REQUESTED, _ADMIN_PRESENT_AT_STARTUP, _BOOTSTRAP_WINDOW_OPEN
-)
-if _ADMIN_UNREACHABLE:
-    raise SystemExit(
-        f"[Admin Bootstrap] FATAL: admin '{JUPYTERHUB_ADMIN_USERNAME}' does not exist and cannot "
-        "be created - signup is disabled (JUPYTERHUB_SIGNUP_ENABLED=0), the bootstrap "
-        "self-signup window is closed (database already contains users), and no "
-        "JUPYTERHUB_ADMIN_PASSWORD was set. Provide JUPYTERHUB_ADMIN_PASSWORD to "
-        "pre-provision the admin, or set JUPYTERHUB_SIGNUP_ENABLED=1 to allow signup."
-    )
-
-
-class BootstrapAdminSignUpHandler(DuoptimumSignUpHandler):
-    """Replace NativeAuth's misleading post-signup messages during the bootstrap window.
-
-    Two upstream branches need correcting:
-
-      * Success branch keys off `username in admin_users`, which we deliberately
-        leave empty (populating admin_users triggers the eager User insert and
-        the random-password trap in duoptimum_hub_services.events). With our create_user
-        override flagging is_authorized=True, the row is correct but the message
-        still drops to "Your information has been sent to the admin." Treat
-        is_authorized as the success signal here.
-
-      * Generic error branch on `not user` shows "Be sure your username does
-        not contain spaces, commas or slashes..." which is misleading when the
-        real reason create_user returned None is our bootstrap-window
-        validate_username block. Substitute a clearer message in that case.
-    """
-
-    def get_result_message(self, user, assume_user_is_human, username_already_taken,
-                           confirmation_matches, user_is_admin):
-        if user is not None and getattr(user, 'is_authorized', False):
-            user_is_admin = True
-        alert, message = super().get_result_message(
-            user, assume_user_is_human, username_already_taken,
-            confirmation_matches, user_is_admin,
-        )
-        if (
-            user is None
-            and self.authenticator._bootstrap_admin_pending()
-            and assume_user_is_human
-            and not username_already_taken
-            and confirmation_matches
-        ):
-            submitted = self.get_body_argument("username", "", strip=False)
-            if submitted and submitted != JUPYTERHUB_ADMIN_USERNAME:
-                alert = "alert-warning"
-                message = (
-                    "Only the admin user can sign up during the initial "
-                    "bootstrap window."
-                )
-        return alert, message
-
-
-class BootstrapAdminAuthenticator(DuoptimumHubAuthenticator):
-    """During the bootstrap window, only the admin username is allowed to self-sign-up
-    and that signup is auto-authorised on the spot.
-
-    Outside the bootstrap window this class is a transparent passthrough to
-    DuoptimumHubAuthenticator (NativeAuth credential logic + antd login/signup
-    presentation). The window state is captured once at startup so the class
-    behaves stably for the lifetime of the hub process.
-
-    For auto-authorisation we override create_user instead of using NativeAuth's
-    allow_self_approval_for: that path forces ask_email_on_signup=True, matches the
-    regex against the email field (not the username), generates a signed approval URL
-    and tries to send it via SMTP - which the hub container has no server for, so the
-    admin signup ends up pending without any way to confirm it. Combined with the
-    BootstrapAdminSignUpHandler injected via get_handlers below, the admin signup
-    completes with a clean success message and any non-admin attempt during the
-    window gets a clear "only admin can sign up" rejection instead of NativeAuth's
-    generic spaces/commas/password message.
-    """
-
-    def __init__(self, *args, **kwargs):
-        # super() runs NativeAuthenticator.__init__ -> add_new_table(), so users_info
-        # is guaranteed to exist once it returns. This is the deterministic anchor for
-        # env-password provisioning; config-load time is too early (no table on a fresh
-        # volume -> the INSERT silently no-ops). Provision once, against our own session.
-        super().__init__(*args, **kwargs)
-        if _ADMIN_PROVISIONING_REQUESTED:
-            provision_admin_userinfo(self.db, JUPYTERHUB_ADMIN_USERNAME, JUPYTERHUB_ADMIN_PASSWORD)
-
-    def _bootstrap_admin_pending(self):
-        """The bootstrap window only takes effect while it was open at startup
-        AND the admin row has not yet been inserted in the DB. Checked at
-        request time so admin user creation works as soon as the admin signs up
-        (rather than requiring a hub restart to recapture the flag).
-        """
-        if not _BOOTSTRAP_WINDOW_OPEN or not JUPYTERHUB_ADMIN_USERNAME:
-            return False
-        return self.get_user(JUPYTERHUB_ADMIN_USERNAME) is None
-
-    @property
-    def enable_signup(self):
-        """Dynamic so the Sign Up link and /hub/signup form disappear the moment
-        the bootstrap admin row appears, even though the hub process started
-        with the window open. Operator's JUPYTERHUB_SIGNUP_ENABLED still wins
-        if it is True. Overrides the inherited Bool trait with a property; the
-        no-op setter keeps traitlets' config assignment (`c.NativeAuthenticator.
-        enable_signup = ...`) from raising.
-        """
-        if JUPYTERHUB_SIGNUP_ENABLED:
-            return True
-        return self._bootstrap_admin_pending()
-
-    @enable_signup.setter
-    def enable_signup(self, value):
-        # Computed dynamically; ignore static assignments from config.
-        pass
-
-    def validate_username(self, username):
-        if not super().validate_username(username):
-            return False
-        if self._bootstrap_admin_pending() and username and username != JUPYTERHUB_ADMIN_USERNAME:
-            return False
-        return True
-
-    def get_handlers(self, app):
-        return [
-            (path, BootstrapAdminSignUpHandler if path == r"/signup" else handler)
-            for path, handler in super().get_handlers(app)
-        ]
-
-    def create_user(self, username, password, **kwargs):
-        # Auto-authorise the FIRST admin's self-signup regardless of the signup flag
-        # (was gated on the signup-off window, so the signup-on default left the admin
-        # is_authorized=False with no one to authorise them -> locked out). Non-admin
-        # signups still land in the pending queue (is_authorized=False). Decision logic
-        # lives in the service layer (admin_bootstrap), this only wires it.
-        pending = first_admin_self_signup_pending(self.db, JUPYTERHUB_ADMIN_USERNAME, _ADMIN_PROVISIONING_REQUESTED)
-        user_info = super().create_user(username, password, **kwargs)
-        if (
-            user_info is not None
-            and pending
-            and self.normalize_username(username) == self.normalize_username(JUPYTERHUB_ADMIN_USERNAME)
-        ):
-            user_info.is_authorized = True
-            self.db.commit()
-        return user_info
-
-
-async def _admin_post_auth_hook(authenticator, handler, authentication):
-    """Promote JUPYTERHUB_ADMIN_USERNAME to admin role on every successful authentication."""
-    if authentication and authentication.get('name') == JUPYTERHUB_ADMIN_USERNAME:
-        authentication['admin'] = True
-    return authentication
 
 # Detect GPU availability: autodetect (the default, any non-zero mode) queries the
 # gpuinfo-nvidia sidecar for the host inventory (the hub itself has no GPU access) and
@@ -566,7 +370,7 @@ async def _admin_post_auth_hook(authenticator, handler, authentication):
 GPU_VENDOR = resolve_gpu_vendor_provider() or NvidiaGpuProvider()
 _gpuinfo_url = (
     ensure_gpuinfo_sidecar(
-        JUPYTERHUB_GPUINFO_NVIDIA_IMAGE, JUPYTERHUB_GPUINFO_NETWORK_NAME, JUPYTERHUB_GPUINFO_NVIDIA_URL,
+        JUPYTERHUB_GPUINFO_NVIDIA_IMAGE, resolve_gpuinfo_network(), JUPYTERHUB_GPUINFO_NVIDIA_URL,
         JUPYTERHUB_COMPOSE_PROJECT_NAME, container_name=JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME,
         container_role_label_key=JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY,
         container_role_label_value=JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO,
@@ -659,7 +463,7 @@ c.DockerSpawner.environment = {
     'JUPYTERLAB_AUX_MENU_PATH': JUPYTERLAB_AUX_MENU_PATH,      # admin-managed custom menu definitions
     'JUPYTERLAB_TIMEZONE': JUPYTERHUB_TIMEZONE,                  # IANA timezone for JupyterLab extensions
     'JUPYTERLAB_SYSTEM_NAME': JUPYTERHUB_BRANDING_LAB_NAME,                              # lab header/welcome/MOTD display name (from hub knob JUPYTERHUB_BRANDING_LAB_NAME)
-    'JUPYTERHUB_NETWORK_NAME': JUPYTERHUB_NETWORK_NAME,                                   # Docker network connecting hub + user containers; needed by in-container scripts that attach sidecars to the same net
+    'JUPYTERHUB_NETWORK_NAME': resolve_lab_network(),                                    # Docker network connecting hub + user containers; needed by in-container scripts that attach sidecars to the same net
 }
 
 # Reserved env var names groups cannot override - every key we inject globally
@@ -677,7 +481,7 @@ RESERVED_ENV_VAR_NAMES = set(c.DockerSpawner.environment.keys()) | {
 
 c.DockerSpawner.image = JUPYTERHUB_LAB_IMAGE           # JupyterLab Docker image to spawn
 c.DockerSpawner.use_internal_ip = True                       # use container IP on Docker network (not host)
-c.DockerSpawner.network_name = JUPYTERHUB_NETWORK_NAME       # Docker network connecting hub and user containers
+c.DockerSpawner.network_name = resolve_lab_network()        # Docker network connecting hub and user containers (resolved as we push it to the spawner)
 c.JupyterHub.default_url = JUPYTERHUB_BASE_URL_PREFIX + PORTAL_URL  # land everyone on the Duoptimum Hub portal after login
 # c.DockerSpawner.notebook_dir = DOCKER_NOTEBOOK_DIR         # redundant - stellars-jupyterlab-ds image defaults to /home/lab/workspace
 c.DockerSpawner.name_template = JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE  # env-driven; lab_container_name() reads the same var so hub lookups never desync. compose project label (pre_spawn_hook) provides the grouping namespace
@@ -806,7 +610,7 @@ validate_hub_config({
     "admin": JUPYTERHUB_ADMIN_USERNAME,
     "lab_image": JUPYTERHUB_LAB_IMAGE,
     "namespace": JUPYTERHUB_COMPOSE_PROJECT_NAME,
-    "lab_network_name": JUPYTERHUB_NETWORK_NAME,
+    "lab_network_name": resolve_lab_network(),
     "network_role_label_key": JUPYTERHUB_LABEL_NETWORK_ROLE_KEY,
     "volume_role_label_key": JUPYTERHUB_LABEL_VOLUME_ROLE_KEY,
     "container_role_label_key": JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY,
@@ -829,7 +633,7 @@ validate_hub_config({
     "docker_proxy_sockets_volume": JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME,
     "user_compose_project_template": JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE,
     # resolved/optional - drive warnings, never block boot
-    "gpuinfo_network_name": JUPYTERHUB_GPUINFO_NETWORK_NAME,
+    "gpuinfo_network_name": resolve_gpuinfo_network(),
     "shared_volume_name": JUPYTERHUB_SHARED_VOLUME_NAME,
     "branding_logo_uri": JUPYTERHUB_BRANDING_LOGO_URI,
     "branding_favicon_uri": JUPYTERHUB_BRANDING_FAVICON_URI,
@@ -853,7 +657,7 @@ c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     docker_proxy_socket_dir=JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR,   # path inside hub where per-user sockets live (backed by named volume)
     docker_proxy_volume_name=JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME,      # named docker volume; the spawner subpath-mounts this into each lab
     user_compose_project_template=JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE,  # rendered per-user when a docker-limited group enables it
-    hub_network_name=JUPYTERHUB_NETWORK_NAME,                     # revealed in user's `docker network ls` when their group enables it (default on)
+    hub_network_name=resolve_lab_network(),                      # revealed in user's `docker network ls` when their group enables it (default on)
     block_file_downloads=JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS,        # master switch: overlay per-user download-block CHP routes for non-granted users
     lab_sudo_enable_default=JUPYTERHUB_LAB_SUDO_ENABLE,  # default JUPYTERLAB_SUDO_ENABLE when no group configures sudo
     api_keys_reconcile_interval=JUPYTERHUB_IDLE_CULLER_INTERVAL,  # periodic api-keys-pool reconcile cadence (reuses the cull interval, default 600s)
@@ -911,7 +715,31 @@ c.JupyterHub.cookie_secret_file = "/data/jupyterhub_cookie_secret"  # cookie sig
 c.JupyterHub.db_url = "sqlite:////data/jupyterhub.sqlite"           # user database (persisted in jupyterhub_data volume)
 
 # ── Authentication ──
-c.JupyterHub.authenticator_class = BootstrapAdminAuthenticator       # bootstrap-window admin-only signup + admin rename sync
+# Selected by dotted-path string, exactly like the spawner - swap the line below (and add
+# the matching c.<Authenticator>.* block) to use a different authenticator. The native flow
+# (NativeAuth credential store + antd login/signup + first-admin bootstrap + admin-role
+# promotion) is fully self-contained in DuoptimumNativeAuthenticator, so any other
+# authenticator runs none of it - no conditionals here.
+c.JupyterHub.authenticator_class = "duoptimum_hub_services.auth.DuoptimumNativeAuthenticator"
+c.DuoptimumNativeAuthenticator.admin_username = JUPYTERHUB_ADMIN_USERNAME           # promoted to admin at login; bootstrap-window self-signup name
+c.DuoptimumNativeAuthenticator.signup_enabled = bool(JUPYTERHUB_SIGNUP_ENABLED)     # operator self-registration switch; the authenticator re-opens it for the admin during bootstrap
+# admin password is INITIAL-ONLY: read by the authenticator from os.environ['JUPYTERHUB_ADMIN_PASSWORD'],
+# never set as a config trait (so the secret stays out of --show-config / trait_values / Settings)
+
+# Future OAuth/OIDC (e.g. Keycloak) - `oauthenticator` ships in the image; swap the
+# selection above for the stock GenericOAuthenticator. The native bootstrap above does NOT
+# apply: set admin via c.Authenticator.admin_users (or an OAuth claim), and signup/approval
+# is owned by the identity provider.
+#   c.JupyterHub.authenticator_class = "generic-oauth"
+#   c.GenericOAuthenticator.client_id = "jupyterhub"
+#   c.GenericOAuthenticator.client_secret = "..."
+#   c.GenericOAuthenticator.oauth_callback_url = "https://hub.example.com/hub/oauth_callback"
+#   c.GenericOAuthenticator.authorize_url = "https://auth.example.com/realms/main/protocol/openid-connect/auth"
+#   c.GenericOAuthenticator.token_url    = "https://auth.example.com/realms/main/protocol/openid-connect/token"
+#   c.GenericOAuthenticator.userdata_url = "https://auth.example.com/realms/main/protocol/openid-connect/userinfo"
+#   c.GenericOAuthenticator.username_claim = "preferred_username"
+#   c.Authenticator.admin_users = {"<admin-username>"}
+
 c.JupyterHub.template_paths = [
     duoptimum_hub_web.template_dir(),                                  # Duoptimum Hub portal: home.html = SPA shell, admin/token = redirect stubs (highest priority)
     "/srv/jupyterhub/templates/",                                    # custom Stellars templates (override priority)
@@ -919,18 +747,13 @@ c.JupyterHub.template_paths = [
     f"{os.path.dirname(jupyterhub.__file__)}/templates",             # JupyterHub default templates (fallback)
 ]
 c.NativeAuthenticator.open_signup = False                            # other users still require admin authorization
-# enable_signup is a dynamic Python property on BootstrapAdminAuthenticator that
-# re-evaluates JUPYTERHUB_SIGNUP_ENABLED + the bootstrap-pending state on every
-# access, so the Sign Up link and /hub/signup form disappear the moment the
-# admin row appears in the DB - no static `c.NativeAuthenticator.enable_signup`
-# assignment here, that would be frozen at config-load time.
-# Bootstrap admin auto-authorisation is implemented inside BootstrapAdminAuthenticator.create_user.
-# We deliberately do NOT use NativeAuthenticator.allow_self_approval_for: it forces
-# ask_email_on_signup=True, matches the regex against the email field rather than the
-# username, generates a signed approval URL, and tries to dispatch it via SMTP - none
-# of which fits a hub container without an MTA.
+# enable_signup is a dynamic property on DuoptimumNativeAuthenticator: it re-evaluates
+# signup_enabled + the bootstrap-pending state on each access, so the Sign Up link and
+# /hub/signup form disappear the moment the admin row appears - no static
+# c.NativeAuthenticator.enable_signup here (that would freeze at config-load). Admin-role
+# promotion is the authenticator's run_post_auth_hook (was a loose c.Authenticator.post_auth_hook);
+# the reasons we avoid allow_self_approval_for + eager admin_users live in auth.py.
 c.Authenticator.allow_all = True                                     # all authorized users may login
-c.Authenticator.post_auth_hook = _admin_post_auth_hook               # grant admin role at login (replaces the old eager admin_users that auto-created the User and triggered the random-password trap)
 c.JupyterHub.admin_access = True                                     # admins can access user servers
 
 # ── Abuse protection (Layer B) ──

@@ -11,6 +11,7 @@ dependencies = [
     "docker",
     "dockerspawner",
     "jupyterhub-nativeauthenticator",
+    "oauthenticator",                  # ships GenericOAuthenticator ("generic-oauth") for the optional Keycloak/OIDC path (see jupyterhub_config.py Authentication)
     "jupyterhub-idle-culler",
     "pyyaml",
     "xkcdpass",

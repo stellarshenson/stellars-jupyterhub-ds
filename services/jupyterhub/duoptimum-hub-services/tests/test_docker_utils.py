@@ -10,6 +10,8 @@ from duoptimum_hub_services.docker_utils import (
     encoded_username_from_lab_container,
     ensure_volumes_labeled,
     lab_container_name,
+    resolve_gpuinfo_network,
+    resolve_lab_network,
     resolve_network_placeholder,
     resolve_self_mount_volume_by_label,
     resolve_self_network_by_label,
@@ -366,6 +368,114 @@ class TestResolveNetworkPlaceholder:
     def test_empty_network_blanks_token(self):
         # unresolved net -> token becomes empty (caller treats as fatal/degrade)
         assert resolve_network_placeholder("{network}", "") == ""
+
+
+class TestResolveLabAndGpuinfoNetwork:
+    """The memoized resolvers that replaced the config-load `if "{network}" in ...` blocks.
+
+    Each reads its raw env template and resolves the {network} token to the role-labelled
+    net the hub is attached to (role=lab / role=gpuinfo), at the consumption boundary -
+    cached for the hub's lifetime so repeat consumers do not re-inspect docker. A literal
+    value (operator override) passes through with NO docker inspect."""
+
+    @staticmethod
+    def _install_fake_docker(monkeypatch, *, attached=None, networks=None, counter=None):
+        # attached: name -> {NetworkID}; networks: id/name -> (name, labels); counter: list to bump per get
+        networks = networks or {}
+
+        class _Net:
+            def __init__(self, name, labels):
+                self.name = name
+                self.attrs = {"Labels": labels}
+
+        class _Networks:
+            def get(self, key):
+                name, labels = networks[key]
+                return _Net(name, labels)
+
+        class _Containers:
+            def get(self, host):
+                if counter is not None:
+                    counter.append(1)
+                return SimpleNamespace(attrs={"NetworkSettings": {"Networks": attached or {}}})
+
+        class _Client:
+            def __init__(self, *a, **k):
+                self.containers = _Containers()
+                self.networks = _Networks()
+
+            def close(self):
+                pass
+
+        monkeypatch.setitem(sys.modules, "docker", SimpleNamespace(DockerClient=_Client))
+
+    @pytest.fixture(autouse=True)
+    def _clear_caches(self):
+        # lru_cache is process-global; clear before AND after so tests never see each other's value
+        resolve_lab_network.cache_clear()
+        resolve_gpuinfo_network.cache_clear()
+        yield
+        resolve_lab_network.cache_clear()
+        resolve_gpuinfo_network.cache_clear()
+
+    def _set_label_envs(self, monkeypatch):
+        monkeypatch.setenv("JUPYTERHUB_LABEL_NETWORK_ROLE_KEY", "hub.network.role")
+        monkeypatch.setenv("JUPYTERHUB_LABEL_NETWORK_ROLE_LAB", "lab")
+        monkeypatch.setenv("JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO", "gpuinfo")
+
+    def _two_role_nets(self, monkeypatch, **kw):
+        self._install_fake_docker(
+            monkeypatch,
+            attached={"lab": {"NetworkID": "id-lab"}, "gpu": {"NetworkID": "id-gpu"}},
+            networks={
+                "id-lab": ("proj_hub_network", {"hub.network.role": "lab"}),
+                "id-gpu": ("proj_hub_gpuinfo_network", {"hub.network.role": "gpuinfo"}),
+            },
+            **kw,
+        )
+
+    def test_lab_resolves_token_to_role_lab_net(self, monkeypatch):
+        self._set_label_envs(monkeypatch)
+        monkeypatch.setenv("JUPYTERHUB_NETWORK_NAME", "{network}")
+        self._two_role_nets(monkeypatch)
+        assert resolve_lab_network() == "proj_hub_network"
+
+    def test_gpuinfo_resolves_token_to_role_gpuinfo_net(self, monkeypatch):
+        self._set_label_envs(monkeypatch)
+        monkeypatch.setenv("JUPYTERHUB_GPUINFO_NETWORK_NAME", "{network}")
+        self._two_role_nets(monkeypatch)
+        assert resolve_gpuinfo_network() == "proj_hub_gpuinfo_network"
+
+    def test_literal_passes_through_without_docker(self, monkeypatch):
+        # an operator-set real net name has no token -> returned verbatim, docker never touched
+        monkeypatch.setenv("JUPYTERHUB_NETWORK_NAME", "my_real_net")
+        monkeypatch.setitem(
+            sys.modules, "docker",
+            SimpleNamespace(DockerClient=lambda *a, **k: (_ for _ in ()).throw(AssertionError("docker consulted for a literal"))),
+        )
+        assert resolve_lab_network() == "my_real_net"
+
+    def test_empty_when_unresolvable(self, monkeypatch):
+        # token present but no role=lab net attached -> '' (validator turns this into a boot error)
+        self._set_label_envs(monkeypatch)
+        monkeypatch.setenv("JUPYTERHUB_NETWORK_NAME", "{network}")
+        self._install_fake_docker(
+            monkeypatch,
+            attached={"gpu": {"NetworkID": "id-gpu"}},
+            networks={"id-gpu": ("proj_hub_gpuinfo_network", {"hub.network.role": "gpuinfo"})},
+        )
+        assert resolve_lab_network() == ""
+
+    def test_memoized_single_docker_inspect(self, monkeypatch):
+        # repeat consumers (spawner net, injected env, pre_spawn hook, validator) reuse one inspect
+        self._set_label_envs(monkeypatch)
+        monkeypatch.setenv("JUPYTERHUB_NETWORK_NAME", "{network}")
+        calls = []
+        self._two_role_nets(monkeypatch, counter=calls)
+        assert resolve_lab_network() == "proj_hub_network"
+        assert resolve_lab_network() == "proj_hub_network"
+        assert resolve_lab_network() == "proj_hub_network"
+        assert len(calls) == 1  # cached after the first resolve
 
 
 class TestVolumeLabels:

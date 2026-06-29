@@ -1233,7 +1233,7 @@ An admin can require a user to change their password before they can use the pla
   - log: 2026-06-17 `hooks.py`; the message tells the user to change their password then start
 - [x] **Fail-open on a store error** - if the flag cannot be read (profiles DB momentarily unreadable) the spawn is ALLOWED, never blocked - blocking-on-error would lock the whole platform out
   - log: 2026-06-17 try/except around the check; 605 backend tests pass (favicon/hook tests green)
-- [x] **Clears on a successful change** - `DuoptimumHubAuthenticator.change_password` clears the flag on NativeAuth's success return, so a self-service change lets the user spawn again
+- [x] **Clears on a successful change** - `DuoptimumNativeAuthenticator.change_password` clears the flag on NativeAuth's success return, so a self-service change lets the user spawn again
   - log: 2026-06-17 success-gated override
 - [ ] **Login auto-redirect (deferred)** - a flagged user is NOT yet auto-redirected to the change-password page on login; the spawn-block + the clear message enforce no-escape, but the funnel is manual. Intercepting the live login redirect was deliberately deferred (too risky to ship without a runtime auth round-trip test)
   - log: 2026-06-17 deferred - documented; revisit with an operator runtime test
@@ -4069,7 +4069,7 @@ Every lifecycle action shows a progress popup tied to the real hub state, and di
 
 Today the hub renders the stock NativeAuth `login.html` / `signup.html`; the portal's own `Login.tsx` / `Signup.tsx` are unused. Turn the stock pages off and serve the antd screens, wired to NativeAuth's real POST endpoints. Larger change - touches the public (unauthenticated) serving path, so it needs its own handler (the portal handler is `@authenticated`).
 
-- [x] **antd login screen** - `/hub/login` renders the antd Login, served by a new `DuoptimumHubAuthenticator`. (First attempt overrode `login.html`, but NativeAuth's `LoginHandler._render` renders `native-login.html` and the enhanced stock copy won the template path - so the override never took.) The authenticator swaps the login handler to render uniquely-named `duoptimum_login.html` (`window.jhdata.authPage='login'`); `main.tsx` renders `AuthApp` instead of the router app. Verified live: `<title>Sign in - Duoptimum Hub</title>`, antd form renders, zero console errors
+- [x] **antd login screen** - `/hub/login` renders the antd Login, served by `DuoptimumNativeAuthenticator`. (First attempt overrode `login.html`, but NativeAuth's `LoginHandler._render` renders `native-login.html` and the enhanced stock copy won the template path - so the override never took.) The authenticator swaps the login handler to render uniquely-named `duoptimum_login.html` (`window.jhdata.authPage='login'`); `main.tsx` renders `AuthApp` instead of the router app. Verified live: `<title>Sign in - Duoptimum Hub</title>`, antd form renders, zero console errors
   - log: 2026-06-16 fixed + verified live (auth.py DuoptimumHubAuthenticator/DuoptimumLoginHandler, duoptimum_login.html, AuthApp.tsx, main.tsx); rebuilt + restarted + Playwright against the live URL green
 - [x] **antd signup screen** - `DuoptimumSignUpHandler` renders uniquely-named `duoptimum_signup.html` (`authPage='signup'`); `BootstrapAdminSignUpHandler` rebased onto it so the bootstrap-admin flow is antd too. Live `/hub/signup` currently 404s because `JUPYTERHUB_SIGNUP_ENABLED=0` (signup disabled, handler 404s before render) - correct; renders antd when signup is enabled
   - log: 2026-06-16 fixed (auth.py DuoptimumSignUpHandler, duoptimum_signup.html, config bootstrap rebase); wiring confirmed in the running hub
@@ -4525,7 +4525,7 @@ Two mutually-exclusive paths create the first admin: env-password pre-provisioni
 
 - [x] **Both paths supported** - env-password (`JUPYTERHUB_ADMIN_PASSWORD`) and self-signup are both first-class; mutually exclusive (env password sets `_ADMIN_PROVISIONING_REQUESTED`, which closes the signup bootstrap window)
   - log: 2026-06-20 implemented
-- [x] **Deterministic provisioning anchor** - `provision_admin_userinfo` runs in `BootstrapAdminAuthenticator.__init__` after `super().__init__()`; `users_info` is guaranteed to exist there (NativeAuth `add_new_table`), so the INSERT never silently no-ops (the original bug was provisioning at config-load on a fresh volume, before the table/ORM existed)
+- [x] **Deterministic provisioning anchor** - `provision_admin_userinfo` runs in `DuoptimumNativeAuthenticator.__init__` after `super().__init__()`; `users_info` is guaranteed to exist there (NativeAuth `add_new_table`), so the INSERT never silently no-ops (the original bug was provisioning at config-load on a fresh volume, before the table/ORM existed)
   - log: 2026-06-20 implemented; full init-time lifecycle simulated (create -> fresh-session read -> login verify -> idempotent restart)
 - [x] **ORM, single session** - provisioning uses the authenticator's `self.db` + NativeAuth `UserInfo`; stored bcrypt hash is byte-identical to a normal signup; no second sqlite connection to the live DB file
   - log: 2026-06-20 implemented (`admin_bootstrap.provision_admin_userinfo`)

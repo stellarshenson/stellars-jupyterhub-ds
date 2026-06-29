@@ -18,7 +18,7 @@ from .api_keys_pool import (
     pick_free_slot,
     pool_label_key,
 )
-from .auth import DuoptimumHubAuthenticator, DuoptimumSignUpHandler, StellarsNativeAuthenticator
+from .auth import DuoptimumNativeAuthenticator, DuoptimumSignUpHandler
 from .branding import setup_branding
 from .docker_proxy import register_user, unregister_user
 from .events import register_events
@@ -66,8 +66,7 @@ __all__ = [
     "build_app_protection",
     "parse_int",
     "ratelimit_disabled",
-    "StellarsNativeAuthenticator",
-    "DuoptimumHubAuthenticator",
+    "DuoptimumNativeAuthenticator",
     "DuoptimumSignUpHandler",
     "env_for_slot",
     "mask_last4",
