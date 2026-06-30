@@ -40,7 +40,7 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <h2 style={{ fontSize: 16, margin: 0 }}>Server Control</h2>
+          <h2 style={{ fontSize: 16, margin: 0 }}>My Server Control</h2>
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {/* the "Update available" advisory sits to the LEFT of the status pill (operator) */}
             {running && hero.upgradeAvailable && (
