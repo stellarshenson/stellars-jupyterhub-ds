@@ -10,7 +10,8 @@ import type { ProColumns } from '@ant-design/pro-components'
 import { PageHeader } from '../components/PageHeader'
 import { ServerHero } from '../components/ServerHero'
 import { MetricCard } from '../components/MetricCard'
-import { ResourceBars, ActivityMeter } from '../components/meters'
+import { HostStatusCard } from '../components/HostStatusCard'
+import { ActivityMeter } from '../components/meters'
 import { StatusPill } from '../components/StatusPill'
 import { CardHeadLink } from '../components/CardHeadLink'
 import { CappedTags } from '../components/CappedTags'
@@ -23,7 +24,7 @@ import { useIsMobile } from '../lib/useIsMobile'
 import { useResponsiveColumns } from '../lib/useResponsiveColumns'
 import MobileHome from './MobileHome'
 import { timeAgoShort } from '../lib/format'
-import { useEffectiveGrants, useEvents, useServerHero, useServers, useStats, useTotalResources, useUser } from '../hooks/queries'
+import { useEffectiveGrants, useEvents, useServerHero, useServers, useStats, useUser } from '../hooks/queries'
 import { invalidate } from '../services/actions'
 import { useServerLifecycle } from '../app/ServerLifecycle'
 import type { ServerRow, ServerStatus } from '../services/types'
@@ -187,8 +188,6 @@ function AdminHome() {
   const { username } = useRole()
   const { data: stats } = useStats()
   const { data: hero } = useServerHero(username)
-  const { data: total } = useTotalResources()
-  const hostCpuMode = usePref('cpuModeHostStatus') // 'cores' = summed cores-used label; bar fill unchanged
   const s = stats?.servers
   const u = stats?.users
   // below xl (1200) the Quick Actions + Recent Events side column is dropped and the
@@ -196,31 +195,18 @@ function AdminHome() {
   // resolve so a desktop never flashes the narrow view (mirrors useResponsiveColumns)
   const screens = Grid.useBreakpoint()
   const sideColumn = !Object.values(screens).some(Boolean) || screens.xl
-
-  // Host Status rows gated on the provider's declared capabilities (total.caps).
-  // caps absent (error path / old backend) -> each defaults to shown, so the view
-  // is unchanged. GPU row also needs real data (matches ServerHero). No rows ->
-  // the panel is hidden entirely.
-  const hostRows = total
-    ? [
-        ...(total.caps?.cpu !== false
-          ? [{ label: 'CPU', value: total.cpu, valueLabel: hostCpuMode === 'cores' && total.cpuAggregateLabel ? total.cpuAggregateLabel : `${total.cpu}%`, tip: total.cpuTip, error: total.cpuError }]
-          : []),
-        ...(total.caps?.mem !== false
-          ? [{ label: 'Memory', value: total.mem, tip: total.memTip, error: total.memError }]
-          : []),
-        ...(total.caps?.gpu !== false && (total.gpus !== undefined || total.gpuDevices !== undefined)
-          ? [{ label: 'GPU', value: total.gpu, gpus: total.gpus, gpuDevices: total.gpuDevices }]
-          : []),
-      ]
-    : []
+  // below lg (992) the four rigid metric columns crush the Host Status bars, so
+  // reflow to two columns: Servers + Users on row one, Host Status (span 2) takes
+  // the full second row. Default to the wide layout until breakpoints resolve.
+  const wideMetrics = !Object.values(screens).some(Boolean) || screens.lg
+  const metricCols = wideMetrics ? 'repeat(4, 1fr)' : 'repeat(2, 1fr)'
 
   return (
     <>
       <PageHeader title="Home" sub="Platform at a glance - what is running and what needs attention" />
       {hero && <ServerHero hero={hero} resourcesTitle="My Server Status" />}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: metricCols, gap: 16 }}>
         {s && (
           <MetricCard
             icon="server"
@@ -263,14 +249,9 @@ function AdminHome() {
             }
           />
         )}
-        {/* show the titled card while loading (total not yet in) and when there are
-            rows; hide it only once loaded with an empty capability set (no panel) */}
-        {(!total || hostRows.length > 0) && (
-          <Card style={{ gridColumn: 'span 2' }}>
-            <h3 style={{ fontSize: 14, margin: '0 0 12px' }}>Host Status</h3>
-            {total && <ResourceBars rows={hostRows} />}
-          </Card>
-        )}
+        {/* span 2 -> half-width beside the two metric cards at lg+, full second row
+            once the grid reflows to two columns below lg */}
+        <HostStatusCard style={{ gridColumn: 'span 2' }} />
       </div>
 
       <PendingCallout count={u?.pending ?? 0} />

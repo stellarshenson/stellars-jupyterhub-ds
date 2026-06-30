@@ -7,6 +7,7 @@ import { Button, Card, Tag } from 'antd'
 import { Link, useNavigate } from 'react-router-dom'
 import { StatusPill } from '../components/StatusPill'
 import { NotificationPill } from '../components/NotificationPill'
+import { HostStatusCard } from '../components/HostStatusCard'
 import { TtlGadget } from '../components/meters'
 import { Icon } from '../components/Icon'
 import { timeAgoShort } from '../lib/format'
@@ -106,6 +107,7 @@ export default function MobileHome() {
       <MyServerCard />
       {role === 'admin' && (
         <>
+          <HostStatusCard style={{ marginTop: 16 }} />
           <MobileServersWidget />
           <div style={{ marginTop: 16 }}>
             {/* mobile exposes only the Servers screen, not Users */}
