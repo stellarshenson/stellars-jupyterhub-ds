@@ -8,12 +8,6 @@ export const THRESHOLDS = {
   timeLeftWarnMin: 60, // UI: time-left turns amber below this
 }
 
-export const IDLE_CULLER = {
-  timeoutH: 4,
-  activityTargetH: 8,
-  maxExtensionH: 12,
-}
-
 // Resource-bar (CPU / memory) fill-colour rule, in percent. Fixed bands, NOT a
 // blend through the accent (blending warning with the blue accent muddied it into
 // a dim brown): normal accent below `warnPct`, full (normal) warning at/above

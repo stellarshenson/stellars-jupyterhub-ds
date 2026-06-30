@@ -10,7 +10,7 @@
  * One mapping, no per-page ad-hoc Tag colours. */
 
 // notification/broadcast `type` -> doh-pill tone class
-export const NOTIFICATION_TONE: Record<string, string> = {
+const NOTIFICATION_TONE: Record<string, string> = {
   success: 'running',
   warning: 'idle',
   default: 'stopped',

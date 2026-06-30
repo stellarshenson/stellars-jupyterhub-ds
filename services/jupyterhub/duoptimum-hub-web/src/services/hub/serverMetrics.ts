@@ -6,13 +6,6 @@
 import { QUOTA_COLOR } from '../config'
 
 const round1 = (n: number) => Math.round(n * 10) / 10
-const clampPct = (n: number) => Math.max(0, Math.min(100, Math.round(n)))
-
-/** % of the ASSIGNED cores a server is using (cpu_percent is cores-used x 100, so
- * divide by assigned cores). Capped 0-100 - this is the Server Status hero CPU bar
- * fill (the one bar capped at its assigned cores). */
-export const cpuAssignedPct = (cpuPercent: number | null | undefined, cores: number | null | undefined): number =>
-  cpuPercent == null ? 0 : clampPct(cores && cores > 0 ? cpuPercent / cores : cpuPercent)
 
 /** CPU usage in the docker/top convention: `cpu_percent` is already cores-used x
  * 100 (100% = one core), so a server saturating 13 cores reads 1300%. Rounded,
@@ -42,7 +35,7 @@ export const memQuotaPct = (memoryPercent: number | null | undefined): number | 
 
 /** Quota-crossing clause for a usage % of the assigned quota: " (quota reached)" at
  * or over the danger band, " (over warning threshold)" in the warn band, else "". */
-export const quotaCrossing = (pct: number | null | undefined): string =>
+const quotaCrossing = (pct: number | null | undefined): string =>
   pct == null ? '' : pct >= QUOTA_COLOR.dangerPct ? ' (quota reached)' : pct >= QUOTA_COLOR.warnPct ? ' (over warning threshold)' : ''
 
 /** Counter colour by % of the ASSIGNED quota: danger (red) at/over quota, warning

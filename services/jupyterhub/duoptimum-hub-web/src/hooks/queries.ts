@@ -49,8 +49,6 @@ export const useServerHero = (user: string) =>
     refetchInterval: (q) => (heroSpawning(q.state.data) ? FAST_POLL : SLOW_POLL),
     refetchIntervalInBackground: false,
   })
-export const useSessionInfo = (user: string) =>
-  useQuery({ queryKey: ['session', user], queryFn: () => ds().getSessionInfo(user) })
 export const useUserVolumes = (user: string) =>
   useQuery({ queryKey: ['user-volumes', user], queryFn: () => ds().getUserVolumes(user), enabled: !!user })
 export const useUserVolumeSizes = (user: string) =>

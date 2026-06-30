@@ -16,7 +16,7 @@ import type { GpuDevice } from '../services/types'
 // exceed 100% when the user works more than the daily target) plus the real
 // average active hours/day behind it. `pct` is the uncapped figure when known,
 // else the capped meter value. The 3-day phrasing matches the 72h half-life.
-export function activityTitle(pct: number | null, hours?: number | null): string {
+function activityTitle(pct: number | null, hours?: number | null): string {
   const lines: string[] = []
   if (pct != null) lines.push(`${pct}% of the daily activity target`)
   if (hours != null) lines.push(`Active on average ${hours}h/day over the last 3 days`)
@@ -134,26 +134,6 @@ function gpuTip(d: GpuDevice | undefined, utilPct?: number, idx?: number): strin
   return lines.join('\n')
 }
 
-export function GpuInventory({ devices }: { devices: GpuDevice[] }) {
-  return (
-    <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-      {devices.map((d) => (
-        <span
-          key={d.index}
-          title={gpuTip(d)}
-          style={{
-            display: 'inline-flex', alignItems: 'baseline', gap: 5, padding: '1px 8px', borderRadius: 6,
-            fontSize: 12, lineHeight: 1.5, background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
-          }}
-        >
-          <small style={{ opacity: 0.65 }}>{d.index}</small>
-          {shortGpuName(d.name)}
-        </span>
-      ))}
-    </span>
-  )
-}
-
 export interface ResourceRow {
   label: string
   value: number
@@ -171,7 +151,7 @@ export interface ResourceRow {
 // `dangerPct`. Only the warn..danger span blends - and that's warm warning -> red
 // (adjacent hues) so it stays saturated, never the dim brown that warning-mixed-
 // with-blue produced. Thresholds in `BAR_COLOR`; stated on /design-system.
-export function barColor(pct: number): string | undefined {
+function barColor(pct: number): string | undefined {
   const { warnPct, dangerPct } = BAR_COLOR
   if (pct < warnPct) return undefined // calm: CSS default accent, no tint
   if (pct >= dangerPct) return 'var(--color-danger)' // full danger

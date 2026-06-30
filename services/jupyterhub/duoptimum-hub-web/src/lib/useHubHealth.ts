@@ -24,7 +24,6 @@ let fails = 0
 // downSince so the "for XXXX" readout counts from when the hub actually became
 // unreachable, not from the later debounced flip (which lags by FAILS_TO_DOWN polls)
 let firstFailAt: number | null = null
-let timer: ReturnType<typeof setTimeout> | undefined
 // the React Query client, captured from the first mounted hook - single app, one client,
 // so the probe can invalidate stale queries on recovery without per-consumer wiring
 let qc: { invalidateQueries: () => void } | null = null
@@ -65,7 +64,7 @@ async function probe() {
     if (fails >= FAILS_TO_DOWN) apply(true)
   } finally {
     clearTimeout(t)
-    timer = setTimeout(probe, POLL_MS)
+    setTimeout(probe, POLL_MS)
   }
 }
 
@@ -91,15 +90,4 @@ export function useHubHealth(): Health {
   // same client every render in this single-app context)
   qc = useQueryClient()
   return useSyncExternalStore(subscribe, getSnapshot)
-}
-
-// test seam: reset the module singleton between unit tests
-export function __resetHubHealth() {
-  if (timer) clearTimeout(timer)
-  state = { down: false, downSince: null }
-  listeners.clear()
-  probeStarted = false
-  fails = 0
-  firstFailAt = null
-  qc = null
 }

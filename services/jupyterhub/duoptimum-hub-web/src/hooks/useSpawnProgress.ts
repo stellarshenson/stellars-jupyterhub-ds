@@ -4,7 +4,7 @@ import { hubUrl, xsrfToken } from '../services/hub/client'
 import { getDataSource } from '../services/datasource'
 import { invalidate } from '../services/actions'
 
-export type SpawnPhase = 'spawning' | 'ready' | 'failed'
+type SpawnPhase = 'spawning' | 'ready' | 'failed'
 export interface SpawnProgress {
   percent: number
   message: string

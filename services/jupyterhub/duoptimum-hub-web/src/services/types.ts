@@ -37,8 +37,6 @@ export interface ServerRow {
   timeLeftWarn?: boolean // below the warning threshold
 }
 
-export type UserScope = 'authorized' | 'inactive' | 'unauthorized' | 'all'
-
 export interface UserProfile {
   firstName: string
   lastName: string
@@ -60,7 +58,7 @@ export interface UserRow {
   groups: string[]
 }
 
-export interface PolicyTag {
+interface PolicyTag {
   key: string // gpu | mem | cpu | docker | sudo | downloads | api_keys | env_vars | volume_mounts
   label: string // "GPU", "Mem"
   detail?: string // valued detail for the hover tooltip
@@ -86,7 +84,7 @@ export interface GroupConfig {
   sharedVolume?: { name: string; exists: boolean; description?: string } // the standard /mnt/shared volume (label-resolved); name '' / exists false = absent; description from the hub.volume.description label
 }
 
-export interface PolicySection {
+interface PolicySection {
   key: string
   label: string
   enabled: boolean
@@ -98,7 +96,7 @@ export interface PolicySection {
 // ...this}; coerce_config + validate_all on the hub are the safety net. Field
 // names here MUST match the registry exactly. All fields optional - unset keys
 // fall back to the stored config (PUT merges onto existing).
-export interface PolicyEnvVar {
+interface PolicyEnvVar {
   name: string
   value: string
   description?: string
@@ -106,20 +104,20 @@ export interface PolicyEnvVar {
 
 export type VolumeMode = 'ro' | 'rw' // Read / Read-Write
 
-export interface PolicyVolumeMount {
+interface PolicyVolumeMount {
   volume: string
   mountpoint: string
   mode?: VolumeMode // access level; default rw
 }
 
-export interface PolicyApiCred {
+interface PolicyApiCred {
   slot?: string // stable slot id - round-tripped so a running container keeps its credential
   id?: string // pair mode
   secret?: string // pair mode
   key?: string // single mode
 }
 
-export interface PolicyApiKeysPool {
+interface PolicyApiKeysPool {
   enabled: boolean
   mode: '' | 'single' | 'pair'
   env_var_id: string

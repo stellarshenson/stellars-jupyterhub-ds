@@ -124,7 +124,7 @@ export function userServerUrl(name: string): string {
 }
 
 /** Send the browser to the hub login page, preserving where to come back to. */
-export function loginRedirect(): never {
+function loginRedirect(): never {
   const next = encodeURIComponent(window.location.pathname + window.location.search)
   window.location.assign(`${HUB_ROOT}/login?next=${next}`)
   // unreachable in practice; satisfies `never`

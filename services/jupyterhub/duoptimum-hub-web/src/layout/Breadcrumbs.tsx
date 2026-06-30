@@ -4,7 +4,7 @@
 import { Breadcrumb } from 'antd'
 import { Link, useLocation, useMatches } from 'react-router-dom'
 
-export interface CrumbHandle {
+interface CrumbHandle {
   crumb: string
   parent?: { label: string; to: string }
 }

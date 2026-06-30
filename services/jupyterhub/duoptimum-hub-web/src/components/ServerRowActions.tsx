@@ -30,7 +30,7 @@ export interface NavOrigin {
 
 // entering another user's running lab confirms first (you act inside their env);
 // your own opens straight through.
-export function enterSession(user: string, me: string) {
+function enterSession(user: string, me: string) {
   if (user === me) {
     window.location.assign(userServerUrl(user))
     return
