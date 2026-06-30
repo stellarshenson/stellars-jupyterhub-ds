@@ -49,7 +49,7 @@ export interface Palette {
   shadowOverlay: string
 }
 
-export const DARK: Palette = {
+const DARK: Palette = {
   bg: '#252b32',
   bgSubtle: '#2a313a',
   surface: '#303841',
@@ -89,7 +89,7 @@ export const DARK: Palette = {
   shadowOverlay: '0 16px 48px rgba(0,0,0,.5)',
 }
 
-export const LIGHT: Palette = {
+const LIGHT: Palette = {
   bg: '#f5f7fa',
   bgSubtle: '#eef1f5',
   surface: '#ffffff',
@@ -138,6 +138,3 @@ export const FONT = {
   sans: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
   mono: '"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace',
 }
-
-export const SIDEBAR_W = 248
-export const TOPBAR_H = 56

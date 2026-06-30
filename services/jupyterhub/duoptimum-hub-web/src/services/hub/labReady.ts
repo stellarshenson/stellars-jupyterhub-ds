@@ -9,8 +9,8 @@ import { hubGet } from './client'
  * only avoids the early-race spawn-pending / 503 page). Pure of React; the single
  * implementation used by both the Starting page and the server-lifecycle gate. */
 
-export const LAB_READY_POLL_MS = 1_000
-export const LAB_READY_DEADLINE_MS = 60_000
+const LAB_READY_POLL_MS = 1_000
+const LAB_READY_DEADLINE_MS = 60_000
 
 /** Resolve true once the lab answers, false on the deadline or on abort. The
  *  caller proceeds in both the ready and deadline cases (deadline = give up

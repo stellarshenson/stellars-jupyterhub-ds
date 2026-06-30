@@ -1,13 +1,5 @@
 /* Small formatting helpers shared across pages. */
 import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
-
-dayjs.extend(relativeTime)
-
-export function timeAgo(iso?: string): string {
-  if (!iso) return 'never'
-  return dayjs(iso).fromNow()
-}
 
 // compact relative time ("2m", "5h", "3d", "4mo", "1y") - the short form used
 // consistently across lists (Servers, Users)

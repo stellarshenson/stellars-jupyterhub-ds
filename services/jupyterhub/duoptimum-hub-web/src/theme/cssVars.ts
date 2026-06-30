@@ -5,7 +5,7 @@
 import { PALETTES, SPACE, RADIUS, TEXT, FONT } from './tokens'
 import type { ResolvedTheme } from './tokens'
 
-export function themeVars(mode: ResolvedTheme): Record<string, string> {
+function themeVars(mode: ResolvedTheme): Record<string, string> {
   const p = PALETTES[mode]
   return {
     '--color-bg': p.bg,

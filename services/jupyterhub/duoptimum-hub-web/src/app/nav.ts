@@ -27,7 +27,7 @@ export function isParent(n: NavNode): n is NavParent {
   return (n as NavParent).children !== undefined
 }
 
-export const NAV_ADMIN: NavGroup[] = [
+const NAV_ADMIN: NavGroup[] = [
   {
     group: '',
     items: [
@@ -59,7 +59,7 @@ export const NAV_ADMIN: NavGroup[] = [
   },
 ]
 
-export const NAV_USER: NavGroup[] = [
+const NAV_USER: NavGroup[] = [
   {
     group: '',
     items: [
@@ -88,14 +88,14 @@ export type CmdAction =
   | { group: string; icon: IconKey; label: string; kind: 'nav'; to: string; hint?: string }
   | { group: string; icon: IconKey; label: string; kind: 'action'; action: 'open-server' | 'restart-server'; hint?: string }
 
-export const ACTIONS_ADMIN: CmdAction[] = [
+const ACTIONS_ADMIN: CmdAction[] = [
   { group: 'Create', icon: 'user', label: 'Add User', hint: 'U', kind: 'nav', to: '/users/new' },
   { group: 'Create', icon: 'group', label: 'Create Group', hint: 'G', kind: 'nav', to: '/groups/new' },
   { group: 'Navigate', icon: 'activity', label: 'Events Log', kind: 'nav', to: '/events' },
   { group: 'Navigate', icon: 'megaphone', label: 'Broadcast Notification', kind: 'nav', to: '/notifications' },
 ]
 
-export const ACTIONS_USER: CmdAction[] = [
+const ACTIONS_USER: CmdAction[] = [
   { group: 'My Server', icon: 'play', label: 'Open My Server', kind: 'action', action: 'open-server' },
   { group: 'My Server', icon: 'restart', label: 'Restart My Server', kind: 'action', action: 'restart-server' },
 ]
