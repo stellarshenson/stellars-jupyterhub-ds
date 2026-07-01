@@ -28,7 +28,8 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
   const lifecycle = useServerLifecycle()
   const busy = lifecycle.busyOf(hero.user)
   // becoming-ready window (just started/restarted, lab not yet serving): the Open
-  // control shows "Opening..." and stays disabled until the lab truly answers (DEF-25)
+  // control reads "Starting" with a spinner and stays disabled until the lab truly
+  // answers (DEF-25)
   const opening = running && !lifecycle.isServing(hero.user)
   // CPU display mode for the Server Status bar (label only - the fill is unchanged)
   const cpuMode = usePref('cpuModeServerStatus')
@@ -53,7 +54,7 @@ export function ServerHero({ hero, resourcesTitle }: { hero: Hero; resourcesTitl
           {running ? (
             <>
               <Button type="primary" icon={<Icon name="play" size={15} filled />} loading={opening} disabled={!!busy || opening} onClick={() => window.location.assign(userServerUrl(hero.user))}>
-                {opening ? 'Opening…' : 'Open Lab'}
+                {opening ? 'Starting' : 'Open Lab'}
               </Button>
               <Button icon={<Icon name="restart" size={16} />} loading={busy === 'restart'} disabled={!!busy} onClick={() => lifecycle.restart(hero.user)}>
                 Restart
