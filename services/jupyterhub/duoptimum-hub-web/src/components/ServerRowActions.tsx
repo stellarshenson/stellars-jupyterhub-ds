@@ -72,11 +72,12 @@ export function rowActions(r: ServerRow, navigate: NavigateFunction, lf: Lifecyc
     )
   }
   // becoming-ready window (just started/restarted, lab not yet serving): the enter
-  // action shows a spinner and stays disabled until the lab truly answers (DEF-25)
+  // action stays disabled (no spinner) until the lab truly answers (DEF-25); during a
+  // restart the spinner lives on the restart action, the enter action is only disabled
   const opening = !lf.isServing(r.user)
   return (
     <div className="doh-row doh-actions" style={{ justifyContent: 'flex-end' }}>
-      <IconAction icon="play" title={opening ? 'Opening…' : r.user === me ? 'Enter session' : `Open ${r.user}'s session`} tone="primary" busy={opening} disabled={busy || opening} onClick={() => enterSession(r.user, me)} />
+      <IconAction icon="play" title={opening ? 'Starting' : r.user === me ? 'Enter session' : `Open ${r.user}'s session`} tone="primary" disabled={busy || opening} onClick={() => enterSession(r.user, me)} />
       <IconAction icon="restart" title="Restart" busy={mode === 'restart'} disabled={busy} onClick={() => lf.restart(r.user)} />
       <IconAction icon="stop" title="Stop" tone="danger" filled busy={mode === 'stop'} disabled={busy} onClick={() => lf.stop(r.user)} />
     </div>
