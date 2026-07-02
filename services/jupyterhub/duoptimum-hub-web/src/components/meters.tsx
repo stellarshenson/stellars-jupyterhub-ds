@@ -3,9 +3,10 @@
  * never inline (per the design language). */
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { Button, Popover, Slider } from 'antd'
+import { Button, Modal, Popover, Slider } from 'antd'
 import { Icon } from './Icon'
 import { fmtMinutes } from '../lib/format'
+import { useIsMobile } from '../lib/useIsMobile'
 import { litBars, meterTone } from '../lib/activityMeter'
 import { ANIMATION, BAR_COLOR, GPU_NAME_MAX_WORDS, TTL_COLOR } from '../services/config'
 import { gpuSupported } from '../app/capabilities'
@@ -366,6 +367,42 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, displayCeilin
   // during a boost the whole gadget recolours to the accent hue (fixed); the glow is brightness/
   // saturation lifted on that hue by the keyframe, never a hue change mid-pulse
   const tone = boost ? 'var(--color-accent)' : color
+  // below the mobile breakpoint the Popover (anchored to this small button, which
+  // sits at the right edge of the row) overflows the narrow viewport and is
+  // cropped - present the identical control as a centered, width-capped Modal that
+  // always fits the phone; desktop keeps the click Popover.
+  const isMobile = useIsMobile()
+  const extendBody = (
+    <div style={{ width: isMobile ? '100%' : 240 }}>
+      <Slider
+        className="doh-ttl-slider"
+        min={1}
+        max={maxH}
+        step={1}
+        value={hours}
+        onChange={(v) => setHours(v as number)}
+        marks={marks}
+        tooltip={{ formatter: (v) => (v != null && v >= maxH ? 'max' : `+${v}h`) }}
+      />
+      <Button size="small" type="primary" block onClick={apply} style={{ marginTop: 6 }}>
+        {atMax ? 'Extend to Max' : `Extend +${hours}h`}
+      </Button>
+    </div>
+  )
+  // label stays "Extend"; disabled for the in-flight extend so it can't be re-clicked
+  // mid-animation. fixed min-width keeps the flex:1 bar from jumping. on mobile the
+  // button opens the Modal directly; on desktop the Popover attaches its own click.
+  const triggerBtn = (
+    <Button
+      size="small"
+      disabled={atCeiling || boost}
+      style={{ minWidth: 96 }}
+      title={atCeiling ? 'Already at the maximum session length' : `Add up to ${maxH}h before your lab is stopped for inactivity`}
+      onClick={isMobile ? () => setOpen(true) : undefined}
+    >
+      Extend
+    </Button>
+  )
   return (
     <div className="doh-ttl" style={{ '--doh-ttl-anim': `${ANIMATION.ttlExtendMs}ms` } as CSSProperties}>
       <span className={boost ? 'doh-ttl-bar doh-ttl-boost' : 'doh-ttl-bar'} style={{ flex: 1, minWidth: 0, color: tone }} title={barTip}>
@@ -388,35 +425,32 @@ export function TtlGadget({ timeLeftMin, baseMin, maxAddHours = 0, displayCeilin
           up {uptimeLabel}
         </span>
       )}
-      <Popover
-        open={open}
-        onOpenChange={setOpen}
-        trigger="click"
-        title="Extend session"
-        content={
-          <div style={{ width: 240 }}>
-            <Slider
-              className="doh-ttl-slider"
-              min={1}
-              max={maxH}
-              step={1}
-              value={hours}
-              onChange={(v) => setHours(v as number)}
-              marks={marks}
-              tooltip={{ formatter: (v) => (v != null && v >= maxH ? 'max' : `+${v}h`) }}
-            />
-            <Button size="small" type="primary" block onClick={apply} style={{ marginTop: 6 }}>
-              {atMax ? 'Extend to Max' : `Extend +${hours}h`}
-            </Button>
-          </div>
-        }
-      >
-        {/* label stays "Extend"; the button is just disabled for the in-flight extend so it
-          * can't be re-clicked mid-animation. fixed min-width keeps the flex:1 bar from jumping */}
-        <Button size="small" disabled={atCeiling || boost} style={{ minWidth: 96 }} title={atCeiling ? 'Already at the maximum session length' : `Add up to ${maxH}h before your lab is stopped for inactivity`}>
-          Extend
-        </Button>
-      </Popover>
+      {isMobile ? (
+        <>
+          {triggerBtn}
+          <Modal
+            open={open}
+            onCancel={() => setOpen(false)}
+            title="Extend session"
+            footer={null}
+            centered
+            width="88%"
+            style={{ maxWidth: 360 }}
+          >
+            {extendBody}
+          </Modal>
+        </>
+      ) : (
+        <Popover
+          open={open}
+          onOpenChange={setOpen}
+          trigger="click"
+          title="Extend session"
+          content={extendBody}
+        >
+          {triggerBtn}
+        </Popover>
+      )}
     </div>
   )
 }
