@@ -44,6 +44,22 @@ export interface UserProfile {
   mustChangePassword?: boolean // user must change password before they can spawn (admin-set)
 }
 
+// One per-user environment variable injected into the lab container on spawn.
+// Same wire shape as a group PolicyEnvVar; description is UI metadata, never injected.
+export interface UserEnvVar {
+  name: string
+  value: string
+  description: string
+}
+
+// GET /users/{name}/env-vars: the user's set + the reserved blacklist so the editor
+// can validate names live (the backend enforces the same rules on save).
+export interface UserEnvVarsData {
+  envVars: UserEnvVar[]
+  reservedNames: string[]
+  reservedPrefixes: string[]
+}
+
 export interface UserRow {
   name: string
   fullName?: string

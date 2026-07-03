@@ -40,6 +40,8 @@ export const useUser = (name: string) =>
   useQuery({ queryKey: ['user', name], queryFn: () => ds().getUser(name), enabled: !!name })
 export const useUserProfile = (name: string) =>
   useQuery({ queryKey: ['user-profile', name], queryFn: () => ds().getUserProfile(name), enabled: !!name })
+export const useUserEnvVars = (name: string) =>
+  useQuery({ queryKey: ['user-env-vars', name], queryFn: () => ds().getUserEnvVars(name), enabled: !!name })
 export const useGroupConfig = (name: string) =>
   useQuery({ queryKey: ['group-config', name], queryFn: () => ds().getGroupConfig(name), enabled: !!name })
 export const useServerHero = (user: string) =>

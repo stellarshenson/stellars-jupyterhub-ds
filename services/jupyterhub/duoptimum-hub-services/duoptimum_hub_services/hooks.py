@@ -20,6 +20,7 @@ from .docker_proxy import unregister_user
 from .event_log import record_event
 from .groups_config import GroupsConfigManager
 from .policy import ApplyContext, apply_policies, resolve_policies, run_hub_startup
+from .user_env_vars import UserEnvVarsManager
 from .user_profiles import UserProfileManager
 
 __all__ = (
@@ -124,6 +125,18 @@ def make_pre_spawn_hook(
 
         app = JupyterHub.instance()
         actx = replace(base_actx, app=app, username=username)
+
+        # Per-user env vars (self-service / admin-managed) injected BEFORE the
+        # policies so admin/group/GPU/sudo env wins on a name clash, and reserved
+        # names are stripped again defensively. Fail-open: a store error must never
+        # block a spawn.
+        try:
+            user_env = UserEnvVarsManager.get_instance().get_injectable(
+                username, reserved_env_var_names, reserved_env_var_prefixes)
+            if user_env:
+                spawner.environment.update(user_env)
+        except Exception as e:
+            spawner.log.warning(f"[UserEnvVars] injection failed for {username}, skipping: {e}")
 
         # Each policy model imposes its own resolved slice (docker, gpu, sudo,
         # env, volumes, api-keys, mem, cpu, downloads), in registry order.

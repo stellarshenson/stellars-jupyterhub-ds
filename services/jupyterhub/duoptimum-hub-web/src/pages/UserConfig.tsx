@@ -3,7 +3,7 @@
  * this. All writes mocked. */
 import { useEffect, useState } from 'react'
 import { Button, Card, Form, Input, Space, Switch, Tabs } from 'antd'
-import { appModal } from '../services/actions'
+import { appModal, notify } from '../services/actions'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { FormFooter } from '../components/FormFooter'
@@ -12,9 +12,12 @@ import { Icon } from '../components/Icon'
 import { Notice } from '../components/Notice'
 import { VolumeReset } from '../components/VolumeReset'
 import { RemoveUserModal } from '../components/RemoveUserModal'
+import { EnvVarEditor } from '../components/EnvVarEditor'
+import type { EnvVar } from '../components/EnvVarEditor'
+import { envVarsHaveErrors } from '../lib/envVars'
 import { useRole } from '../app/RoleContext'
-import { useEffectiveGrants, useServerHero, useUser, useUserProfile } from '../hooks/queries'
-import { addMember, setUserAuthorization, removeMember, renameUser, saveUserProfile, setAdmin, setForcePasswordChange, setUserPassword } from '../services/ops'
+import { useEffectiveGrants, useServerHero, useUser, useUserEnvVars, useUserProfile } from '../hooks/queries'
+import { addMember, setUserAuthorization, removeMember, renameUser, saveUserEnvVars, saveUserProfile, setAdmin, setForcePasswordChange, setUserPassword } from '../services/ops'
 import { PLATFORM } from '../services/config'
 import { adminUser, isAdminUser } from '../app/capabilities'
 import { genPassword } from '../lib/password'
@@ -33,11 +36,14 @@ export default function UserConfig() {
   const backTo = (state as { from?: { to: string } } | null)?.from?.to ?? '/users'
   const { data: user } = useUser(name)
   const { data: userProfile } = useUserProfile(name)
+  const { data: envData } = useUserEnvVars(name)
   const { data: grants = [] } = useEffectiveGrants(name)
   // server status for the rename gate (rename only while the lab is stopped)
   const { data: hero } = useServerHero(name)
   const [form] = Form.useForm()
   const [groups, setGroups] = useState<string[]>([])
+  const [envVars, setEnvVars] = useState<EnvVar[]>([])
+  const reserved = { names: envData?.reservedNames ?? [], prefixes: envData?.reservedPrefixes ?? [] }
   const [tab, setTab] = useState('profile')
   const [removeOpen, setRemoveOpen] = useState(false)
   const [pw, setPw] = useState('')
@@ -73,11 +79,32 @@ export default function UserConfig() {
   useEffect(() => {
     if (userProfile) form.setFieldsValue({ first: userProfile.firstName, last: userProfile.lastName, email: userProfile.email, forcePw: !!userProfile.mustChangePassword })
   }, [userProfile, form])
+  useEffect(() => {
+    if (envData) setEnvVars(envData.envVars.map((e) => ({ name: e.name, value: e.value, desc: e.description })))
+  }, [envData])
 
   const save = async () => {
     try {
       const v = await form.validateFields()
+      // only touch env vars when they CHANGED vs the loaded set - never REPLACE-wipe a
+      // set we never loaded (envData undefined) or one the user left untouched
+      const wireEnv = envVars.map((e) => ({ name: e.name, value: e.value, description: e.desc }))
+      const envChanged = !!envData && JSON.stringify(wireEnv) !== JSON.stringify(envData.envVars)
+      // env set never loaded (GET failed/pending) but the user typed vars -> cannot safely
+      // REPLACE (prior state unknown); surface it instead of silently dropping the input
+      if (!envData && envVars.some((e) => e.name.trim())) {
+        setTab('environment')
+        notify.error('Could not load environment variables - reload the page before editing them')
+        return
+      }
+      // block save on a bad env-var name (reserved/invalid/duplicate) before any write
+      if (envChanged && envVarsHaveErrors(envVars, reserved)) {
+        setTab('environment')
+        notify.error('Fix the highlighted environment variable names before saving')
+        return
+      }
       await saveUserProfile(name, { firstName: v.first ?? '', lastName: v.last ?? '', email: v.email ?? '' })
+      if (envChanged) await saveUserEnvVars(name, wireEnv)
       const effAdmin = isAdminUser(name, !!user?.admin)
       if (!isBuiltinAdmin && user && !!v.admin !== effAdmin) await setAdmin(name, !!v.admin)
       // admins are always authorised -> the switch is hidden for them; only persist for non-admins
@@ -194,7 +221,16 @@ export default function UserConfig() {
 
   const volumesTab = <VolumeReset name={name} />
 
-  const widths: Record<string, number> = { profile: 680, groups: 1000, volumes: 880 }
+  const envTab = (
+    <div>
+      <div className="doh-page-sub" style={{ marginBottom: 12 }}>
+        Variables injected into {name}'s lab container when it starts. Platform- and policy-owned names are reserved and cannot be set here. Descriptions are notes only - they are not passed to the container.
+      </div>
+      <EnvVarEditor value={envVars} onChange={setEnvVars} reserved={reserved} />
+    </div>
+  )
+
+  const widths: Record<string, number> = { profile: 680, groups: 1000, volumes: 880, environment: 880 }
 
   return (
     <>
@@ -207,6 +243,7 @@ export default function UserConfig() {
             { key: 'profile', label: 'Profile', children: profile },
             { key: 'groups', label: 'Groups', children: groupsTab },
             { key: 'volumes', label: 'Volumes', children: volumesTab },
+            { key: 'environment', label: 'Environment', children: envTab },
           ]}
         />
         <FormFooter

@@ -197,6 +197,7 @@ COPY --chmod=644  services/jupyterhub/templates/proxy-sockets/README.md /var/run
 COPY --chmod=644  config/jupyterhub_config.py /srv/jupyterhub/jupyterhub_config.py
 COPY --chmod=644  services/jupyterhub/conf/settings_dictionary.yml /srv/jupyterhub/settings_dictionary.yml
 COPY --chmod=644  services/jupyterhub/conf/volumes_dictionary.yml /srv/jupyterhub/volumes_dictionary.yml
+COPY --chmod=644  services/jupyterhub/conf/protected_env_dictionary.yml /srv/jupyterhub/protected_env_dictionary.yml
 
 ## runtime config dir (populated every boot by 01_provision_config.sh
 ## from /mnt/user_config or /srv/jupyterhub/jupyterhub_config.py)

@@ -57,6 +57,7 @@ from duoptimum_hub_services.docker_utils import (  # {network}-token net resolut
     resolve_lab_network,        # role=lab net (hub<->lab), required
     resolve_gpuinfo_network,    # role=gpuinfo net (hub<->sidecar), optional (GPU off when absent)
 )
+from duoptimum_hub_services.protected_env import load_protected_env  # protected-env dictionary -> reserved names/prefixes (single source)
 
 # Tornado request handlers - registered via c.DuoptimumHub.registered_handlers
 # (our non-deprecated replacement for JupyterHub.extra_handlers; see app.py)
@@ -89,6 +90,7 @@ from duoptimum_hub_services.handlers import (
     UserForcePasswordChangeHandler,         # POST /api/users/{user}/force-password-change - admin set/clear the gate
     UserRenameHandler,                      # POST /api/users/{user}/rename - admin rename (records who renamed whom)
     UserDisplayPreferencesHandler,          # GET/PUT /api/users/{user}/display-preferences - per-user UI options
+    UserEnvVarsHandler,                     # GET/PUT /api/users/{user}/env-vars - per-user environment variables
     EffectiveGrantsHandler,                 # GET  /api/users/{user}/effective-grants - resolved group policy grants
 )
 
@@ -466,14 +468,13 @@ c.DockerSpawner.environment = {
     'JUPYTERHUB_NETWORK_NAME': resolve_lab_network(),                                    # Docker network connecting hub + user containers; needed by in-container scripts that attach sidecars to the same net
 }
 
-# Reserved env var names groups cannot override - every key we inject globally
-# plus the GPU vars the pre-spawn hook sets per-user (NVIDIA_VISIBLE_DEVICES is
-# the GPU selector and must not be settable by a group).
-RESERVED_ENV_VAR_PREFIXES = ('JUPYTERHUB_', 'JPY_', 'MEM_', 'CPU_')
-RESERVED_ENV_VAR_NAMES = set(c.DockerSpawner.environment.keys()) | {
-    'ENABLE_GPU_SUPPORT', 'ENABLE_GPUSTAT', 'NVIDIA_VISIBLE_DEVICES', 'CUDA_VISIBLE_DEVICES',
-    'DOCKER_HOST',  # set per-user by the limited-docker proxy wiring; groups must not override
-}
+# Reserved env var names/prefixes a user or group must NOT override. Loaded from the
+# baked protected-env dictionary (single source of truth, operator-extensible) and
+# unioned with every key we inject globally (derived from c.DockerSpawner.environment,
+# so those never drift). Fans out unchanged to stellars_config + the pre-spawn hook +
+# the per-user env handler + the group policy env validator.
+_protected_names, RESERVED_ENV_VAR_PREFIXES = load_protected_env('/srv/jupyterhub/protected_env_dictionary.yml')
+RESERVED_ENV_VAR_NAMES = set(c.DockerSpawner.environment.keys()) | _protected_names
 
 # GPU device_requests is set per-user by the pre-spawn hook based on resolved
 # group config. Left empty here so a user who is not in a GPU-enabled group
@@ -777,6 +778,7 @@ c.DuoptimumHub.registered_handlers = [
     (r'/api/users/([^/]+)/force-password-change', UserForcePasswordChangeHandler), # POST - admin set/clear force-pw gate
     (r'/api/users/([^/]+)/rename', UserRenameHandler),               # POST - admin rename (records who renamed whom)
     (r'/api/users/([^/]+)/display-preferences', UserDisplayPreferencesHandler), # GET/PUT - per-user UI options
+    (r'/api/users/([^/]+)/env-vars', UserEnvVarsHandler),            # GET/PUT - per-user environment variables
     (r'/api/users/([^/]+)/effective-grants', EffectiveGrantsHandler), # GET - resolved group policy grants
     (r'/api/user-profiles', UserProfilesListHandler),                # GET - all profiles (Users-list sub-names)
     (r'/api/settings', SettingsDataHandler),                          # GET - platform settings (read-only JSON)

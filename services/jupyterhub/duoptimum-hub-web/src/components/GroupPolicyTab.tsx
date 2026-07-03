@@ -10,6 +10,8 @@ import type { ReactNode } from 'react'
 import { Alert, Button, Checkbox, Input, InputNumber, Modal, Radio, Select, Switch, Table, Tooltip } from 'antd'
 import { Icon } from './Icon'
 import type { IconKey } from './Icon'
+import { EnvVarEditor } from './EnvVarEditor'
+import type { EnvVar } from './EnvVarEditor'
 import { useTotalResources } from '../hooks/queries'
 import { gpuSupported } from '../app/capabilities'
 import { notify } from '../services/actions'
@@ -20,7 +22,6 @@ import type { GroupConfig, PolicyConfig, VolumeMode } from '../services/types'
 const SHARED_MOUNTPOINT = '/mnt/shared'
 const MODE_OPTIONS = [{ value: 'rw', label: 'Read-Write' }, { value: 'ro', label: 'Read' }]
 
-interface EnvVar { name: string; value: string; desc: string }
 interface ApiCred { slot?: string; a: string; b: string }
 interface VolMount { volume: string; mountpoint: string; mode: VolumeMode }
 
@@ -280,20 +281,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       {/* Environment variables */}
       <Section icon="code" title="Environment Variables" on={on.env_vars ?? false} onToggle={toggle('env_vars')}>
         <div className="doh-pol-hint">Set in members' containers. On a name clash across groups, the highest-priority group wins.</div>
-        <Table<EnvVar>
-          size="small"
-          pagination={false}
-          dataSource={envVars}
-          rowKey={(_, i) => `env-${i}`}
-          rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}
-          columns={[
-            { title: 'Name', width: '30%', render: (_, r, i) => <Input size="small" className="doh-mono" value={r.name} placeholder="MY_VAR" onChange={(e) => setEnvVars((p) => p.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} /> },
-            { title: 'Value', width: '30%', render: (_, r, i) => <Input size="small" value={r.value} onChange={(e) => setEnvVars((p) => p.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} /> },
-            { title: 'Description', render: (_, r, i) => <Input size="small" value={r.desc} onChange={(e) => setEnvVars((p) => p.map((x, j) => (j === i ? { ...x, desc: e.target.value } : x)))} /> },
-            { title: '', width: 40, render: (_, __, i) => <span style={{ cursor: 'pointer', color: 'var(--color-text-subtle)' }} onClick={() => setEnvVars((p) => p.filter((_, j) => j !== i))}><Icon name="close" size={14} /></span> },
-          ]}
-        />
-        <Button size="small" icon={<Icon name="plus" size={13} />} style={{ marginTop: 8 }} onClick={() => setEnvVars((p) => [...p, { name: '', value: '', desc: '' }])}>Add Variable</Button>
+        <EnvVarEditor value={envVars} onChange={setEnvVars} />
       </Section>
 
       {/* GPU - only when the platform has GPU */}

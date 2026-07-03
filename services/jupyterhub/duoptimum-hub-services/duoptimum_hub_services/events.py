@@ -78,6 +78,13 @@ def register_events():
         except Exception as e:
             log.warning(f"[DisplayPrefs Sync] Error renaming: {e}")
 
+        # Sync the per-user environment variables to the new username
+        try:
+            from .user_env_vars import UserEnvVarsManager
+            UserEnvVarsManager.get_instance().rename_user(oldvalue, value)
+        except Exception as e:
+            log.warning(f"[UserEnvVars Sync] Error renaming: {e}")
+
         from .event_log import record_event
         old_b = f'<b>{html.escape(str(oldvalue))}</b>'
         new_b = f'<b>{html.escape(str(value))}</b>'
@@ -177,6 +184,12 @@ def register_events():
             UserDisplayPreferencesManager.get_instance().delete_prefs(username)
         except Exception as e:
             log.warning(f"[DisplayPrefs Cleanup] Error removing preferences for {username}: {e}")
+
+        try:
+            from .user_env_vars import UserEnvVarsManager
+            UserEnvVarsManager.get_instance().delete_env_vars(username)
+        except Exception as e:
+            log.warning(f"[UserEnvVars Cleanup] Error removing env vars for {username}: {e}")
 
         from .event_log import record_event
         record_event('user', f'<b>{html.escape(str(username))}</b> was deleted')

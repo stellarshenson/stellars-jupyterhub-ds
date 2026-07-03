@@ -11,7 +11,7 @@
  * validates). */
 import { hubAuthForm, hubAuthGet, hubSend, HubError } from './hub/client'
 import { invalidate, notify, patchQuery } from './actions'
-import type { PolicyConfig, UserProfile, UserRow } from './types'
+import type { PolicyConfig, UserEnvVar, UserProfile, UserRow } from './types'
 
 /** Run a live write with success/error toasts + cache invalidation. Returns the
  * run() result. */
@@ -117,6 +117,25 @@ export const saveUserProfile = (name: string, profile: UserProfile) => {
     throw e
   })
 }
+
+/** Persist a user's environment variables (admin or self). REPLACES the whole set.
+ * The editor blocks Save on a reserved/invalid/duplicate name client-side; the hub
+ * is the backstop and returns a structured 400 whose message we surface on rejection. */
+export const saveUserEnvVars = (name: string, envVars: UserEnvVar[]) =>
+  run(`Saved ${name}'s environment variables`, async () => {
+    try {
+      return await hubSend('PUT', `/users/${encodeURIComponent(name)}/env-vars`, { env_vars: envVars })
+    } catch (e) {
+      // the hub returns {code, message, rejected} on a reserved/invalid name - surface
+      // its message rather than the raw JSON detail
+      if (e instanceof HubError && e.detail) {
+        let msg: string | undefined
+        try { msg = JSON.parse(e.detail)?.message } catch { /* not our structured body */ }
+        if (msg) throw new Error(msg)
+      }
+      throw e
+    }
+  }, [['user-env-vars', name]])
 
 /** Admin sets another user's password (NativeAuth admin change-password). */
 export const setUserPassword = (name: string, password: string) =>

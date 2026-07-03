@@ -16,6 +16,7 @@ import type {
   SettingsRefCategory,
   Stats,
   TokenRow,
+  UserEnvVarsData,
   UserProfile,
   UserRow,
   Volume,
@@ -30,6 +31,7 @@ export interface DataSource {
   getUsers(): Promise<UserRow[]>
   getUser(name: string): Promise<UserRow | undefined>
   getUserProfile(name: string): Promise<UserProfile>
+  getUserEnvVars(name: string): Promise<UserEnvVarsData>
   getGroups(): Promise<GroupRow[]>
   getGroupConfig(name: string): Promise<GroupConfig | undefined>
   getEvents(): Promise<EventRow[]>

@@ -17,6 +17,7 @@ from .groups import (
 from .native_users import NativeUsersHandler, NativeUserAuthorizationHandler
 from .user_profile import UserForcePasswordChangeHandler, UserProfileHandler, UserProfilesListHandler, UserRenameHandler
 from .user_display_preferences import UserDisplayPreferencesHandler
+from .user_env_vars import UserEnvVarsHandler
 from .effective_grants import EffectiveGrantsHandler
 from .events_data import EventsDataHandler
 from .sent_notifications_data import SentNotificationsDataHandler
@@ -49,6 +50,7 @@ __all__ = [
     "UserForcePasswordChangeHandler",
     "UserRenameHandler",
     "UserDisplayPreferencesHandler",
+    "UserEnvVarsHandler",
     "EffectiveGrantsHandler",
     "EventsDataHandler",
     "SentNotificationsDataHandler",

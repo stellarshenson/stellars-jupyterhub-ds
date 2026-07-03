@@ -34,6 +34,7 @@ import type {
   SettingsGroup,
   SettingsRefCategory,
   UserProfile,
+  UserEnvVarsData,
   ServerHero,
   ServerRow,
   ServerStatus,
@@ -703,6 +704,20 @@ export const liveSource: DataSource = {
       return { firstName: r.first_name ?? '', lastName: r.last_name ?? '', email: r.email ?? '', mustChangePassword: !!r.must_change_password }
     } catch {
       return { firstName: '', lastName: '', email: '', mustChangePassword: false }
+    }
+  },
+
+  // per-user env vars + the reserved blacklist (admin or self); the reserved lists let
+  // the editor flag bad/reserved names live. Description is UI metadata (never injected).
+  // Deliberately does NOT swallow a failed GET into an empty result: the caller only
+  // writes env vars when they CHANGED vs the loaded set, and a fake-empty success would
+  // read as "no vars" and REPLACE-wipe the real set on the next Save (DoS on own data).
+  async getUserEnvVars(name: string): Promise<UserEnvVarsData> {
+    const r = await hubGet<{ env_vars?: { name: string; value?: string; description?: string }[]; reserved_names?: string[]; reserved_prefixes?: string[] }>(`/users/${encodeURIComponent(name)}/env-vars`)
+    return {
+      envVars: (r.env_vars ?? []).map((e) => ({ name: e.name, value: e.value ?? '', description: e.description ?? '' })),
+      reservedNames: r.reserved_names ?? [],
+      reservedPrefixes: r.reserved_prefixes ?? [],
     }
   },
 

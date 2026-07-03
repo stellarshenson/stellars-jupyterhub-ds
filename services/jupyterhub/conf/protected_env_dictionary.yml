@@ -1,0 +1,38 @@
+# Protected Environment Variable Dictionary
+#
+# Names + prefixes a USER or a GROUP policy must never set - owned by JupyterHub
+# or imposed per-user by a policy at spawn (GPU selector, docker host, sudo). Both
+# the group-policy env editor and the per-user env editor reject these on save and
+# the spawn hook strips them defensively.
+#
+# Single source of truth. Consumed by config/jupyterhub_config.py via
+# load_protected_env(); unioned there with the 16 names the platform injects
+# globally (derived from c.DockerSpawner.environment, so those never drift).
+# Operators may extend this list; a rebuild bakes it to /srv/jupyterhub/.
+
+names:                        # exact protected names
+  - ENABLE_GPU_SUPPORT        # GPU policy sets this per-user
+  - ENABLE_GPUSTAT            # GPU policy sets this per-user
+  - NVIDIA_VISIBLE_DEVICES    # GPU selector (must not be user/group settable)
+  - CUDA_VISIBLE_DEVICES      # GPU selector
+  - DOCKER_HOST               # limited-docker proxy wiring sets this per-user
+  - JUPYTERLAB_SUDO_ENABLE    # sudo policy owns this per-user
+  # docker-stacks (jupyter base image) start.sh honours these AS ROOT before dropping
+  # privileges - a user setting them would self-escalate (GRANT_SUDO) or run as a
+  # different uid / chown arbitrary paths, bypassing the sudo policy entirely
+  - GRANT_SUDO                # would self-grant passwordless sudo (bypasses sudo policy)
+  - NB_UID                    # container user id (NB_UID=0 = run as root)
+  - NB_GID                    # container group id
+  - NB_USER                   # container user name
+  - NB_GROUP                  # container group name
+  - NB_UMASK                  # file-creation umask applied as root
+  - CHOWN_HOME                # chown $HOME as root at start
+  - CHOWN_HOME_OPTS           # options to the root-time chown
+  - CHOWN_EXTRA               # chown arbitrary paths as root at start
+  - CHOWN_EXTRA_OPTS          # options to the root-time chown
+
+prefixes:                     # any name starting with one of these is protected
+  - JUPYTERHUB_               # hub-owned namespace
+  - JPY_                      # hub/jupyter internal namespace
+  - MEM_                      # memory policy namespace
+  - CPU_                      # cpu policy namespace
