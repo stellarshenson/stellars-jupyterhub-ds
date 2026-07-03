@@ -113,7 +113,10 @@ function SiderFoot() {
  * `position: fixed` is viewport-relative: rendered in place it sits inside ProLayout's
  * content column (a box whose left edge is the sider width), and any transform/contain
  * on that subtree would capture the fixed element and offset `left` by the column origin,
- * pushing the handle off the divider into the content. The portal removes that dependency. */
+ * pushing the handle off the divider into the content. The portal removes that dependency.
+ * The +0.5 centres the bar on the MIDDLE of the 1px sider/content divider (which occupies
+ * [width, width+1)), so translateX(-50%) straddles the line evenly instead of leaning into
+ * the sider. */
 function SiderHandle({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   return createPortal(
     <Tooltip title={collapsed ? 'Expand' : 'Collapse'} placement="right">
@@ -122,8 +125,8 @@ function SiderHandle({ collapsed, onToggle }: { collapsed: boolean; onToggle: ()
         onClick={onToggle}
         aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         style={{
-          position: 'fixed', left: collapsed ? SIDER_COLLAPSED_WIDTH : SIDER_WIDTH, top: '50%', transform: 'translate(-50%, -50%)',
-          width: 6, height: 44, padding: 0, border: 0, borderRadius: 'var(--radius-sm)',
+          position: 'fixed', left: (collapsed ? SIDER_COLLAPSED_WIDTH : SIDER_WIDTH) + 0.5, top: '50%', transform: 'translate(-50%, -50%)',
+          width: 4, height: 44, padding: 0, border: 0, borderRadius: 'var(--radius-sm)',
           cursor: 'pointer', zIndex: 101, transition: 'left .2s, background-color .12s',
         }}
       />
@@ -224,18 +227,21 @@ export function AppLayout() {
            * chrome: on a phone the header is just logo + language + theme - nothing
            * that steals the vertical space the status gauges and switches need. */}
           {isMobile
-            ? <Link to="/home" title={hubName()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, paddingInline: 4 }}><img src={logoSrc} alt={hubName()} style={{ height: 28, width: 'auto', objectFit: 'contain', display: 'block' }} /></Link>
+            ? <Link to="/home" title={hubName()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, paddingInline: 4 }}><img src={logoSrc} alt={hubName()} style={{ height: 24, width: 'auto', objectFit: 'contain', display: 'block' }} /></Link>
             : <Breadcrumbs />}
           {/* header controls live top-right: side layout renders no ProLayout
            * header (Header returns null), so actionsRender would drop these in
            * the sider - keep them in this topbar row instead. Order: language,
-           * theme, connection (desktop only - mobile uses HubConnectionIndicator),
-           * stage badge. The stage badge stays on mobile: it is a critical env cue
-           * next to the mobile Stop/Restart controls (operator: env cue is critical). */}
+           * theme, connection, stage badge. The connection pill shows on every
+           * screen: desktop carries the "Connected"/"Not responding" label,
+           * mobile collapses it to a dot-only chip (CSS hides .doh-conn-label) so
+           * it fits the phone header - the in-flow HubConnectionIndicator panel
+           * still carries the down-state detail. The stage badge stays on mobile:
+           * a critical env cue next to the mobile Stop/Restart controls. */}
           <div className="doh-header-actions" style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
             <LanguageControl />
             <ThemeControl />
-            {!isMobile && <ConnectionStatusPill />}
+            <ConnectionStatusPill />
             <StageBadge />
           </div>
         </div>

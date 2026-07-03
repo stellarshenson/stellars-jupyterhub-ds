@@ -467,4 +467,10 @@ body { margin: 0; font-family: var(--font-sans); }
  * so there is neither a panel nor a button to toggle one. */
 @media (max-width: 767px) {
   .ant-pro-global-header-collapsed-button { display: none !important; }
+  /* connection pill collapses to a dot-only chip: hide the text label and snug the
+     padding so it reads as a compact status diode in the tight phone header. The
+     aria-label on the pill keeps the accessible name; the down-state detail lives in
+     the in-flow HubConnectionIndicator panel. */
+  .doh-conn-label { display: none; }
+  .doh-conn-pill { padding-inline: 6px; }
 }
