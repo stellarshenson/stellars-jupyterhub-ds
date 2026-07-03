@@ -28,7 +28,7 @@ def test_display_options_accordion_and_persist(admin_portal):
     # Display Options is collapsed by default - expand it
     page.get_by_text("Display Options", exact=True).click()
     # the three CPU options are listed
-    expect(page.get_by_text("Server Status CPU", exact=True)).to_be_visible()
+    expect(page.get_by_text("My Server Status CPU", exact=True)).to_be_visible()
     expect(page.get_by_text("Host Status CPU", exact=True)).to_be_visible()
     expect(page.get_by_text("Servers list & widget CPU", exact=True)).to_be_visible()
 

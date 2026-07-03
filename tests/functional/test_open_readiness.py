@@ -3,7 +3,7 @@
 After a start/restart the hub flips 'running' ~1s before the lab serves HTTP, so
 the portal Open controls used to navigate straight into the hub spawn-pending /
 503 page. The server-lifecycle now gates entry on the shared lab-ready probe: a
-just-restarted server shows "Opening..." (disabled) until the lab answers, then
+just-restarted server shows "Starting" (disabled) until the lab answers, then
 the Enter action activates.
 
 This drives a REAL restart of the admin's own server and intercepts the lab-ready
@@ -63,8 +63,8 @@ def test_open_gated_until_lab_ready_after_restart(admin_portal, admin_api, base_
         admin_portal.goto("/servers", ready=".ant-table")
         # restart own server from the row -> opens the becoming-ready gate
         page.get_by_role("button", name="Restart", exact=True).first.click()
-        # gated: the Open/Enter action shows "Opening..." (disabled) ...
-        expect(page.get_by_role("button", name="Opening").first).to_be_visible(timeout=180_000)
+        # gated: the Open/Enter action shows "Starting" (disabled) ...
+        expect(page.get_by_role("button", name="Starting").first).to_be_visible(timeout=180_000)
         # ... and the active Enter action does NOT appear while lab-ready is false
         page.wait_for_timeout(8_000)
         expect(page.get_by_role("button", name="Enter session")).to_have_count(0)
