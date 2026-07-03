@@ -4,12 +4,18 @@ The mobile view is a status-and-control panel for the account owner (or admin) c
 
 ## Mobile header
 
-- [x] **Minimal chrome** - the mobile header shows the branding logo, the theme switcher, the language switcher, and the stage badge; nothing else
+- [x] **Minimal chrome** - the mobile header shows the branding logo, the theme switcher, the connection pill, and the stage badge; the language switcher is dropped on mobile to make room for the full-text pill; nothing else
   - log: 2026-06-23 criterion added
   - log: 2026-06-24 done - `AppLayout` topbar renders the logo (left) + language + theme + `StageBadge` on mobile; verified `test_mobile_header_minimal`
-- [x] **No extra header text** - no greeting, no identity text, no breadcrumbs, no connection pill (mobile uses the in-flow `HubConnectionIndicator`), no extended hero block - every line of header text costs vertical space that belongs to the status and switches
+  - log: 2026-07-03 operator "the mobile header must carry the connection indicator, normal height + full text; you can hide the language switcher" - added `ConnectionStatusPill` on mobile (full text), gated `LanguageControl` `!isMobile`; `test_mobile_header_minimal` realigned (Language absent, pill present "Connected"); verified tsc/eslint/vitest/build, functional re-verify pending rebuild
+  - log: 2026-07-03 (ux) adversarial-review fix - logo restored 22 -> 24px (level with the chips again), shrinking via flex only when a narrow viewport actually demands it
+- [x] **No extra header text** - no greeting, no identity text, no breadcrumbs, no extended hero block - every line of header text costs vertical space that belongs to the status and switches
   - log: 2026-06-23 criterion added
   - log: 2026-06-24 done - breadcrumbs replaced by the logo on mobile, `ConnectionStatusPill` gated `!isMobile`; verified `test_mobile_header_minimal`
+  - log: 2026-07-03 the "no connection pill" clause REMOVED - operator now wants the connection pill on mobile (see the Connection pill criterion below); breadcrumbs / greeting / hero stay excluded
+- [x] **Connection pill (mobile)** - the connection pill renders on mobile at full text and normal height (level with the stage badge): a calm "Connected" while the hub answers, a warning "Not responding" when it stops; only the ticking elapsed suffix (`.doh-conn-elapsed`) is hidden on mobile so the full-text pill fits the phone header - the in-flow `HubConnectionIndicator` panel still carries the full down-state detail with elapsed below
+  - log: 2026-07-03 criterion added (operator: "you have made the connected indicator tiny, not even the same height as stage indicator; make it normal height and full text; you can hide the language switcher"); `ConnectionStatusPill` no longer gated `!isMobile`, elapsed span wrapped `.doh-conn-elapsed` and hidden under 768px, `LanguageControl` dropped on mobile; verified tsc/eslint/vitest/build; `test_mobile_header_minimal` asserts the pill present with "Connected"; functional re-verify pending rebuild
+  - log: 2026-07-03 (ux) adversarial-review fixes - pill `aria-hidden` on mobile (the in-flow panel is the sole live region there, no double screen-reader announcement); mobile header overflow-guarded (`.doh-header-actions` flex-shrink:0, logo Link flex-shrinks + img `max-width:100%`, `.doh-stage-badge` capped + ellipsis) so the full-text pill plus a long custom stage label can never push the header past the viewport
 - [x] **Stage badge kept** - when `JUPYTERHUB_BRANDING_STAGE` is set, the stage badge stays in the mobile header - it is a critical env cue next to the mobile Stop/Restart controls (prevents "stopped PRD thinking it was STG"); unset = renders nothing
   - log: 2026-06-23 criterion added (operator: env cue is critical, keep it in the header)
   - log: 2026-06-24 done - `StageBadge` ungated (shown on mobile too); `StageBadge` self-hides when stage unset

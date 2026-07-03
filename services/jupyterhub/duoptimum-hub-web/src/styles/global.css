@@ -114,13 +114,19 @@ body { margin: 0; font-family: var(--font-sans); }
 .doh-res-row .doh-res-label { width: 64px; flex: none; color: var(--color-text-muted); }
 .doh-res-row .doh-res-bar { flex: 1; height: 8px; border-radius: var(--radius-full); background: var(--color-bg-subtle); overflow: hidden; }
 .doh-res-row .doh-res-bar > i { display: block; height: 100%; background: var(--color-accent); border-radius: var(--radius-full); } /* round every fill end (design: one shape language) */
-.doh-res-row .doh-res-val { width: 84px; flex: none; text-align: right; font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
+/* fixed 40px (down from 84px), MATCHED with the GPU %-column so EVERY bar - CPU/Mem/Vol and the
+   per-GPU tracks - still ends at the exact same x (operator: all bars must end aligned). The
+   smaller shared column moves that common end-point rightward, so every bar is LONGER and reaches
+   close to its reading instead of stopping ~60px short. A rare wide reading ("unavailable")
+   overflows left onto its own empty error track rather than widening the column and breaking the
+   alignment. Keep this width and the GPU grid's %-column in lockstep. */
+.doh-res-row .doh-res-val { width: 40px; flex: none; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
 /* per-GPU bars - one labelled horizontal bar per device, fill width = load. A 3-col grid
    (name | bar | %) whose rows share the columns via subgrid: the name column is `max-content`,
    so it sizes to the WIDEST name across all rows and EVERY bar starts at the same x (bars are
-   comparable). The 84px %-column + --space-3 gap MATCH the resource row, so the bar track also
+   comparable). The 40px %-column + --space-3 gap MATCH the resource row, so the bar track also
    ENDS at the same x as the CPU/Mem/Vol bars above it. Names show in full (nowrap, no ellipsis). */
-.doh-gpurows { flex: 1; display: grid; grid-template-columns: max-content 1fr 84px; column-gap: var(--space-3); row-gap: 5px; align-items: center; }
+.doh-gpurows { flex: 1; display: grid; grid-template-columns: max-content 1fr 40px; column-gap: var(--space-3); row-gap: 5px; align-items: center; }
 .doh-gpurow { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; align-items: center; }
 .doh-gpurow > small { text-align: left; white-space: nowrap; font-size: 11px; line-height: 1.3; color: var(--color-text-subtle); }
 .doh-gpurow > .track { height: 6px; border-radius: var(--radius-full); background: var(--color-bg-subtle); overflow: hidden; }
@@ -320,9 +326,21 @@ body { margin: 0; font-family: var(--font-sans); }
 .doh-qa-btn .anticon { font-size: 18px; color: var(--color-accent); flex: none; }
 .doh-qa-btn small { display: block; color: var(--color-text-subtle); font-size: 11px; }
 
-/* sider collapse handle: thin bar on the sider edge, accent on hover */
-.doh-sider-handle { background: var(--color-border-strong); }
-.doh-sider-handle:hover { background: var(--color-accent); }
+/* sider collapse handle: the button is a transparent 14px hit target; the visible 5px bar is the
+   ::before, an ODD width centred on the button (hence on the divider midpoint at 248.5) so its
+   edges land on whole pixels (246/251) - crisp and symmetric on the divider, not blurred or
+   leaning. Slightly rounded corners (1.5px), a rectangle with softened corners not a pill. Resting
+   fill is border-strong (real contrast in both themes), accent on hover. */
+.doh-sider-handle { background: transparent; }
+.doh-sider-handle::before { content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 5px; height: 44px; border-radius: 1.5px; background: var(--color-border-strong); transition: background-color .12s; }
+/* hover AND keyboard focus both light the bar accent (the button is transparent, so the UA focus
+   ring would draw around an invisible box - suppress it and put a visible ring on the ::before) */
+.doh-sider-handle:hover::before, .doh-sider-handle:focus-visible::before { background: var(--color-accent); }
+.doh-sider-handle:focus-visible { outline: none; }
+.doh-sider-handle:focus-visible::before { box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 45%, transparent); }
+/* forced-colors (Windows High-Contrast): box-shadow is forced to none and the bar bg is system-
+   overridden, so the ::before ring gives NO focus cue - restore a real outline in that mode. */
+@media (forced-colors: active) { .doh-sider-handle:focus-visible { outline: 2px solid Highlight; outline-offset: 1px; } }
 
 /* ---- mock-only chrome: version badge + role/design switch ---- */
 .doh-version-badge { position: fixed; right: var(--space-4); bottom: var(--space-4); z-index: 40; font-size: 11px; letter-spacing: .3px; color: var(--color-text-subtle); pointer-events: none; }
@@ -467,10 +485,14 @@ body { margin: 0; font-family: var(--font-sans); }
  * so there is neither a panel nor a button to toggle one. */
 @media (max-width: 767px) {
   .ant-pro-global-header-collapsed-button { display: none !important; }
-  /* connection pill collapses to a dot-only chip: hide the text label and snug the
-     padding so it reads as a compact status diode in the tight phone header. The
-     aria-label on the pill keeps the accessible name; the down-state detail lives in
-     the in-flow HubConnectionIndicator panel. */
-  .doh-conn-label { display: none; }
-  .doh-conn-pill { padding-inline: 6px; }
+  /* mobile header keeps the FULL-TEXT connection pill at normal height (level with the
+     stage badge); room is made by dropping the language switcher (see AppLayout) and by
+     hiding only the pill's ticking elapsed suffix so the down state stays "Not responding"
+     within a phone's width - the full elapsed detail still shows in the in-flow
+     HubConnectionIndicator panel below. */
+  .doh-conn-elapsed { display: none; }
+  /* overflow guard: the stage badge accepts arbitrary custom text (JUPYTERHUB_BRANDING_STAGE) -
+     cap + ellipsis it on mobile so a long label can never push the header past the viewport (the
+     controls cluster is flex-shrink:0, the logo yields first, this stops the last remaining risk) */
+  .doh-stage-badge { max-width: 6em; overflow: hidden; text-overflow: ellipsis; }
 }

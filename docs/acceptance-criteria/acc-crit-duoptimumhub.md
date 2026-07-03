@@ -8,29 +8,29 @@ Cross-document conflicts found during consolidation are tracked in [concerns.md]
 
 - [activity reporting consistency](#activity-reporting-consistency)
 - [Activity map freshness (lightweight, activity-gated)](#activity-map-freshness-lightweight-activity-gated)
-- [activity scoring (target-hours normalisation + honest hours)](#activity-scoring-target-hours-normalisation-honest-hours)
+- [activity scoring (target-hours normalisation + honest hours)](#activity-scoring-target-hours-normalisation--honest-hours)
 - [Advanced menu ordering](#advanced-menu-ordering)
 - [API Keys Pool Group Config](#api-keys-pool-group-config)
-- [background refresh + immediate update](#background-refresh-immediate-update)
+- [background refresh + immediate update](#background-refresh--immediate-update)
 - [environment-stage badge](#environment-stage-badge)
 - [broadcast auto-close duration](#broadcast-auto-close-duration)
 - [Bulk server actions confirmation (Start All / Stop All)](#bulk-server-actions-confirmation-start-all--stop-all)
-- [last-known cache + non-blocking GPU + GPU-widget gating](#last-known-cache-non-blocking-gpu-gpu-widget-gating)
+- [last-known cache + non-blocking GPU + GPU-widget gating](#last-known-cache--non-blocking-gpu--gpu-widget-gating)
 - [Cert Provisioning](#cert-provisioning)
 - [Compose Project Naming](#compose-project-naming)
-- [portal critic sweep (inconsistencies + illogical behaviour)](#portal-critic-sweep-inconsistencies-illogical-behaviour)
+- [portal critic sweep (inconsistencies + illogical behaviour)](#portal-critic-sweep-inconsistencies--illogical-behaviour)
 - [design language (system-wide)](#design-language-system-wide)
 - [docker policy access mode](#docker-policy-access-mode)
 - [drop the `/portal` URL segment](#drop-the-portal-url-segment)
-- [duoptimum-hub service + image rename](#duoptimum-hub-service-image-rename)
+- [duoptimum-hub service + image rename](#duoptimum-hub-service--image-rename)
 - [Edit user returns to its origin](#edit-user-returns-to-its-origin)
-- [Platform event log (persistence + clear)](#platform-event-log-persistence-clear)
+- [Platform event log (persistence + clear)](#platform-event-log-persistence--clear)
 - [first-admin bootstrap (deterministic provisioning + fail-fast)](#first-admin-bootstrap-deterministic-provisioning--fail-fast)
-- [force password change on next login (#232 / #233)](#force-password-change-on-next-login-232-233)
+- [force password change on next login (#232 / #233)](#force-password-change-on-next-login-232--233)
 - [Functional Test Harness](#functional-test-harness)
 - [Functional UI Sweep](#functional-ui-sweep)
 - [GPU Utilisation Cache Logging](#gpu-utilisation-cache-logging)
-- [gpuinfo-nvidia sidecar (logging + graceful no-hardware)](#gpuinfo-nvidia-sidecar-logging-graceful-no-hardware)
+- [gpuinfo-nvidia sidecar (logging + graceful no-hardware)](#gpuinfo-nvidia-sidecar-logging--graceful-no-hardware)
 - [GPU-info sidecar wiring - explicit compose, runtime discovery](#gpu-info-sidecar-wiring---explicit-compose-runtime-discovery)
 - [Group-Gated File Downloads](#group-gated-file-downloads)
 - [group policy import/export bundle shape](#group-policy-importexport-bundle-shape)
@@ -42,14 +42,14 @@ Cross-document conflicts found during consolidation are tracked in [concerns.md]
 - [Label capitalisation (Title Case)](#label-capitalisation-title-case)
 - [live data honesty (no mock masquerade)](#live-data-honesty-no-mock-masquerade)
 - [Mobile Responsive Portal](#mobile-responsive-portal)
-- [Navigation patterns (edit pages -> parent + breadcrumbs)](#navigation-patterns-edit-pages---parent-breadcrumbs)
+- [Navigation patterns (edit pages -> parent + breadcrumbs)](#navigation-patterns-edit-pages---parent--breadcrumbs)
 - [Notifications history range and clear](#notifications-history-range-and-clear)
 - [old portal cleanup](#old-portal-cleanup)
 - [Portal UI Polish (2026-06-17 session)](#portal-ui-polish-2026-06-17-session)
 - [profile name display](#profile-name-display)
 - [Profile route (role-aware self-view)](#profile-route-role-aware-self-view)
 - [Rename user (admin action on the profile)](#rename-user-admin-action-on-the-profile)
-- [resource bars (limits + tooltips)](#resource-bars-limits-tooltips)
+- [resource bars (limits + tooltips)](#resource-bars-limits--tooltips)
 - [restart/stop progress feedback](#restartstop-progress-feedback)
 - [Role labels, namespace and config validator](#role-labels-namespace-and-config-validator)
 - [Roles reference page](#roles-reference-page)
@@ -67,7 +67,7 @@ Cross-document conflicts found during consolidation are tracked in [concerns.md]
 - ["Upgrade available" pill](#upgrade-available-pill)
 - [version sync across subpackages](#version-sync-across-subpackages)
 - [Volume reset confirmation](#volume-reset-confirmation)
-- [Duoptimum Hub portal de-mock + fixes](#duoptimum-hub-portal-de-mock-fixes)
+- [Duoptimum Hub portal de-mock + fixes](#duoptimum-hub-portal-de-mock--fixes)
 - [TTL extend envelope + UI polish (2026-06-25)](#ttl-extend-envelope--ui-polish-2026-06-25)
 
 ---
@@ -2649,6 +2649,10 @@ Running checklist for the rapid UI feedback pass: TTL animation, GPU labels + ri
   - log: 2026-06-25 widened 118 -> 148px (artifact); GPU rows drop the trailing value column so the meter spans to the panel right edge and each row's % aligns with the other resource %s (operator: "align the percentages of GPUs with the other percentages"); `meters.tsx`, `global.css`
   - log: 2026-06-25 track ends aligned too (operator: "GPU progressbars need to end exactly where other resource bars end"); `.doh-gpurow` gap -> `var(--space-3)` (12px), `.doh-gpurow-val` width -> 84px so the gap+value column match the resource row, track right-edge at the same x as CPU/Mem/Vol; `global.css`
   - log: 2026-06-25 operator "if text doesn't fit make the bars shorter; show full required text"; dropped the fixed 148px + ellipsis on `.doh-gpurow > small` so the N-word name shows at natural width and the bar flexes down; `global.css`
+- [x] **Bars run long with an aligned end (resource + GPU)** - the shared value column every bar ends before - `.doh-res-val` (CPU/Mem/Vol) and the GPU grid %-column (`.doh-gpurows` third track) - is a FIXED width held in lockstep, so every bar ends at the exact same x; that width is sized to the reading, not padded, so the bars run long and stop close to the % rather than ending far short
+  - log: 2026-07-03 criterion added (operator: "massive gap between the end of the bars and the % text - all bars end too early; ALL progressbars must be longer / end further right, but the aligned end stays rock-solid"); shared value column 84 -> 40px on BOTH `.doh-res-val` (fixed `width`, NOT `min-width` - a floor would let a wide value grow its own column and break the aligned end) and the `.doh-gpurows` %-column, so all bars lengthen together and the aligned end never drifts; `global.css`; verified tsc/eslint/vitest/build
+- [x] **Edge: reading wider than the column** - the common wide reading (the error state) is "n/a", which FITS the 40px column (full "Reading unavailable" in the tooltip), so it never overflows onto the bar; a pathological 6-digit cores-mode aggregate still overflows left onto its OWN bar rather than widening the column, so the aligned bar-end never shifts
+  - log: 2026-07-03 criterion added; error readout "unavailable" -> "n/a" ((ux) adversarial-review fix: "unavailable" was wider than 40px and spilled left onto the track); now fits the fixed column; verified tsc/eslint/vitest/build
 - [x] **Rich multiline GPU tooltip** - hover shows full info, one field per line, like the old design: full name, UUID, memory total, current utilisation, memory used, temperature, wattage
   - log: 2026-06-17 pending; PARTIAL data only - name/uuid/mem-total/utilisation/mem-used are available (uuid in inventory, dropped by gpu_cache so must be threaded); **temperature + wattage are NOT queried by the sidecar** (`_GPU_QUERY`), so they need: sidecar `_GPU_QUERY += temperature.gpu,power.draw` + schema + image rebuild, then gpu_cache + activity entry + GpuDevice type + tooltip
   - log: 2026-06-17 complete - `gpuTip` renders name/UUID/memory used+total/utilisation/temp/power, one field per line (meters.tsx)

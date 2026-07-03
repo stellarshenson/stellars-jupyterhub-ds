@@ -177,7 +177,9 @@ export function ResourceBars({ rows }: { rows: ResourceRow[] }) {
             <div className="doh-res-row" key={r.label}>
               <span className="doh-res-label">{r.label}</span>
               <span className="doh-res-bar" title={r.tip || 'Reading unavailable'} />
-              <span className="doh-res-val doh-muted" title={r.tip || 'Reading unavailable'}>unavailable</span>
+              {/* "n/a" (not "unavailable") so the readout fits the fixed 40px value column and never
+                * overflows left onto the bar; the tooltip carries the full "Reading unavailable" */}
+              <span className="doh-res-val doh-muted" title={r.tip || 'Reading unavailable'}>n/a</span>
             </div>
           )
         }

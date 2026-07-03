@@ -4,8 +4,9 @@ Below the 768px useIsMobile breakpoint the portal sheds desktop ceremony and kee
 only what the phone persona needs (the account owner / admin checking in, not doing
 data science):
 
-- header is logo + language + theme + stage badge only - no breadcrumbs, and no
-  connection pill (mobile uses the in-flow HubConnectionIndicator instead)
+- header is logo + theme + connection pill + stage badge - the language switcher is
+  dropped on mobile to make room for the full-text connection pill; the in-flow
+  HubConnectionIndicator still carries the down-state detail, and there are no breadcrumbs
 - the own-server card carries no Open-Lab (there is nowhere useful to go on a phone)
 - the Servers page is a READ-ONLY admin fleet glance: no per-card lifecycle actions,
   no Start-All / Stop-All, plus a compact CPU / Mem / Activity readout
@@ -35,11 +36,16 @@ def test_mobile_header_minimal(admin_portal):
     # single header only: the brand logo renders exactly once - the old bug stacked
     # ProLayout's own mobile header on top of the content topbar (two headers)
     expect(page.locator("img[src*='jh-logo']")).to_have_count(1)
-    # language + theme switchers stay
-    expect(page.get_by_role("button", name="Language")).to_be_visible()
+    # theme switcher stays; the language switcher is dropped on mobile to make room for
+    # the full-text connection pill (operator 2026-07-03)
     expect(page.get_by_role("button", name="Theme")).to_be_visible()
-    # connection pill is desktop-only on mobile (the in-flow panel covers outages)
-    expect(page.locator(".doh-conn-pill")).to_have_count(0)
+    expect(page.get_by_role("button", name="Language")).to_have_count(0)
+    # the connection pill now shows on mobile at full text, normal height (level with the
+    # stage badge) - "Connected" while the hub answers; the in-flow HubConnectionIndicator
+    # still carries the full down-state detail with elapsed
+    pill = page.locator(".doh-conn-pill")
+    expect(pill).to_have_count(1)
+    expect(pill).to_contain_text("Connected")
     # no breadcrumb row stealing vertical space
     expect(page.locator(".doh-topbar .ant-breadcrumb")).to_have_count(0)
 
