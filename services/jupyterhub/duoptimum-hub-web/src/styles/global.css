@@ -117,9 +117,9 @@ body { margin: 0; font-family: var(--font-sans); }
 /* fixed 40px (down from 84px), MATCHED with the GPU %-column so EVERY bar - CPU/Mem/Vol and the
    per-GPU tracks - still ends at the exact same x (operator: all bars must end aligned). The
    smaller shared column moves that common end-point rightward, so every bar is LONGER and reaches
-   close to its reading instead of stopping ~60px short. A rare wide reading ("unavailable")
-   overflows left onto its own empty error track rather than widening the column and breaking the
-   alignment. Keep this width and the GPU grid's %-column in lockstep. */
+   close to its reading instead of stopping ~60px short. The value here is only ever a percent
+   (<=4 glyphs like "100%") or the short "n/a" placeholder, so it fits 40px and never widens the
+   column or breaks the alignment. Keep this width and the GPU grid's %-column in lockstep. */
 .doh-res-row .doh-res-val { width: 40px; flex: none; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
 /* per-GPU bars - one labelled horizontal bar per device, fill width = load. A 3-col grid
    (name | bar | %) whose rows share the columns via subgrid: the name column is `max-content`,
@@ -326,13 +326,14 @@ body { margin: 0; font-family: var(--font-sans); }
 .doh-qa-btn .anticon { font-size: 18px; color: var(--color-accent); flex: none; }
 .doh-qa-btn small { display: block; color: var(--color-text-subtle); font-size: 11px; }
 
-/* sider collapse handle: the button is a transparent 14px hit target; the visible 5px bar is the
+/* sider collapse handle: the button is a transparent 14px hit target; the visible 7px bar is the
    ::before, an ODD width centred on the button (hence on the divider midpoint at 248.5) so its
-   edges land on whole pixels (246/251) - crisp and symmetric on the divider, not blurred or
-   leaning. Slightly rounded corners (1.5px), a rectangle with softened corners not a pill. Resting
-   fill is border-strong (real contrast in both themes), accent on hover. */
+   edges land on whole pixels (245/252) - crisp and symmetric on the divider, not blurred or
+   leaning. 7px is a touch wider than the previous 6px mark (operator: "slightly wider"). Slightly
+   rounded corners (1.5px), a rectangle with softened corners not a pill. Resting fill is
+   border-strong (real contrast in both themes), accent on hover. */
 .doh-sider-handle { background: transparent; }
-.doh-sider-handle::before { content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 5px; height: 44px; border-radius: 1.5px; background: var(--color-border-strong); transition: background-color .12s; }
+.doh-sider-handle::before { content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 7px; height: 44px; border-radius: 1.5px; background: var(--color-border-strong); transition: background-color .12s; }
 /* hover AND keyboard focus both light the bar accent (the button is transparent, so the UA focus
    ring would draw around an invisible box - suppress it and put a visible ring on the ::before) */
 .doh-sider-handle:hover::before, .doh-sider-handle:focus-visible::before { background: var(--color-accent); }
@@ -491,6 +492,11 @@ body { margin: 0; font-family: var(--font-sans); }
      within a phone's width - the full elapsed detail still shows in the in-flow
      HubConnectionIndicator panel below. */
   .doh-conn-elapsed { display: none; }
+  /* one pulse per outage on a phone: the in-flow HubConnectionIndicator panel (mobile-only, down-
+     only) already carries the fast alert diode, so hold the header pill's DOWN dot static here to
+     avoid two competing red pulses for one event - the panel owns the motion. The connected calm
+     pulse stays (it is the sole indicator when the panel is absent). */
+  .doh-conn-pill.down .doh-conn-dot::after { animation: none; }
   /* overflow guard: the stage badge accepts arbitrary custom text (JUPYTERHUB_BRANDING_STAGE) -
      cap + ellipsis it on mobile so a long label can never push the header past the viewport (the
      controls cluster is flex-shrink:0, the logo yields first, this stops the last remaining risk) */

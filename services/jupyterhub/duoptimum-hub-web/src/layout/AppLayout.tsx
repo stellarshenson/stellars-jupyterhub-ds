@@ -117,8 +117,9 @@ function SiderFoot() {
  * The divider is a 1px `colorSplit` border painted at [width, width+1) (border-box, so INSIDE the
  * 249px sider-children), midpoint width+0.5; the button's +0.5 puts its centre exactly there
  * (render-verified: offset 0.000, symmetric on the line). The VISIBLE bar is drawn by
- * `.doh-sider-handle::before` at an ODD 5px so translateX(-50%) from a .5 centre lands its edges on
- * whole pixels (246/251) - crisp, not blurred; an even width there rounds to half-pixels. The
+ * `.doh-sider-handle::before` at an ODD 7px so translateX(-50%) from a .5 centre lands its edges on
+ * whole pixels (245/252) - crisp, not blurred; an even width there rounds to half-pixels. 7px is a
+ * touch wider than the previous 6px mark (operator asked for slightly wider). The
  * BUTTON itself is a 14px transparent HIT TARGET (a
  * 3px button is unclickable and an invisible focus sliver); 14px is ~4.6x the visible mark yet its
  * into-sider half (~7px) stays within the menu items' right padding and clear of the sider
