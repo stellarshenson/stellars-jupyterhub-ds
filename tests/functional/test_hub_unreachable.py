@@ -70,13 +70,15 @@ def test_hub_unreachable_indicator(admin_portal, docker_client, base_url):
         expect(down_pill).to_contain_text("Not responding")
         expect(page.get_by_role("dialog")).to_have_count(0)
 
-        # mobile: in-flow panel instead, pill hidden below the breakpoint (same outage,
-        # just resize)
+        # mobile: the in-flow panel carries the elapsed detail, and the header keeps the
+        # FULL-TEXT "Not responding" pill (design: full-text mobile pill, panel owns the
+        # pulse - see global.css max-width:767px block + journal 436/437). Both show for
+        # one outage; only the pill's ticking elapsed suffix is dropped on a phone.
         page.set_viewport_size(MOBILE)
         panel = page.locator(".doh-hub-warn-panel")
         expect(panel).to_be_visible(timeout=DETECT_TIMEOUT)
         expect(panel).to_contain_text("Hub not responding")
-        expect(page.locator(".doh-conn-pill")).to_have_count(0)
+        expect(page.locator(".doh-conn-pill.down")).to_contain_text("Not responding")
         page.set_viewport_size(DESKTOP)
     finally:
         hub.start()
