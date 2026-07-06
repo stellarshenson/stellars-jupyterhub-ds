@@ -34,6 +34,35 @@ def docker_spawner_env(settings, nvidia_detected, lab_network):
     }
 
 
+def template_vars(settings, runtime, *, user_volume_suffixes, user_volume_name_templates,
+                  user_volumes, stellars_version, server_version, entry_js, entry_css):
+    """c.JupyterHub.template_vars - values the Jinja2 templates + the portal shell
+    (window.jhdata) read. Operator settings + runtime GPU/branding + the data/version
+    kwargs the config resolves (volume metadata, platform/hub versions, SPA entry chunk)."""
+    return {
+        'user_volume_suffixes': user_volume_suffixes,            # ['home','workspace','cache'] for volume reset UI
+        'user_volume_name_templates': user_volume_name_templates,  # suffix -> volume-name template for UI labels
+        'user_volumes': user_volumes,                            # ordered {suffix, name_template, description} for the reset UI
+        'stellars_version': stellars_version,                    # platform version shown in UI
+        'server_version': server_version,                        # JupyterHub version shown in UI
+        'idle_culler_enabled': settings.idle_culler_enabled,     # toggle culler UI elements
+        'idle_culler_timeout': settings.idle_culler_timeout,     # timeout display in session panel
+        'idle_culler_max_extension': settings.idle_culler_max_extension,  # max extension hours display
+        'activitymon_target_hours': settings.activitymon_target_hours,    # activity scoring window display
+        'activitymon_sample_interval': settings.activitymon_sample_interval,  # sampling interval display
+        'container_max_extra_space_mb': settings.lab_container_max_extra_space_gb * 1024,  # container size warning threshold (MB)
+        'volume_max_total_size_mb': settings.lab_volume_max_total_size_gb * 1024,          # volume size warning threshold (MB)
+        'memory_max_usage_mb': settings.lab_memory_max_usage_mb,                           # per-user memory warning threshold (MB)
+        'favicon_uri': runtime.branding['favicon_uri'],          # external favicon URL (empty = static_url default)
+        'branding_stage': runtime.branding['stage'],             # environment-stage badge text for the portal header
+        'duoptimum_entry_js': entry_js,                          # SPA entry chunk (hashed) for the overridden login/signup templates
+        'duoptimum_entry_css': entry_css,
+        'gpu_enabled': bool(runtime.gpu_enabled),                # authoritative "platform has GPU" flag -> window.jhdata
+        'admin_user': settings.admin_username or '',             # platform admin username -> SPA admin recognition
+        'hub_name': settings.branding_hub_name,                  # hub display name -> window.jhdata.hub_name
+    }
+
+
 def validator_payload(settings, *, namespace, lab_network_name, gpuinfo_network_name,
                       shared_volume_name, docker_proxy_socket_dir, docker_proxy_sockets_volume,
                       user_compose_project_template):

@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import pytest
 
 from duoptimum_hub_services.config.runtime import Runtime, assemble_runtime
-from duoptimum_hub_services.config.wiring import docker_spawner_env, validator_payload
+from duoptimum_hub_services.config.wiring import docker_spawner_env, template_vars, validator_payload
 
 _SETTINGS = SimpleNamespace(
     tf_cpp_min_log_level=3,
@@ -140,6 +140,31 @@ def test_validator_payload_runtime_kwargs_passthrough():
     assert p["docker_proxy_socket_dir"] == "SOCKDIR"
     assert p["docker_proxy_sockets_volume"] == "SOCKVOL"
     assert p["user_compose_project_template"] == "TMPL"
+
+
+def test_template_vars_exact_dict():
+    s = SimpleNamespace(
+        idle_culler_enabled=1, idle_culler_timeout=86400, idle_culler_max_extension=24,
+        activitymon_target_hours=8, activitymon_sample_interval=600,
+        lab_container_max_extra_space_gb=10, lab_volume_max_total_size_gb=50,
+        lab_memory_max_usage_mb=4096, admin_username="admin", branding_hub_name="DuOptimum Hub",
+    )
+    r = SimpleNamespace(branding={"favicon_uri": "f.ico", "stage": "DEV"}, gpu_enabled=1)
+    got = template_vars(
+        s, r, user_volume_suffixes=["home"], user_volume_name_templates={"home": "t"},
+        user_volumes=[{"suffix": "home"}], stellars_version="1.2.3", server_version="4.0",
+        entry_js="app.js", entry_css="app.css",
+    )
+    assert got == {
+        "user_volume_suffixes": ["home"], "user_volume_name_templates": {"home": "t"},
+        "user_volumes": [{"suffix": "home"}], "stellars_version": "1.2.3", "server_version": "4.0",
+        "idle_culler_enabled": 1, "idle_culler_timeout": 86400, "idle_culler_max_extension": 24,
+        "activitymon_target_hours": 8, "activitymon_sample_interval": 600,
+        "container_max_extra_space_mb": 10240, "volume_max_total_size_mb": 51200,
+        "memory_max_usage_mb": 4096, "favicon_uri": "f.ico", "branding_stage": "DEV",
+        "duoptimum_entry_js": "app.js", "duoptimum_entry_css": "app.css",
+        "gpu_enabled": True, "admin_user": "admin", "hub_name": "DuOptimum Hub",
+    }
 
 
 def test_validator_payload_settings_mappings():

@@ -51,7 +51,7 @@ from duoptimum_hub_services.docker_utils import (  # {network}-token net resolut
     resolve_gpuinfo_network,    # role=gpuinfo net (hub<->sidecar), optional (GPU off when absent)
 )
 from duoptimum_hub_services.protected_env import load_protected_env  # protected-env dictionary -> reserved names/prefixes (single source)
-from duoptimum_hub_services.config import load_settings, docker_spawner_env, validator_payload, assemble_runtime  # settings loader + c.* dict builders + boot runtime (GPU/sidecar/branding)
+from duoptimum_hub_services.config import load_settings, docker_spawner_env, template_vars, validator_payload, assemble_runtime  # settings loader + c.* dict builders + boot runtime (GPU/sidecar/branding)
 
 # The platform's custom API/page route table - registered via
 # c.DuoptimumHub.registered_handlers (our non-deprecated replacement for the
@@ -89,7 +89,6 @@ JUPYTERHUB_IDLE_CULLER_MAX_AGE = settings.idle_culler_max_age
 JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION_MINUTES = settings.idle_culler_max_extension_minutes
 JUPYTERHUB_IDLE_CULLER_TIMEOUT = settings.idle_culler_timeout                # derived: seconds before cull
 JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION = settings.idle_culler_max_extension    # derived: whole hours users can extend
-ACTIVITYMON_TARGET_HOURS = settings.activitymon_target_hours
 ACTIVITYMON_SAMPLE_INTERVAL = settings.activitymon_sample_interval
 JUPYTERHUB_HUB_DOCKER_API_TIMEOUT = settings.hub_docker_api_timeout
 JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB = settings.lab_container_max_extra_space_gb
@@ -112,8 +111,6 @@ JUPYTERHUB_LABEL_VOLUME_DESCRIPTION = settings.label_volume_description
 JUPYTERHUB_LABEL_VOLUME_OWNER_KEY = settings.label_volume_owner_key
 JUPYTERHUB_ADMIN_USERNAME = settings.admin_username
 JUPYTERHUB_BRANDING_FAVICON_URI = settings.branding_favicon_uri
-JUPYTERHUB_BRANDING_STAGE = settings.branding_stage
-JUPYTERHUB_BRANDING_HUB_NAME = settings.branding_hub_name
 
 # ── Runtime-discovered values (NOT env reads - stay here, not in the loader) ──
 # Deployment NAMESPACE (compose project now; k8s namespace later). Discovered EXACT from
@@ -311,38 +308,19 @@ if branding['logo_file']:
 
 # ── Template variables ──
 # Passed to Jinja2 templates for UI rendering
-c.JupyterHub.template_vars = {
-    'user_volume_suffixes': user_volume_suffixes,            # ['home', 'workspace', 'cache'] for volume reset UI (kept for any existing consumers)
-    'user_volume_name_templates': user_volume_name_templates, # suffix -> volume-name template (with {username}) for UI labels
-    'user_volumes': user_volumes_for_ui,                     # ordered list of {suffix, name_template, description} for the reset UI loop
-    'stellars_version': os.environ.get('STELLARS_JUPYTERHUB_VERSION', 'dev'),  # platform version shown in UI
-    'server_version': jupyterhub.__version__,                # JupyterHub version shown in UI
-    'idle_culler_enabled': JUPYTERHUB_IDLE_CULLER_ENABLED,   # toggle culler UI elements
-    'idle_culler_timeout': JUPYTERHUB_IDLE_CULLER_TIMEOUT,   # timeout display in session panel
-    'idle_culler_max_extension': JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION,  # max extension hours display
-    'activitymon_target_hours': ACTIVITYMON_TARGET_HOURS,    # activity scoring window display
-    'activitymon_sample_interval': ACTIVITYMON_SAMPLE_INTERVAL,  # sampling interval display
-    'container_max_extra_space_mb': JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB * 1024,  # threshold in MB for container size warning
-    'volume_max_total_size_mb': JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB * 1024,        # threshold in MB for volume size warning
-    'memory_max_usage_mb': JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning (0 GB -> 30% of host RAM)
-    'favicon_uri': branding['favicon_uri'],                  # external favicon URL (empty = static_url default)
-    'branding_stage': branding['stage'],                     # environment-stage badge text for the portal header (window.jhdata.stage); empty = no badge
-    # Duoptimum Hub SPA entry chunk (hashed) so the overridden login/signup
-    # templates can load the same bundle as the portal shell; resolved from the
-    # vite manifest in the installed wheel ('' if unreadable -> stock-ish fallback).
-    'duoptimum_entry_js': duoptimum_hub_web.entry_assets()[0],
-    'duoptimum_entry_css': duoptimum_hub_web.entry_assets()[1],
-    # Authoritative "this platform has GPU" flag for the portal shell -> window.jhdata.
-    # The SPA gates every GPU widget on this instead of inferring from a (lazy) device list.
-    'gpu_enabled': bool(gpu_enabled),
-    # The platform admin username (JUPYTERHUB_ADMIN_USERNAME). The SPA needs this to recognise
-    # the built-in admin and the hook-promoted admin (whose persistent User.admin row
-    # is False), instead of guessing from a mock fixture.
-    'admin_user': JUPYTERHUB_ADMIN_USERNAME or '',
-    # Display name -> window.jhdata.hub_name. SPA shows it as the logo tooltip and as
-    # the login/signup screen text; default "Duoptimum Hub" (baked in the Dockerfile).
-    'hub_name': JUPYTERHUB_BRANDING_HUB_NAME,
-}
+# Values the Jinja2 templates + the portal shell (window.jhdata) read - see
+# config/wiring.py::template_vars. Settings + runtime GPU/branding + the data/version
+# values the config resolves (volume metadata, platform/hub versions, SPA entry chunk).
+c.JupyterHub.template_vars = template_vars(
+    settings, runtime,
+    user_volume_suffixes=user_volume_suffixes,
+    user_volume_name_templates=user_volume_name_templates,
+    user_volumes=user_volumes_for_ui,
+    stellars_version=os.environ.get('STELLARS_JUPYTERHUB_VERSION', 'dev'),
+    server_version=jupyterhub.__version__,
+    entry_js=duoptimum_hub_web.entry_assets()[0],
+    entry_css=duoptimum_hub_web.entry_assets()[1],
+)
 
 # ── Host-status provider ──
 # Resolve THIS environment's host-status provider off the configured spawner
