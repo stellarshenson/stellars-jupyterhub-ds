@@ -5,7 +5,7 @@
 # env var reads at module level. Every parameter is passed explicitly.
 #
 # Sections:
-#   1. Environment Variables   - all os.environ.get() calls with typed defaults
+#   1. Environment Variables   - operator settings via the config.settings loader
 #   2. Data Literals           - volumes, groups, paths, derived values
 #   3. Logic Calls             - event registration, GPU detection, branding
 #   4. JupyterHub Config       - all c.* settings (SSL, spawner, auth, handlers)
@@ -41,7 +41,6 @@ from duoptimum_hub_services import (
     resolve_gpu_vendor_provider,            # GPU vendor provider (driver/runtime/visibility-env); NVIDIA reference today, threaded to GPU policy + sidecar
     NvidiaGpuProvider,                       # reference GPU vendor; boot fallback so vendor resolution never strands boot (mirrors the GpuPolicy.apply fallback)
     resolve_host_status_provider,           # reads c.JupyterHub.spawner_class -> instantiates its declared host-status provider (home-screen CPU/MEM/GPU aggregate)
-    resolve_memory_quota_mb,                # calc: per-user memory warning threshold MB from host-RAM fraction
     schedule_startup_hydration,             # consolidated startup hydration: warms caches + image-update check + survivor favicon routes/policy, all deferred to the IOLoop
     setup_branding,                         # processes logo/favicon/icon URIs, copies file:// to static dir
 )
@@ -58,6 +57,7 @@ from duoptimum_hub_services.docker_utils import (  # {network}-token net resolut
     resolve_gpuinfo_network,    # role=gpuinfo net (hub<->sidecar), optional (GPU off when absent)
 )
 from duoptimum_hub_services.protected_env import load_protected_env  # protected-env dictionary -> reserved names/prefixes (single source)
+from duoptimum_hub_services.config import load_settings  # single env-read site for operator-tunable settings (Section 1)
 
 # The platform's custom API/page route table - registered via
 # c.DuoptimumHub.registered_handlers (our non-deprecated replacement for the
@@ -77,144 +77,90 @@ c = get_config()  # noqa: F821  - JupyterHub injects get_config() into config fi
 
 
 # ── Section 1: Environment Variables ─────────────────────────────────────────
-# All env var reads in one place. Typed with int() or str defaults.
-# See settings_dictionary.yml for full documentation of each variable.
 
-# Core platform toggles (0=disabled, 1=enabled)
-JUPYTERHUB_SSL_ENABLED = int(os.environ.get("JUPYTERHUB_SSL_ENABLED", 1))                      # direct SSL termination (disable when behind reverse proxy)
-JUPYTERHUB_GPU_ENABLED = int(os.environ.get("JUPYTERHUB_GPU_ENABLED", 1))                      # 0=off, 1=autodetect (default); GPU on only when devices are actually detected
-JUPYTERHUB_LAB_SERVICE_MLFLOW = int(os.environ.get("JUPYTERHUB_LAB_SERVICE_MLFLOW", 1))                 # MLflow tracking in spawned containers
-JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR = int(os.environ.get("JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR", 1))  # resource monitor widget
-JUPYTERHUB_LAB_SERVICE_TENSORBOARD = int(os.environ.get("JUPYTERHUB_LAB_SERVICE_TENSORBOARD", 1))       # TensorBoard in spawned containers
-JUPYTERHUB_SIGNUP_ENABLED = int(os.environ.get("JUPYTERHUB_SIGNUP_ENABLED", 1))                 # user self-registration (0=admin-only)
+# Operator-tunable settings are parsed once - with their defaults, types and
+# transforms - in the tested config.settings loader (the single env-read site).
+# See settings_dictionary.yml for per-variable documentation. Bound below to the
+# historical JUPYTERHUB_* names the rest of this file references (behaviour-neutral:
+# each binding == the old inline read, proven by test_settings_loader).
+settings = load_settings()
 
-# Idle culler - automatic server shutdown after inactivity
-JUPYTERHUB_IDLE_CULLER_ENABLED = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_ENABLED", 0))       # 0=off, 1=on
-JUPYTERHUB_IDLE_CULLER_TIMEOUT_MINUTES = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_TIMEOUT_MINUTES", 1440))  # minutes of inactivity before cull (24h)
-JUPYTERHUB_IDLE_CULLER_INTERVAL = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_INTERVAL", 600))   # seconds between cull checks (10min)
-JUPYTERHUB_IDLE_CULLER_MAX_AGE = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_AGE", 0))       # max server lifetime in seconds (0=unlimited)
-JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION_MINUTES = int(os.environ.get("JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION_MINUTES", 1440))  # max user-requested extension in minutes (24h)
+JUPYTERHUB_SSL_ENABLED = settings.ssl_enabled
+JUPYTERHUB_GPU_ENABLED = settings.gpu_enabled
+JUPYTERHUB_LAB_SERVICE_MLFLOW = settings.lab_service_mlflow
+JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR = settings.lab_service_resources_monitor
+JUPYTERHUB_LAB_SERVICE_TENSORBOARD = settings.lab_service_tensorboard
+JUPYTERHUB_SIGNUP_ENABLED = settings.signup_enabled
+JUPYTERHUB_IDLE_CULLER_ENABLED = settings.idle_culler_enabled
+JUPYTERHUB_IDLE_CULLER_TIMEOUT_MINUTES = settings.idle_culler_timeout_minutes
+JUPYTERHUB_IDLE_CULLER_INTERVAL = settings.idle_culler_interval
+JUPYTERHUB_IDLE_CULLER_MAX_AGE = settings.idle_culler_max_age
+JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION_MINUTES = settings.idle_culler_max_extension_minutes
+JUPYTERHUB_IDLE_CULLER_TIMEOUT = settings.idle_culler_timeout                # derived: seconds before cull
+JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION = settings.idle_culler_max_extension    # derived: whole hours users can extend
+ACTIVITYMON_TARGET_HOURS = settings.activitymon_target_hours
+ACTIVITYMON_SAMPLE_INTERVAL = settings.activitymon_sample_interval
+JUPYTERHUB_HUB_DOCKER_API_TIMEOUT = settings.hub_docker_api_timeout
+JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB = settings.lab_container_max_extra_space_gb
+JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB = settings.lab_volume_max_total_size_gb
+JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION = settings.lab_memory_max_usage_fraction
+JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB = settings.lab_memory_max_usage_mb        # derived: host-RAM fraction -> MB
+JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS = settings.lab_block_file_downloads
+JUPYTERHUB_LAB_SUDO_ENABLE = settings.lab_sudo_enable
+TF_CPP_MIN_LOG_LEVEL = settings.tf_cpp_min_log_level
+JUPYTERHUB_TIMEZONE = settings.timezone
+JUPYTERHUB_BASE_URL = settings.base_url
+JUPYTERHUB_LABEL_NETWORK_ROLE_KEY = settings.label_network_role_key
+JUPYTERHUB_LABEL_NETWORK_ROLE_LAB = settings.label_network_role_lab
+JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO = settings.label_network_role_gpuinfo
+JUPYTERHUB_LAB_IMAGE = settings.lab_image
+JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE = settings.lab_container_name_template
+JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME = settings.gpuinfo_nvidia_container_name
+JUPYTERHUB_GPUINFO_NVIDIA_URL = settings.gpuinfo_nvidia_url
+JUPYTERHUB_GPUINFO_NVIDIA_IMAGE = settings.gpuinfo_nvidia_image
+JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY = settings.label_container_role_key
+JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO = settings.label_container_role_gpuinfo
+JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB = settings.label_container_role_lab
+JUPYTERHUB_LABEL_VOLUME_ROLE_KEY = settings.label_volume_role_key
+JUPYTERHUB_LABEL_VOLUME_ROLE_SHARED = settings.label_volume_role_shared
+JUPYTERHUB_LABEL_VOLUME_ROLE_DOCKER_PROXY = settings.label_volume_role_docker_proxy
+JUPYTERHUB_LABEL_VOLUME_DESCRIPTION = settings.label_volume_description
+JUPYTERHUB_LABEL_VOLUME_OWNER_KEY = settings.label_volume_owner_key
+JUPYTERHUB_LABEL_CONTAINER_DESCRIPTION = settings.label_container_description
+JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_KEY = settings.label_docker_proxy_owner_key
+JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_VALUE = settings.label_docker_proxy_owner_value
+JUPYTERHUB_ADMIN_USERNAME = settings.admin_username
+JUPYTERHUB_BRANDING_LOGO_URI = settings.branding_logo_uri
+JUPYTERHUB_BRANDING_FAVICON_URI = settings.branding_favicon_uri
+JUPYTERHUB_BRANDING_FAVICON_BUSY_URI = settings.branding_favicon_busy_uri
+JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI = settings.branding_lab_main_icon_uri
+JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI = settings.branding_lab_splash_icon_uri
+JUPYTERHUB_BRANDING_STAGE = settings.branding_stage
+JUPYTERHUB_BRANDING_HUB_NAME = settings.branding_hub_name
+JUPYTERHUB_BRANDING_LAB_NAME = settings.branding_lab_name
+JUPYTERLAB_AUX_SCRIPTS_PATH = settings.aux_scripts_path
+JUPYTERLAB_AUX_MENU_PATH = settings.aux_menu_path
 
-# Derived internal units: culler service + handlers consume seconds; extend UI operates in whole hours
-JUPYTERHUB_IDLE_CULLER_TIMEOUT = JUPYTERHUB_IDLE_CULLER_TIMEOUT_MINUTES * 60               # seconds before cull
-JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION = JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION_MINUTES // 60  # whole hours users can extend
-# Activity monitor - engagement scoring via periodic sampling
-ACTIVITYMON_TARGET_HOURS = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_TARGET_HOURS', 8))        # scoring window in hours
-ACTIVITYMON_SAMPLE_INTERVAL = int(os.environ.get('JUPYTERHUB_ACTIVITYMON_SAMPLE_INTERVAL', 600))  # sampling interval in seconds (10min)
-
-# Docker
-JUPYTERHUB_HUB_DOCKER_API_TIMEOUT = int(os.environ.get("JUPYTERHUB_HUB_DOCKER_API_TIMEOUT", 360))               # Docker API timeout in seconds
-JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB = int(os.environ.get("JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB", 10))  # max writable layer in GB before warning
-JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB = int(os.environ.get("JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB", 50))        # max total volume size in GB before warning
-JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION = float(os.environ.get("JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION", 0.25))  # per-user memory warning threshold as fraction of host RAM (default 25%)
-
-
-JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB = resolve_memory_quota_mb(JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION)  # host-RAM fraction -> MB (calc helper in services)
-
-# File downloads (best-effort policy). 0=allow everywhere (dormant, no routes),
-# 1=block browser downloads from labs unless a user's group grants it via the
-# per-group downloads_active flag. Not a security boundary - the lab has a root
-# shell with egress, so this stops the download affordances and audits them, it
-# does not prevent a determined terminal/kernel exfiltration.
-JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS = int(os.environ.get("JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS", 0))
-
-# Member sudo default. Injected into every spawn as JUPYTERLAB_SUDO_ENABLE
-# (consumed by the lab image) when no group configures sudo via its per-group
-# Sudo Access section; a configuring group overrides this per the priority rule.
-JUPYTERHUB_LAB_SUDO_ENABLE = int(os.environ.get("JUPYTERHUB_LAB_SUDO_ENABLE", 1))
-
-# Misc
-TF_CPP_MIN_LOG_LEVEL = int(os.environ.get("TF_CPP_MIN_LOG_LEVEL", 3))                          # suppress TensorFlow logging in spawned containers
-JUPYTERHUB_TIMEZONE = os.environ.get("JUPYTERHUB_TIMEZONE", "Etc/UTC")                          # IANA timezone (e.g. Europe/Warsaw), applied to hub + spawned containers
-
-# Docker spawner settings
-JUPYTERHUB_BASE_URL = os.environ.get("JUPYTERHUB_BASE_URL")                                     # URL prefix (e.g. /jupyterhub), None or / for root
-# Net role labels. Hub finds each net by role among own attachments (hub_network + gpuinfo
-# net). Key + values baked ENV (single source); empty -> validator fails. Compose stamps
-# matching literals on nets (MUST match).
-JUPYTERHUB_LABEL_NETWORK_ROLE_KEY = os.environ.get("JUPYTERHUB_LABEL_NETWORK_ROLE_KEY", "").strip()
-JUPYTERHUB_LABEL_NETWORK_ROLE_LAB = os.environ.get("JUPYTERHUB_LABEL_NETWORK_ROLE_LAB", "").strip()
-JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO = os.environ.get("JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO", "").strip()
-# Hub<->lab net the labs join (MUST share with hub - labs hit hub API, CHP proxies them).
-# The env carries the baked "{network}" token; resolve_lab_network() (memoized, in the
-# package) resolves it to the role=lab net at each push-boundary below - the env is never
-# mutated here. Empty after resolve -> validator fails (the lab net is required).
-JUPYTERHUB_LAB_IMAGE = os.environ.get("JUPYTERHUB_LAB_IMAGE", "").strip()                # JupyterLab image to spawn (baked ENV; empty -> validator fails)
-# Deployment NAMESPACE (compose project now; k8s namespace later) - scope every label
-# uniqueness check lives in. Drives volume namespace + hub/sidecar/lab compose labels.
-# Discovered EXACT from the hub's own com.docker.compose.project label - no env, can't drift
-# from the real volume prefix. Empty -> validator fails.
+# ── Runtime-discovered values (NOT env reads - stay here, not in the loader) ──
+# Deployment NAMESPACE (compose project now; k8s namespace later). Discovered EXACT from
+# the hub's own com.docker.compose.project label - no env, can't drift from the real volume
+# prefix. Drives volume namespace + hub/sidecar/lab compose labels. Empty -> validator fails.
 JUPYTERHUB_COMPOSE_PROJECT_NAME = (resolve_self_compose_project() or "").strip()
-# Compose project for spawned lab/user containers - the com.docker.compose.project
-# label they carry. The {compose} placeholder is filled with the discovered hub
-# project (so compose.yml can say "{compose}_labs" to group labs under their own
-# project without hardcoding the project name); empty = same project as the hub.
-# Volume namespacing is unaffected (it stays on JUPYTERHUB_COMPOSE_PROJECT_NAME) -
-# only the user-container compose label changes.
+# Compose project for spawned lab/user containers - the com.docker.compose.project label they
+# carry. {compose} is filled with the discovered hub project (so compose.yml can say
+# "{compose}_labs"); empty = same project as the hub. HYBRID: reads its own env then applies
+# the runtime-discovered project, so it stays here (the one config-level env read).
 JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME = (
     os.environ.get("JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME", "").strip()
     .replace("{compose}", JUPYTERHUB_COMPOSE_PROJECT_NAME)
     or JUPYTERHUB_COMPOSE_PROJECT_NAME
 )
-# Lab-container name template ({username}). One source: spawner names from it,
-# docker_utils.lab_container_name() finds it again - no hardcoded prefix, so a rename never
-# desyncs spawn from lookup. Baked ENV (jupyterlab-{username}); validator requires it
-# present + carrying {username}.
-JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE = os.environ.get("JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE", "").strip()
-JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME", "")  # SIMPLE service name (e.g. gpuinfo-nvidia); the hub replicates compose's <project>-<service>-<number> auto-naming at instantiation (see gpuinfo_sidecar._compose_container_name), so the running container is named like a compose-managed one
-JUPYTERHUB_GPUINFO_NVIDIA_URL = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_URL", "")  # GPU-info sidecar base URL TEMPLATE; the {hostname} placeholder is filled at runtime by ensure_gpuinfo_sidecar with the address it discovers for the running sidecar - no hardcoded host
-# Container role label on hub-created sidecar (mirrored on compose gpuinfo-nvidia service).
-# Future code finds gpuinfo containers by role. Key + value baked ENV (MUST match compose);
-# empty -> validator fails.
-JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY = os.environ.get("JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY", "").strip()
-JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO = os.environ.get("JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO", "").strip()
-# Spawned-lab container role value. pre_spawn_hook stamps hub.container.role=lab on every
-# user lab so labs are discoverable by role like the hub + gpuinfo sidecar (uniform container
-# management). Baked ENV (MUST match compose env); empty -> validator fails.
-JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB = os.environ.get("JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB", "").strip()
-# Volume role labels. Hub finds each named volume it mounts by role among own mounts -
-# discover, not name (name drifts: jupyterhub_shared -> hub_shared bug). Key + values baked
-# ENV (MUST match compose volume labels); empty -> validator fails. Duplicate role -> raises
-# (per-namespace).
-JUPYTERHUB_LABEL_VOLUME_ROLE_KEY = os.environ.get("JUPYTERHUB_LABEL_VOLUME_ROLE_KEY", "").strip()
-JUPYTERHUB_LABEL_VOLUME_ROLE_SHARED = os.environ.get("JUPYTERHUB_LABEL_VOLUME_ROLE_SHARED", "").strip()
-JUPYTERHUB_LABEL_VOLUME_ROLE_DOCKER_PROXY = os.environ.get("JUPYTERHUB_LABEL_VOLUME_ROLE_DOCKER_PROXY", "").strip()
-JUPYTERHUB_LABEL_VOLUME_DESCRIPTION = os.environ.get("JUPYTERHUB_LABEL_VOLUME_DESCRIPTION", "").strip()  # label key the hub reads a volume's human description from (Lab Setup panel); empty -> no description
-# Per-user volume OWNER key (value = the username) + container DESCRIPTION key. Sourced from
-# env only - the stamping code (hooks.py / gpuinfo_sidecar.py) and the readers (handlers) take
-# them from here, never a hardcoded literal. Key baked ENV (MUST match compose); empty -> validator fails.
-JUPYTERHUB_LABEL_VOLUME_OWNER_KEY = os.environ.get("JUPYTERHUB_LABEL_VOLUME_OWNER_KEY", "").strip()
-JUPYTERHUB_LABEL_CONTAINER_DESCRIPTION = os.environ.get("JUPYTERHUB_LABEL_CONTAINER_DESCRIPTION", "").strip()
-# Docker-proxy ownership key/value - consumed by the in-process proxy package; read here RAW
-# only so the hub validator can enforce they are provided (the proxy keeps its own env read).
-JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_KEY = os.environ.get("JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_KEY", "").strip()
-JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_VALUE = os.environ.get("JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_VALUE", "").strip()
 # Shared volume the Groups UI offers as one-click /mnt/shared. Found by role among own mounts
 # (rename-safe). Empty when absent - validator WARNS, quick-add hides (manual rows still work).
-# Duplicate role -> raises.
+# Duplicate role -> raises. Uses the volume role-key/shared bindings above.
 JUPYTERHUB_SHARED_VOLUME_NAME = resolve_self_mount_volume_by_label(
     JUPYTERHUB_LABEL_VOLUME_ROLE_KEY, JUPYTERHUB_LABEL_VOLUME_ROLE_SHARED
 ) or ""
-# Hub<->sidecar net (compose owns it) tagged role=gpuinfo. The env carries the baked
-# "{network}" token; resolve_gpuinfo_network() (memoized, in the package) resolves it at
-# the sidecar + validator call sites - never mutated here. Empty = sidecar unplaceable ->
-# GPU off (validator WARNS, sidecar degrades).
-JUPYTERHUB_GPUINFO_NVIDIA_IMAGE = os.environ.get("JUPYTERHUB_GPUINFO_NVIDIA_IMAGE", "").strip()  # sidecar image the hub self-starts (baked Dockerfile ENV; empty -> validate_hub_config fails)
-JUPYTERHUB_ADMIN_USERNAME = os.environ.get("JUPYTERHUB_ADMIN_USERNAME", "").strip().lower()                      # admin username; .lower() - JupyterHub normalizes usernames to lowercase, bootstrap lookups/compares use this raw so it must match the DB + login form (auto-authorized on first signup; required; baked image ENV - validated by validate_hub_config)
-
-# Branding URIs - file:// copies to static dir, http(s):// passed to templates, empty = stock assets
-JUPYTERHUB_BRANDING_LOGO_URI = os.environ.get("JUPYTERHUB_BRANDING_LOGO_URI", "")                          # hub logo (login page, nav bar)
-JUPYTERHUB_BRANDING_FAVICON_URI = os.environ.get("JUPYTERHUB_BRANDING_FAVICON_URI", "")                    # browser tab icon (hub + JupyterLab via CHP route)
-JUPYTERHUB_BRANDING_FAVICON_BUSY_URI = os.environ.get("JUPYTERHUB_BRANDING_FAVICON_BUSY_URI", "")          # kernel-busy tab icon for JupyterLab; empty = JupyterLab default busy frames
-JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI = os.environ.get("JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI", "")        # JupyterLab main area icon
-JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI = os.environ.get("JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI", "")    # JupyterLab splash screen icon
-JUPYTERHUB_BRANDING_STAGE = os.environ.get("JUPYTERHUB_BRANDING_STAGE", "")                                # environment-stage header badge (DEV/STG/TST/PRD or custom); empty = no badge
-JUPYTERHUB_BRANDING_HUB_NAME = os.environ.get("JUPYTERHUB_BRANDING_HUB_NAME", "DuOptimum Hub")             # hub display name: portal logo tooltip + login/signup screen text; default baked in Dockerfile
-
-# User environment customization - paths passed through to spawned containers
-JUPYTERLAB_AUX_SCRIPTS_PATH = os.environ.get("JUPYTERLAB_AUX_SCRIPTS_PATH", "")             # admin startup scripts executed on container launch
-JUPYTERLAB_AUX_MENU_PATH = os.environ.get("JUPYTERLAB_AUX_MENU_PATH", "")                   # admin-managed custom menu definitions for JupyterLab
-JUPYTERHUB_BRANDING_LAB_NAME = os.environ.get("JUPYTERHUB_BRANDING_LAB_NAME", "")           # lab display name; injected into each lab as JUPYTERLAB_SYSTEM_NAME (header/welcome/MOTD); empty = no rebrand
 
 
 # Required-config validation runs once below (validate_hub_config call), after the

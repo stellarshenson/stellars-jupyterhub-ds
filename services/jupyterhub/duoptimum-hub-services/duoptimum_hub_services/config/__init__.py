@@ -1,0 +1,11 @@
+"""Config assembly for the DuOptimum hub (config simplification).
+
+Moves the mechanical bulk out of jupyterhub_config.py so the config file reads like
+configuration. `load_settings()` is the single module-level env-read site for the
+operator-tunable settings; runtime-discovered values (compose project, mounted
+volumes, GPU/sidecar/branding) stay in the config/runtime layer, not here.
+"""
+
+from .settings import Settings, load_settings
+
+__all__ = ["Settings", "load_settings"]
