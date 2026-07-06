@@ -236,7 +236,7 @@ def _list_running_pool_slots():
 async def observe_in_use():
     """Async wrapper around `_list_running_pool_slots` (runs off the main loop)."""
     from .docker_utils import get_executor
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     return await loop.run_in_executor(get_executor(), _list_running_pool_slots)
 
 

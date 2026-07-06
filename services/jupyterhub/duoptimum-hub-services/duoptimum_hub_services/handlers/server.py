@@ -71,7 +71,7 @@ class RestartServerHandler(BaseHandler):
                     username,
                 )
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         try:
             await loop.run_in_executor(get_executor(), _restart)
             self.log.info(f"[Restart Server] Container {container_name} successfully restarted for user {username}")
@@ -129,7 +129,7 @@ class ServerLogsHandler(BaseHandler):
             text = raw.decode('utf-8', errors='replace') if isinstance(raw, (bytes, bytearray)) else str(raw)
             return text.splitlines()[-tail:]
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         try:
             lines = await loop.run_in_executor(get_executor(), _read_logs)
             self.finish({"lines": lines})

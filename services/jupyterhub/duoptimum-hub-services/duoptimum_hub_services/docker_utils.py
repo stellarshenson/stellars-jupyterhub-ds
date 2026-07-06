@@ -204,7 +204,7 @@ def get_container_stats(username):
 
 async def get_container_stats_async(username):
     """Async wrapper - runs in thread pool to avoid blocking."""
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     return await loop.run_in_executor(_docker_executor, get_container_stats, username)
 
 
@@ -223,7 +223,7 @@ def volume_exists(volume_name):
 
 async def volume_exists_async(volume_name):
     """Async wrapper - runs in thread pool to avoid blocking the hub loop."""
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     return await loop.run_in_executor(_docker_executor, volume_exists, volume_name)
 
 
@@ -243,7 +243,7 @@ def volume_labels(volume_name):
 
 async def volume_labels_async(volume_name):
     """Async wrapper - runs in thread pool to avoid blocking the hub loop."""
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     return await loop.run_in_executor(_docker_executor, volume_labels, volume_name)
 
 
