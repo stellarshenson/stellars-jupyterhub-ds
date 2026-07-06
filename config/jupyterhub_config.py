@@ -52,7 +52,8 @@ from duoptimum_hub_services.docker_utils import (  # {network}-token net resolut
 )
 from duoptimum_hub_services.protected_env import load_protected_env  # protected-env dictionary -> reserved names/prefixes (single source)
 from duoptimum_hub_services.config import (  # settings loader + c.* dict builders + boot runtime (GPU/sidecar/branding)
-    load_settings, assemble_runtime, docker_spawner_env, template_vars, stellars_config, validator_payload,
+    load_settings, assemble_runtime, docker_spawner_env, template_vars, stellars_config,
+    validator_payload, pre_spawn_kwargs,
 )
 
 # The platform's custom API/page route table - registered via
@@ -94,19 +95,15 @@ JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION = settings.idle_culler_max_extension    # d
 ACTIVITYMON_SAMPLE_INTERVAL = settings.activitymon_sample_interval
 JUPYTERHUB_HUB_DOCKER_API_TIMEOUT = settings.hub_docker_api_timeout
 JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS = settings.lab_block_file_downloads
-JUPYTERHUB_LAB_SUDO_ENABLE = settings.lab_sudo_enable
 JUPYTERHUB_BASE_URL = settings.base_url
 # Only the bindings still referenced by Section 2-4 remain; the rest now flow through
 # settings.* inside the config.* builders (docker_spawner_env / validator_payload / runtime).
 JUPYTERHUB_LAB_IMAGE = settings.lab_image
 JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE = settings.lab_container_name_template
-JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY = settings.label_container_role_key
-JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB = settings.label_container_role_lab
 JUPYTERHUB_LABEL_VOLUME_ROLE_KEY = settings.label_volume_role_key
 JUPYTERHUB_LABEL_VOLUME_ROLE_SHARED = settings.label_volume_role_shared
 JUPYTERHUB_LABEL_VOLUME_ROLE_DOCKER_PROXY = settings.label_volume_role_docker_proxy
 JUPYTERHUB_LABEL_VOLUME_DESCRIPTION = settings.label_volume_description
-JUPYTERHUB_LABEL_VOLUME_OWNER_KEY = settings.label_volume_owner_key
 JUPYTERHUB_ADMIN_USERNAME = settings.admin_username
 JUPYTERHUB_BRANDING_FAVICON_URI = settings.branding_favicon_uri
 
@@ -245,13 +242,9 @@ prepare_sent_notification_log()
 # (self-starts the sidecar, registers the atexit teardown, copies branding). The produced
 # values are bound back to the module names the rest of this file references.
 runtime = assemble_runtime(settings, JUPYTERHUB_COMPOSE_PROJECT_NAME)
-GPU_VENDOR = runtime.gpu_vendor
-_gpuinfo_url = runtime.gpuinfo_url
-_gpuinfo_sidecar_up = runtime.gpuinfo_sidecar_up
 gpu_enabled = runtime.gpu_enabled
 nvidia_detected = runtime.nvidia_detected
 gpu_list = runtime.gpu_list
-GPU_UUID_BY_INDEX = runtime.gpu_uuid_by_index
 branding = runtime.branding
 
 
@@ -396,31 +389,21 @@ validate_hub_config(validator_payload(
     user_compose_project_template=JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE,
 )).raise_if_errors(log=log)
 
-c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
-    branding,                                                # icon static names and URLs from setup_branding()
-    favicon_uri=JUPYTERHUB_BRANDING_FAVICON_URI,             # non-empty activates the favicon.ico CHP route
-    favicon_busy_target=branding['favicon_busy_target'],    # non-empty activates the favicon-busy CHP route; empty = JupyterLab default busy frames
-    gpu_available=bool(gpu_enabled),                         # hardware present - required for per-group GPU grant
-    gpu_uuid_by_index=GPU_UUID_BY_INDEX,                     # index->UUID for CUDA_VISIBLE_DEVICES
-    gpu_vendor=GPU_VENDOR,                                   # GPU vendor provider (device request + visibility env) threaded to the GPU policy
-    reserved_env_var_names=RESERVED_ENV_VAR_NAMES,           # names groups cannot override
-    reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,     # prefixes reserved for JupyterHub/platform
-    compose_project=JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME,     # compose project label on spawned labs (defaults to the hub project; overridable to differ)
-    container_role_label_key=JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY,   # hub.container.role key stamped on the spawned lab
-    container_role_label_value=JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB, # role value 'lab' - makes spawned labs discoverable by role like the hub + gpuinfo sidecar
-    docker_proxy_socket_dir=JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR,   # path inside hub where per-user sockets live (backed by named volume)
-    docker_proxy_volume_name=JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME,      # named docker volume; the spawner subpath-mounts this into each lab
-    user_compose_project_template=JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE,  # rendered per-user when a docker-limited group enables it
-    hub_network_name=resolve_lab_network(),                      # revealed in user's `docker network ls` when their group enables it (default on)
-    block_file_downloads=JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS,        # master switch: overlay per-user download-block CHP routes for non-granted users
-    lab_sudo_enable_default=JUPYTERHUB_LAB_SUDO_ENABLE,  # default JUPYTERLAB_SUDO_ENABLE when no group configures sudo
-    api_keys_reconcile_interval=JUPYTERHUB_IDLE_CULLER_INTERVAL,  # periodic api-keys-pool reconcile cadence (reuses the cull interval, default 600s)
-    shared_volume_name=JUPYTERHUB_SHARED_VOLUME_NAME,  # role=shared volume the group "standard shared" mount resolves to at spawn (label-resolved, rename-safe; '' = absent)
-    volume_role_label_key=JUPYTERHUB_LABEL_VOLUME_ROLE_KEY,  # hub.volume.role key stamped on per-user volumes at spawn
-    volume_owner_label_key=JUPYTERHUB_LABEL_VOLUME_OWNER_KEY,  # hub.volume.owner key; value = the username, stamped per-user at spawn (env-sourced)
-    volume_description_label_key=JUPYTERHUB_LABEL_VOLUME_DESCRIPTION,  # hub.volume.description key stamped per-user at spawn (env-sourced)
-    user_volume_label_templates=user_volume_label_templates,  # name-template -> {role, description}; hook pre-creates each labelled per-user volume (role/owner/description)
-)
+# Async pre-spawn hook (group perms, favicon/icon routes, per-user volume labels) -
+# see config/wiring.py::pre_spawn_kwargs. Settings + runtime GPU/branding + the
+# reserved-env / docker-proxy / compose / volume-template values resolved above.
+c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(**pre_spawn_kwargs(
+    settings, runtime,
+    reserved_env_var_names=RESERVED_ENV_VAR_NAMES,
+    reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,
+    lab_compose_project=JUPYTERHUB_LAB_COMPOSE_PROJECT_NAME,
+    docker_proxy_socket_dir=JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR,
+    docker_proxy_volume_name=JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME,
+    user_compose_project_template=JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE,
+    lab_network=resolve_lab_network(),
+    shared_volume_name=JUPYTERHUB_SHARED_VOLUME_NAME,
+    user_volume_label_templates=user_volume_label_templates,
+))
 
 
 c.DockerSpawner.post_stop_hook = make_post_stop_hook(socket_dir=JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR)  # docker-proxy unregister + api-key release + stop event

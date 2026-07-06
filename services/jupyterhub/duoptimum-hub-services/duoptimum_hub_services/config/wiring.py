@@ -100,6 +100,40 @@ def stellars_config(settings, runtime, *, user_volume_suffixes, user_volume_name
     }
 
 
+def pre_spawn_kwargs(settings, runtime, *, reserved_env_var_names, reserved_env_var_prefixes,
+                     lab_compose_project, docker_proxy_socket_dir, docker_proxy_volume_name,
+                     user_compose_project_template, lab_network, shared_volume_name,
+                     user_volume_label_templates):
+    """Kwargs for make_pre_spawn_hook(**...). Settings + runtime GPU/branding + the
+    reserved-env / docker-proxy / compose / volume-template values the config resolves.
+    Keys match make_pre_spawn_hook's parameter names exactly."""
+    return {
+        'branding': runtime.branding,                        # icon static names + URLs from setup_branding()
+        'favicon_uri': settings.branding_favicon_uri,        # non-empty activates the favicon.ico CHP route
+        'favicon_busy_target': runtime.branding['favicon_busy_target'],  # non-empty activates the favicon-busy CHP route
+        'gpu_available': bool(runtime.gpu_enabled),          # hardware present - required for per-group GPU grant
+        'gpu_uuid_by_index': runtime.gpu_uuid_by_index,      # index->UUID for CUDA_VISIBLE_DEVICES
+        'gpu_vendor': runtime.gpu_vendor,                    # GPU vendor provider threaded to the GPU policy
+        'reserved_env_var_names': reserved_env_var_names,    # names groups cannot override
+        'reserved_env_var_prefixes': reserved_env_var_prefixes,  # prefixes reserved for JupyterHub/platform
+        'compose_project': lab_compose_project,              # compose project label on spawned labs
+        'container_role_label_key': settings.label_container_role_key,   # hub.container.role key stamped on the lab
+        'container_role_label_value': settings.label_container_role_lab,  # role value 'lab'
+        'docker_proxy_socket_dir': docker_proxy_socket_dir,  # per-user socket path inside hub (named volume)
+        'docker_proxy_volume_name': docker_proxy_volume_name,  # named docker volume subpath-mounted into each lab
+        'user_compose_project_template': user_compose_project_template,  # per-user when a docker-limited group enables it
+        'hub_network_name': lab_network,                     # shown in the user's docker network ls when enabled
+        'block_file_downloads': settings.lab_block_file_downloads,  # master switch for per-user download-block routes
+        'lab_sudo_enable_default': settings.lab_sudo_enable,  # default JUPYTERLAB_SUDO_ENABLE when no group configures sudo
+        'api_keys_reconcile_interval': settings.idle_culler_interval,  # api-keys-pool reconcile cadence (reuses cull interval)
+        'shared_volume_name': shared_volume_name,            # role=shared volume the group standard-shared mount resolves to
+        'volume_role_label_key': settings.label_volume_role_key,  # hub.volume.role key stamped per-user at spawn
+        'volume_owner_label_key': settings.label_volume_owner_key,  # hub.volume.owner key (value = username)
+        'volume_description_label_key': settings.label_volume_description,  # hub.volume.description key
+        'user_volume_label_templates': user_volume_label_templates,  # name-template -> {role, description} for pre-create
+    }
+
+
 def validator_payload(settings, *, namespace, lab_network_name, gpuinfo_network_name,
                       shared_volume_name, docker_proxy_socket_dir, docker_proxy_sockets_volume,
                       user_compose_project_template):

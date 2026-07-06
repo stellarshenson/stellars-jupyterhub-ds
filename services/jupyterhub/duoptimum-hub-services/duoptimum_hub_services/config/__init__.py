@@ -7,10 +7,10 @@ volumes, GPU/sidecar/branding) stay in the config/runtime layer, not here.
 """
 
 from .settings import Settings, load_settings
-from .wiring import docker_spawner_env, template_vars, stellars_config, validator_payload
+from .wiring import docker_spawner_env, template_vars, stellars_config, validator_payload, pre_spawn_kwargs
 from .runtime import Runtime, assemble_runtime
 
 __all__ = [
     "Settings", "load_settings", "Runtime", "assemble_runtime",
-    "docker_spawner_env", "template_vars", "stellars_config", "validator_payload",
+    "docker_spawner_env", "template_vars", "stellars_config", "validator_payload", "pre_spawn_kwargs",
 ]

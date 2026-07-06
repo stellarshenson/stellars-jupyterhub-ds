@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import pytest
 
 from duoptimum_hub_services.config.runtime import Runtime, assemble_runtime
-from duoptimum_hub_services.config.wiring import docker_spawner_env, stellars_config, template_vars, validator_payload
+from duoptimum_hub_services.config.wiring import docker_spawner_env, pre_spawn_kwargs, stellars_config, template_vars, validator_payload
 
 _SETTINGS = SimpleNamespace(
     tf_cpp_min_log_level=3,
@@ -199,6 +199,52 @@ def test_stellars_config_key_set_and_lab_volumes():
     assert got["lab_volumes"] == [
         {"suffix": "home", "mount": "/home", "description": "Home", "role": "lab-home"}
     ]
+
+
+def _pre_spawn_inputs():
+    s = SimpleNamespace(
+        branding_favicon_uri="f.ico", label_container_role_key="crk", label_container_role_lab="lab",
+        lab_block_file_downloads=0, lab_sudo_enable=1, idle_culler_interval=600,
+        label_volume_role_key="vrk", label_volume_owner_key="vok", label_volume_description="vd",
+    )
+    r = SimpleNamespace(
+        branding={"favicon_busy_target": "busy.ico"}, gpu_enabled=1,
+        gpu_uuid_by_index={"0": "GPU-x"}, gpu_vendor=object(),
+    )
+    kw = dict(
+        reserved_env_var_names={"A"}, reserved_env_var_prefixes=("P_",), lab_compose_project="proj",
+        docker_proxy_socket_dir="/sock", docker_proxy_volume_name="vol",
+        user_compose_project_template="{username}_c", lab_network="net", shared_volume_name="shared",
+        user_volume_label_templates={"t": {"role": "r"}},
+    )
+    return s, r, kw
+
+
+def test_pre_spawn_kwargs_match_hook_signature():
+    # every key must be a real make_pre_spawn_hook parameter, and every required
+    # (no-default) parameter must be supplied - so make_pre_spawn_hook(**kw) can't TypeError.
+    from duoptimum_hub_services.hooks import make_pre_spawn_hook
+    params = inspect.signature(make_pre_spawn_hook).parameters
+    s, r, kw = _pre_spawn_inputs()
+    out = pre_spawn_kwargs(s, r, **kw)
+    accepted = set(params)
+    assert set(out) <= accepted, set(out) - accepted
+    required = {n for n, p in params.items()
+                if p.default is inspect.Parameter.empty and p.kind not in (p.VAR_POSITIONAL, p.VAR_KEYWORD)}
+    assert required <= set(out), required - set(out)
+
+
+def test_pre_spawn_kwargs_mappings():
+    s, r, kw = _pre_spawn_inputs()
+    out = pre_spawn_kwargs(s, r, **kw)
+    assert out["branding"] is r.branding
+    assert out["favicon_busy_target"] == "busy.ico"
+    assert out["gpu_available"] is True
+    assert out["gpu_vendor"] is r.gpu_vendor
+    assert out["compose_project"] == "proj"
+    assert out["hub_network_name"] == "net"
+    assert out["api_keys_reconcile_interval"] == 600
+    assert out["container_role_label_value"] == "lab"
 
 
 def test_validator_payload_settings_mappings():
