@@ -131,11 +131,20 @@ function loginRedirect(): never {
   throw new HubError(401, 'redirecting to login')
 }
 
+/* Abort a request that hangs too long. A hub that accepts the TCP connection but
+ * never responds otherwise leaves the fetch promise pending forever, wedging the
+ * control that awaits it (a spinner that never clears) with no recovery but a full
+ * page reload. Generous so only a genuinely hung hub trips it - a slow-but-live
+ * response still completes. On trip, fetch rejects with a TimeoutError, which the
+ * normal error paths (React Query, run() toasts) surface as a failure. */
+const HUB_FETCH_TIMEOUT_MS = 30_000
+
 export async function hubGet<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'GET',
     credentials: 'include',
     headers: { Accept: 'application/json', 'X-XSRFToken': xsrf() },
+    signal: AbortSignal.timeout(HUB_FETCH_TIMEOUT_MS),
   })
   if (!res.ok) throw new HubError(res.status, `GET ${path}`)
   return (await res.json()) as T
@@ -151,6 +160,7 @@ export async function hubSend<T = unknown>(method: WriteMethod, path: string, bo
     credentials: 'include',
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(HUB_FETCH_TIMEOUT_MS),
   })
   if (!res.ok) throw new HubError(res.status, `${method} ${path}`, await res.text().catch(() => ''))
   const txt = await res.text()
@@ -160,7 +170,11 @@ export async function hubSend<T = unknown>(method: WriteMethod, path: string, bo
 /** NativeAuth GET-toggle (authorize / discard). Follows the redirect to the
  * authorize page; a non-error final response means the toggle ran. */
 export async function hubAuthGet(path: string): Promise<void> {
-  const res = await fetch(`${HUB_ROOT}${path}`, { method: 'GET', credentials: 'include' })
+  const res = await fetch(`${HUB_ROOT}${path}`, {
+    method: 'GET',
+    credentials: 'include',
+    signal: AbortSignal.timeout(HUB_FETCH_TIMEOUT_MS),
+  })
   if (!res.ok) throw new HubError(res.status, `GET /hub${path}`)
 }
 
@@ -173,6 +187,7 @@ export async function hubAuthForm(path: string, fields: Record<string, string>):
     credentials: 'include',
     headers: { 'X-XSRFToken': xsrf(), 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(fields),
+    signal: AbortSignal.timeout(HUB_FETCH_TIMEOUT_MS),
   })
   const body = await res.text().catch(() => '')
   if (!res.ok) throw new HubError(res.status, `POST /hub${path}`, body)
@@ -192,6 +207,7 @@ export async function getCurrentUser(): Promise<HubCurrentUser> {
     method: 'GET',
     credentials: 'include',
     headers: { Accept: 'application/json', 'X-XSRFToken': xsrf() },
+    signal: AbortSignal.timeout(HUB_FETCH_TIMEOUT_MS),
   })
   if (res.status === 401 || res.status === 403) loginRedirect()
   if (!res.ok) throw new HubError(res.status, 'GET /user')
