@@ -16,6 +16,7 @@ so spawned user labs cannot reach it.
 import socket
 from urllib.parse import urlparse
 
+from .docker_utils import get_docker_client
 from .logging_setup import log
 
 # Sidecar runtime env (NVIDIA_VISIBLE_DEVICES, NVIDIA_DRIVER_CAPABILITIES, GPUINFO_PORT),
@@ -185,7 +186,7 @@ def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', contain
     if container_description_label_key and container_description:
         container_labels[container_description_label_key] = container_description
     try:
-        client = docker.DockerClient('unix://var/run/docker.sock')
+        client = get_docker_client()
     except Exception as e:
         log.warning(f"[GPUInfo] docker unavailable; sidecar not started: {e}")
         return ""
@@ -285,7 +286,7 @@ def stop_gpuinfo_sidecar(url, container_name=None, compose_project=''):
     if not name:
         return
     try:
-        client = docker.DockerClient('unix://var/run/docker.sock')
+        client = get_docker_client()
     except Exception:
         return
     try:

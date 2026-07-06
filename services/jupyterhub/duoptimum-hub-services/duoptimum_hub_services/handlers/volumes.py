@@ -7,7 +7,7 @@ import docker
 from jupyterhub.handlers import BaseHandler
 from tornado import web
 
-from ..docker_utils import encode_username_for_docker
+from ..docker_utils import encode_username_for_docker, get_docker_client
 from ..event_log import record_event
 
 
@@ -33,7 +33,7 @@ class ManageVolumesHandler(BaseHandler):
         templates = self.settings['stellars_config']['user_volume_name_templates']
         encoded = encode_username_for_docker(username)
         try:
-            client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+            client = get_docker_client()
         except Exception as e:
             self.log.error(f"[Manage Volumes] Failed to connect to Docker: {e}")
             raise web.HTTPError(500, "Failed to connect to Docker daemon")
@@ -194,7 +194,7 @@ class ManageVolumesHandler(BaseHandler):
             raise web.HTTPError(400, "Server must be stopped before resetting volumes")
 
         try:
-            docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+            docker_client = get_docker_client()
         except Exception as e:
             self.log.error(f"[Manage Volumes] Failed to connect to Docker: {e}")
             raise web.HTTPError(500, "Failed to connect to Docker daemon")

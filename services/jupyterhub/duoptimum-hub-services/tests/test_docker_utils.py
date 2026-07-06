@@ -498,7 +498,9 @@ class TestVolumeLabels:
             def close(self):
                 pass
 
-        monkeypatch.setitem(sys.modules, "docker", SimpleNamespace(from_env=lambda: _Client()))
+        # volume_labels acquires its client via docker_utils.get_docker_client()
+        # (DockerClient bound to the local socket), so the fake exposes DockerClient.
+        monkeypatch.setitem(sys.modules, "docker", SimpleNamespace(DockerClient=lambda **kw: _Client()))
 
     def test_returns_labels_dict(self, monkeypatch):
         self._install_fake_docker(monkeypatch, labels={"hub.volume.description": "Shared store"})
@@ -513,3 +515,39 @@ class TestVolumeLabels:
         # absent volume / docker error -> None (distinct from {}), so exists check fails safe
         self._install_fake_docker(monkeypatch, raises=True)
         assert volume_labels("nope") is None
+
+
+class TestDockerClientHelper:
+    """get_docker_client / get_docker_api_client are the SINGLE construction seam:
+    always the local socket, optional explicit timeout. timeout=None must omit the
+    kwarg so docker-py's default is preserved (this de-dup changed no per-site timeout)."""
+
+    @staticmethod
+    def _spy(monkeypatch):
+        seen = {}
+
+        class _C:
+            def __init__(self, **kw):
+                seen.clear()
+                seen.update(kw)
+
+        monkeypatch.setitem(sys.modules, "docker", SimpleNamespace(DockerClient=_C, APIClient=_C))
+        return seen
+
+    def test_client_default_omits_timeout(self, monkeypatch):
+        import duoptimum_hub_services.docker_utils as du
+        seen = self._spy(monkeypatch)
+        du.get_docker_client()
+        assert seen == {"base_url": du.DOCKER_SOCKET_URL}
+
+    def test_client_passes_explicit_timeout(self, monkeypatch):
+        import duoptimum_hub_services.docker_utils as du
+        seen = self._spy(monkeypatch)
+        du.get_docker_client(timeout=42)
+        assert seen == {"base_url": du.DOCKER_SOCKET_URL, "timeout": 42}
+
+    def test_api_client_passes_explicit_timeout(self, monkeypatch):
+        import duoptimum_hub_services.docker_utils as du
+        seen = self._spy(monkeypatch)
+        du.get_docker_api_client(timeout=30)
+        assert seen == {"base_url": du.DOCKER_SOCKET_URL, "timeout": 30}

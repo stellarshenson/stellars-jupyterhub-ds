@@ -29,8 +29,8 @@ def _get_refresh_interval():
 def _fetch_single_container_size(container_name, timeout):
     """Fetch size for one container (blocking). Returns (encoded_username, data) or None."""
     try:
-        import docker
-        api = docker.APIClient(base_url='unix://var/run/docker.sock', timeout=timeout)
+        from .docker_utils import get_docker_api_client
+        api = get_docker_api_client(timeout=timeout)
         try:
             resp = api._get(
                 api._url('/containers/{0}/json', container_name),
@@ -58,9 +58,9 @@ def _refresh_all_container_sizes():
 
     _container_sizes_cache['refreshing'] = True
     try:
-        import docker
+        from .docker_utils import get_docker_api_client
         # List only RUNNING containers (no all=True - excludes stopped)
-        api = docker.APIClient(base_url='unix://var/run/docker.sock', timeout=30)
+        api = get_docker_api_client(timeout=30)
         try:
             containers = api._get(api._url('/containers/json')).json()
         finally:

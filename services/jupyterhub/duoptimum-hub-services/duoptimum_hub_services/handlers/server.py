@@ -6,7 +6,7 @@ import docker
 from jupyterhub.handlers import BaseHandler
 from tornado import web
 
-from ..docker_utils import lab_container_name
+from ..docker_utils import get_docker_client, lab_container_name
 
 
 class RestartServerHandler(BaseHandler):
@@ -41,7 +41,7 @@ class RestartServerHandler(BaseHandler):
         container_name = lab_container_name(username)
 
         try:
-            docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+            docker_client = get_docker_client()
         except Exception as e:
             self.log.error(f"[Restart Server] Failed to connect to Docker: {e}")
             raise web.HTTPError(500, "Failed to connect to Docker daemon")
@@ -107,7 +107,7 @@ class ServerLogsHandler(BaseHandler):
 
         container_name = lab_container_name(username)
         try:
-            docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+            docker_client = get_docker_client()
         except Exception as e:
             self.log.error(f"[Server Logs] Failed to connect to Docker: {e}")
             raise web.HTTPError(500, "Failed to connect to Docker daemon")

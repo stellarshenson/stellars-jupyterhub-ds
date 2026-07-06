@@ -213,9 +213,8 @@ def _list_running_pool_slots():
     by_pool = {}
     by_container = {}
     try:
-        import docker
-        from .docker_utils import encoded_username_from_lab_container
-        client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        from .docker_utils import encoded_username_from_lab_container, get_docker_client
+        client = get_docker_client()
         try:
             for c in client.containers.list(filters={'status': 'running'}):
                 name = c.name or ''

@@ -45,8 +45,8 @@ def _get_refresh_interval():
 def _fetch_single_container_stats(container_name, timeout):
     """Fetch stats for one container (blocking). Returns (encoded_username, data) or None."""
     try:
-        import docker
-        client = docker.DockerClient(base_url='unix://var/run/docker.sock', timeout=timeout)
+        from .docker_utils import get_docker_client
+        client = get_docker_client(timeout=timeout)
         try:
             container = client.containers.get(container_name)
             data = stats_from_container(container)
@@ -76,9 +76,9 @@ def _refresh_active_container_stats(active_encoded):
 
     _container_stats_cache['refreshing'] = True
     try:
-        import docker
+        from .docker_utils import get_docker_api_client
         # List only RUNNING containers (no all=True - excludes stopped)
-        api = docker.APIClient(base_url='unix://var/run/docker.sock', timeout=30)
+        api = get_docker_api_client(timeout=30)
         try:
             containers = api._get(api._url('/containers/json')).json()
         finally:

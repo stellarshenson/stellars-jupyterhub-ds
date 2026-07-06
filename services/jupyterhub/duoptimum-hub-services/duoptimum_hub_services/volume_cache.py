@@ -138,8 +138,8 @@ def _fetch_via_df():
     volume carries the lazy-df -1 sentinel (not yet computed) or the call errors - the
     caller waits for a complete pass instead of caching the partial result (DEF-7)."""
     try:
-        import docker
-        api_client = docker.APIClient(base_url='unix://var/run/docker.sock', timeout=_get_docker_timeout())
+        from .docker_utils import get_docker_api_client
+        api_client = get_docker_api_client(timeout=_get_docker_timeout())
         try:
             df_data = api_client._get(api_client._url('/system/df'), params={'type': 'volume'}).json()
             volumes_data = df_data.get('Volumes', []) or []

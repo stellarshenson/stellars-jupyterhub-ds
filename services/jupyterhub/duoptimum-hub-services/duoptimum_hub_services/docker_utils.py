@@ -10,6 +10,30 @@ from functools import lru_cache
 
 _docker_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="docker-ops")
 
+# Single source of truth for the local Docker daemon socket + client construction.
+# Every module that needs a client goes through these two helpers so the socket
+# path is declared ONCE (was copy-pasted at ~20 call sites in 4 spelling variants:
+# base_url=, positional, from_env, and APIClient). timeout=None preserves docker-py's
+# default; callers that need the env-driven timeout pass it explicitly (unchanged
+# per-site behaviour - this is a de-duplication, not a timeout change).
+DOCKER_SOCKET_URL = 'unix://var/run/docker.sock'
+
+
+def get_docker_client(timeout=None):
+    """High-level DockerClient bound to the local daemon socket."""
+    import docker
+    if timeout is None:
+        return docker.DockerClient(base_url=DOCKER_SOCKET_URL)
+    return docker.DockerClient(base_url=DOCKER_SOCKET_URL, timeout=timeout)
+
+
+def get_docker_api_client(timeout=None):
+    """Low-level APIClient bound to the local daemon socket."""
+    import docker
+    if timeout is None:
+        return docker.APIClient(base_url=DOCKER_SOCKET_URL)
+    return docker.APIClient(base_url=DOCKER_SOCKET_URL, timeout=timeout)
+
 
 def encode_username_for_docker(username):
     """Encode username for Docker volume/container names.
@@ -166,8 +190,7 @@ def stats_from_container(container):
 def get_container_stats(username):
     """Get CPU and memory stats for a user's container (blocking, fast ~2s)."""
     try:
-        import docker
-        docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        docker_client = get_docker_client()
         container_name = lab_container_name(username)
 
         try:
@@ -188,8 +211,7 @@ async def get_container_stats_async(username):
 def volume_exists(volume_name):
     """True when a Docker volume with this exact name exists (blocking)."""
     try:
-        import docker
-        docker_client = docker.from_env()
+        docker_client = get_docker_client()
         try:
             docker_client.volumes.get(volume_name)
             return True
@@ -210,8 +232,7 @@ def volume_labels(volume_name):
     A label-less but existing volume returns {} (distinct from None) so callers can
     tell "volume present" from "volume missing"."""
     try:
-        import docker
-        docker_client = docker.from_env()
+        docker_client = get_docker_client()
         try:
             return (docker_client.volumes.get(volume_name).attrs.get('Labels')) or {}
         finally:
@@ -260,8 +281,7 @@ def resolve_self_mount_volume(destination):
     """
     try:
         import socket
-        import docker
-        client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        client = get_docker_client()
         try:
             container = client.containers.get(socket.gethostname())
             for m in (container.attrs.get('Mounts') or []):
@@ -283,8 +303,7 @@ def resolve_self_mount_volume_by_label(label_key, label_value):
     matches = []
     try:
         import socket
-        import docker
-        client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        client = get_docker_client()
         try:
             container = client.containers.get(socket.gethostname())
             seen = set()
@@ -320,9 +339,9 @@ def ensure_volumes_labeled(name_to_labels):
     name_to_labels: {volume_name: {label_key: value, ...}}. Returns
     {name: 'created'|'exists'|'error: ...'}."""
     out = {}
+    import docker  # docker.errors.NotFound is matched in the loop below
     try:
-        import docker
-        client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        client = get_docker_client()
     except Exception as e:
         return {name: f'error: {e}' for name in name_to_labels}
     try:
@@ -357,8 +376,7 @@ def resolve_self_compose_project():
     """
     try:
         import socket
-        import docker
-        client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        client = get_docker_client()
         try:
             container = client.containers.get(socket.gethostname())
             return (container.labels or {}).get('com.docker.compose.project') or None
@@ -383,8 +401,7 @@ def resolve_self_compose_service():
     """
     try:
         import socket
-        import docker
-        client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        client = get_docker_client()
         try:
             container = client.containers.get(socket.gethostname())
             return (container.labels or {}).get('com.docker.compose.service') or None
@@ -409,8 +426,7 @@ def resolve_self_network_by_label(label_key, label_value=None):
     matches = []
     try:
         import socket
-        import docker
-        client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        client = get_docker_client()
         try:
             container = client.containers.get(socket.gethostname())
             attached = (container.attrs.get('NetworkSettings') or {}).get('Networks') or {}
@@ -563,8 +579,7 @@ def _image_snapshot_get():
     tag_to_id = {}
     newest = {}                                  # repo -> (created_epoch, id)
     try:
-        import docker
-        client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        client = get_docker_client()
         try:
             for img in client.images.list(all=True):
                 created = _parse_created(img.attrs.get('Created'))
