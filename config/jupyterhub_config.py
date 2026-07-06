@@ -57,7 +57,7 @@ from duoptimum_hub_services.docker_utils import (  # {network}-token net resolut
     resolve_gpuinfo_network,    # role=gpuinfo net (hub<->sidecar), optional (GPU off when absent)
 )
 from duoptimum_hub_services.protected_env import load_protected_env  # protected-env dictionary -> reserved names/prefixes (single source)
-from duoptimum_hub_services.config import load_settings  # single env-read site for operator-tunable settings (Section 1)
+from duoptimum_hub_services.config import load_settings, docker_spawner_env  # settings loader (Section 1) + c.* dict builders (Section 4)
 
 # The platform's custom API/page route table - registered via
 # c.DuoptimumHub.registered_handlers (our non-deprecated replacement for the
@@ -87,9 +87,6 @@ settings = load_settings()
 
 JUPYTERHUB_SSL_ENABLED = settings.ssl_enabled
 JUPYTERHUB_GPU_ENABLED = settings.gpu_enabled
-JUPYTERHUB_LAB_SERVICE_MLFLOW = settings.lab_service_mlflow
-JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR = settings.lab_service_resources_monitor
-JUPYTERHUB_LAB_SERVICE_TENSORBOARD = settings.lab_service_tensorboard
 JUPYTERHUB_SIGNUP_ENABLED = settings.signup_enabled
 JUPYTERHUB_IDLE_CULLER_ENABLED = settings.idle_culler_enabled
 JUPYTERHUB_IDLE_CULLER_TIMEOUT_MINUTES = settings.idle_culler_timeout_minutes
@@ -107,8 +104,6 @@ JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION = settings.lab_memory_max_usage_fractio
 JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB = settings.lab_memory_max_usage_mb        # derived: host-RAM fraction -> MB
 JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS = settings.lab_block_file_downloads
 JUPYTERHUB_LAB_SUDO_ENABLE = settings.lab_sudo_enable
-TF_CPP_MIN_LOG_LEVEL = settings.tf_cpp_min_log_level
-JUPYTERHUB_TIMEZONE = settings.timezone
 JUPYTERHUB_BASE_URL = settings.base_url
 JUPYTERHUB_LABEL_NETWORK_ROLE_KEY = settings.label_network_role_key
 JUPYTERHUB_LABEL_NETWORK_ROLE_LAB = settings.label_network_role_lab
@@ -137,9 +132,6 @@ JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI = settings.branding_lab_main_icon_uri
 JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI = settings.branding_lab_splash_icon_uri
 JUPYTERHUB_BRANDING_STAGE = settings.branding_stage
 JUPYTERHUB_BRANDING_HUB_NAME = settings.branding_hub_name
-JUPYTERHUB_BRANDING_LAB_NAME = settings.branding_lab_name
-JUPYTERLAB_AUX_SCRIPTS_PATH = settings.aux_scripts_path
-JUPYTERLAB_AUX_MENU_PATH = settings.aux_menu_path
 
 # ── Runtime-discovered values (NOT env reads - stay here, not in the loader) ──
 # Deployment NAMESPACE (compose project now; k8s namespace later). Discovered EXACT from
@@ -368,24 +360,10 @@ if JUPYTERHUB_SSL_ENABLED == 1:
 # dockerspawner.DockerSpawner to silence the probes (and forgo the host-status panel).
 c.JupyterHub.spawner_class = "duoptimum_hub_services.spawner.DuoptimumDockerSpawner"
 
-# Environment variables injected into every spawned JupyterLab container
-c.DockerSpawner.environment = {
-    'TF_CPP_MIN_LOG_LEVEL': TF_CPP_MIN_LOG_LEVEL,          # suppress TF C++ logging
-    'TENSORBOARD_LOGDIR': '/tmp/tensorboard',                # TensorBoard log directory
-    'MLFLOW_TRACKING_URI': 'http://localhost:5000',          # MLflow tracking server URL
-    'MLFLOW_PORT': 5000,                                     # MLflow server port
-    'MLFLOW_HOST': '0.0.0.0',                                # MLflow bind address
-    'MLFLOW_WORKERS': 1,                                     # MLflow worker count
-    'ENABLE_SERVICE_MLFLOW': JUPYTERHUB_LAB_SERVICE_MLFLOW,      # toggle MLflow in container startup
-    'ENABLE_SERVICE_RESOURCES_MONITOR': JUPYTERHUB_LAB_SERVICE_RESOURCES_MONITOR,  # toggle resource monitor widget
-    'ENABLE_SERVICE_TENSORBOARD': JUPYTERHUB_LAB_SERVICE_TENSORBOARD,  # toggle TensorBoard in container startup
-    'NVIDIA_DETECTED': nvidia_detected,                      # GPU hardware availability flag (informational)
-    'JUPYTERLAB_AUX_SCRIPTS_PATH': JUPYTERLAB_AUX_SCRIPTS_PATH,  # admin startup scripts path
-    'JUPYTERLAB_AUX_MENU_PATH': JUPYTERLAB_AUX_MENU_PATH,      # admin-managed custom menu definitions
-    'JUPYTERLAB_TIMEZONE': JUPYTERHUB_TIMEZONE,                  # IANA timezone for JupyterLab extensions
-    'JUPYTERLAB_SYSTEM_NAME': JUPYTERHUB_BRANDING_LAB_NAME,                              # lab header/welcome/MOTD display name (from hub knob JUPYTERHUB_BRANDING_LAB_NAME)
-    'JUPYTERHUB_NETWORK_NAME': resolve_lab_network(),                                    # Docker network connecting hub + user containers; needed by in-container scripts that attach sidecars to the same net
-}
+# Environment variables injected into every spawned JupyterLab container (built from
+# settings + the two runtime values; see config/wiring.py::docker_spawner_env). The
+# key set is load-bearing - RESERVED_ENV_VAR_NAMES below derives from it.
+c.DockerSpawner.environment = docker_spawner_env(settings, nvidia_detected, resolve_lab_network())
 
 # Reserved env var names/prefixes a user or group must NOT override. Loaded from the
 # baked protected-env dictionary (single source of truth, operator-extensible) and
