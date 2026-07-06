@@ -63,6 +63,43 @@ def template_vars(settings, runtime, *, user_volume_suffixes, user_volume_name_t
     }
 
 
+def stellars_config(settings, runtime, *, user_volume_suffixes, user_volume_name_templates,
+                    user_volume_roles, user_volumes, host_status_provider,
+                    reserved_env_var_names, reserved_env_var_prefixes, shared_volume_name,
+                    docker_spawner_volumes):
+    """The handler-accessible config exposed via self.settings['stellars_config'].
+    Settings + runtime GPU/host + the data/computed kwargs the config resolves (volume
+    metadata, reserved env names, host-status provider, shared volume). The config
+    merges system_volumes into the returned dict afterwards (needs late volume resolution)."""
+    return {
+        'user_volume_suffixes': user_volume_suffixes,        # ManageVolumesHandler validation
+        'user_volume_name_templates': user_volume_name_templates,  # on-disk volume names
+        'user_volume_roles': user_volume_roles,              # suffix -> hub.volume.role (portal tags system volumes)
+        'volume_role_label_key': settings.label_volume_role_key,           # handlers read a volume's role off this label key
+        'volume_description_label_key': settings.label_volume_description,  # handlers read a volume's description off this label key
+        'user_volumes': user_volumes,                        # ManageVolumesHandler GET description attach
+        'idle_culler_enabled': settings.idle_culler_enabled,  # SessionInfoHandler, ActivityDataHandler
+        'idle_culler_timeout': settings.idle_culler_timeout,  # SessionInfoHandler, ExtendSessionHandler
+        'idle_culler_max_extension': settings.idle_culler_max_extension,  # ExtendSessionHandler limits
+        'gpu_list': runtime.gpu_list,                        # host GPUs (GroupsDataHandler, ActivityDataHandler)
+        'gpu_available': bool(runtime.gpu_enabled),          # hardware-present gate for resolve_policies
+        'gpu_isolation_enforced': runtime.gpu_isolation_enforced,  # False on WSL2 -> portal advisory note
+        'host_status_provider': host_status_provider,        # ActivityDataHandler host CPU/MEM/GPU aggregate
+        'container_max_extra_space_mb': settings.lab_container_max_extra_space_gb * 1024,  # container size warning (MB)
+        'volume_max_total_size_mb': settings.lab_volume_max_total_size_gb * 1024,          # volume size warning (MB)
+        'memory_max_usage_mb': settings.lab_memory_max_usage_mb,                           # per-user memory warning (MB)
+        'reserved_env_var_names': reserved_env_var_names,    # names groups cannot override
+        'reserved_env_var_prefixes': reserved_env_var_prefixes,  # prefixes reserved for JupyterHub/platform
+        'shared_volume_name': shared_volume_name,            # role=shared volume for the groups volume-mounts UI
+        'lab_image': settings.lab_image,                     # image every lab spawns from (Lab Container page)
+        'lab_volumes': [                                     # standard per-user volumes mounted into every lab
+            {'suffix': v['suffix'], 'mount': docker_spawner_volumes.get(v['name_template'], ''),
+             'description': v['description'], 'role': v['role']}
+            for v in user_volumes
+        ],
+    }
+
+
 def validator_payload(settings, *, namespace, lab_network_name, gpuinfo_network_name,
                       shared_volume_name, docker_proxy_socket_dir, docker_proxy_sockets_volume,
                       user_compose_project_template):

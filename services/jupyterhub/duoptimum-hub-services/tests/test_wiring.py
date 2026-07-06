@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import pytest
 
 from duoptimum_hub_services.config.runtime import Runtime, assemble_runtime
-from duoptimum_hub_services.config.wiring import docker_spawner_env, template_vars, validator_payload
+from duoptimum_hub_services.config.wiring import docker_spawner_env, stellars_config, template_vars, validator_payload
 
 _SETTINGS = SimpleNamespace(
     tf_cpp_min_log_level=3,
@@ -165,6 +165,40 @@ def test_template_vars_exact_dict():
         "duoptimum_entry_js": "app.js", "duoptimum_entry_css": "app.css",
         "gpu_enabled": True, "admin_user": "admin", "hub_name": "DuOptimum Hub",
     }
+
+
+def test_stellars_config_key_set_and_lab_volumes():
+    s = SimpleNamespace(
+        label_volume_role_key="role", label_volume_description="desc",
+        idle_culler_enabled=1, idle_culler_timeout=100, idle_culler_max_extension=2,
+        lab_container_max_extra_space_gb=10, lab_volume_max_total_size_gb=50,
+        lab_memory_max_usage_mb=4096, lab_image="img",
+    )
+    r = SimpleNamespace(gpu_list=[{"index": 0}], gpu_enabled=1, gpu_isolation_enforced=True)
+    user_volumes = [{"suffix": "home", "name_template": "jl-{username}_home", "description": "Home", "role": "lab-home"}]
+    got = stellars_config(
+        s, r,
+        user_volume_suffixes=["home"], user_volume_name_templates={"home": "jl-{username}_home"},
+        user_volume_roles={"home": "lab-home"}, user_volumes=user_volumes,
+        host_status_provider="HSP", reserved_env_var_names={"A"}, reserved_env_var_prefixes=("P_",),
+        shared_volume_name="shared", docker_spawner_volumes={"jl-{username}_home": "/home"},
+    )
+    assert set(got) == {
+        "user_volume_suffixes", "user_volume_name_templates", "user_volume_roles",
+        "volume_role_label_key", "volume_description_label_key", "user_volumes",
+        "idle_culler_enabled", "idle_culler_timeout", "idle_culler_max_extension",
+        "gpu_list", "gpu_available", "gpu_isolation_enforced", "host_status_provider",
+        "container_max_extra_space_mb", "volume_max_total_size_mb", "memory_max_usage_mb",
+        "reserved_env_var_names", "reserved_env_var_prefixes", "shared_volume_name",
+        "lab_image", "lab_volumes",
+    }
+    assert got["gpu_available"] is True
+    assert got["container_max_extra_space_mb"] == 10240
+    assert got["host_status_provider"] == "HSP"
+    # lab_volumes maps each user volume's name_template through docker_spawner_volumes
+    assert got["lab_volumes"] == [
+        {"suffix": "home", "mount": "/home", "description": "Home", "role": "lab-home"}
+    ]
 
 
 def test_validator_payload_settings_mappings():

@@ -51,7 +51,9 @@ from duoptimum_hub_services.docker_utils import (  # {network}-token net resolut
     resolve_gpuinfo_network,    # role=gpuinfo net (hub<->sidecar), optional (GPU off when absent)
 )
 from duoptimum_hub_services.protected_env import load_protected_env  # protected-env dictionary -> reserved names/prefixes (single source)
-from duoptimum_hub_services.config import load_settings, docker_spawner_env, template_vars, validator_payload, assemble_runtime  # settings loader + c.* dict builders + boot runtime (GPU/sidecar/branding)
+from duoptimum_hub_services.config import (  # settings loader + c.* dict builders + boot runtime (GPU/sidecar/branding)
+    load_settings, assemble_runtime, docker_spawner_env, template_vars, stellars_config, validator_payload,
+)
 
 # The platform's custom API/page route table - registered via
 # c.DuoptimumHub.registered_handlers (our non-deprecated replacement for the
@@ -91,10 +93,6 @@ JUPYTERHUB_IDLE_CULLER_TIMEOUT = settings.idle_culler_timeout                # d
 JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION = settings.idle_culler_max_extension    # derived: whole hours users can extend
 ACTIVITYMON_SAMPLE_INTERVAL = settings.activitymon_sample_interval
 JUPYTERHUB_HUB_DOCKER_API_TIMEOUT = settings.hub_docker_api_timeout
-JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB = settings.lab_container_max_extra_space_gb
-JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB = settings.lab_volume_max_total_size_gb
-JUPYTERHUB_LAB_MEMORY_MAX_USAGE_FRACTION = settings.lab_memory_max_usage_fraction
-JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB = settings.lab_memory_max_usage_mb        # derived: host-RAM fraction -> MB
 JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS = settings.lab_block_file_downloads
 JUPYTERHUB_LAB_SUDO_ENABLE = settings.lab_sudo_enable
 JUPYTERHUB_BASE_URL = settings.base_url
@@ -254,7 +252,6 @@ gpu_enabled = runtime.gpu_enabled
 nvidia_detected = runtime.nvidia_detected
 gpu_list = runtime.gpu_list
 GPU_UUID_BY_INDEX = runtime.gpu_uuid_by_index
-GPU_ISOLATION_ENFORCED = runtime.gpu_isolation_enforced
 branding = runtime.branding
 
 
@@ -335,34 +332,21 @@ _host_status_provider = resolve_host_status_provider(
 # ── Tornado settings ──
 # Handler-accessible config via self.settings['stellars_config']
 # Replaces os.environ.get() calls in handlers with explicit typed values
-c.JupyterHub.tornado_settings = {
-    'stellars_config': {
-        'user_volume_suffixes': user_volume_suffixes,        # for ManageVolumesHandler validation
-        'user_volume_name_templates': user_volume_name_templates,  # for ManageVolumesHandler to construct correct on-disk volume names
-        'user_volume_roles': user_volume_roles,              # suffix -> hub.volume.role; ManageVolumesHandler GET tags each volume so the portal IDs system volumes by role
-        'volume_role_label_key': JUPYTERHUB_LABEL_VOLUME_ROLE_KEY,           # handlers read a volume's role off this label key (env-sourced, never a hardcoded literal)
-        'volume_description_label_key': JUPYTERHUB_LABEL_VOLUME_DESCRIPTION,  # handlers read a volume's human description off this label key (env-sourced)
-        'user_volumes': user_volumes_for_ui,                 # for ManageVolumesHandler GET to attach descriptions to existing volumes
-        'idle_culler_enabled': JUPYTERHUB_IDLE_CULLER_ENABLED,  # for SessionInfoHandler, ActivityDataHandler
-        'idle_culler_timeout': JUPYTERHUB_IDLE_CULLER_TIMEOUT,  # for SessionInfoHandler, ExtendSessionHandler
-        'idle_culler_max_extension': JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION,  # for ExtendSessionHandler limits
-        'gpu_list': gpu_list,                                 # host GPUs enumerated at startup (GroupsDataHandler, ActivityDataHandler)
-        'gpu_available': bool(gpu_enabled),                   # hardware-present gate for resolve_policies (EffectiveGrantsHandler)
-        'gpu_isolation_enforced': GPU_ISOLATION_ENFORCED,     # False on WSL2 -> the portal GPU policy section shows the advisory note
-        'host_status_provider': _host_status_provider,        # ActivityDataHandler delegates the host CPU/MEM/GPU aggregate to this (None -> no host-status panel)
-        'container_max_extra_space_mb': JUPYTERHUB_LAB_CONTAINER_MAX_EXTRA_SPACE_GB * 1024,  # threshold in MB for container size warning
-        'volume_max_total_size_mb': JUPYTERHUB_LAB_VOLUME_MAX_TOTAL_SIZE_GB * 1024,        # threshold in MB for volume size warning
-        'memory_max_usage_mb': JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB,                         # threshold in MB for per-user memory warning
-        'reserved_env_var_names': RESERVED_ENV_VAR_NAMES,                              # names groups cannot override
-        'reserved_env_var_prefixes': RESERVED_ENV_VAR_PREFIXES,                        # prefixes reserved for JupyterHub/platform
-        'shared_volume_name': JUPYTERHUB_SHARED_VOLUME_NAME,                          # shared volume for groups volume-mounts UI; discovered by hub.volume.role=shared
-        'lab_image': JUPYTERHUB_LAB_IMAGE,                                             # image every lab spawns from (for the Lab Container page)
-        'lab_volumes': [                                                              # standard per-user volumes mounted into every lab
-            {'suffix': v['suffix'], 'mount': DOCKER_SPAWNER_VOLUMES.get(v['name_template'], ''), 'description': v['description'], 'role': v['role']}
-            for v in user_volumes_for_ui
-        ],
-    }
-}
+# Handler-accessible config via self.settings['stellars_config'] - see
+# config/wiring.py::stellars_config. system_volumes is merged in below (needs the
+# late docker-proxy volume resolution).
+c.JupyterHub.tornado_settings = {'stellars_config': stellars_config(
+    settings, runtime,
+    user_volume_suffixes=user_volume_suffixes,
+    user_volume_name_templates=user_volume_name_templates,
+    user_volume_roles=user_volume_roles,
+    user_volumes=user_volumes_for_ui,
+    host_status_provider=_host_status_provider,
+    reserved_env_var_names=RESERVED_ENV_VAR_NAMES,
+    reserved_env_var_prefixes=RESERVED_ENV_VAR_PREFIXES,
+    shared_volume_name=JUPYTERHUB_SHARED_VOLUME_NAME,
+    docker_spawner_volumes=DOCKER_SPAWNER_VOLUMES,
+)}
 
 # ── Pre-spawn hook ──
 # Factory returns async closure capturing branding + group resolution state.
