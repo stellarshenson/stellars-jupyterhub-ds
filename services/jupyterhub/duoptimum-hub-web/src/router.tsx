@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppLayout } from './layout/AppLayout'
+import { RouteError } from './app/RouteError'
 import { RequireAdmin } from './app/RequireAdmin'
 import { useRole } from './app/RoleContext'
 import { portalBasename } from './services/hub/client'
@@ -52,6 +53,7 @@ export const router = createBrowserRouter(
     {
       path: '/',
       element: <AppLayout />,
+      errorElement: <RouteError />,
       children: [
         { index: true, element: <Navigate to="/home" replace /> },
         // Landing route is /home: the stock /hub/home built-in renders the portal

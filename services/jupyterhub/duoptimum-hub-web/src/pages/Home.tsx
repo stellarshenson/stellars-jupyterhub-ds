@@ -168,8 +168,9 @@ function RecentEvents() {
             </div>
             <div className="doh-feed-body">
               {/* backend escapes event text (events.py html.escape); title gives a
-               * plain-text hover/SR fallback for long, truncated entries */}
-              <div className="t" title={e.text.replace(/<[^>]*>/g, '')} dangerouslySetInnerHTML={{ __html: e.text }} />
+               * plain-text hover/SR fallback for long, truncated entries. Guard a
+               * null/absent text (malformed row) so one bad event can't crash the feed. */}
+              <div className="t" title={(e.text || '').replace(/<[^>]*>/g, '')} dangerouslySetInnerHTML={{ __html: e.text || '' }} />
               <div className="when">{timeAgoShort(e.whenISO)}</div>
             </div>
           </div>
