@@ -6,8 +6,13 @@ docker_spawner_env is load-bearing (RESERVED_ENV_VAR_NAMES derives from it), so 
 asserted explicitly. Boot confirmation rides the functional suite on a rebuilt image.
 """
 
+import dataclasses
+import inspect
 from types import SimpleNamespace
 
+import pytest
+
+from duoptimum_hub_services.config.runtime import Runtime, assemble_runtime
 from duoptimum_hub_services.config.wiring import docker_spawner_env
 
 _SETTINGS = SimpleNamespace(
@@ -60,3 +65,34 @@ def test_runtime_values_passthrough():
     got = docker_spawner_env(_SETTINGS, nvidia_detected=False, lab_network="netX")
     assert got["NVIDIA_DETECTED"] is False
     assert got["JUPYTERHUB_NETWORK_NAME"] == "netX"
+
+
+# ── Runtime (Batch 4 orchestration move) ─────────────────────────────────────
+# assemble_runtime has real side effects (starts the gpuinfo sidecar, copies branding)
+# and can't run without Docker + a booted hub - the functional suite is its boot gate.
+# Locally we lock the Runtime shape + the assemble_runtime contract (which the config
+# depends on when it binds runtime.* back to its module names).
+
+def test_runtime_is_frozen_dataclass_with_expected_fields():
+    assert dataclasses.is_dataclass(Runtime)
+    assert Runtime.__dataclass_params__.frozen
+    assert {f.name for f in dataclasses.fields(Runtime)} == {
+        "gpu_vendor", "gpuinfo_url", "gpuinfo_sidecar_up", "gpu_enabled", "nvidia_detected",
+        "gpu_list", "gpu_uuid_by_index", "gpu_isolation_enforced", "branding",
+    }
+
+
+def test_assemble_runtime_signature():
+    # the config calls assemble_runtime(settings, JUPYTERHUB_COMPOSE_PROJECT_NAME)
+    assert list(inspect.signature(assemble_runtime).parameters) == ["settings", "compose_project"]
+
+
+def test_runtime_construct_and_read():
+    r = Runtime(
+        gpu_vendor=object(), gpuinfo_url="", gpuinfo_sidecar_up=False, gpu_enabled=0,
+        nvidia_detected=0, gpu_list=[], gpu_uuid_by_index={}, gpu_isolation_enforced=False,
+        branding={"logo_file": ""},
+    )
+    assert r.gpu_enabled == 0 and r.branding["logo_file"] == ""
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        r.gpu_enabled = 1  # type: ignore[misc]
