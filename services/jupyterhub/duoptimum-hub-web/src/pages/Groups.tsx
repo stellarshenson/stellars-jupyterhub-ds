@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DragSortTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
-import { Button, Input, InputNumber, Popover, Space, Tooltip } from 'antd'
+import { Button, Input, InputNumber, message, Popover, Space, Tooltip } from 'antd'
 import { appModal } from '../services/actions'
 import { COL_HELP } from '../services/config'
 import { Link } from 'react-router-dom'
@@ -184,7 +184,15 @@ export default function Groups() {
         options={false}
         dragSortKey="sort"
         onDragSortEnd={(_b, _a, newData) => {
-          if (!q) setRows(newData)
+          // dataSource is the FILTERED subset; a drag while a filter is active would
+          // recompute global priorities from the subset length/indices and corrupt
+          // the hidden groups' priorities (priority drives policy conflict resolution).
+          // Reordering by priority is only meaningful over the full list.
+          if (q) {
+            message.warning('Clear the filter to reorder groups by priority')
+            return
+          }
+          setRows(newData)
           reorderGroups(newData.map((g, i) => ({ name: g.name, priority: newData.length - i })))
         }}
         rowClassName={(_, i) => (i % 2 ? 'doh-row-alt' : '')}

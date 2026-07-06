@@ -46,6 +46,16 @@ def test_corrupt_file_returns_none(_data_dir):
     assert pc.load_cached("broken") is None
 
 
+def test_naive_timestamp_returns_none(_data_dir):
+    # a legacy / hand-edited snapshot with a tz-naive timestamp must degrade to
+    # None (the "never raises" contract) - the now(utc) - naive subtraction raises
+    # TypeError, which must be caught, not propagate through config-load boot.
+    path = _data_dir / "widget.json"
+    naive = datetime.now().replace(tzinfo=None)  # no tzinfo
+    path.write_text(json.dumps({"timestamp": naive.isoformat(), "data": {"a": 1}}))
+    assert pc.load_cached("widget") is None
+
+
 def test_ttl_gate_minutes(_data_dir, monkeypatch):
     path = _data_dir / "widget.json"
     # 90 minutes old, TTL 60 minutes -> too stale -> None

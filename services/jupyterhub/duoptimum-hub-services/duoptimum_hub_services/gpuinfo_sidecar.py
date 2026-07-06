@@ -105,8 +105,15 @@ def _connect_hub(client, network):
     try:
         network.connect(hub)
         log.info(f"[GPUInfo] connected hub to network {network.name}")
-    except Exception:
-        pass  # already connected (409) or transient - non-fatal
+    except Exception as e:
+        # 409 = hub already attached (idempotent, expected on re-run). Anything else
+        # is a real failure that leaves the sidecar unreachable on this network while
+        # GPU may still seed "on" from stale inventory - log it rather than swallow so
+        # the half-alive state is diagnosable, not silent.
+        if getattr(e, 'status_code', None) == 409:
+            log.info(f"[GPUInfo] hub already on network {network.name}")
+        else:
+            log.warning(f"[GPUInfo] failed to connect hub to network {network.name}: {e}")
 
 
 def ensure_gpuinfo_sidecar(image, network_name, url, compose_project='', container_name=None,

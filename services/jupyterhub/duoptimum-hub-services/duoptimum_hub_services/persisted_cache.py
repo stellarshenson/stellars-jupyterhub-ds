@@ -78,11 +78,14 @@ def load_cached(name):
             payload = json.load(f)
         ts = datetime.fromisoformat(payload['timestamp'])
         data = payload.get('data')
+        # inside the try: a naive (tz-less) timestamp makes this subtraction raise
+        # TypeError, which must degrade to "ignore the snapshot", not propagate past
+        # the "never raises" contract and crash config-load boot.
+        age = (datetime.now(timezone.utc) - ts).total_seconds()
     except Exception as e:
         log.warning(f"[Cache] Ignoring unreadable persisted '{name}' at {path}: {e}")
         return None
 
-    age = (datetime.now(timezone.utc) - ts).total_seconds()
     ttl = _ttl_seconds()
     if age > ttl:
         log.info(
