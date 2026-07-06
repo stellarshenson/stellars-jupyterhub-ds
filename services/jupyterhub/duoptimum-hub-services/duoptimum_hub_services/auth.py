@@ -136,28 +136,62 @@ class CustomAuthorizationAreaHandler(BaseAuthorizationHandler):
         self.finish(html)
 
 
-class DuoptimumNativeAuthenticator(NativeAuthenticator):
-    """Self-contained Duoptimum Hub native authenticator (direct wrapper over
-    NativeAuthenticator). Owns the antd presentation, force-password-change
-    clearing, admin-role promotion and the first-admin bootstrap. Configured by
-    trait, selected by dotted-path string from the config."""
+# ── DuoptimumNativeAuthenticator concern mixins ──
+# IMPORTANT: these three are PLAIN classes, not HasTraits. The traitlets metaclass only
+# scans the composed class's own body, so any TraitType, @default, @observe or @validate
+# MUST live on DuoptimumNativeAuthenticator below (the HasTraits subclass) - put one inside
+# a mixin and it SILENTLY does not register (no error, a dead trait/handler). Mixins hold
+# behaviour (methods) only; config traits + @default("db") stay on the composed class.
 
-    # ── Bootstrap config (set in the config from its env constants) ──
-    admin_username = Unicode(
-        "", config=True,
-        help="Admin username (already lowercased by the config). Promoted to admin "
-             "role at login; the only name allowed to self-register during the "
-             "bootstrap window.",
-    )
-    signup_enabled = Bool(
-        True, config=True,
-        help="Operator self-registration switch (JUPYTERHUB_SIGNUP_ENABLED). The "
-             "effective enable_signup below also re-opens for the admin during "
-             "the bootstrap window.",
-    )
+
+class _AntdAuthHandlersMixin:
+    """Swap NativeAuth's login/signup/authorization handlers for the antd-rendering
+    Duoptimum variants so the portal owns the auth screens."""
+
+    def get_handlers(self, app):
+        handlers = super().get_handlers(app)
+        new_handlers = []
+        for pattern, handler in handlers:
+            name = handler.__name__
+            if name == 'AuthorizationAreaHandler':
+                new_handlers.append((pattern, CustomAuthorizationAreaHandler))
+            elif name == 'LoginHandler':
+                new_handlers.append((pattern, DuoptimumLoginHandler))
+            elif name == 'SignUpHandler':
+                new_handlers.append((pattern, BootstrapAdminSignUpHandler))
+            else:
+                new_handlers.append((pattern, handler))
+        return new_handlers
+
+
+class _AdminPromotionMixin:
+    """Promote the configured admin to admin role on every successful auth."""
+
+    async def run_post_auth_hook(self, handler, authentication):
+        """Promote the configured admin to admin role on every successful auth.
+
+        Travels with the native authenticator (was a loose c.Authenticator.post_auth_hook
+        in the config). admin_users is deliberately NOT set - that makes JupyterHub
+        eagerly insert a User row at startup and trips the random-password trap in
+        events.py; the role is granted purely at login here. Composes with any
+        operator-set post_auth_hook (super runs it first)."""
+        authentication = await super().run_post_auth_hook(handler, authentication)
+        if authentication and authentication.get('name') == self.admin_username:
+            authentication['admin'] = True
+        return authentication
+
+
+class _NativeBootstrapMixin:
+    """First-admin bootstrap: env-provision / signup-off self-signup window /
+    normal-signup auto-authorise, with fail-fast when the admin can never be created.
+    The DECISION logic lives in admin_bootstrap's pure functions; this mixin wires it
+    into the native-authenticator lifecycle (__init__ snapshot, enable_signup,
+    validate_username, create_user). Native-specific by design - self-signup /
+    bootstrap are nonsense over OAuth, so a non-native authenticator would not compose it."""
+
     # INITIAL-ONLY admin password is read from os.environ in __init__, NOT a config=True
     # trait, so the secret never lands in --show-config / trait_values() / the Settings page.
-
+    #
     # Bootstrap state computed in __init__ (after super() builds users_info). Class-level
     # defaults so the enable_signup property is safe even if read DURING super().__init__()
     # (before the back half of __init__ runs) - it then resolves to "window closed / no
@@ -165,19 +199,6 @@ class DuoptimumNativeAuthenticator(NativeAuthenticator):
     _bootstrap_window_open = False
     _provisioning_requested = False
     _admin_password = ""
-
-    @default("db")
-    def _stellars_db_default(self):
-        """Provide the authenticator DB session ourselves, silencing JupyterHub's
-        `Authenticator.db` deprecation warning (JH issue #3700).
-
-        JupyterHub injects the shared session at construction as
-        `_deprecated_db_session`; its own `@default("db")` returns it *with* a
-        deprecation log on first access (NativeAuth hits it at startup via
-        `inspect(self.db.bind)`). We return the same session without the log - the
-        UserInfo store keeps working unchanged, no concurrency change, just no boot
-        noise. A full own-session migration is an upstream NativeAuth concern."""
-        return self._deprecated_db_session
 
     def __init__(self, *args, **kwargs):
         # super() runs NativeAuthenticator.__init__ -> add_new_table(), so users_info
@@ -212,34 +233,6 @@ class DuoptimumNativeAuthenticator(NativeAuthenticator):
             )
         if self._provisioning_requested:
             provision_admin_userinfo(self.db, self.admin_username, self._admin_password)
-
-    async def run_post_auth_hook(self, handler, authentication):
-        """Promote the configured admin to admin role on every successful auth.
-
-        Travels with the native authenticator (was a loose c.Authenticator.post_auth_hook
-        in the config). admin_users is deliberately NOT set - that makes JupyterHub
-        eagerly insert a User row at startup and trips the random-password trap in
-        events.py; the role is granted purely at login here. Composes with any
-        operator-set post_auth_hook (super runs it first)."""
-        authentication = await super().run_post_auth_hook(handler, authentication)
-        if authentication and authentication.get('name') == self.admin_username:
-            authentication['admin'] = True
-        return authentication
-
-    def get_handlers(self, app):
-        handlers = super().get_handlers(app)
-        new_handlers = []
-        for pattern, handler in handlers:
-            name = handler.__name__
-            if name == 'AuthorizationAreaHandler':
-                new_handlers.append((pattern, CustomAuthorizationAreaHandler))
-            elif name == 'LoginHandler':
-                new_handlers.append((pattern, DuoptimumLoginHandler))
-            elif name == 'SignUpHandler':
-                new_handlers.append((pattern, BootstrapAdminSignUpHandler))
-            else:
-                new_handlers.append((pattern, handler))
-        return new_handlers
 
     # ── First-admin bootstrap window ──
     def _bootstrap_admin_pending(self):
@@ -288,6 +281,45 @@ class DuoptimumNativeAuthenticator(NativeAuthenticator):
             user_info.is_authorized = True
             self.db.commit()
         return user_info
+
+
+class DuoptimumNativeAuthenticator(
+    _AntdAuthHandlersMixin, _AdminPromotionMixin, _NativeBootstrapMixin, NativeAuthenticator
+):
+    """Self-contained Duoptimum Hub native authenticator, composed over
+    NativeAuthenticator from three single-concern mixins: antd auth handlers
+    (_AntdAuthHandlersMixin), admin-role promotion (_AdminPromotionMixin) and the
+    first-admin bootstrap (_NativeBootstrapMixin). Configured by trait, selected by
+    dotted-path string from the config. The mixins each call super() so the MRO chains
+    straight through to NativeAuthenticator; none overrides another's method, so the
+    composition is behaviour-identical to the former single class."""
+
+    # ── Bootstrap config (set in the config from its env constants) ──
+    admin_username = Unicode(
+        "", config=True,
+        help="Admin username (already lowercased by the config). Promoted to admin "
+             "role at login; the only name allowed to self-register during the "
+             "bootstrap window.",
+    )
+    signup_enabled = Bool(
+        True, config=True,
+        help="Operator self-registration switch (JUPYTERHUB_SIGNUP_ENABLED). The "
+             "effective enable_signup (in _NativeBootstrapMixin) also re-opens for the "
+             "admin during the bootstrap window.",
+    )
+
+    @default("db")
+    def _stellars_db_default(self):
+        """Provide the authenticator DB session ourselves, silencing JupyterHub's
+        `Authenticator.db` deprecation warning (JH issue #3700).
+
+        JupyterHub injects the shared session at construction as
+        `_deprecated_db_session`; its own `@default("db")` returns it *with* a
+        deprecation log on first access (NativeAuth hits it at startup via
+        `inspect(self.db.bind)`). We return the same session without the log - the
+        UserInfo store keeps working unchanged, no concurrency change, just no boot
+        noise. A full own-session migration is an upstream NativeAuth concern."""
+        return self._deprecated_db_session
 
     def change_password(self, username, new_password):
         """Clear the force-password-change flag on a successful change so a flagged

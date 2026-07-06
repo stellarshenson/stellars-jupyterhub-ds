@@ -204,7 +204,10 @@ def test_auth():
     # ...and owns the bootstrap behaviour directly (no inline config classes anymore)
     for meth in ('validate_username', 'create_user', '_bootstrap_admin_pending', 'run_post_auth_hook'):
         assert hasattr(DuoptimumNativeAuthenticator, meth), meth
-    assert isinstance(DuoptimumNativeAuthenticator.__dict__.get('enable_signup'), property)
+    # enable_signup is a dynamic property (now provided by _NativeBootstrapMixin), resolved
+    # through the MRO - getattr_static walks the bases, unlike a class-own __dict__ lookup
+    import inspect
+    assert isinstance(inspect.getattr_static(DuoptimumNativeAuthenticator, 'enable_signup'), property)
 
 
 def test_events():
