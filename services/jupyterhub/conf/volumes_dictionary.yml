@@ -28,5 +28,9 @@ workspace:
 
 cache:
   mount: /home/lab/.cache
-  description: Temporary files, pip cache, conda cache
+  # `label` = friendly display name for the Manage Volumes UI (the docker volume
+  # name stays the technical `..._cache`). Optional - the UI falls back to the
+  # volume name when a suffix has no label.
+  label: Cache and AI models
+  description: Temporary files, pip/conda cache, downloaded AI models
   role: lab-cache

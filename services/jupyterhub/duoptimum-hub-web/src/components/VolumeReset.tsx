@@ -61,7 +61,9 @@ export function VolumeReset({ name, onClose }: { name: string; onClose?: () => v
         rowSelection={{ type: 'checkbox', selectedRowKeys: selected, onChange: (keys) => setSelected(keys as string[]), getCheckboxProps: (record) => ({ disabled: running || removed.includes(record.suffix) || !!record.policyControlled }) }}
         dataSource={rows}
         columns={[
-          { title: 'Volume', dataIndex: 'name', render: (v) => <span className="doh-mono">{v}</span> },
+          // friendly label (e.g. "Cache and AI models") when the volume carries one, with the
+          // technical docker name on hover; otherwise the mono volume name as before
+          { title: 'Volume', dataIndex: 'name', render: (v, record) => record.label ? <span title={v}>{record.label}</span> : <span className="doh-mono">{v}</span> },
           { title: 'Mount', dataIndex: 'mount', render: (v) => <span className="doh-mono">{v}</span> },
           { title: 'Description', dataIndex: 'description', render: (v) => <span className="doh-muted">{v}</span> },
           {

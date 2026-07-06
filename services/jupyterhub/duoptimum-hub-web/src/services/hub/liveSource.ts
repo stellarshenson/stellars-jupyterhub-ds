@@ -607,10 +607,11 @@ export const liveSource: DataSource = {
       // Names only - the fast /manage-volumes call, decoupled from the slow
       // /activity sizes (getUserVolumeSizes) so the table paints at once and the
       // size cells fill in when the docker-stats sample lands.
-      const resp = await hubGet<{ volumes: Array<{ suffix: string; name: string; description?: string; role?: string; policy_controlled?: boolean }> }>(`/users/${encodeURIComponent(user)}/manage-volumes`)
+      const resp = await hubGet<{ volumes: Array<{ suffix: string; name: string; label?: string; description?: string; role?: string; policy_controlled?: boolean }> }>(`/users/${encodeURIComponent(user)}/manage-volumes`)
       return resp.volumes.map((v) => ({
         suffix: v.suffix,
         name: v.name,
+        label: v.label ?? undefined, // friendly display name; undefined -> table shows the volume name
         mount: MOUNT_BY_SUFFIX[v.suffix] ?? '',
         description: v.description,
         role: v.role,

@@ -318,6 +318,7 @@ user_volumes_for_ui = [
         'suffix': pattern[len(_user_volume_prefix):],
         'name_template': pattern,
         'description': data.get('description', ''),
+        'label': data.get('label') or None,  # friendly display name; None -> UI falls back to the volume name
         'role': user_volume_roles.get(pattern[len(_user_volume_prefix):], pattern[len(_user_volume_prefix):]),
     }
     for pattern, data in USER_VOLUMES.items()

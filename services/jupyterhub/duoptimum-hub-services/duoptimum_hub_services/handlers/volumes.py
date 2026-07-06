@@ -44,7 +44,7 @@ class ManageVolumesHandler(BaseHandler):
         """List the volumes that actually exist on disk for this user.
 
         GET /hub/api/users/{username}/manage-volumes
-        Returns: {"volumes": [{"suffix", "name", "description"}, ...]}
+        Returns: {"volumes": [{"suffix", "name", "label", "description"}, ...]}
 
         DockerSpawner creates per-user volumes lazily on first spawn; querying
         Docker directly is the only reliable way to know which ones exist.
@@ -59,6 +59,9 @@ class ManageVolumesHandler(BaseHandler):
         # description text rather than re-parsing the templates dict.
         ui = self.settings['stellars_config'].get('user_volumes', None)
         descriptions = {v['suffix']: v.get('description', '') for v in (ui or [])}
+        # suffix -> friendly display name (config-only, not a stamped docker label); the
+        # portal shows it in place of the technical volume name, falling back to the name.
+        ui_labels = {v['suffix']: v.get('label') for v in (ui or [])}
         # suffix -> hub.volume.role, so the portal IDs each as a system volume by role
         roles = self.settings['stellars_config'].get('user_volume_roles', {}) or {}
         # label keys the hub stamped at spawn - read from env-sourced config, never a literal
@@ -81,6 +84,7 @@ class ManageVolumesHandler(BaseHandler):
             existing.append({
                 'suffix': suffix,
                 'name': volume_name,
+                'label': ui_labels.get(suffix),
                 'description': (labels.get(vol_desc_key) if vol_desc_key else None) or descriptions.get(suffix, ''),
                 'role': (labels.get(vol_role_key) if vol_role_key else None) or roles.get(suffix, suffix),
             })

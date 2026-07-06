@@ -251,6 +251,7 @@ export interface ServerHero {
 export interface Volume {
   suffix: string // home | workspace | cache | shared | datasets
   name: string // jupyterlab-{user}_home, hub_shared, ...
+  label?: string // friendly display name (e.g. "Cache and AI models"); UI falls back to name when unset
   mount: string // /home, /home/lab/workspace, /mnt/shared
   description?: string
   sizeGB?: number
