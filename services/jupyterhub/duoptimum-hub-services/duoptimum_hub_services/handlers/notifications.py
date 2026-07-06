@@ -70,15 +70,15 @@ class BroadcastNotificationHandler(BaseHandler):
             recipients = data.get('recipients', None)
         except Exception as e:
             self.log.error(f"[Broadcast Notification] Failed to parse request body: {e}")
-            return self.send_error(400, "Invalid request body")
+            raise web.HTTPError(400, "Invalid request body")
 
         if not message:
-            return self.send_error(400, "Message cannot be empty")
+            raise web.HTTPError(400, "Message cannot be empty")
         if len(message) > 140:
-            return self.send_error(400, "Message cannot exceed 140 characters")
+            raise web.HTTPError(400, "Message cannot exceed 140 characters")
 
         if variant not in NOTIFICATION_TYPES:
-            return self.send_error(400, f"Variant must be one of: {', '.join(NOTIFICATION_TYPES)}")
+            raise web.HTTPError(400, f"Variant must be one of: {', '.join(NOTIFICATION_TYPES)}")
 
         # Get active spawners
         active_spawners = []

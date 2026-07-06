@@ -36,8 +36,7 @@ class ManageVolumesHandler(BaseHandler):
             client = docker.DockerClient(base_url='unix://var/run/docker.sock')
         except Exception as e:
             self.log.error(f"[Manage Volumes] Failed to connect to Docker: {e}")
-            self.send_error(500, "Failed to connect to Docker daemon")
-            return None
+            raise web.HTTPError(500, "Failed to connect to Docker daemon")
         return templates, encoded, client
 
     async def get(self, username):
@@ -167,11 +166,11 @@ class ManageVolumesHandler(BaseHandler):
             self.log.info(f"[Manage Volumes] Requested volumes: {requested_volumes}")
         except Exception as e:
             self.log.error(f"[Manage Volumes] Failed to parse request body: {e}")
-            return self.send_error(400, "Invalid request body")
+            raise web.HTTPError(400, "Invalid request body")
 
         if not requested_volumes or not isinstance(requested_volumes, list):
             self.log.warning("[Manage Volumes] No volumes specified or invalid format")
-            return self.send_error(400, "No volumes specified")
+            raise web.HTTPError(400, "No volumes specified")
 
         user_volume_suffixes = self.settings['stellars_config']['user_volume_suffixes']
         # Source-of-truth name templates (still carry the {username} placeholder),
@@ -182,23 +181,23 @@ class ManageVolumesHandler(BaseHandler):
         invalid_volumes = set(requested_volumes) - valid_volumes
         if invalid_volumes:
             self.log.warning(f"[Manage Volumes] Invalid volume types: {invalid_volumes}")
-            return self.send_error(400, f"Invalid volume types: {invalid_volumes}")
+            raise web.HTTPError(400, f"Invalid volume types: {invalid_volumes}")
 
         user = self.find_user(username)
         if not user:
             self.log.warning(f"[Manage Volumes] User {username} not found")
-            return self.send_error(404, "User not found")
+            raise web.HTTPError(404, "User not found")
 
         spawner = user.spawner
         if spawner.active:
             self.log.warning("[Manage Volumes] Server is running, cannot reset volumes")
-            return self.send_error(400, "Server must be stopped before resetting volumes")
+            raise web.HTTPError(400, "Server must be stopped before resetting volumes")
 
         try:
             docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
         except Exception as e:
             self.log.error(f"[Manage Volumes] Failed to connect to Docker: {e}")
-            return self.send_error(500, "Failed to connect to Docker daemon")
+            raise web.HTTPError(500, "Failed to connect to Docker daemon")
 
         reset_volumes = []
         failed_volumes = []

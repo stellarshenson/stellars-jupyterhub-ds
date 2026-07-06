@@ -1,10 +1,21 @@
 #!/bin/bash
 
-# run series of start scripts (services will need to run in background)
+# run series of start scripts (synchronous provisioning: certs, config, timezone).
+# each MUST succeed - a failure must abort the boot LOUDLY, not fall through to
+# exec. 01_provision_config.sh wipes /srv/config before validating, so on a broken
+# operator config it exits non-zero leaving /srv/config empty; without this check
+# the old loop exec'd the hub at a missing -f path (traitlets silently skips it)
+# and booted bone-stock JupyterHub behind the live proxy routes - broken logins,
+# no spawns, no crash to alert on.
 START_PLATFORM_DIR='/start-platform.d'
-for file in $START_PLATFORM_DIR/*; do
+for file in "$START_PLATFORM_DIR"/*; do
     if [ -f "$file" ] && [ -x "$file" ]; then
-        "$file" 
+        "$file"
+        rc=$?
+        if [ "$rc" -ne 0 ]; then
+            echo "[start-platform] FATAL: $file exited $rc - aborting boot" >&2
+            exit "$rc"
+        fi
     fi
 done
 

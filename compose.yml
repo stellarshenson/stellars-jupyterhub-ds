@@ -241,7 +241,11 @@ services:
       - hub_network
       - hub_gpuinfo_network # hub<->sidecar; hub attaches, sidecar joins too
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f jupyterhub > /dev/null || exit 1"]
+      # bracketed pattern so pgrep -f can't match its own sh -c wrapper cmdline
+      # (the literal "[j]upyterhub_config" does not match the regex it encodes).
+      # matches the hub's stable exec cmdline (-f /srv/config/jupyterhub_config.py);
+      # plain "jupyterhub" self-matched -> the probe could never fail.
+      test: ["CMD-SHELL", "pgrep -f '[j]upyterhub_config' > /dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10

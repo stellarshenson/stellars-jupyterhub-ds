@@ -31,12 +31,12 @@ class RestartServerHandler(BaseHandler):
         user = self.find_user(username)
         if not user:
             self.log.warning(f"[Restart Server] User {username} not found")
-            return self.send_error(404, "User not found")
+            raise web.HTTPError(404, "User not found")
 
         spawner = user.spawner
         if not spawner.active:
             self.log.warning("[Restart Server] Server is not running, cannot restart")
-            return self.send_error(400, "Server is not running")
+            raise web.HTTPError(400, "Server is not running")
 
         container_name = lab_container_name(username)
 
@@ -44,7 +44,7 @@ class RestartServerHandler(BaseHandler):
             docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
         except Exception as e:
             self.log.error(f"[Restart Server] Failed to connect to Docker: {e}")
-            return self.send_error(500, "Failed to connect to Docker daemon")
+            raise web.HTTPError(500, "Failed to connect to Docker daemon")
 
         try:
             container = docker_client.containers.get(container_name)
@@ -71,10 +71,10 @@ class RestartServerHandler(BaseHandler):
             self.finish({"message": f"Container {container_name} successfully restarted"})
         except docker.errors.NotFound:
             self.log.warning(f"[Restart Server] Container {container_name} not found")
-            return self.send_error(404, f"Container {container_name} not found")
+            raise web.HTTPError(404, f"Container {container_name} not found")
         except docker.errors.APIError as e:
             self.log.error(f"[Restart Server] Failed to restart container {container_name}: {e}")
-            return self.send_error(500, f"Failed to restart container: {str(e)}")
+            raise web.HTTPError(500, f"Failed to restart container: {str(e)}")
         finally:
             docker_client.close()
 

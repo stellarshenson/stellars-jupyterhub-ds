@@ -160,6 +160,30 @@ class TestDockerApply:
         mounts = s.extra_host_config['mounts']
         assert mounts[0]['Source'] == 'vol' and mounts[0]['VolumeOptions'] == {'Subpath': 'alice'}
 
+    def test_limited_second_spawn_no_duplicate_mount(self, monkeypatch):
+        # spawner objects persist for the hub's lifetime; a 2nd apply on the same
+        # spawner must not append a 2nd identical proxy mount - dockerd rejects
+        # "Duplicate mount point" and the user is locked out of every later spawn.
+        async def fake_register_user(username, resolved, **kw):
+            return ('/host/sock', '/run/dockersock', 'unix:///run/dockersock/docker.sock')
+        monkeypatch.setattr('duoptimum_hub_services.docker_proxy.register_user', fake_register_user)
+        actx = _actx(docker_proxy_socket_dir='/sock', docker_proxy_volume_name='vol')
+        s = _apply('docker', _docker_resolved(docker_limited=True), actx=actx)
+        _apply('docker', _docker_resolved(docker_limited=True), actx=actx, spawner=s)
+        assert len(s.extra_host_config['mounts']) == 1
+
+    def test_leaving_limited_docker_removes_stale_mount(self, monkeypatch):
+        # a user dropped from the limited-docker group must not keep the proxy
+        # mount on their next (non-docker) spawn - the cleanup at apply() top removes it.
+        async def fake_register_user(username, resolved, **kw):
+            return ('/host/sock', '/run/dockersock', 'unix:///run/dockersock/docker.sock')
+        monkeypatch.setattr('duoptimum_hub_services.docker_proxy.register_user', fake_register_user)
+        actx = _actx(docker_proxy_socket_dir='/sock', docker_proxy_volume_name='vol')
+        s = _apply('docker', _docker_resolved(docker_limited=True), actx=actx)
+        _apply('docker', _docker_resolved(), actx=actx, spawner=s)
+        assert not s.extra_host_config.get('mounts')
+        assert 'DOCKER_HOST' not in s.environment
+
 
 # ── mem / cpu ─────────────────────────────────────────────────────────────────
 

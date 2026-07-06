@@ -399,6 +399,21 @@ class DockerPolicy(Policy):
 
     async def apply(self, spawner, resolved, actx):
         username = actx.username
+        # Spawner objects persist for the hub's lifetime and the proxy mount below
+        # is appended to an append-only list, so first drop the mount this policy
+        # added on a prior spawn (tracked on the spawner) - else a 2nd spawn
+        # duplicates it and dockerd rejects "Duplicate mount point", and a user
+        # removed from limited-docker keeps a stale proxy mount. Mirrors
+        # VolumeMountsPolicy's track-and-pop.
+        _prev_target = getattr(spawner, '_stellars_docker_proxy_mount_target', None)
+        if _prev_target:
+            _mounts = spawner.extra_host_config.get('mounts') or []
+            _kept = [m for m in _mounts if m.get('Target') != _prev_target]
+            if _kept:
+                spawner.extra_host_config['mounts'] = _kept
+            else:
+                spawner.extra_host_config.pop('mounts', None)
+            spawner._stellars_docker_proxy_mount_target = None
         # Docker access. Normal (raw socket) supersedes limited (proxy) - the
         # resolver already cleared docker_limited when docker_access is set.
         if resolved['docker_access']:
@@ -435,6 +450,7 @@ class DockerPolicy(Policy):
                 'ReadOnly': False,
                 'VolumeOptions': {'Subpath': username},
             })
+            spawner._stellars_docker_proxy_mount_target = mount_dir
             spawner.environment['DOCKER_HOST'] = docker_host
             spawner.volumes.pop('/var/run/docker.sock', None)
         else:
