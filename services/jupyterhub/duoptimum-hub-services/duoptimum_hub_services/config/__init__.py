@@ -7,7 +7,7 @@ volumes, GPU/sidecar/branding) stay in the config/runtime layer, not here.
 """
 
 from .settings import Settings, load_settings
-from .wiring import docker_spawner_env
+from .wiring import docker_spawner_env, validator_payload
 from .runtime import Runtime, assemble_runtime
 
-__all__ = ["Settings", "load_settings", "docker_spawner_env", "Runtime", "assemble_runtime"]
+__all__ = ["Settings", "load_settings", "docker_spawner_env", "validator_payload", "Runtime", "assemble_runtime"]

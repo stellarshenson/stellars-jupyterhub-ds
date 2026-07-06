@@ -51,7 +51,7 @@ from duoptimum_hub_services.docker_utils import (  # {network}-token net resolut
     resolve_gpuinfo_network,    # role=gpuinfo net (hub<->sidecar), optional (GPU off when absent)
 )
 from duoptimum_hub_services.protected_env import load_protected_env  # protected-env dictionary -> reserved names/prefixes (single source)
-from duoptimum_hub_services.config import load_settings, docker_spawner_env, assemble_runtime  # settings loader + c.* dict builders + boot runtime (GPU/sidecar/branding)
+from duoptimum_hub_services.config import load_settings, docker_spawner_env, validator_payload, assemble_runtime  # settings loader + c.* dict builders + boot runtime (GPU/sidecar/branding)
 
 # The platform's custom API/page route table - registered via
 # c.DuoptimumHub.registered_handlers (our non-deprecated replacement for the
@@ -99,31 +99,19 @@ JUPYTERHUB_LAB_MEMORY_MAX_USAGE_MB = settings.lab_memory_max_usage_mb        # d
 JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS = settings.lab_block_file_downloads
 JUPYTERHUB_LAB_SUDO_ENABLE = settings.lab_sudo_enable
 JUPYTERHUB_BASE_URL = settings.base_url
-JUPYTERHUB_LABEL_NETWORK_ROLE_KEY = settings.label_network_role_key
-JUPYTERHUB_LABEL_NETWORK_ROLE_LAB = settings.label_network_role_lab
-JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO = settings.label_network_role_gpuinfo
+# Only the bindings still referenced by Section 2-4 remain; the rest now flow through
+# settings.* inside the config.* builders (docker_spawner_env / validator_payload / runtime).
 JUPYTERHUB_LAB_IMAGE = settings.lab_image
 JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE = settings.lab_container_name_template
-JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME = settings.gpuinfo_nvidia_container_name
-JUPYTERHUB_GPUINFO_NVIDIA_URL = settings.gpuinfo_nvidia_url
-JUPYTERHUB_GPUINFO_NVIDIA_IMAGE = settings.gpuinfo_nvidia_image
 JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY = settings.label_container_role_key
-JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO = settings.label_container_role_gpuinfo
 JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB = settings.label_container_role_lab
 JUPYTERHUB_LABEL_VOLUME_ROLE_KEY = settings.label_volume_role_key
 JUPYTERHUB_LABEL_VOLUME_ROLE_SHARED = settings.label_volume_role_shared
 JUPYTERHUB_LABEL_VOLUME_ROLE_DOCKER_PROXY = settings.label_volume_role_docker_proxy
 JUPYTERHUB_LABEL_VOLUME_DESCRIPTION = settings.label_volume_description
 JUPYTERHUB_LABEL_VOLUME_OWNER_KEY = settings.label_volume_owner_key
-JUPYTERHUB_LABEL_CONTAINER_DESCRIPTION = settings.label_container_description
-JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_KEY = settings.label_docker_proxy_owner_key
-JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_VALUE = settings.label_docker_proxy_owner_value
 JUPYTERHUB_ADMIN_USERNAME = settings.admin_username
-JUPYTERHUB_BRANDING_LOGO_URI = settings.branding_logo_uri
 JUPYTERHUB_BRANDING_FAVICON_URI = settings.branding_favicon_uri
-JUPYTERHUB_BRANDING_FAVICON_BUSY_URI = settings.branding_favicon_busy_uri
-JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI = settings.branding_lab_main_icon_uri
-JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI = settings.branding_lab_splash_icon_uri
 JUPYTERHUB_BRANDING_STAGE = settings.branding_stage
 JUPYTERHUB_BRANDING_HUB_NAME = settings.branding_hub_name
 
@@ -435,41 +423,16 @@ JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE = os.environ.get(
 # one SystemExit listing every missing/inconsistent var, logs warnings for degraded-but-
 # bootable config (gpuinfo net unresolved -> GPU off; shared volume unresolved -> quick-add
 # hidden; branding file:// missing). Keeps this file thin - no scattered fail-fast.
-validate_hub_config({
-    "admin": JUPYTERHUB_ADMIN_USERNAME,
-    "lab_image": JUPYTERHUB_LAB_IMAGE,
-    "namespace": JUPYTERHUB_COMPOSE_PROJECT_NAME,
-    "lab_network_name": resolve_lab_network(),
-    "network_role_label_key": JUPYTERHUB_LABEL_NETWORK_ROLE_KEY,
-    "volume_role_label_key": JUPYTERHUB_LABEL_VOLUME_ROLE_KEY,
-    "container_role_label_key": JUPYTERHUB_LABEL_CONTAINER_ROLE_KEY,
-    "lab_network_role_label": JUPYTERHUB_LABEL_NETWORK_ROLE_LAB,
-    "gpuinfo_network_role_label": JUPYTERHUB_LABEL_NETWORK_ROLE_GPUINFO,
-    "shared_volume_role_label": JUPYTERHUB_LABEL_VOLUME_ROLE_SHARED,
-    "docker_proxy_volume_role_label": JUPYTERHUB_LABEL_VOLUME_ROLE_DOCKER_PROXY,
-    "gpuinfo_container_role_label": JUPYTERHUB_LABEL_CONTAINER_ROLE_GPUINFO,
-    "lab_container_role_label": JUPYTERHUB_LABEL_CONTAINER_ROLE_LAB,
-    "volume_description_label_key": JUPYTERHUB_LABEL_VOLUME_DESCRIPTION,
-    "volume_owner_label_key": JUPYTERHUB_LABEL_VOLUME_OWNER_KEY,
-    "container_description_label_key": JUPYTERHUB_LABEL_CONTAINER_DESCRIPTION,
-    "docker_proxy_owner_label_key": JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_KEY,
-    "docker_proxy_owner_label_value": JUPYTERHUB_LABEL_DOCKER_PROXY_OWNER_VALUE,
-    "lab_container_name_template": JUPYTERHUB_LAB_CONTAINER_NAME_TEMPLATE,
-    "gpuinfo_nvidia_image": JUPYTERHUB_GPUINFO_NVIDIA_IMAGE,
-    "gpuinfo_nvidia_container_name": JUPYTERHUB_GPUINFO_NVIDIA_CONTAINER_NAME,
-    "gpuinfo_nvidia_url": JUPYTERHUB_GPUINFO_NVIDIA_URL,
-    "docker_proxy_socket_dir": JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR,
-    "docker_proxy_sockets_volume": JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME,
-    "user_compose_project_template": JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE,
-    # resolved/optional - drive warnings, never block boot
-    "gpuinfo_network_name": resolve_gpuinfo_network(),
-    "shared_volume_name": JUPYTERHUB_SHARED_VOLUME_NAME,
-    "branding_logo_uri": JUPYTERHUB_BRANDING_LOGO_URI,
-    "branding_favicon_uri": JUPYTERHUB_BRANDING_FAVICON_URI,
-    "branding_favicon_busy_uri": JUPYTERHUB_BRANDING_FAVICON_BUSY_URI,
-    "branding_lab_main_icon_uri": JUPYTERHUB_BRANDING_LAB_MAIN_ICON_URI,
-    "branding_lab_splash_uri": JUPYTERHUB_BRANDING_LAB_SPLASH_ICON_URI,
-}).raise_if_errors(log=log)
+validate_hub_config(validator_payload(
+    settings,
+    namespace=JUPYTERHUB_COMPOSE_PROJECT_NAME,
+    lab_network_name=resolve_lab_network(),
+    gpuinfo_network_name=resolve_gpuinfo_network(),
+    shared_volume_name=JUPYTERHUB_SHARED_VOLUME_NAME,
+    docker_proxy_socket_dir=JUPYTERHUB_DOCKER_PROXY_SOCKET_DIR,
+    docker_proxy_sockets_volume=JUPYTERHUB_DOCKER_PROXY_SOCKETS_VOLUME,
+    user_compose_project_template=JUPYTERHUB_DOCKER_PROXY_USER_COMPOSE_PROJECT_TEMPLATE,
+)).raise_if_errors(log=log)
 
 c.DockerSpawner.pre_spawn_hook = make_pre_spawn_hook(
     branding,                                                # icon static names and URLs from setup_branding()

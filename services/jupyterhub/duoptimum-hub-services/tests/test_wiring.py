@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import pytest
 
 from duoptimum_hub_services.config.runtime import Runtime, assemble_runtime
-from duoptimum_hub_services.config.wiring import docker_spawner_env
+from duoptimum_hub_services.config.wiring import docker_spawner_env, validator_payload
 
 _SETTINGS = SimpleNamespace(
     tf_cpp_min_log_level=3,
@@ -96,3 +96,57 @@ def test_runtime_construct_and_read():
     assert r.gpu_enabled == 0 and r.branding["logo_file"] == ""
     with pytest.raises(dataclasses.FrozenInstanceError):
         r.gpu_enabled = 1  # type: ignore[misc]
+
+
+# ── validator_payload (Batch 3d) ─────────────────────────────────────────────
+# The key SET is security-relevant: validate_hub_config raises on missing required keys,
+# so a dropped/renamed key would silently weaken required-config validation.
+
+class _EchoSettings:
+    """settings.foo -> 's.foo', so every field mapping is verifiable by name."""
+    def __getattr__(self, name):
+        return f"s.{name}"
+
+
+_VP_KWARGS = dict(
+    namespace="NS", lab_network_name="LNET", gpuinfo_network_name="GNET",
+    shared_volume_name="SHARED", docker_proxy_socket_dir="SOCKDIR",
+    docker_proxy_sockets_volume="SOCKVOL", user_compose_project_template="TMPL",
+)
+
+
+def test_validator_payload_key_set():
+    p = validator_payload(_EchoSettings(), **_VP_KWARGS)
+    assert set(p) == {
+        "admin", "lab_image", "namespace", "lab_network_name", "network_role_label_key",
+        "volume_role_label_key", "container_role_label_key", "lab_network_role_label",
+        "gpuinfo_network_role_label", "shared_volume_role_label", "docker_proxy_volume_role_label",
+        "gpuinfo_container_role_label", "lab_container_role_label", "volume_description_label_key",
+        "volume_owner_label_key", "container_description_label_key", "docker_proxy_owner_label_key",
+        "docker_proxy_owner_label_value", "lab_container_name_template", "gpuinfo_nvidia_image",
+        "gpuinfo_nvidia_container_name", "gpuinfo_nvidia_url", "docker_proxy_socket_dir",
+        "docker_proxy_sockets_volume", "user_compose_project_template", "gpuinfo_network_name",
+        "shared_volume_name", "branding_logo_uri", "branding_favicon_uri",
+        "branding_favicon_busy_uri", "branding_lab_main_icon_uri", "branding_lab_splash_uri",
+    }
+
+
+def test_validator_payload_runtime_kwargs_passthrough():
+    p = validator_payload(_EchoSettings(), **_VP_KWARGS)
+    assert p["namespace"] == "NS"
+    assert p["lab_network_name"] == "LNET"
+    assert p["gpuinfo_network_name"] == "GNET"
+    assert p["shared_volume_name"] == "SHARED"
+    assert p["docker_proxy_socket_dir"] == "SOCKDIR"
+    assert p["docker_proxy_sockets_volume"] == "SOCKVOL"
+    assert p["user_compose_project_template"] == "TMPL"
+
+
+def test_validator_payload_settings_mappings():
+    p = validator_payload(_EchoSettings(), **_VP_KWARGS)
+    # spot-check that settings-derived keys map to the right field (not a swapped one)
+    assert p["admin"] == "s.admin_username"
+    assert p["lab_image"] == "s.lab_image"
+    assert p["network_role_label_key"] == "s.label_network_role_key"
+    assert p["gpuinfo_nvidia_image"] == "s.gpuinfo_nvidia_image"
+    assert p["branding_lab_splash_uri"] == "s.branding_lab_splash_icon_uri"
