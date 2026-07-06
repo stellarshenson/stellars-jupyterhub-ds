@@ -9,6 +9,7 @@ icon URIs. Each policy model owns its own apply + restart lifecycle in
 survived a hub restart.
 """
 
+import asyncio
 import html
 from dataclasses import replace
 from urllib.parse import urlparse
@@ -172,7 +173,7 @@ def make_pre_spawn_hook(
         # description off the label - not by name, not from settings. Create-if-absent only
         # (never relabel/remove - data safety); best-effort, a docker error never blocks spawn.
         if volume_role_label_key and user_volume_label_templates:
-            from .docker_utils import encode_username_for_docker, ensure_volumes_labeled
+            from .docker_utils import encode_username_for_docker, ensure_volumes_labeled, get_executor
             enc = encode_username_for_docker(username)
             name_to_labels = {}
             for tmpl, meta in user_volume_label_templates.items():
@@ -183,7 +184,11 @@ def make_pre_spawn_hook(
                 if meta.get('description'):
                     labels[volume_description_label_key] = meta['description']
                 name_to_labels[tmpl.replace('{username}', enc)] = labels
-            results = ensure_volumes_labeled(name_to_labels)
+            # create-if-absent per volume is blocking Docker I/O; offload so labeling
+            # can't freeze the hub event loop during a spawn (matters under concurrent
+            # cold spawns at scale). ensure_volumes_labeled is pure (no ORM/spawner state).
+            loop = asyncio.get_running_loop()
+            results = await loop.run_in_executor(get_executor(), ensure_volumes_labeled, name_to_labels)
             created = [n for n, s in results.items() if s == 'created']
             errs = {n: s for n, s in results.items() if s.startswith('error')}
             if created:

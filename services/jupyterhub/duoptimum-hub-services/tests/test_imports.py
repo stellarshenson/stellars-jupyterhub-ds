@@ -289,6 +289,54 @@ def test_hooks():
     assert 'labels' not in spawner2.extra_create_kwargs
 
 
+def test_hook_volume_labeling_offloaded(monkeypatch):
+    """The per-user volume role/owner labeling (create-if-absent Docker I/O) must run
+    on the executor, not the hub event loop - one cold spawn's labeling can't freeze
+    the hub for other users. Asserts ensure_volumes_labeled ran on a non-loop thread."""
+    import asyncio
+    import logging
+    import threading
+    import types
+
+    import duoptimum_hub_services.docker_utils as du
+    from duoptimum_hub_services.hooks import make_pre_spawn_hook
+
+    holder = {}
+
+    def fake_ensure(name_to_labels):
+        holder['thread'] = threading.get_ident()
+        holder['names'] = list(name_to_labels)
+        return {n: 'created' for n in name_to_labels}
+
+    monkeypatch.setattr(du, 'ensure_volumes_labeled', fake_ensure)
+
+    branding = {'lab_main_icon_static': '', 'lab_main_icon_url': '', 'lab_splash_icon_static': '', 'lab_splash_icon_url': ''}
+    hook = make_pre_spawn_hook(
+        branding,
+        gpu_available=False,
+        reserved_env_var_names=frozenset(),
+        reserved_env_var_prefixes=(),
+        compose_project='',
+        volume_role_label_key='hub.volume.role',
+        volume_owner_label_key='hub.volume.owner',
+        volume_description_label_key='hub.volume.description',
+        user_volume_label_templates={'jupyterlab-{username}_home': {'role': 'lab-home'}},
+    )
+    spawner = types.SimpleNamespace(
+        user=types.SimpleNamespace(name='alice', groups=[]),
+        volumes={},
+        extra_host_config={},
+        environment={},
+        extra_create_kwargs={},
+        mem_limit=None,
+        log=logging.getLogger('test_hooks'),
+    )
+    asyncio.run(hook(spawner))
+
+    assert holder.get('names') == ['jupyterlab-alice_home']  # labeling branch ran
+    assert holder['thread'] != threading.get_ident()          # off the event-loop thread
+
+
 def test_services():
     from duoptimum_hub_services.services import get_services_and_roles
     services, roles = get_services_and_roles(sample_interval=600)

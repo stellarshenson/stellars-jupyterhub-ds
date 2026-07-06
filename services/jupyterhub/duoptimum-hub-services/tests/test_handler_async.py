@@ -218,3 +218,108 @@ def test_delete_missing_volume_reported_not_raised(monkeypatch):
     assert cap["body"]["reset_volumes"] == []
     assert cap["body"]["failed_volumes"] == [{"volume": "home", "reason": "not found"}]
     assert client.closed is True
+
+
+# ── volume list (GET) ────────────────────────────────────────────────────────
+
+class _FakeVol:
+    def __init__(self, labels=None):
+        self.attrs = {"Labels": labels or {}}
+
+
+class _FakeListClient:
+    """volumes.get(name) returns a seeded vol or raises NotFound; records the thread."""
+
+    def __init__(self, present, holder):
+        self._present = present
+        self._h = holder
+        self.closed = False
+        self.volumes = SimpleNamespace(get=self._get)
+
+    def _get(self, name):
+        self._h.setdefault("threads", []).append(threading.get_ident())
+        if name in self._present:
+            return self._present[name]
+        raise docker.errors.NotFound(name)
+
+    def close(self):
+        self.closed = True
+
+
+def _list_handler(templates, shared_name=""):
+    h = ManageVolumesHandler.__new__(ManageVolumesHandler)
+    h._jupyterhub_user = SimpleNamespace(admin=True, name="admin")
+    h.application = SimpleNamespace(settings={  # settings -> application.settings
+        "log": _LOG,
+        "stellars_config": {
+            "user_volume_name_templates": templates,
+            "user_volumes": [],
+            "user_volume_roles": {},
+            "volume_role_label_key": "",
+            "volume_description_label_key": "",
+            "shared_volume_name": shared_name,
+        },
+    })
+    cap = {}
+    h.set_status = lambda code: cap.__setitem__("status", code)
+    h.finish = lambda body=None: cap.__setitem__("body", body)
+    return h, cap
+
+
+def test_get_lists_volumes_offloaded(monkeypatch):
+    templates = {"home": "jupyterlab-{username}_home", "cache": "jupyterlab-{username}_cache"}
+    present = {"jupyterlab-alice_home": _FakeVol(), "jupyterlab-alice_cache": _FakeVol()}
+    holder = {}
+    client = _FakeListClient(present, holder)
+    monkeypatch.setattr(volumes_mod, "get_docker_client", lambda: client)
+    h, cap = _list_handler(templates)
+
+    asyncio.run(h.get("alice"))
+
+    assert cap["status"] == 200
+    assert [v["name"] for v in cap["body"]["volumes"]] == ["jupyterlab-alice_home", "jupyterlab-alice_cache"]
+    assert client.closed is True
+    # every Docker read ran on an executor thread, not the event loop thread
+    assert holder["threads"] and all(t != threading.get_ident() for t in holder["threads"])
+
+
+def test_get_skips_missing_volume(monkeypatch):
+    templates = {"home": "jupyterlab-{username}_home", "cache": "jupyterlab-{username}_cache"}
+    present = {"jupyterlab-alice_home": _FakeVol()}  # cache absent
+    client = _FakeListClient(present, {})
+    monkeypatch.setattr(volumes_mod, "get_docker_client", lambda: client)
+    h, cap = _list_handler(templates)
+
+    asyncio.run(h.get("alice"))
+
+    assert [v["name"] for v in cap["body"]["volumes"]] == ["jupyterlab-alice_home"]
+
+
+def test_get_appends_shared_row_when_volume_present(monkeypatch):
+    templates = {"home": "jupyterlab-{username}_home"}
+    present = {"jupyterlab-alice_home": _FakeVol(), "shared_vol": _FakeVol()}
+    holder = {}
+    client = _FakeListClient(present, holder)
+    monkeypatch.setattr(volumes_mod, "get_docker_client", lambda: client)
+    h, cap = _list_handler(templates)
+    # bypass the ORM/policy resolution (covered separately); assert the offloaded
+    # existence check + append behaviour
+    h._resolve_shared_row = lambda u: {"name": "shared_vol", "row": {"suffix": "shared", "name": "shared_vol", "policy_controlled": True}}
+
+    asyncio.run(h.get("alice"))
+
+    assert [v["suffix"] for v in cap["body"]["volumes"]] == ["home", "shared"]
+    assert all(t != threading.get_ident() for t in holder["threads"])  # shared check off-loop too
+
+
+def test_get_omits_shared_row_when_volume_absent(monkeypatch):
+    templates = {"home": "jupyterlab-{username}_home"}
+    present = {"jupyterlab-alice_home": _FakeVol()}  # shared vol NOT present
+    client = _FakeListClient(present, {})
+    monkeypatch.setattr(volumes_mod, "get_docker_client", lambda: client)
+    h, cap = _list_handler(templates)
+    h._resolve_shared_row = lambda u: {"name": "absent_shared", "row": {"suffix": "shared", "name": "absent_shared"}}
+
+    asyncio.run(h.get("alice"))
+
+    assert [v["suffix"] for v in cap["body"]["volumes"]] == ["home"]  # shared omitted on NotFound

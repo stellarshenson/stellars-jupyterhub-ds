@@ -68,45 +68,67 @@ class ManageVolumesHandler(BaseHandler):
         vol_role_key = self.settings['stellars_config'].get('volume_role_label_key', '')
         vol_desc_key = self.settings['stellars_config'].get('volume_description_label_key', '')
 
-        existing = []
-        for suffix, template in templates.items():
-            volume_name = template.replace('{username}', encoded)
-            try:
-                vol = client.volumes.get(volume_name)
-            except docker.errors.NotFound:
-                continue
-            except docker.errors.APIError as e:
-                self.log.warning(f"[Manage Volumes] Docker error checking {volume_name}: {e}")
-                continue
-            # Self-describing volume: read role + description off the labels the hub stamped
-            # at spawn; fall back to settings for legacy (pre-label) volumes.
-            labels = (vol.attrs.get('Labels') or {})
-            existing.append({
-                'suffix': suffix,
-                'name': volume_name,
-                'label': ui_labels.get(suffix),
-                'description': (labels.get(vol_desc_key) if vol_desc_key else None) or descriptions.get(suffix, ''),
-                'role': (labels.get(vol_role_key) if vol_role_key else None) or roles.get(suffix, suffix),
-            })
+        # Standard shared volume: policy-controlled row, listed (not resettable) only
+        # when this user's group policy grants it AND the volume exists. Resolve the
+        # grant on the loop - it touches the ORM (find_user/user.groups), which is NOT
+        # thread-safe; the Docker existence check happens in the executor closure below.
+        shared_row = self._resolve_shared_row(username)
 
-        # Standard shared volume: a policy-controlled row, listed (not resettable)
-        # only when this user's group policy grants it and the volume exists. Its
-        # presence is governed by group policy, not the user - never user-deletable.
-        shared_row = self._shared_volume_row(username, client)
-        if shared_row:
-            existing.append(shared_row)
+        # All Docker reads (one volumes.get per user volume + the shared existence
+        # check) run on the shared executor so listing volumes can't freeze the hub
+        # event loop for other users. Config dicts captured here are read-only.
+        def _list_volumes():
+            existing = []
+            for suffix, template in templates.items():
+                volume_name = template.replace('{username}', encoded)
+                try:
+                    vol = client.volumes.get(volume_name)
+                except docker.errors.NotFound:
+                    continue
+                except docker.errors.APIError as e:
+                    self.log.warning(f"[Manage Volumes] Docker error checking {volume_name}: {e}")
+                    continue
+                # Self-describing volume: read role + description off the labels the hub stamped
+                # at spawn; fall back to settings for legacy (pre-label) volumes.
+                labels = (vol.attrs.get('Labels') or {})
+                existing.append({
+                    'suffix': suffix,
+                    'name': volume_name,
+                    'label': ui_labels.get(suffix),
+                    'description': (labels.get(vol_desc_key) if vol_desc_key else None) or descriptions.get(suffix, ''),
+                    'role': (labels.get(vol_role_key) if vol_role_key else None) or roles.get(suffix, suffix),
+                })
+            # Append the shared row only when its volume really exists (grant already resolved).
+            if shared_row is not None:
+                try:
+                    client.volumes.get(shared_row['name'])
+                    existing.append(shared_row['row'])
+                except docker.errors.NotFound:
+                    pass  # granted but not created yet -> silently omit (as before)
+                except Exception as e:  # fail-safe: ANY Docker/connection error -> omit the
+                    # shared row and keep the user-volume list (matches the old broad guard;
+                    # a daemon blip degrades gracefully instead of 500-ing the whole endpoint)
+                    self.log.warning(f"[Manage Volumes] shared-volume row skipped for {username}: {e}")
+            return existing
 
-        client.close()
+        loop = asyncio.get_running_loop()
+        try:
+            existing = await loop.run_in_executor(get_executor(), _list_volumes)
+        finally:
+            client.close()  # close on every path (parity with the restart/logs/delete handlers)
+
         self.log.info(f"[Manage Volumes] {username} has {len(existing)} volume(s) on disk")
         self.set_status(200)
         self.finish({'volumes': existing})
 
-    def _shared_volume_row(self, username, client):
-        """The policy-controlled /mnt/shared row, or None when not granted/absent.
+    def _resolve_shared_row(self, username):
+        """Resolve the policy-controlled /mnt/shared row WITHOUT touching Docker.
 
-        Resolves this user's group policy to learn whether the standard shared mount
-        is granted; shows it as a non-resettable row so the user sees it exists but
-        cannot reset it. Fail-safe: any error -> no row (never breaks the list)."""
+        Runs on the event loop: reads this user's group policy (ORM: find_user /
+        user.groups - NOT thread-safe) to learn whether the standard shared mount is
+        granted, and pre-builds the list row. Returns {'name': <volume>, 'row': {...}}
+        when granted, else None; the caller's executor closure does the Docker
+        existence check. Fail-safe: any error -> None (never breaks the list)."""
         try:
             cfg = self.settings.get('stellars_config') or {}
             shared_name = cfg.get('shared_volume_name', '')
@@ -124,17 +146,16 @@ class ManageVolumesHandler(BaseHandler):
             shared = resolved.get('shared_mount')
             if not (shared and shared.get('allow')):
                 return None
-            try:
-                client.volumes.get(shared_name)  # only list it when it really exists
-            except docker.errors.NotFound:
-                return None
             mode = shared.get('mode') or 'rw'
             return {
-                'suffix': 'shared',
                 'name': shared_name,
-                'description': f'Shared across all users (group policy, {"read-only" if mode == "ro" else "read-write"})',
-                'role': 'shared',
-                'policy_controlled': True,  # not user-resettable
+                'row': {
+                    'suffix': 'shared',
+                    'name': shared_name,
+                    'description': f'Shared across all users (group policy, {"read-only" if mode == "ro" else "read-write"})',
+                    'role': 'shared',
+                    'policy_controlled': True,  # not user-resettable
+                },
             }
         except Exception as e:  # pragma: no cover - defensive, never break the list
             self.log.warning(f"[Manage Volumes] shared-volume row skipped for {username}: {e}")
@@ -224,7 +245,7 @@ class ManageVolumesHandler(BaseHandler):
                     failed.append({"volume": volume_type, "reason": str(e)})
             return reset, failed
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         try:
             reset_volumes, failed_volumes = await loop.run_in_executor(get_executor(), _remove_volumes)
         finally:
