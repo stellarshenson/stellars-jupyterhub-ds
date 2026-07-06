@@ -59,40 +59,12 @@ from duoptimum_hub_services.docker_utils import (  # {network}-token net resolut
 )
 from duoptimum_hub_services.protected_env import load_protected_env  # protected-env dictionary -> reserved names/prefixes (single source)
 
-# Tornado request handlers - registered via c.DuoptimumHub.registered_handlers
-# (our non-deprecated replacement for JupyterHub.extra_handlers; see app.py)
-from duoptimum_hub_services.handlers import (
-    ActivityDataHandler,                    # GET  /api/activity - user activity data with Docker stats
-    ActivityResetHandler,                   # POST /api/activity/reset - clear all activity samples
-    ActivitySampleHandler,                  # POST /api/activity/sample - trigger manual activity sampling
-    ActiveServersHandler,                   # GET  /api/notifications/active-servers - list running servers
-    BroadcastNotificationHandler,           # POST /api/notifications/broadcast - send to all active servers
-    ExtendSessionHandler,                   # POST /api/users/{user}/extend-session - add idle culler hours
-    GetUserCredentialsHandler,              # GET  /api/admin/credentials - retrieve cached passwords
-    HealthCheckHandler,                     # GET  /health - unauthenticated monitoring endpoint
-    LabReadyHandler,                        # GET  /api/users/{user}/lab-ready - silent lab readiness probe
-    ManageVolumesHandler,                   # DELETE /api/users/{user}/manage-volumes - delete user volumes
-    NativeUsersHandler,                     # GET  /api/native-users - list NativeAuth signups + auth state
-    NativeUserAuthorizationHandler,         # POST /api/native-users/{name}/authorization - idempotent set
-    RestartServerHandler,                   # POST /api/users/{user}/restart-server - Docker restart
-    ServerLogsHandler,                      # GET  /api/users/{user}/server/logs - bounded container-log tail (Start page)
-    SessionInfoHandler,                     # GET  /api/users/{user}/session-info - idle culler status
-    SettingsDataHandler,                    # GET  /api/settings - platform settings as JSON (read-only)
-    EventsDataHandler,                      # GET  /api/events - recent platform events (audit feed)
-    SentNotificationsDataHandler,           # GET  /api/notifications/sent - portal "Past Notifications" history
-    GroupsDataHandler,                      # GET  /api/admin/groups - list groups with config
-    GroupsCreateHandler,                    # POST /api/admin/groups/create - create new group
-    GroupsDeleteHandler,                    # DELETE /api/admin/groups/{name}/delete - delete group
-    GroupsConfigHandler,                    # GET/PUT /api/admin/groups/{name}/config - group config
-    GroupsReorderHandler,                   # POST /api/admin/groups/reorder - update priorities
-    UserProfileHandler,                     # GET/PUT /api/users/{user}/profile - first/last name + email
-    UserProfilesListHandler,                # GET  /api/user-profiles - all profiles (Users-list sub-names)
-    UserForcePasswordChangeHandler,         # POST /api/users/{user}/force-password-change - admin set/clear the gate
-    UserRenameHandler,                      # POST /api/users/{user}/rename - admin rename (records who renamed whom)
-    UserDisplayPreferencesHandler,          # GET/PUT /api/users/{user}/display-preferences - per-user UI options
-    UserEnvVarsHandler,                     # GET/PUT /api/users/{user}/env-vars - per-user environment variables
-    EffectiveGrantsHandler,                 # GET  /api/users/{user}/effective-grants - resolved group policy grants
-)
+# The platform's custom API/page route table - registered via
+# c.DuoptimumHub.registered_handlers (our non-deprecated replacement for the
+# deprecated JupyterHub.extra_handlers; see app.py). The 30-name import block and
+# the route table moved into the handlers-package builder so this file reads like
+# configuration; see handlers/registry.py for the routes.
+from duoptimum_hub_services.handlers.registry import registered_handlers
 
 # Duoptimum Hub web portal - hub-served React SPA that replaces the stock home/admin UI.
 # Ships its own static bundle + shell template; portal_handlers() returns the
@@ -769,43 +741,7 @@ apply_abuse_protection(c)
 # replacement for the deprecated c.JupyterHub.extra_handlers. DuoptimumHub splices
 # these into the hub's handler list in the same first-match-wins slot extra_handlers
 # used (after built-ins, before the /logo + /api 404 catch-alls). See app.py.
-c.DuoptimumHub.registered_handlers = [
-    (r'/api/users/([^/]+)/manage-volumes', ManageVolumesHandler),    # DELETE - reset user volumes
-    (r'/api/users/([^/]+)/restart-server', RestartServerHandler),    # POST - Docker container restart
-    (r'/api/users/([^/]+)/server/logs', ServerLogsHandler),          # GET - bounded container-log tail (Start page)
-    (r'/api/users/([^/]+)/lab-ready', LabReadyHandler),              # GET - silent lab readiness probe (always 200)
-    (r'/api/users/([^/]+)/session-info', SessionInfoHandler),        # GET - idle culler status
-    (r'/api/users/([^/]+)/profile', UserProfileHandler),             # GET/PUT - first/last name + email
-    (r'/api/users/([^/]+)/force-password-change', UserForcePasswordChangeHandler), # POST - admin set/clear force-pw gate
-    (r'/api/users/([^/]+)/rename', UserRenameHandler),               # POST - admin rename (records who renamed whom)
-    (r'/api/users/([^/]+)/display-preferences', UserDisplayPreferencesHandler), # GET/PUT - per-user UI options
-    (r'/api/users/([^/]+)/env-vars', UserEnvVarsHandler),            # GET/PUT - per-user environment variables
-    (r'/api/users/([^/]+)/effective-grants', EffectiveGrantsHandler), # GET - resolved group policy grants
-    (r'/api/user-profiles', UserProfilesListHandler),                # GET - all profiles (Users-list sub-names)
-    (r'/api/settings', SettingsDataHandler),                          # GET - platform settings (read-only JSON)
-    (r'/api/events', EventsDataHandler),                              # GET - recent platform events (audit feed)
-    (r'/api/users/([^/]+)/extend-session', ExtendSessionHandler),    # POST - extend idle timeout
-    (r'/api/notifications/active-servers', ActiveServersHandler),     # GET - list running servers
-    (r'/api/notifications/broadcast', BroadcastNotificationHandler), # POST - broadcast to all servers
-    (r'/api/notifications/sent', SentNotificationsDataHandler),       # GET - sent-broadcast history ("Past Notifications")
-    (r'/api/admin/credentials', GetUserCredentialsHandler),          # GET - cached auto-generated passwords
-    (r'/api/activity', ActivityDataHandler),                          # GET - activity data + Docker stats
-    (r'/api/activity/reset', ActivityResetHandler),                   # POST - clear activity samples
-    (r'/api/activity/sample', ActivitySampleHandler),                 # POST - trigger manual sampling
-    (r'/api/admin/groups', GroupsDataHandler),                        # GET - list groups with config
-    (r'/api/admin/groups/create', GroupsCreateHandler),               # POST - create new group
-    (r'/api/admin/groups/reorder', GroupsReorderHandler),             # POST - update group priorities
-    (r'/api/admin/groups/([^/]+)/delete', GroupsDeleteHandler),       # DELETE - delete group
-    (r'/api/admin/groups/([^/]+)/config', GroupsConfigHandler),       # GET/PUT - group configuration
-    (r'/api/native-users', NativeUsersHandler),                       # GET - list NativeAuth signups + auth state
-    (r'/api/native-users/([^/]+)/authorization', NativeUserAuthorizationHandler),  # POST - idempotent set
-    # Legacy server-rendered page handlers (/notifications, /settings, /activity,
-    # /groups) were removed - the React portal owns these features as client
-    # routes. Their /api/* data handlers above stay. Unregistering them frees the
-    # bare paths so the hub-root portal (no /portal segment) can serve those SPA
-    # routes without the old pages shadowing them. See docs/acceptance-criteria/acc-crit-drop-portal-path.md.
-    (r'/health', HealthCheckHandler),                                 # GET - unauthenticated monitoring endpoint
-]
+c.DuoptimumHub.registered_handlers = registered_handlers()
 # Duoptimum Hub portal: catch-all serving the SPA shell + bundled assets at the hub root.
 # Appended last so it is ordered after the API/page routes above (and the negative-lookahead
 # route never shadows them); still ahead of the /logo + /api 404 catch-alls after splicing.
