@@ -1,5 +1,6 @@
 """Handler for managing user volumes."""
 
+import asyncio
 import html
 import json
 
@@ -7,7 +8,7 @@ import docker
 from jupyterhub.handlers import BaseHandler
 from tornado import web
 
-from ..docker_utils import encode_username_for_docker, get_docker_client
+from ..docker_utils import encode_username_for_docker, get_docker_client, get_executor
 from ..event_log import record_event
 
 
@@ -199,27 +200,37 @@ class ManageVolumesHandler(BaseHandler):
             self.log.error(f"[Manage Volumes] Failed to connect to Docker: {e}")
             raise web.HTTPError(500, "Failed to connect to Docker daemon")
 
-        reset_volumes = []
-        failed_volumes = []
-
         encoded_username = encode_username_for_docker(username)
-        for volume_type in requested_volumes:
-            volume_name = user_volume_name_templates[volume_type].replace('{username}', encoded_username)
-            self.log.info(f"[Manage Volumes] Processing volume: {volume_name}")
 
-            try:
-                volume = docker_client.volumes.get(volume_name)
-                volume.remove()
-                self.log.info(f"[Manage Volumes] Successfully removed volume {volume_name}")
-                reset_volumes.append(volume_type)
-            except docker.errors.NotFound:
-                self.log.warning(f"[Manage Volumes] Volume {volume_name} not found, skipping")
-                failed_volumes.append({"volume": volume_type, "reason": "not found"})
-            except docker.errors.APIError as e:
-                self.log.error(f"[Manage Volumes] Failed to remove volume {volume_name}: {e}")
-                failed_volumes.append({"volume": volume_type, "reason": str(e)})
+        # volume.remove() is a blocking Docker call, once per requested volume;
+        # run the whole loop on the shared executor so a multi-volume reset can't
+        # freeze the hub event loop for other users. Each volume's error handling
+        # is unchanged - the loop accumulates reset/failed and returns them.
+        def _remove_volumes():
+            reset, failed = [], []
+            for volume_type in requested_volumes:
+                volume_name = user_volume_name_templates[volume_type].replace('{username}', encoded_username)
+                self.log.info(f"[Manage Volumes] Processing volume: {volume_name}")
+                try:
+                    volume = docker_client.volumes.get(volume_name)
+                    volume.remove()
+                    self.log.info(f"[Manage Volumes] Successfully removed volume {volume_name}")
+                    reset.append(volume_type)
+                except docker.errors.NotFound:
+                    self.log.warning(f"[Manage Volumes] Volume {volume_name} not found, skipping")
+                    failed.append({"volume": volume_type, "reason": "not found"})
+                except docker.errors.APIError as e:
+                    self.log.error(f"[Manage Volumes] Failed to remove volume {volume_name}: {e}")
+                    failed.append({"volume": volume_type, "reason": str(e)})
+            return reset, failed
 
-        docker_client.close()
+        loop = asyncio.get_event_loop()
+        try:
+            reset_volumes, failed_volumes = await loop.run_in_executor(get_executor(), _remove_volumes)
+        finally:
+            # close on every path (incl. an unexpected non-APIError transport error
+            # escaping the per-volume try) - parity with the restart/logs handlers.
+            docker_client.close()
 
         # audit the destructive reset on the event log (best-effort; never raises).
         # Names the actor and, when an admin resets someone else's volumes, the owner.

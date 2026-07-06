@@ -1,12 +1,13 @@
 """Handler for restarting user servers."""
 
+import asyncio
 import time
 
 import docker
 from jupyterhub.handlers import BaseHandler
 from tornado import web
 
-from ..docker_utils import get_docker_client, lab_container_name
+from ..docker_utils import get_docker_client, get_executor, lab_container_name
 
 
 class RestartServerHandler(BaseHandler):
@@ -46,7 +47,10 @@ class RestartServerHandler(BaseHandler):
             self.log.error(f"[Restart Server] Failed to connect to Docker: {e}")
             raise web.HTTPError(500, "Failed to connect to Docker daemon")
 
-        try:
+        # container.restart() blocks up to 10s+; run the Docker calls on the shared
+        # executor so one user's restart can't freeze the hub event loop for every
+        # other user. Tornado response I/O and error mapping stay on the loop.
+        def _restart():
             container = docker_client.containers.get(container_name)
             # [Timing] probes around container.restart() so the operator can
             # see in the hub log how long the Docker-side restart took. The
@@ -66,6 +70,10 @@ class RestartServerHandler(BaseHandler):
                     time.perf_counter() - t0,
                     username,
                 )
+
+        loop = asyncio.get_event_loop()
+        try:
+            await loop.run_in_executor(get_executor(), _restart)
             self.log.info(f"[Restart Server] Container {container_name} successfully restarted for user {username}")
             self.set_status(200)
             self.finish({"message": f"Container {container_name} successfully restarted"})
@@ -112,11 +120,18 @@ class ServerLogsHandler(BaseHandler):
             self.log.error(f"[Server Logs] Failed to connect to Docker: {e}")
             raise web.HTTPError(500, "Failed to connect to Docker daemon")
 
-        try:
+        # container.logs() is a blocking Docker read; offload it to the shared
+        # executor so a slow log fetch can't freeze the hub loop. The response
+        # write stays on the loop.
+        def _read_logs():
             container = docker_client.containers.get(container_name)
             raw = container.logs(tail=tail, stdout=True, stderr=True, timestamps=False)
             text = raw.decode('utf-8', errors='replace') if isinstance(raw, (bytes, bytearray)) else str(raw)
-            lines = text.splitlines()[-tail:]
+            return text.splitlines()[-tail:]
+
+        loop = asyncio.get_event_loop()
+        try:
+            lines = await loop.run_in_executor(get_executor(), _read_logs)
             self.finish({"lines": lines})
         except docker.errors.NotFound:
             raise web.HTTPError(404, "Container not found")
