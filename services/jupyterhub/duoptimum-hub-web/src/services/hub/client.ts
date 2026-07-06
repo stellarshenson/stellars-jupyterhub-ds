@@ -131,6 +131,17 @@ function loginRedirect(): never {
   throw new HubError(401, 'redirecting to login')
 }
 
+/** A 401 from ANY hub call means the session is no longer valid (expired cookie, or
+ * a hub restart that cleared sessions) - bounce to login. Without this, a mid-session
+ * expiry wedges the portal: liveSource swallows the throw into "honest empty" so
+ * React Query records success, /health (unauthenticated) keeps the connection banner
+ * green, and getCurrentUser is one-shot so no redirect fires - the user sees a
+ * healthy-looking hub with all data blank until they manually reload. 403 is a real
+ * permission denial (or XSRF), NOT a session problem, so it is left to the caller. */
+function redirectIfSessionExpired(res: Response): void {
+  if (res.status === 401) loginRedirect()
+}
+
 /* Abort a request that hangs too long. A hub that accepts the TCP connection but
  * never responds otherwise leaves the fetch promise pending forever, wedging the
  * control that awaits it (a spinner that never clears) with no recovery but a full
@@ -146,6 +157,7 @@ export async function hubGet<T>(path: string): Promise<T> {
     headers: { Accept: 'application/json', 'X-XSRFToken': xsrf() },
     signal: AbortSignal.timeout(HUB_FETCH_TIMEOUT_MS),
   })
+  redirectIfSessionExpired(res)
   if (!res.ok) throw new HubError(res.status, `GET ${path}`)
   return (await res.json()) as T
 }
@@ -162,6 +174,7 @@ export async function hubSend<T = unknown>(method: WriteMethod, path: string, bo
     body: body !== undefined ? JSON.stringify(body) : undefined,
     signal: AbortSignal.timeout(HUB_FETCH_TIMEOUT_MS),
   })
+  redirectIfSessionExpired(res)
   if (!res.ok) throw new HubError(res.status, `${method} ${path}`, await res.text().catch(() => ''))
   const txt = await res.text()
   return (txt ? JSON.parse(txt) : undefined) as T
@@ -175,6 +188,7 @@ export async function hubAuthGet(path: string): Promise<void> {
     credentials: 'include',
     signal: AbortSignal.timeout(HUB_FETCH_TIMEOUT_MS),
   })
+  redirectIfSessionExpired(res)
   if (!res.ok) throw new HubError(res.status, `GET /hub${path}`)
 }
 
@@ -189,6 +203,7 @@ export async function hubAuthForm(path: string, fields: Record<string, string>):
     body: new URLSearchParams(fields),
     signal: AbortSignal.timeout(HUB_FETCH_TIMEOUT_MS),
   })
+  redirectIfSessionExpired(res)
   const body = await res.text().catch(() => '')
   if (!res.ok) throw new HubError(res.status, `POST /hub${path}`, body)
   return body
