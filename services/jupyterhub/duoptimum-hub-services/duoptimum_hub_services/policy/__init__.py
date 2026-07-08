@@ -13,6 +13,7 @@ from .base import (
     Policy,
     PolicyCoerceError,
     PolicyCtx,
+    effective_user_env_enable,
     is_protected_mountpoint,
     is_reserved_env_var,
 )
@@ -45,4 +46,5 @@ __all__ = [
     'validate_all',
     'is_protected_mountpoint',
     'is_reserved_env_var',
+    'effective_user_env_enable',
 ]

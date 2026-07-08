@@ -20,7 +20,7 @@ from .api_keys_pool import PoolManager
 from .docker_proxy import unregister_user
 from .event_log import record_event
 from .groups_config import GroupsConfigManager
-from .policy import ApplyContext, apply_policies, resolve_policies, run_hub_startup
+from .policy import ApplyContext, apply_policies, effective_user_env_enable, resolve_policies, run_hub_startup
 from .user_env_vars import UserEnvVarsManager
 from .user_profiles import UserProfileManager
 
@@ -129,12 +129,10 @@ def make_pre_spawn_hook(
         app = JupyterHub.instance()
         actx = replace(base_actx, app=app, username=username)
 
-        # System-env enable gates the per-user env injection. Read from the SAME field
-        # SudoPolicy.apply uses (base_actx.lab_user_env_enable_default) so the injection
-        # skip and the sudo gate can never disagree - single fallback source.
-        sys_env_enabled = resolved.get('user_env_enable')
-        if sys_env_enabled is None:
-            sys_env_enabled = bool(base_actx.lab_user_env_enable_default)
+        # System-env enable gates the per-user env injection. The SAME helper (and same
+        # lab default) SudoPolicy.apply uses, so the injection-skip and the sudo gate can
+        # never disagree - one source, not two copies of the fold.
+        sys_env_enabled = effective_user_env_enable(resolved, base_actx.lab_user_env_enable_default)
 
         # Per-user env vars (self-service / admin-managed). The Spawner instance is REUSED
         # across respawns and spawner.environment is add-only, so FIRST remove exactly what

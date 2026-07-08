@@ -25,6 +25,7 @@ from .base import (
     VOLUME_MODES,
     Policy,
     PolicyCoerceError,
+    effective_user_env_enable,
     is_protected_mountpoint,
     is_reserved_env_var,
 )
@@ -724,12 +725,10 @@ class SudoPolicy(Policy):
         return {'badge': f'Sudo {state}', 'detail': f'Sudo: {state}'}
 
     async def apply(self, spawner, resolved, actx):
-        # System-env enable: resolved (winning group) else platform default. Always
-        # injected so the image gets an explicit JUPYTERLAB_USER_ENV_ENABLE.
-        if resolved.get('user_env_enable') is not None:
-            user_env_enabled = resolved['user_env_enable']
-        else:
-            user_env_enabled = bool(actx.lab_user_env_enable_default)
+        # System-env enable: resolved (winning group) else platform default - via the
+        # shared helper so the pre_spawn_hook's per-user-env gate computes the identical
+        # value. Always injected so the image gets an explicit JUPYTERLAB_USER_ENV_ENABLE.
+        user_env_enabled = effective_user_env_enable(resolved, actx.lab_user_env_enable_default)
         spawner.environment['JUPYTERLAB_USER_ENV_ENABLE'] = '1' if user_env_enabled else '0'
         # Sudo: resolved else platform default, THEN gated by system-env. This is the
         # authoritative point - sudo-on can never be injected with system-env off.

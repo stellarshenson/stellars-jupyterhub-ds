@@ -43,7 +43,7 @@ class UserEnvVarsHandler(BaseHandler):
         or edit their env vars while this is on; an admin always may (role privilege)."""
         from jupyterhub import orm
         from ..groups_config import GroupsConfigManager
-        from ..policy import resolve_policies
+        from ..policy import effective_user_env_enable, resolve_policies
         cfg = self.settings.get('stellars_config') or {}
         orm_user = self.db.query(orm.User).filter(orm.User.name == username).first()
         group_names = [g.name for g in orm_user.groups] if orm_user else []
@@ -58,10 +58,9 @@ class UserEnvVarsHandler(BaseHandler):
             reserved_names=cfg.get('reserved_env_var_names', frozenset()),
             reserved_prefixes=cfg.get('reserved_env_var_prefixes', ()),
         )
-        val = resolved.get('user_env_enable')
-        if val is None:
-            val = bool(cfg.get('lab_user_env_enable', 1))
-        return bool(val)
+        # Same shared fold SudoPolicy.apply + the spawn hook use, so this handler's
+        # see/edit decision can never drift from what is enforced at spawn.
+        return effective_user_env_enable(resolved, cfg.get('lab_user_env_enable', 1))
 
     @web.authenticated
     async def get(self, username):

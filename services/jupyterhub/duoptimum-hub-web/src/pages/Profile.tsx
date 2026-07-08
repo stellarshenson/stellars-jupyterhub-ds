@@ -103,9 +103,9 @@ export default function Profile() {
         Variables injected into your lab container when it starts. Platform- and policy-owned names are reserved and cannot be set. Descriptions are notes only - they are not passed to the container.
       </div>
       {envLocked ? (
-        <Alert type="info" showIcon
+        <Alert type="warning" showIcon
           message="System environment variables are disabled for your account"
-          description="Your administrator has disabled changing system-level environment variables for you. You can still set your own shell variables inside the lab (for example in ~/.bashrc)." />
+          description="An administrator has disabled changing system-level environment variables for you. Any variables you saved before are kept - they are not applied while this is off, and will apply again if it is re-enabled. You can still set your own shell variables inside the lab (for example in ~/.bashrc)." />
       ) : (
         <EnvVarEditor value={envVars} onChange={setEnvVars} reserved={reserved} />
       )}

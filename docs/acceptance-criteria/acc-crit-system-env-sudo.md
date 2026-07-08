@@ -26,7 +26,7 @@ New lab control `JUPYTERLAB_USER_ENV_ENABLE` (default on) governs whether a user
 
 - [ ] **Rename** - group policy "Sudo Access" section becomes "System" and holds both the system-env toggle and the sudo toggle; sudo behaviour unchanged
   - log: 2026-07-08 added
-- [ ] **Live gate** - toggling system-env off in the form disables and forces off the sudo toggle (with a hint, not a silently inert switch); toggling it back on restores sudo to its prior value
+- [ ] **Live gate** - toggling system-env off in the form disables the sudo toggle (nested under it, with an actionable hint) AND zeroes sudo; re-enabling system-env leaves sudo OFF (no silent resurrection of a root grant - the admin re-enables it deliberately)
   - log: 2026-07-08 added
 - [ ] **Resolution** - system-env resolves priority-wins across a user's groups (highest-priority active group, else lab default), like sudo; the gate uses the resolved winner
   - log: 2026-07-08 added

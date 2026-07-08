@@ -149,4 +149,4 @@ def test_unique_keys_for_react():
     )]
     keys = [g["key"] for g in _grants(["everything"], cfgs, gpu_available=True)]
     assert keys == sorted(set(keys), key=keys.index)  # no duplicates
-    assert set(keys) == {"gpu", "memory", "cpu", "shield", "box"}
+    assert set(keys) == {"gpu", "memory", "cpu", "code", "shield", "box"}

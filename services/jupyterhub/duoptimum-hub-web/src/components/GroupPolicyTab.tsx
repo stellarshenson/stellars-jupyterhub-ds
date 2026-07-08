@@ -170,8 +170,12 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       b: cr.secret ?? '',
     })))
     setDownloadsAllow(c.downloads_allow ?? true)
-    setSudoEnable(c.sudo_enable ?? true)
-    setUserEnvEnable(c.user_env_enable ?? true)
+    // Normalise on load so the sudo gate holds for ANY stored/hand-edited state, not just
+    // interactive toggles: if system-env is off, seed sudo OFF too - otherwise a stale
+    // sudo_enable=true would silently resurrect when system-env is re-enabled.
+    const envOn = c.user_env_enable ?? true
+    setUserEnvEnable(envOn)
+    setSudoEnable(envOn ? (c.sudo_enable ?? true) : false)
   }, [cfg])
 
   // emit the assembled flat config on every change - field names match the hub
@@ -487,11 +491,17 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
         <div className="doh-row"><Switch size="small" checked={downloadsAllow} onChange={setDownloadsAllow} /><span>Allow downloads for members</span></div>
       </Section>
 
-      {/* System (system environment variables + sudo, gated) */}
-      <Section icon="shield" title="System" on={on.sudo ?? false} onToggle={toggle('sudo')}>
-        <div className="doh-pol-hint">System-level access for members: changing system environment variables, and sudo (root) inside their lab - needed to install system packages. Sudo requires system environment variables (root could change system env regardless).</div>
-        <div className="doh-row"><Switch size="small" checked={userEnvEnable} onChange={setUserEnvEnable} /><span>Allow changing system environment variables</span></div>
-        <div className="doh-row"><Switch size="small" checked={userEnvEnable && sudoEnable} disabled={!userEnvEnable} onChange={setSudoEnable} /><span>Enable sudo for members{!userEnvEnable ? ' (requires system environment variables)' : ''}</span></div>
+      {/* System Access - system environment variables + sudo. Sudo is nested under and
+          gated by system-env: root can change system env regardless, so turning system-env
+          off turns sudo off (and zeroes its value, so re-enabling system-env does not
+          silently resurrect a sudo grant - the admin re-enables it deliberately). */}
+      <Section icon="shield" title="System Access" on={on.sudo ?? false} onToggle={toggle('sudo')}>
+        <div className="doh-pol-hint">System-level access for members: changing system environment variables, and sudo (root) inside their lab - needed to install system packages. Sudo requires system environment variables (root can change system env regardless), so turning system environment variables off also turns sudo off.</div>
+        <div className="doh-row"><Switch size="small" checked={userEnvEnable} onChange={(v) => { setUserEnvEnable(v); if (!v) setSudoEnable(false) }} /><span>Allow changing system environment variables</span></div>
+        <div className="doh-row doh-row-sub">
+          <Switch size="small" checked={userEnvEnable && sudoEnable} disabled={!userEnvEnable} onChange={setSudoEnable} />
+          <span>Enable sudo for members{!userEnvEnable ? <span className="doh-hint-inline"> - turn on system environment variables above</span> : ''}</span>
+        </div>
       </Section>
     </div>
   )

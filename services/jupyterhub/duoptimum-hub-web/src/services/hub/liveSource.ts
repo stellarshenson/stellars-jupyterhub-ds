@@ -130,7 +130,7 @@ const POLICY_LABELS: Record<string, string> = {
   docker: 'Docker',
   cpu: 'CPU',
   mem: 'Memory',
-  sudo: 'Sudo',
+  sudo: 'System',
   downloads: 'Downloads',
   api_keys: 'API keys',
   volume_mounts: 'Volume mounts',
@@ -414,7 +414,7 @@ export const liveSource: DataSource = {
         members: g.member_count ?? g.members?.length ?? 0,
         memberNames: g.members ?? [],
         // chips name WHICH policies are configured, not their value/state - use the clean policy
-        // label ("Sudo", "Downloads"), never the backend badge that carries the on/off/value ("Sudo off")
+        // label ("System", "Downloads"), never the backend badge that carries the on/off/value ("Sudo off")
         policies: (g.policy_summary ?? []).map((s) => ({ key: s.key, label: POLICY_LABELS[s.key] || s.badge || s.key, detail: s.detail })),
         // raw flat config for the export bundle (the live payload carries it)
         config: (g.config ?? {}) as GroupRow['config'],

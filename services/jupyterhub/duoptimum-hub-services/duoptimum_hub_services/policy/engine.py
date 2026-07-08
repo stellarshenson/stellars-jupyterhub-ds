@@ -105,6 +105,14 @@ def effective_grants(matched, resolved):
                      and float(c.get('cpu_limit_cores') or 0) == float(cpu_cores))
         grants.append({'key': 'cpu', 'label': 'CPU', 'value': value, 'from': src})
 
+    # System env - section-gated (same "System" section as sudo); surfaced when a group
+    # configures it, so the resolved-grants panel mirrors the group-config summary badge.
+    sys_env = resolved.get('user_env_enable')
+    if sys_env is not None:
+        src = winner(lambda c: c.get('sudo_active'))
+        grants.append({'key': 'code', 'label': 'System env',
+                       'value': 'enabled' if sys_env else 'disabled', 'from': src})
+
     # Sudo - section-gated; surfaced only when a group configures it.
     sudo = resolved.get('sudo_enable')
     if sudo is not None:

@@ -110,6 +110,15 @@ class ApplyContext:
     api_keys_reconcile_interval: int = 0
 
 
+def effective_user_env_enable(resolved, lab_default):
+    """Single source for the system-env decision, shared by SudoPolicy.apply (which gates
+    sudo and injects JUPYTERLAB_USER_ENV_ENABLE) and the pre_spawn_hook (which gates the
+    per-user env injection): the resolved winning-group value, else the platform lab
+    default. One function so the injection-skip and the sudo gate can never diverge."""
+    v = resolved.get('user_env_enable')
+    return bool(lab_default) if v is None else bool(v)
+
+
 class PolicyCoerceError(Exception):
     """Raised by a type's ``coerce`` to reject an admin write.
 
