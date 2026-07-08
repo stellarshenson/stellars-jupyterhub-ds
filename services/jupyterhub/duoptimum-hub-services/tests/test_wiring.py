@@ -204,7 +204,7 @@ def test_stellars_config_key_set_and_lab_volumes():
 def _pre_spawn_inputs():
     s = SimpleNamespace(
         branding_favicon_uri="f.ico", label_container_role_key="crk", label_container_role_lab="lab",
-        lab_block_file_downloads=0, lab_sudo_enable=1, idle_culler_interval=600,
+        lab_block_file_downloads=0, lab_sudo_enable=1, lab_user_env_enable=1, idle_culler_interval=600,
         label_volume_role_key="vrk", label_volume_owner_key="vok", label_volume_description="vd",
     )
     r = SimpleNamespace(

@@ -99,6 +99,7 @@ class ApplyContext:
     hub_network_name: str = ''
     block_file_downloads: int = 0
     lab_sudo_enable_default: int = 1
+    lab_user_env_enable_default: int = 1
     # standard shared volume resolved by label (role=shared) at boot; '' when absent
     # -> the standard mount cannot be placed (allow has no effect, spawn skips it)
     shared_volume_name: str = ''

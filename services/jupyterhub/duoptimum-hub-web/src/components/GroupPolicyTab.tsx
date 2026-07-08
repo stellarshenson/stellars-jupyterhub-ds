@@ -105,6 +105,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
   const [apiCreds, setApiCreds] = useState<ApiCred[]>([])
   const [downloadsAllow, setDownloadsAllow] = useState(true)
   const [sudoEnable, setSudoEnable] = useState(true)
+  const [userEnvEnable, setUserEnvEnable] = useState(true)
 
   // seed every control from the group's stored flat config when it loads
   useEffect(() => {
@@ -170,6 +171,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
     })))
     setDownloadsAllow(c.downloads_allow ?? true)
     setSudoEnable(c.sudo_enable ?? true)
+    setUserEnvEnable(c.user_env_enable ?? true)
   }, [cfg])
 
   // emit the assembled flat config on every change - field names match the hub
@@ -212,7 +214,10 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       mem_limit_gb: memGB ?? 0,
       mem_swap_disabled: memSwap,
       sudo_active: on.sudo ?? false,
-      sudo_enable: sudoEnable,
+      user_env_enable: userEnvEnable,
+      // gate: sudo can never be saved on while system env is off (root could change
+      // system env regardless); the backend also validates + folds this
+      sudo_enable: userEnvEnable ? sudoEnable : false,
       downloads_active: on.downloads ?? false,
       downloads_allow: downloadsAllow,
       volume_mounts_active: on.volume_mounts ?? false,
@@ -231,7 +236,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       },
     }
     onChange(config)
-  }, [onChange, on, envVars, gpuAll, gpuIds, resources, memGB, memSwap, cpuCores, dStd, dPriv, dq, dFlags, volMounts, sharedAllow, sharedMode, apiMode, apiVarKey, apiVarId, apiVarSecret, apiCreds, downloadsAllow, sudoEnable])
+  }, [onChange, on, envVars, gpuAll, gpuIds, resources, memGB, memSwap, cpuCores, dStd, dPriv, dq, dFlags, volMounts, sharedAllow, sharedMode, apiMode, apiVarKey, apiVarId, apiVarSecret, apiCreds, downloadsAllow, sudoEnable, userEnvEnable])
 
   const toggle = (key: string) => (v: boolean) => setOn((e) => ({ ...e, [key]: v }))
 
@@ -482,10 +487,11 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
         <div className="doh-row"><Switch size="small" checked={downloadsAllow} onChange={setDownloadsAllow} /><span>Allow downloads for members</span></div>
       </Section>
 
-      {/* Sudo */}
-      <Section icon="shield" title="Sudo Access" on={on.sudo ?? false} onToggle={toggle('sudo')}>
-        <div className="doh-pol-hint">Grant or deny members root via sudo inside their lab - needed to install system packages.</div>
-        <div className="doh-row"><Switch size="small" checked={sudoEnable} onChange={setSudoEnable} /><span>Enable sudo for members</span></div>
+      {/* System (system environment variables + sudo, gated) */}
+      <Section icon="shield" title="System" on={on.sudo ?? false} onToggle={toggle('sudo')}>
+        <div className="doh-pol-hint">System-level access for members: changing system environment variables, and sudo (root) inside their lab - needed to install system packages. Sudo requires system environment variables (root could change system env regardless).</div>
+        <div className="doh-row"><Switch size="small" checked={userEnvEnable} onChange={setUserEnvEnable} /><span>Allow changing system environment variables</span></div>
+        <div className="doh-row"><Switch size="small" checked={userEnvEnable && sudoEnable} disabled={!userEnvEnable} onChange={setSudoEnable} /><span>Enable sudo for members{!userEnvEnable ? ' (requires system environment variables)' : ''}</span></div>
       </Section>
     </div>
   )

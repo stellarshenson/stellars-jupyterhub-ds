@@ -252,8 +252,12 @@ User Environment:
     description: Path inside the hub container to an operator user-volume descriptions overlay YAML (suffix-keyed, with mount/description); merges over /srv/jupyterhub/volumes_dictionary.yml, operator fields win
     default: ""
 
+  - name: JUPYTERHUB_LAB_USER_ENV_ENABLE
+    description: Default member ability to change SYSTEM-level env vars (0=off - shell env only, 1=on); per-group setting overrides. When off, sudo is forced off (root could change system env regardless)
+    default: "1"
+
   - name: JUPYTERHUB_LAB_SUDO_ENABLE
-    description: Default member sudo (0=off, 1=on); per-group setting overrides
+    description: Default member sudo (0=off, 1=on); per-group setting overrides. Capped off whenever system env is off
     default: "1"
 
 Branding:

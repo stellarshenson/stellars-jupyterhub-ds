@@ -47,6 +47,7 @@ def _original(env):
         "lab_memory_max_usage_mb": resolve_memory_quota_mb(frac),
         "lab_block_file_downloads": int(g("JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS", 0)),
         "lab_sudo_enable": int(g("JUPYTERHUB_LAB_SUDO_ENABLE", 1)),
+        "lab_user_env_enable": int(g("JUPYTERHUB_LAB_USER_ENV_ENABLE", 1)),
         "tf_cpp_min_log_level": int(g("TF_CPP_MIN_LOG_LEVEL", 3)),
         "timezone": g("JUPYTERHUB_TIMEZONE", "Etc/UTC"),
         "base_url": g("JUPYTERHUB_BASE_URL"),

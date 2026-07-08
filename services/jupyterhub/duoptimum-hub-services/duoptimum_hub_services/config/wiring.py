@@ -125,6 +125,7 @@ def pre_spawn_kwargs(settings, runtime, *, reserved_env_var_names, reserved_env_
         'hub_network_name': lab_network,                     # shown in the user's docker network ls when enabled
         'block_file_downloads': settings.lab_block_file_downloads,  # master switch for per-user download-block routes
         'lab_sudo_enable_default': settings.lab_sudo_enable,  # default JUPYTERLAB_SUDO_ENABLE when no group configures sudo
+        'lab_user_env_enable_default': settings.lab_user_env_enable,  # default JUPYTERLAB_USER_ENV_ENABLE; off caps sudo off
         'api_keys_reconcile_interval': settings.idle_culler_interval,  # api-keys-pool reconcile cadence (reuses cull interval)
         'shared_volume_name': shared_volume_name,            # role=shared volume the group standard-shared mount resolves to
         'volume_role_label_key': settings.label_volume_role_key,  # hub.volume.role key stamped per-user at spawn

@@ -243,3 +243,83 @@ def test_hook_injects_user_env_and_strips_reserved(manager):
     asyncio.run(hook(spawner))
     assert spawner.environment.get('EDITOR') == 'vim'
     assert 'JUPYTERHUB_X' not in spawner.environment  # reserved stripped defensively
+
+
+_ICONS = {'lab_main_icon_static': '', 'lab_main_icon_url': '',
+          'lab_splash_icon_static': '', 'lab_splash_icon_url': ''}
+
+
+def _spawner(environment):
+    return types.SimpleNamespace(
+        user=types.SimpleNamespace(name='alice', groups=[]),
+        volumes={}, extra_host_config={}, environment=environment, extra_create_kwargs={},
+        mem_limit=None, log=logging.getLogger('test_env_hook'),
+    )
+
+
+def test_hook_system_env_on_injects_flag_and_user_env(manager):
+    """System-env on (lab default): the flag is 1, the user's vars inject, sudo stays on."""
+    from duoptimum_hub_services.hooks import make_pre_spawn_hook
+    manager.set_env_vars('alice', [_ev('EDITOR', 'vim')])
+    hook = make_pre_spawn_hook(
+        _ICONS, gpu_available=False,
+        reserved_env_var_names=RESERVED_NAMES, reserved_env_var_prefixes=RESERVED_PREFIXES,
+        compose_project='', lab_user_env_enable_default=1, lab_sudo_enable_default=1)
+    spawner = _spawner({})
+    asyncio.run(hook(spawner))
+    assert spawner.environment.get('EDITOR') == 'vim'
+    assert spawner.environment.get('JUPYTERLAB_USER_ENV_ENABLE') == '1'
+    assert spawner.environment.get('JUPYTERLAB_SUDO_ENABLE') == '1'
+
+
+def _hook(user_env_default, sudo_default=1):
+    from duoptimum_hub_services.hooks import make_pre_spawn_hook
+    return make_pre_spawn_hook(
+        _ICONS, gpu_available=False,
+        reserved_env_var_names=RESERVED_NAMES, reserved_env_var_prefixes=RESERVED_PREFIXES,
+        compose_project='', lab_user_env_enable_default=user_env_default,
+        lab_sudo_enable_default=sudo_default)
+
+
+def test_hook_system_env_off_removes_stale_user_env_and_gates_sudo(manager):
+    """Reused spawner across a system-env-off flip: a var injected on the prior
+    (system-env on) spawn is ACTIVELY removed on the next spawn - not merely skipped
+    (regression: add-only update would leak it into the container until a hub restart)."""
+    manager.set_env_vars('alice', [_ev('EDITOR', 'vim')])
+    spawner = _spawner({})
+    asyncio.run(_hook(1)(spawner))                        # spawn 1: system-env ON
+    assert spawner.environment.get('EDITOR') == 'vim'
+    asyncio.run(_hook(0)(spawner))                        # operator flips OFF; same spawner
+    assert 'EDITOR' not in spawner.environment            # stale user var removed
+    assert spawner.environment.get('JUPYTERLAB_USER_ENV_ENABLE') == '0'
+    assert spawner.environment.get('JUPYTERLAB_SUDO_ENABLE') == '0'  # gate forces sudo off
+
+
+def test_hook_removes_var_deleted_from_store_on_respawn(manager):
+    """Store-independent removal also clears a var the user DELETED from their store
+    between spawns (system-env stays on) - the tracked-key approach, not a store recompute."""
+    manager.set_env_vars('alice', [_ev('FOO', '1'), _ev('BAR', '2')])
+    spawner = _spawner({})
+    asyncio.run(_hook(1)(spawner))
+    assert spawner.environment.get('BAR') == '2'
+    manager.set_env_vars('alice', [_ev('FOO', '1')])      # user deletes BAR
+    asyncio.run(_hook(1)(spawner))                        # respawn, same spawner
+    assert 'BAR' not in spawner.environment               # deleted var no longer stale
+    assert spawner.environment.get('FOO') == '1'
+
+
+def test_hook_group_system_env_off_reaches_resolved(manager, monkeypatch):
+    """A GROUP-level system-env off (lab default ON) must reach the hook's resolved dict:
+    no per-user injection, flag 0, sudo forced off. Proves resolved is the flat merge the
+    policy apply also reads (hook and apply cannot disagree)."""
+    from duoptimum_hub_services.groups_config import GroupsConfigManager
+    manager.set_env_vars('alice', [_ev('EDITOR', 'vim')])
+    cfg = {'group_name': 'g1',
+           'config': {'sudo_active': True, 'sudo_enable': False, 'user_env_enable': False}}
+    monkeypatch.setattr(GroupsConfigManager, 'get_all_configs', lambda self: [cfg])
+    spawner = _spawner({})
+    spawner.user.groups = [types.SimpleNamespace(name='g1')]
+    asyncio.run(_hook(1)(spawner))                        # lab default ON, group forces OFF
+    assert 'EDITOR' not in spawner.environment
+    assert spawner.environment.get('JUPYTERLAB_USER_ENV_ENABLE') == '0'
+    assert spawner.environment.get('JUPYTERLAB_SUDO_ENABLE') == '0'

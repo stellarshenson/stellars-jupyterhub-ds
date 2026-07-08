@@ -65,7 +65,8 @@ def test_real_dictionary_has_expected_protected_names():
     here = os.path.dirname(__file__)
     real = os.path.normpath(os.path.join(here, '..', '..', 'conf', 'protected_env_dictionary.yml'))
     names, prefixes = load_protected_env(real)
-    assert {'NVIDIA_VISIBLE_DEVICES', 'CUDA_VISIBLE_DEVICES', 'DOCKER_HOST', 'JUPYTERLAB_SUDO_ENABLE'} <= names
+    assert {'NVIDIA_VISIBLE_DEVICES', 'CUDA_VISIBLE_DEVICES', 'DOCKER_HOST', 'JUPYTERLAB_SUDO_ENABLE',
+            'JUPYTERLAB_USER_ENV_ENABLE'} <= names
     # docker-stacks root-time privilege levers must be protected (sudo-policy bypass)
     assert {'GRANT_SUDO', 'NB_UID', 'NB_GID', 'CHOWN_HOME', 'CHOWN_EXTRA'} <= names
     assert 'JUPYTERHUB_' in prefixes

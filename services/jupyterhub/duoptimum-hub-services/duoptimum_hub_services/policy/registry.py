@@ -661,18 +661,48 @@ class MemPolicy(Policy):
 # ── sudo ───────────────────────────────────────────────────────────────────────
 
 class SudoPolicy(Policy):
+    """Backs the group "System" section (labelled "System" in the UI; storage key
+    stays ``sudo`` for backward compat). Owns two coupled controls: system-env
+    enable (whether the user may change SYSTEM-level env vars - injected as
+    ``JUPYTERLAB_USER_ENV_ENABLE``) and sudo (``JUPYTERLAB_SUDO_ENABLE``). Sudo
+    grants root, which can change system env regardless, so sudo is GATED on
+    system-env: effective sudo = sudo AND system-env. The gate is enforced three
+    ways - save-validation (reject), resolution (fold), and apply (authoritative,
+    the injection can never emit sudo-on with system-env-off). ``user_env_enable``
+    defaults on and is absent from pre-existing configs (treated as on)."""
+
     key = 'sudo'
+    validate_code = 'sudo_requires_system_env'
 
     def default(self):
-        return {'sudo_active': False, 'sudo_enable': True}
+        return {'sudo_active': False, 'sudo_enable': True, 'user_env_enable': True}
+
+    def validate(self, config):
+        # Reject the incoherent combo at save time. Absent user_env_enable = on.
+        if (config.get('sudo_active') and config.get('sudo_enable')
+                and not config.get('user_env_enable', True)):
+            return False, ('Sudo requires system environment variables enabled - '
+                           'root can change system env regardless, so sudo is not '
+                           'allowed while system env is disabled.')
+        return True, ''
 
     def resolve(self, matched, ctx):
-        value = None
+        # Priority-wins: the highest-priority group whose System section is active
+        # sets BOTH values (they travel together). Fold the gate so a stored/hand
+        # -edited env-off+sudo-on can never resolve to sudo-on.
+        sudo_val, env_val = None, None
         for cfg in matched:
             inner = cfg.get('config') or {}
-            if value is None and inner.get('sudo_active'):
-                value = bool(inner.get('sudo_enable'))
-        return {'sudo_enable': value}
+            if inner.get('sudo_active') and sudo_val is None:
+                sudo_val = bool(inner.get('sudo_enable'))
+                env_val = bool(inner.get('user_env_enable', True))
+        # Fold sudo off ONLY when system-env is explicitly disabled by a configuring
+        # group. Keep `is False`, never `not env_val`: env_val is None when no group
+        # configures the System section, and None must fall through to the lab default
+        # in apply - `not None` would wrongly force sudo off for every unconfigured user.
+        if env_val is False:
+            sudo_val = False
+        return {'sudo_enable': sudo_val, 'user_env_enable': env_val}
 
     def coerce(self, body, existing, ctx):
         out = {}
@@ -680,22 +710,35 @@ class SudoPolicy(Policy):
             out['sudo_active'] = bool(body['sudo_active'])
         if 'sudo_enable' in body:
             out['sudo_enable'] = bool(body['sudo_enable'])
+        if 'user_env_enable' in body:
+            out['user_env_enable'] = bool(body['user_env_enable'])
         return out
 
     def summarize(self, c):
-        if c.get('sudo_active'):
-            state = 'on' if c.get('sudo_enable') else 'off'
-            return {'badge': f'Sudo {state}', 'detail': f'Sudo: {state}'}
-        return None
+        if not c.get('sudo_active'):
+            return None
+        env_on = bool(c.get('user_env_enable', True))
+        if not env_on:
+            return {'badge': 'Sys env off', 'detail': 'System env: off; Sudo: off (gated)'}
+        state = 'on' if c.get('sudo_enable') else 'off'
+        return {'badge': f'Sudo {state}', 'detail': f'Sudo: {state}'}
 
     async def apply(self, spawner, resolved, actx):
-        # Resolved value (highest-priority configuring group) when set, else the
-        # platform default. Always injected so the image gets an explicit
-        # JUPYTERLAB_SUDO_ENABLE every spawn.
+        # System-env enable: resolved (winning group) else platform default. Always
+        # injected so the image gets an explicit JUPYTERLAB_USER_ENV_ENABLE.
+        if resolved.get('user_env_enable') is not None:
+            user_env_enabled = resolved['user_env_enable']
+        else:
+            user_env_enabled = bool(actx.lab_user_env_enable_default)
+        spawner.environment['JUPYTERLAB_USER_ENV_ENABLE'] = '1' if user_env_enabled else '0'
+        # Sudo: resolved else platform default, THEN gated by system-env. This is the
+        # authoritative point - sudo-on can never be injected with system-env off.
         if resolved.get('sudo_enable') is not None:
             sudo_enabled = resolved['sudo_enable']
         else:
             sudo_enabled = bool(actx.lab_sudo_enable_default)
+        if not user_env_enabled:
+            sudo_enabled = False
         spawner.environment['JUPYTERLAB_SUDO_ENABLE'] = '1' if sudo_enabled else '0'
 
 

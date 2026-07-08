@@ -169,6 +169,7 @@ export interface PolicyConfig {
   mem_swap_disabled?: boolean
   sudo_active?: boolean
   sudo_enable?: boolean
+  user_env_enable?: boolean
   downloads_active?: boolean
   downloads_allow?: boolean
   api_keys_pool?: PolicyApiKeysPool

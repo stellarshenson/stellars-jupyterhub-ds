@@ -66,6 +66,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "apikeys_single": {
@@ -120,6 +121,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "cpu_biggest_wins": {
@@ -154,6 +156,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "cpu_fractional": {
@@ -187,6 +190,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "docker_access_raw": {
@@ -220,6 +224,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "docker_limited_custom_quota": {
@@ -253,6 +258,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "docker_limited_dangerous_flags_or": {
@@ -287,6 +293,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "docker_limited_defaults": {
@@ -320,6 +327,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "docker_limited_max_quota_across_groups": {
@@ -354,6 +362,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "docker_privileged": {
@@ -387,6 +396,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "docker_raw_supersedes_limited": {
@@ -421,6 +431,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "docker_section_off_ignored": {
@@ -454,6 +465,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "downloads_priority_block_wins": {
@@ -488,6 +500,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "downloads_unconfigured_none": {
@@ -521,6 +534,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "empty_no_groups": {
@@ -552,6 +566,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "env_legacy_no_active_flag": {
@@ -589,6 +604,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "env_priority_conflict": {
@@ -627,6 +643,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "env_reserved_stripped": {
@@ -667,6 +684,7 @@
     ],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "env_section_off_ignored": {
@@ -700,6 +718,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "env_single": {
@@ -737,6 +756,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "gpu_all_available": {
@@ -770,6 +790,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "gpu_all_wins_over_specific": {
@@ -806,6 +827,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "gpu_gated_no_hardware": {
@@ -839,6 +861,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "gpu_grant_no_selection_falls_back_all": {
@@ -872,6 +895,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "gpu_specific": {
@@ -908,6 +932,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "gpu_specific_union": {
@@ -946,6 +971,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "kitchen_sink": {
@@ -1007,6 +1033,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": true,
+    "user_env_enable": true,
     "volume_mounts": [
       {
         "mode": "rw",
@@ -1047,6 +1074,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "mem_disabled_does_not_uncap": {
@@ -1081,6 +1109,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "mem_single": {
@@ -1114,6 +1143,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "sudo_priority_wins": {
@@ -1148,6 +1178,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": false,
+    "user_env_enable": true,
     "volume_mounts": []
   },
   "sudo_section_off_does_not_configure": {
@@ -1182,6 +1213,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": true,
+    "user_env_enable": true,
     "volume_mounts": []
   },
   "sudo_unconfigured_none": {
@@ -1219,6 +1251,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "user_in_no_matching_group": {
@@ -1250,6 +1283,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "vol_conflict_priority_wins": {
@@ -1291,6 +1325,7 @@
       }
     ],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": [
       {
         "mode": "rw",
@@ -1333,6 +1368,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "vol_protected_skipped": {
@@ -1373,6 +1409,7 @@
       }
     ],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": [
       {
         "mode": "rw",
@@ -1415,6 +1452,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "vol_shared_read_only": {
@@ -1451,6 +1489,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": []
   },
   "vol_single": {
@@ -1484,6 +1523,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": [
       {
         "mode": "rw",
@@ -1524,6 +1564,7 @@
     "skipped_env_vars": [],
     "skipped_volume_mounts": [],
     "sudo_enable": null,
+    "user_env_enable": null,
     "volume_mounts": [
       {
         "mode": "rw",

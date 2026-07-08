@@ -236,6 +236,82 @@ class TestSudoApply:
         s = _apply('sudo', {'sudo_enable': None}, actx=_actx(lab_sudo_enable_default=0))
         assert s.environment['JUPYTERLAB_SUDO_ENABLE'] == '0'
 
+    # ── system-env gate (sudo = AND(sudo, system_env)) ──
+    def test_system_env_injected_on(self):
+        s = _apply('sudo', {'sudo_enable': None, 'user_env_enable': True})
+        assert s.environment['JUPYTERLAB_USER_ENV_ENABLE'] == '1'
+
+    def test_system_env_injected_off(self):
+        s = _apply('sudo', {'sudo_enable': None, 'user_env_enable': False})
+        assert s.environment['JUPYTERLAB_USER_ENV_ENABLE'] == '0'
+
+    def test_system_env_off_forces_sudo_off(self):
+        # group set sudo on but system-env off -> sudo gated off at the injection point
+        s = _apply('sudo', {'sudo_enable': True, 'user_env_enable': False})
+        assert s.environment['JUPYTERLAB_SUDO_ENABLE'] == '0'
+        assert s.environment['JUPYTERLAB_USER_ENV_ENABLE'] == '0'
+
+    def test_system_env_on_sudo_independent(self):
+        assert _apply('sudo', {'sudo_enable': True, 'user_env_enable': True}
+                      ).environment['JUPYTERLAB_SUDO_ENABLE'] == '1'
+        assert _apply('sudo', {'sudo_enable': False, 'user_env_enable': True}
+                      ).environment['JUPYTERLAB_SUDO_ENABLE'] == '0'
+
+    def test_lab_default_env_off_caps_sudo(self):
+        s = _apply('sudo', {'sudo_enable': None, 'user_env_enable': None},
+                   actx=_actx(lab_sudo_enable_default=1, lab_user_env_enable_default=0))
+        assert s.environment['JUPYTERLAB_USER_ENV_ENABLE'] == '0'
+        assert s.environment['JUPYTERLAB_SUDO_ENABLE'] == '0'
+
+    def test_lab_default_env_on_sudo_on(self):
+        s = _apply('sudo', {'sudo_enable': None, 'user_env_enable': None},
+                   actx=_actx(lab_sudo_enable_default=1, lab_user_env_enable_default=1))
+        assert s.environment['JUPYTERLAB_USER_ENV_ENABLE'] == '1'
+        assert s.environment['JUPYTERLAB_SUDO_ENABLE'] == '1'
+
+
+class TestSystemEnvGate:
+    """Resolve/validate/coerce for the System section (sudo + system-env)."""
+    _p = _BY_KEY['sudo']
+
+    def _resolve(self, *groups):
+        return self._p.resolve([{'config': g} for g in groups], None)
+
+    def test_resolve_env_off_folds_sudo_off(self):
+        r = self._resolve({'sudo_active': True, 'sudo_enable': True, 'user_env_enable': False})
+        assert r['user_env_enable'] is False and r['sudo_enable'] is False
+
+    def test_resolve_priority_winner_sets_both(self):
+        r = self._resolve(
+            {'sudo_active': True, 'sudo_enable': False, 'user_env_enable': True},   # winner (first)
+            {'sudo_active': True, 'sudo_enable': True, 'user_env_enable': False},
+        )
+        assert r['user_env_enable'] is True and r['sudo_enable'] is False
+
+    def test_resolve_absent_env_defaults_on(self):
+        # pre-existing stored config without user_env_enable -> treated as on
+        r = self._resolve({'sudo_active': True, 'sudo_enable': True})
+        assert r['user_env_enable'] is True and r['sudo_enable'] is True
+
+    def test_resolve_unconfigured_none(self):
+        r = self._resolve({'sudo_active': False, 'sudo_enable': True, 'user_env_enable': True})
+        assert r['sudo_enable'] is None and r['user_env_enable'] is None
+
+    def test_validate_rejects_sudo_on_env_off(self):
+        ok, msg = self._p.validate({'sudo_active': True, 'sudo_enable': True, 'user_env_enable': False})
+        assert not ok and 'system env' in msg.lower()
+
+    def test_validate_allows_sudo_off_env_off(self):
+        ok, _ = self._p.validate({'sudo_active': True, 'sudo_enable': False, 'user_env_enable': False})
+        assert ok
+
+    def test_validate_allows_sudo_on_env_on(self):
+        ok, _ = self._p.validate({'sudo_active': True, 'sudo_enable': True, 'user_env_enable': True})
+        assert ok
+
+    def test_coerce_carries_user_env_enable(self):
+        assert self._p.coerce({'user_env_enable': False}, {}, None) == {'user_env_enable': False}
+
 
 # ── volume_mounts ──────────────────────────────────────────────────────────────
 

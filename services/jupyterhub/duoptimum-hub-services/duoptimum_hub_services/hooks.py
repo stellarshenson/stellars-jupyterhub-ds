@@ -50,6 +50,7 @@ def make_pre_spawn_hook(
     hub_network_name='',
     block_file_downloads=0,
     lab_sudo_enable_default=1,
+    lab_user_env_enable_default=1,
     api_keys_reconcile_interval=0,
     shared_volume_name='',
     volume_role_label_key='',
@@ -77,6 +78,7 @@ def make_pre_spawn_hook(
         hub_network_name=hub_network_name,
         block_file_downloads=block_file_downloads,
         lab_sudo_enable_default=lab_sudo_enable_default,
+        lab_user_env_enable_default=lab_user_env_enable_default,
         shared_volume_name=shared_volume_name,
         gpu_available=gpu_available,
         reserved_names=reserved_env_var_names,
@@ -127,17 +129,38 @@ def make_pre_spawn_hook(
         app = JupyterHub.instance()
         actx = replace(base_actx, app=app, username=username)
 
-        # Per-user env vars (self-service / admin-managed) injected BEFORE the
-        # policies so admin/group/GPU/sudo env wins on a name clash, and reserved
-        # names are stripped again defensively. Fail-open: a store error must never
-        # block a spawn.
-        try:
-            user_env = UserEnvVarsManager.get_instance().get_injectable(
-                username, reserved_env_var_names, reserved_env_var_prefixes)
-            if user_env:
-                spawner.environment.update(user_env)
-        except Exception as e:
-            spawner.log.warning(f"[UserEnvVars] injection failed for {username}, skipping: {e}")
+        # System-env enable gates the per-user env injection. Read from the SAME field
+        # SudoPolicy.apply uses (base_actx.lab_user_env_enable_default) so the injection
+        # skip and the sudo gate can never disagree - single fallback source.
+        sys_env_enabled = resolved.get('user_env_enable')
+        if sys_env_enabled is None:
+            sys_env_enabled = bool(base_actx.lab_user_env_enable_default)
+
+        # Per-user env vars (self-service / admin-managed). The Spawner instance is REUSED
+        # across respawns and spawner.environment is add-only, so FIRST remove exactly what
+        # this hook injected on a PRIOR spawn - tracked on the spawner, NOT recomputed from
+        # the store - then re-inject the current set only when system-env is on. Removing the
+        # tracked set is store-INDEPENDENT, so an env-off flip, a store error, or a var the
+        # user deleted from their store all take effect on the next spawn: no stale
+        # system-level var can survive the gate. Injected BEFORE the policies so
+        # admin/group/GPU/sudo env wins on a name clash; reserved names already stripped.
+        # Fail-open on the ADD only (a store read error never blocks a spawn).
+        for k in getattr(spawner, '_doh_injected_user_env_keys', ()):
+            spawner.environment.pop(k, None)
+        spawner._doh_injected_user_env_keys = set()
+        if sys_env_enabled:
+            try:
+                user_env = UserEnvVarsManager.get_instance().get_injectable(
+                    username, reserved_env_var_names, reserved_env_var_prefixes)
+                if user_env:
+                    spawner.environment.update(user_env)
+                    spawner._doh_injected_user_env_keys = set(user_env)
+            except Exception as e:
+                spawner.log.warning(f"[UserEnvVars] injection failed for {username}, skipping: {e}")
+        if not sys_env_enabled:
+            spawner.log.info(
+                "[System] user=%s system-env DISABLED - sudo forced off, per-user env not injected",
+                username)
 
         # Each policy model imposes its own resolved slice (docker, gpu, sudo,
         # env, volumes, api-keys, mem, cpu, downloads), in registry order.

@@ -17,6 +17,7 @@ names:                        # exact protected names
   - CUDA_VISIBLE_DEVICES      # GPU selector
   - DOCKER_HOST               # limited-docker proxy wiring sets this per-user
   - JUPYTERLAB_SUDO_ENABLE    # sudo policy owns this per-user
+  - JUPYTERLAB_USER_ENV_ENABLE # system-env gate owns this per-user (self-set would bypass the gate)
   # docker-stacks (jupyter base image) start.sh honours these AS ROOT before dropping
   # privileges - a user setting them would self-escalate (GRANT_SUDO) or run as a
   # different uid / chown arbitrary paths, bypassing the sudo policy entirely

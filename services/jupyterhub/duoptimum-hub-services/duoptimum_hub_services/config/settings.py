@@ -56,6 +56,7 @@ class Settings:
     lab_memory_max_usage_mb: int          # derived: host-RAM fraction -> MB
     lab_block_file_downloads: int
     lab_sudo_enable: int
+    lab_user_env_enable: int
     tf_cpp_min_log_level: int
 
     # ── Misc ──
@@ -146,6 +147,7 @@ def load_settings():
         lab_memory_max_usage_mb=resolve_memory_quota_mb(lab_memory_max_usage_fraction),
         lab_block_file_downloads=int(e("JUPYTERHUB_LAB_BLOCK_FILE_DOWNLOADS", 0)),
         lab_sudo_enable=int(e("JUPYTERHUB_LAB_SUDO_ENABLE", 1)),
+        lab_user_env_enable=int(e("JUPYTERHUB_LAB_USER_ENV_ENABLE", 1)),
         tf_cpp_min_log_level=int(e("TF_CPP_MIN_LOG_LEVEL", 3)),
 
         timezone=e("JUPYTERHUB_TIMEZONE", "Etc/UTC"),

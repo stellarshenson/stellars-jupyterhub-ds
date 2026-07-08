@@ -18,7 +18,7 @@ const SECTIONS: { key: string; label: string; keys: string[] }[] = [
   { key: 'docker', label: 'Docker access', keys: ['docker_active', 'docker_access', 'docker_limited', 'docker_privileged', 'docker_limited_max_containers', 'docker_limited_max_volumes', 'docker_limited_max_networks', 'docker_limited_max_storage_gb', 'docker_limited_cpu_cap_cores', 'docker_limited_mem_cap_gb', 'docker_limited_allow_dangerous_flags', 'docker_limited_user_compose_project_enabled', 'docker_limited_user_compose_project_allow_override', 'docker_limited_hub_network_access'] },
   { key: 'cpu', label: 'CPU', keys: ['cpu_limit_enabled', 'cpu_limit_cores'] },
   { key: 'mem', label: 'Memory', keys: ['mem_limit_enabled', 'mem_limit_gb', 'mem_swap_disabled'] },
-  { key: 'sudo', label: 'Sudo access', keys: ['sudo_active', 'sudo_enable'] },
+  { key: 'sudo', label: 'System', keys: ['sudo_active', 'sudo_enable', 'user_env_enable'] },
   { key: 'downloads', label: 'File downloads', keys: ['downloads_active', 'downloads_allow'] },
   { key: 'api_keys', label: 'API keys pool', keys: ['api_keys_pool'] },
   { key: 'volume_mounts', label: 'Volume mounts', keys: ['volume_mounts_active', 'volume_mounts'] },
