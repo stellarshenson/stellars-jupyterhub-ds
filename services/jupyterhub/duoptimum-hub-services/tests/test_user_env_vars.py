@@ -213,6 +213,70 @@ def test_authorize_anonymous_forbidden():
     assert exc.value.status_code == 403
 
 
+# ── per-user editor role gate (system-env off -> admin-only) ─────────────────
+
+class _FakeDB:
+    def __init__(self, user): self._user = user
+    def query(self, *a): return self
+    def filter(self, *a): return self
+    def first(self): return self._user
+
+
+def _env_handler(current_user, *, lab_default=1, groups=(), all_configs=(), monkeypatch=None):
+    h = _stub_handler(current_user)
+    orm_user = SimpleNamespace(groups=[SimpleNamespace(name=g) for g in groups])
+    # db/log/settings are read-only BaseHandler properties sourced from application.settings
+    h.application = SimpleNamespace(settings={
+        'stellars_config': {
+            'lab_user_env_enable': lab_default, 'gpu_available': False,
+            'reserved_env_var_names': frozenset(), 'reserved_env_var_prefixes': (),
+        },
+        'db': _FakeDB(orm_user),
+        'log': logging.getLogger('test_env_handler'),
+    })
+    if monkeypatch is not None:
+        from duoptimum_hub_services.groups_config import GroupsConfigManager
+        monkeypatch.setattr(GroupsConfigManager, 'get_instance',
+                            staticmethod(lambda: SimpleNamespace(get_all_configs=lambda: list(all_configs))))
+    return h
+
+
+def test_system_env_default_off_no_groups(monkeypatch):
+    h = _env_handler(SimpleNamespace(admin=False, name='alice'), lab_default=0, monkeypatch=monkeypatch)
+    assert h._system_env_enabled('alice') is False
+
+
+def test_system_env_default_on_no_groups(monkeypatch):
+    h = _env_handler(SimpleNamespace(admin=False, name='alice'), lab_default=1, monkeypatch=monkeypatch)
+    assert h._system_env_enabled('alice') is True
+
+
+def test_system_env_group_forces_off_over_lab_default_on(monkeypatch):
+    cfg = {'group_name': 'g1',
+           'config': {'sudo_active': True, 'sudo_enable': False, 'user_env_enable': False}}
+    h = _env_handler(SimpleNamespace(admin=False, name='alice'),
+                     lab_default=1, groups=('g1',), all_configs=(cfg,), monkeypatch=monkeypatch)
+    assert h._system_env_enabled('alice') is False
+
+
+def test_put_self_forbidden_when_system_env_off(monkeypatch):
+    h = _stub_handler(SimpleNamespace(admin=False, name='alice'))
+    monkeypatch.setattr(type(h), '_system_env_enabled', lambda self, u: False)
+    with pytest.raises(web.HTTPError) as exc:
+        asyncio.run(h.put('alice'))
+    assert exc.value.status_code == 403
+
+
+def test_put_admin_bypasses_gate_when_system_env_off(monkeypatch):
+    # admin edits any user's env regardless of system-env; the guard must not block them.
+    h = _stub_handler(SimpleNamespace(admin=True, name='root'))
+    monkeypatch.setattr(type(h), '_system_env_enabled', lambda self, u: False)
+    h.request = SimpleNamespace(body=b'{}')
+    with pytest.raises(web.HTTPError) as exc:
+        asyncio.run(h.put('alice'))
+    assert exc.value.status_code == 400  # reached body validation past the gate (not 403)
+
+
 # ── spawn injection through the real pre_spawn_hook ──────────────────────────
 
 def test_hook_injects_user_env_and_strips_reserved(manager):

@@ -37,20 +37,60 @@ class UserEnvVarsHandler(BaseHandler):
         prefixes = cfg.get('reserved_env_var_prefixes', ())
         return sorted(names), list(prefixes)
 
+    def _system_env_enabled(self, username):
+        """Resolve the target user's effective system-env: the winning group's value,
+        else the platform lab default. A NON-admin (the user themselves) may only see
+        or edit their env vars while this is on; an admin always may (role privilege)."""
+        from jupyterhub import orm
+        from ..groups_config import GroupsConfigManager
+        from ..policy import resolve_policies
+        cfg = self.settings.get('stellars_config') or {}
+        orm_user = self.db.query(orm.User).filter(orm.User.name == username).first()
+        group_names = [g.name for g in orm_user.groups] if orm_user else []
+        try:
+            all_configs = GroupsConfigManager.get_instance().get_all_configs()
+        except Exception as e:
+            self.log.error(f"[UserEnvVars] group config load failed for '{username}': {e}")
+            all_configs = []
+        resolved = resolve_policies(
+            user_group_names=group_names, all_group_configs=all_configs,
+            gpu_available=cfg.get('gpu_available', False),
+            reserved_names=cfg.get('reserved_env_var_names', frozenset()),
+            reserved_prefixes=cfg.get('reserved_env_var_prefixes', ()),
+        )
+        val = resolved.get('user_env_enable')
+        if val is None:
+            val = bool(cfg.get('lab_user_env_enable', 1))
+        return bool(val)
+
     @web.authenticated
     async def get(self, username):
         self._authorize(username)
-        env_vars = UserEnvVarsManager.get_instance().get_env_vars(username)
+        is_admin = bool(self.current_user and self.current_user.admin)
+        system_env_enabled = self._system_env_enabled(username)
+        # editable == may see AND edit. A non-admin (self) loses both when system-env is
+        # off; an admin keeps them. The vars are withheld when not editable so a locked
+        # user cannot even read them (role-level restriction, acc-crit 2A).
+        editable = is_admin or system_env_enabled
         reserved_names, reserved_prefixes = self._reserved()
+        env_vars = UserEnvVarsManager.get_instance().get_env_vars(username) if editable else []
         self.finish({
             "env_vars": env_vars,
             "reserved_names": reserved_names,
             "reserved_prefixes": reserved_prefixes,
+            "system_env_enabled": system_env_enabled,
+            "editable": editable,
         })
 
     @web.authenticated
     async def put(self, username):
         self._authorize(username)
+        # A non-admin cannot edit their env vars while system-env is off (admin may,
+        # role privilege). Server-side enforcement mirrors the hidden editor in the SPA.
+        if not (self.current_user and self.current_user.admin) and not self._system_env_enabled(username):
+            raise web.HTTPError(
+                403, "System environment variables are disabled for your account by policy; "
+                     "you cannot edit them.")
         try:
             body = json.loads(self.request.body or b'{}')
         except (ValueError, TypeError):

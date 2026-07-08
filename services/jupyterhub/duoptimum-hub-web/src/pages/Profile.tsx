@@ -3,7 +3,7 @@
  * user's own container env vars. Name + email persist to the hub profile store, the
  * password change is real, and env vars inject into the user's lab on spawn. */
 import { useEffect, useState } from 'react'
-import { Button, Card, Form, Input, Space, Tabs } from 'antd'
+import { Alert, Button, Card, Form, Input, Space, Tabs } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { FormFooter } from '../components/FormFooter'
@@ -96,12 +96,19 @@ export default function Profile() {
     </Form>
   )
 
+  const envLocked = envData?.editable === false
   const envTab = (
     <div>
       <div className="doh-page-sub" style={{ marginBottom: 12 }}>
         Variables injected into your lab container when it starts. Platform- and policy-owned names are reserved and cannot be set. Descriptions are notes only - they are not passed to the container.
       </div>
-      <EnvVarEditor value={envVars} onChange={setEnvVars} reserved={reserved} />
+      {envLocked ? (
+        <Alert type="info" showIcon
+          message="System environment variables are disabled for your account"
+          description="Your administrator has disabled changing system-level environment variables for you. You can still set your own shell variables inside the lab (for example in ~/.bashrc)." />
+      ) : (
+        <EnvVarEditor value={envVars} onChange={setEnvVars} reserved={reserved} />
+      )}
     </div>
   )
 

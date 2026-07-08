@@ -59,6 +59,9 @@ def _stop_server(admin_api, base):
     "functional-test-harness::volume vol->/mnt/x",
     "duoptimumhub::Access level per volume",
     "duoptimumhub::Standard resolved by label, not by saved name",
+    "system-env-sudo::Var",
+    "system-env-sudo::Invariant",
+    "system-env-sudo::Enforced at spawn",
 )
 def test_policies_applied_to_container(admin_api, docker_client, base_url):
     base = base_url
@@ -66,7 +69,11 @@ def test_policies_applied_to_container(admin_api, docker_client, base_url):
     #    read-only custom mount and the standard shared mount (read-only).
     _post(admin_api, base, "/hub/api/admin/groups/create", json={"name": GROUP})
     cfg = {
-        "sudo_active": True, "sudo_enable": False,
+        # System section: system-env OFF (coherent with sudo off - the API rejects
+        # sudo-on+env-off). Proves the gate injects JUPYTERLAB_USER_ENV_ENABLE=0 and
+        # caps sudo, while the GROUP env var below still applies (system-env restricts
+        # the user's own vars, not admin/group-imposed ones).
+        "sudo_active": True, "sudo_enable": False, "user_env_enable": False,
         "env_vars_active": True, "env_vars": [{"name": "FOO", "value": "bar"}],
         "mem_limit_enabled": True, "mem_limit_gb": 2,
         "volume_mounts_active": True,
@@ -90,7 +97,8 @@ def test_policies_applied_to_container(admin_api, docker_client, base_url):
         # 3. Assert the resolved policy on the container.
         env = dict(e.split("=", 1) for e in attrs["Config"]["Env"] if "=" in e)
         assert env.get("JUPYTERLAB_SUDO_ENABLE") == "0", "sudo policy not applied"
-        assert env.get("FOO") == "bar", "group env var not injected"
+        assert env.get("JUPYTERLAB_USER_ENV_ENABLE") == "0", "system-env gate not applied"
+        assert env.get("FOO") == "bar", "group env var not injected (group env must survive system-env off)"
         # DEF-22: the lab's JUPYTERHUB_API_URL host must equal the hub's discovered compose
         # service name (the hub_connect_ip the fix advertises), not the hub's ephemeral
         # container id - so a hub redeploy does not strand the lab. Reverting it to

@@ -18,6 +18,7 @@ from .logging_setup import log
 DEFAULT_PROTECTED_NAMES = frozenset({
     'ENABLE_GPU_SUPPORT', 'ENABLE_GPUSTAT', 'NVIDIA_VISIBLE_DEVICES',
     'CUDA_VISIBLE_DEVICES', 'DOCKER_HOST', 'JUPYTERLAB_SUDO_ENABLE',
+    'JUPYTERLAB_USER_ENV_ENABLE',   # system-env gate owns this per-user (mirror of the YAML)
     # docker-stacks root-time privilege levers (honoured by the base image's start.sh
     # while still root) - a user setting these would self-escalate or bypass the sudo policy
     'GRANT_SUDO', 'NB_UID', 'NB_GID', 'NB_USER', 'NB_GROUP', 'NB_UMASK',

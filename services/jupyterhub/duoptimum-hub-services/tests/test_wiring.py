@@ -172,7 +172,7 @@ def test_stellars_config_key_set_and_lab_volumes():
         label_volume_role_key="role", label_volume_description="desc",
         idle_culler_enabled=1, idle_culler_timeout=100, idle_culler_max_extension=2,
         lab_container_max_extra_space_gb=10, lab_volume_max_total_size_gb=50,
-        lab_memory_max_usage_mb=4096, lab_image="img",
+        lab_memory_max_usage_mb=4096, lab_image="img", lab_user_env_enable=1,
     )
     r = SimpleNamespace(gpu_list=[{"index": 0}], gpu_enabled=1, gpu_isolation_enforced=True)
     user_volumes = [{"suffix": "home", "name_template": "jl-{username}_home", "description": "Home", "role": "lab-home"}]
@@ -189,8 +189,8 @@ def test_stellars_config_key_set_and_lab_volumes():
         "idle_culler_enabled", "idle_culler_timeout", "idle_culler_max_extension",
         "gpu_list", "gpu_available", "gpu_isolation_enforced", "host_status_provider",
         "container_max_extra_space_mb", "volume_max_total_size_mb", "memory_max_usage_mb",
-        "reserved_env_var_names", "reserved_env_var_prefixes", "shared_volume_name",
-        "lab_image", "lab_volumes",
+        "reserved_env_var_names", "reserved_env_var_prefixes", "lab_user_env_enable",
+        "shared_volume_name", "lab_image", "lab_volumes",
     }
     assert got["gpu_available"] is True
     assert got["container_max_extra_space_mb"] == 10240

@@ -58,6 +58,10 @@ export interface UserEnvVarsData {
   envVars: UserEnvVar[]
   reservedNames: string[]
   reservedPrefixes: string[]
+  // system-env resolved for this user; editable = admin OR systemEnvEnabled. When false
+  // (a non-admin whose system-env is off), the editor is hidden and vars are withheld.
+  systemEnvEnabled: boolean
+  editable: boolean
 }
 
 export interface UserRow {

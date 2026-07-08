@@ -714,11 +714,13 @@ export const liveSource: DataSource = {
   // writes env vars when they CHANGED vs the loaded set, and a fake-empty success would
   // read as "no vars" and REPLACE-wipe the real set on the next Save (DoS on own data).
   async getUserEnvVars(name: string): Promise<UserEnvVarsData> {
-    const r = await hubGet<{ env_vars?: { name: string; value?: string; description?: string }[]; reserved_names?: string[]; reserved_prefixes?: string[] }>(`/users/${encodeURIComponent(name)}/env-vars`)
+    const r = await hubGet<{ env_vars?: { name: string; value?: string; description?: string }[]; reserved_names?: string[]; reserved_prefixes?: string[]; system_env_enabled?: boolean; editable?: boolean }>(`/users/${encodeURIComponent(name)}/env-vars`)
     return {
       envVars: (r.env_vars ?? []).map((e) => ({ name: e.name, value: e.value ?? '', description: e.description ?? '' })),
       reservedNames: r.reserved_names ?? [],
       reservedPrefixes: r.reserved_prefixes ?? [],
+      systemEnvEnabled: r.system_env_enabled ?? true,
+      editable: r.editable ?? true,
     }
   },
 

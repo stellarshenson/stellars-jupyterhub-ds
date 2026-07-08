@@ -90,6 +90,7 @@ def stellars_config(settings, runtime, *, user_volume_suffixes, user_volume_name
         'memory_max_usage_mb': settings.lab_memory_max_usage_mb,                           # per-user memory warning (MB)
         'reserved_env_var_names': reserved_env_var_names,    # names groups cannot override
         'reserved_env_var_prefixes': reserved_env_var_prefixes,  # prefixes reserved for JupyterHub/platform
+        'lab_user_env_enable': settings.lab_user_env_enable,  # system-env platform default; UserEnvVarsHandler resolves the per-user effective value against it
         'shared_volume_name': shared_volume_name,            # role=shared volume for the groups volume-mounts UI
         'lab_image': settings.lab_image,                     # image every lab spawns from (Lab Container page)
         'lab_volumes': [                                     # standard per-user volumes mounted into every lab
