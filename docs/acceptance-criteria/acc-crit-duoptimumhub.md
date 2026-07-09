@@ -35,6 +35,7 @@ Cross-document conflicts found during consolidation are tracked in [concerns.md]
 - [Group-Gated File Downloads](#group-gated-file-downloads)
 - [group policy import/export bundle shape](#group-policy-importexport-bundle-shape)
 - [Unified Group Policy Model](#unified-group-policy-model)
+- [Group create routes to config](#group-create-routes-to-config)
 - [Group delete confirmation](#group-delete-confirmation)
 - [Group Sudo Access Control](#group-sudo-access-control)
 - [Group volume mounts](#group-volume-mounts)
@@ -2547,8 +2548,9 @@ Every form / sub screen reached from a list must offer a way back to its parent 
   - log: 2026-06-18 verified (GroupConfig `navigate('/groups')` x3 + `FormFooter onCancel`; router `groupsParent`)
 - [x] **New user -> Users** - `/users/new` Save / Cancel return to `/users`; breadcrumb parent Users
   - log: 2026-06-18 verified (NewUser FormFooter + `navigate('/users')`)
-- [x] **New group -> Groups** - `/groups/new` Save / Cancel return to `/groups`; breadcrumb parent Groups
+- [x] **New group -> Groups (Cancel) / config (Save)** - `/groups/new` Cancel returns to `/groups`; Save routes to the new group's config `/groups/{name}` so policy/members can be set immediately (see [Group create routes to config](#group-create-routes-to-config)); breadcrumb parent Groups
   - log: 2026-06-18 verified (NewGroup FormFooter + `navigate('/groups')`)
+  - log: 2026-07-09 Save now routes to `/groups/{name}` (create-then-configure); Cancel unchanged. Asymmetric with New user -> Users on purpose: this landing was requested for group creation specifically; New user is left returning to the list. A group has no policy/members until set on the config page (see [Group create routes to config](#group-create-routes-to-config))
 - [x] **Bulk add -> Users / result** - `/users/bulk` Cancel returns to `/users`; submit advances to `/users/bulk/result`; breadcrumb parent Users
   - log: 2026-06-18 verified (BulkUsers)
 - [x] **Bulk result -> Users** - `/users/bulk/result` Done returns to `/users`; breadcrumb parent Users
@@ -4676,6 +4678,23 @@ Functional audit of the docker resources the platform creates - names, labels an
   - log: 2026-06-21 #408 added `test_docker_resources.py::test_shared_volume_has_description_label`
 - [x] **Network characteristics** - the hub<->lab network is a local `bridge` and the hub is attached to it
   - log: 2026-06-21 #408 added `test_docker_resources.py::test_hub_network_is_bridge` + `::test_hub_attached_to_its_network`
+
+## Group create routes to config
+
+Creating a group takes the operator straight to that group's config screen (General / Policy / Members) instead of back to the Groups list. The create form only captures name and description; policy and membership are set on the config page, so landing there removes the extra navigation step. Scoped to group creation by request - New user -> Users is deliberately left unchanged (returns to the list) in this scope; a group has no policy or membership until configured on this screen, so landing there is the natural next step.
+
+- [x] **Land on config after create** - submitting New Group navigates to `/groups/{name}` (the group config screen, url-encoded name, consistent with every `ops.ts` write), not `/groups`
+  - log: 2026-07-09 requirement added (new); `NewGroup.tsx` `submit` navigated to `/groups` - one extra click to then open the group
+  - log: 2026-07-09 met - `NewGroup.tsx` `navigate(\`/groups/${encodeURIComponent(v.name)}\`)`; functional `test_group_create_routes_to_config` (v4.0.22, image e7b34a4); full gate ALL SETUPS PASSED
+- [x] **Config screen usable immediately** - the landed config page shows the new group's General fields populated (Name) with the Policy and Members tabs present to configure
+  - log: 2026-07-09 requirement added (new)
+  - log: 2026-07-09 met - test asserts the read-only Name field holds the new name and the Policy / Members tabs render; full gate green
+- [x] **Edge: create fails** - a failed create (duplicate/invalid name) stays on the New Group form and does not navigate; the error is surfaced
+  - log: 2026-07-09 met by existing behaviour, unchanged by this feature - `createGroup` runs through `ops.ts` `run()` which `notify.error(...)` and rethrows on failure (`ops.ts:29`); `NewGroup.tsx` `submit` catches the throw so `navigate` never runs. No functional test added - pre-existing guard, not new behaviour
+- [x] **Edge: Position field guarded in the post-create stale window** - the config page's Position input is disabled until the group is present in the fetched `['groups']` list, so a reorder can never be silently skipped while that query is briefly stale right after create
+  - log: 2026-07-09 adversarial (architect) finding: landing on `/groups/{name}` right after create can hit a warm-but-stale `['groups']` cache where `curIndex < 0`, giving a wrong Position range and a silently skipped reorder in `save()`; pre-existing on deep-link/refresh, newly likely post-create. Met - `GroupConfig.tsx` `InputNumber disabled={curIndex < 0}`; race window is sub-second so not functionally tested
+- [x] **Edge: route-colliding name reserved** - a group named `new` or `export` collides with the SPA's static `/groups/new` and `/groups/export` routes (React Router ranks static above the dynamic `groups/:name`), so create would misroute to the create/export screen; such names are rejected at creation
+  - log: 2026-07-09 adversarial (architect, round 3) BLOCKER: the name regex accepted `new`/`export`, so creating such a group navigated to the wrong screen. Met - `validate_group_name` (`groups_config.py`) rejects `_RESERVED_GROUP_NAMES = {new, export}` case-insensitively; `GroupsConfigHandler` create path returns the error, so `createGroup` fails and never navigates. Unit-tested in `test_imports.py::test_groups_config`. Single source of truth (backend); the client form is not duplicated. Pre-existing analogous `users/:name` collision on rename is out of this scope
 
 ## Group delete confirmation
 

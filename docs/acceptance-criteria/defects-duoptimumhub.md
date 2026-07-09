@@ -33,8 +33,20 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
 - [DEF-27: GPU utilisation bar shows non-zero fill at 0% load](#def-27-gpu-utilisation-bar-shows-non-zero-fill-at-0-load) - open
 - [DEF-28: TTL extend animation reads as ~0.5s, not the intended 3s](#def-28-ttl-extend-animation-reads-as-05s-not-the-intended-3s) - open
 - [DEF-29: TTL extend glow (box-shadow halo) looks awful and bleeds onto the controls](#def-29-ttl-extend-glow-box-shadow-halo-looks-awful-and-bleeds-onto-the-controls) - open
+- [DEF-30: GroupConfig GET/PUT fabricate a phantom config for a non-existent group](#def-30-groupconfig-getput-fabricate-a-phantom-config-for-a-non-existent-group) - open
+- [DEF-31: User names colliding with static /users routes (new, bulk) not reserved](#def-31-user-names-colliding-with-static-users-routes-new-bulk-not-reserved) - open
 
 ## Open
+
+### DEF-31: User names colliding with static /users routes (new, bulk) not reserved
+
+- [ ] **LOW** - the SPA router registers `users/new`, `users/bulk`, `users/bulk/result` as static siblings of `users/:name`, so a user literally named `new` or `bulk` would misroute the same way a group named `new`/`export` did before the group-side fix. `DuoptimumNativeAuthenticator.validate_username` (`services/jupyterhub/duoptimum-hub-services/duoptimum_hub_services/auth.py`) has no equivalent reserved list. Pre-existing; surfaced by the architect adversarial pass while adding the group-side `_RESERVED_GROUP_NAMES` guard. Fix: mirror the group guard - reject `new`, `bulk` (case-insensitive) in username validation. Cross-ref acc-crit `duoptimumhub::Edge: route-colliding name reserved` (group side, done)
+  - log: 2026-07-09 reported (architect adversarial review, round 4 of the create-then-configure feature) - deferred as out of that feature's scope; group side fixed, user side left for a dedicated change
+
+### DEF-30: GroupConfig GET/PUT fabricate a phantom config for a non-existent group
+
+- [ ] **MEDIUM** - `GroupsConfigHandler.get`/`.put` (`services/jupyterhub/duoptimum-hub-services/duoptimum_hub_services/handlers/groups.py`) act on the raw `group_name` path param via `ensure_config`/`save_config` with no check that the group exists in `jupyterhub.orm.Group`, unlike `GroupsDeleteHandler.delete` which 404s. Hitting `/groups/{typo}` or a just-deleted name (stale bookmark, back-button after delete, concurrent second-admin delete) silently creates/updates a phantom `groups_config` row and returns 200. Orphan configs are only reaped one-directionally as a side effect of the group-list GET. Pre-existing; NOT triggered by the create-then-configure feature (which always routes to a just-created, existing group). Fix: look up `orm.Group` first in `get`/`put` and 404 like `delete`
+  - log: 2026-07-09 reported (architect adversarial review, round 4 of the create-then-configure feature) - deferred as out of that feature's scope; the create flow's target always exists, so the feature itself is unaffected
 
 ### DEF-29: TTL extend glow (box-shadow halo) looks awful and bleeds onto the controls
 

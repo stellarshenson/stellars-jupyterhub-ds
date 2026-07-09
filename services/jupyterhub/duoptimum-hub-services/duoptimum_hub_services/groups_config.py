@@ -24,6 +24,13 @@ GroupsConfigBase = declarative_base()
 # Valid group name: starts with letter, then letters/digits/hyphens/underscores
 _GROUP_NAME_RE = re.compile(r'^[a-zA-Z][a-zA-Z0-9_-]*$')
 
+# Names the SPA router declares as STATIC routes under /groups (groups/new,
+# groups/export). React Router ranks a static segment above the dynamic
+# groups/:name, so a group with one of these names would misroute to the create
+# or export screen instead of its own config after create. Reserve them (compared
+# case-insensitively - React Router matching is case-insensitive by default).
+_RESERVED_GROUP_NAMES = frozenset({'new', 'export'})
+
 
 class GroupConfig(GroupsConfigBase):
     """Persistent configuration for a JupyterHub group."""
@@ -67,6 +74,8 @@ def validate_group_name(name):
         return False, 'Group name cannot exceed 255 characters'
     if not _GROUP_NAME_RE.match(name):
         return False, 'Group name must start with a letter and contain only letters, digits, hyphens, and underscores'
+    if name.lower() in _RESERVED_GROUP_NAMES:
+        return False, f"Group name '{name}' is reserved"
     return True, ''
 
 

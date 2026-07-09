@@ -14,7 +14,9 @@ export default function NewGroup() {
     if (!v) return
     try {
       await createGroup(v.name, v.description ?? '')
-      navigate('/groups')
+      // land on the new group's config screen so policy/members can be set right
+      // away - the create form only takes name + description
+      navigate(`/groups/${encodeURIComponent(v.name)}`)
     } catch {
       /* ops surfaced the error */
     }

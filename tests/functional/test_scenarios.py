@@ -25,7 +25,10 @@ def _create_group_via_ui(admin_portal, name):
     page.wait_for_url(lambda u: "/groups/new" in u)
     page.locator("input[placeholder*='vision-lab']").fill(name)
     page.get_by_role("button", name="Create Group").click()
-    page.wait_for_url(lambda u: u.rstrip("/").endswith("/groups"))
+    # create now lands on the new group's config screen; bring the caller back to
+    # the list, which is what the downstream scenarios expect to assert against
+    page.wait_for_url(lambda u: u.rstrip("/").endswith(f"/groups/{name}"))
+    page = admin_portal.goto("/groups")
     expect(_row(page, name)).to_be_visible()
     return page
 
@@ -98,6 +101,33 @@ def test_priority_reorder(admin_portal):
     _row(page, lower).get_by_role("button", name="Move up").click()
     expect(page.locator("tr.ant-table-row td:nth-child(3) a").first).to_have_text(lower)
     assert order()[0] == lower
+
+
+@pytest.mark.acc_crit(
+    "duoptimumhub::Land on config after create",
+    "duoptimumhub::Config screen usable immediately",
+)
+def test_group_create_routes_to_config(admin_portal):
+    """Creating a group lands on that group's config screen (not the list) so the
+    operator can set policy/members right away - the create form only takes name +
+    description."""
+    name = "scen-cfg-route"
+    page = admin_portal.goto("/groups")
+    page.get_by_role("button", name="Add Group").click()
+    page.wait_for_url(lambda u: "/groups/new" in u)
+    page.locator("input[placeholder*='vision-lab']").fill(name)
+    page.get_by_role("button", name="Create Group").click()
+
+    # landed on /groups/{name} - the group's config screen (the shared PageHeader
+    # renders no title text; the breadcrumb + tabbed form are the page identity)
+    page.wait_for_url(lambda u: u.rstrip("/").endswith(f"/groups/{name}"))
+    # config screen loaded for THIS group: the read-only General Name field holds the
+    # new name (seeded async from its config; to_have_value reads the live DOM value
+    # property of the antd controlled input and auto-waits), and it is usable
+    expect(page.get_by_label("Name", exact=True)).to_have_value(name)
+    # ...with the Policy / Members tabs present, ready to configure
+    expect(page.get_by_role("tab", name="Policy")).to_be_visible()
+    expect(page.get_by_role("tab", name="Members")).to_be_visible()
 
 
 @pytest.mark.acc_crit(

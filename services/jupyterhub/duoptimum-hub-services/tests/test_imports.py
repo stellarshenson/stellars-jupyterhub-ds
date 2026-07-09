@@ -359,6 +359,12 @@ def test_groups_config():
     assert not valid
     valid, msg = validate_group_name("1starts-with-digit")
     assert not valid
+    # reserved names collide with the SPA's static /groups/new + /groups/export
+    # routes - must be rejected (case-insensitive) so create can't misroute
+    for reserved in ("new", "export", "New", "EXPORT"):
+        valid, msg = validate_group_name(reserved)
+        assert not valid, f"{reserved!r} should be reserved"
+        assert "reserved" in msg
 
 
 def test_group_resolver():
