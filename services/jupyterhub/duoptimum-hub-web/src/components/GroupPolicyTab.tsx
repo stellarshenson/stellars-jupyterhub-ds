@@ -498,10 +498,10 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
       <Section icon="shield" title="System Access" on={on.sudo ?? false} onToggle={toggle('sudo')}>
         <div className="doh-pol-hint">System-level access for members: changing system environment variables, and sudo (root) inside their lab - needed to install system packages. Sudo requires system environment variables (root can change system env regardless), so turning system environment variables off also turns sudo off.</div>
         <div className="doh-row"><Switch size="small" checked={userEnvEnable} onChange={(v) => { setUserEnvEnable(v); if (!v) setSudoEnable(false) }} /><span>Allow changing system environment variables</span></div>
-        <div className="doh-row doh-row-sub">
-          <Switch size="small" checked={userEnvEnable && sudoEnable} disabled={!userEnvEnable} onChange={setSudoEnable} />
-          <span>Enable sudo for members{!userEnvEnable ? <span className="doh-hint-inline"> - turn on system environment variables above</span> : ''}</span>
-        </div>
+        <div className="doh-row"><Switch size="small" checked={userEnvEnable && sudoEnable} disabled={!userEnvEnable} onChange={setSudoEnable} /><span>Enable sudo for members</span></div>
+        {!userEnvEnable && (
+          <Alert type="warning" showIcon className="doh-pol-alert" message="Sudo is off because system environment variables are off. Turn the setting above back on to enable sudo." />
+        )}
       </Section>
     </div>
   )

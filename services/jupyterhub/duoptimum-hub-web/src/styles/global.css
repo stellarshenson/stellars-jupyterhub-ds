@@ -60,7 +60,8 @@ body { margin: 0; font-family: var(--font-sans); }
 .doh-kbd { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-muted); background: var(--color-bg-subtle); border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 1px 6px; }
 .doh-row { display: flex; align-items: center; gap: var(--space-2); }
 /* nested/child row - indented to show it depends on the control above (e.g. sudo under system-env) */
-.doh-row-sub { margin-left: var(--space-4); }
+.doh-pol-body .doh-row + .doh-row { margin-top: var(--space-2); }
+.doh-pol-alert { margin-top: var(--space-3); }
 /* tighter gap for per-row server-control icon clusters (~15% under .doh-row) */
 .doh-actions { gap: calc(var(--space-2) * 0.85); }
 .doh-section-title { font-size: var(--text-sm); text-transform: uppercase; letter-spacing: .5px; color: var(--color-text-subtle); margin: var(--space-6) 0 var(--space-3); }
@@ -478,8 +479,6 @@ body { margin: 0; font-family: var(--font-sans); }
 .doh-pol-title { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; color: var(--color-text-muted); }
 .doh-pol-body { padding: 12px 0 2px 38px; }
 .doh-pol-hint { color: var(--color-text-subtle); font-size: var(--text-xs); margin-bottom: 10px; }
-/* inline muted hint appended after a control label (e.g. the disabled-sudo reason) */
-.doh-hint-inline { color: var(--color-text-subtle); font-size: var(--text-xs); }
 .doh-pol-check { display: flex; gap: 8px; padding: 6px 0; }
 .doh-pol-check .desc { color: var(--color-text-subtle); font-size: var(--text-xs); margin-top: 2px; }
 .doh-pol-field-label { font-size: 13px; color: var(--color-text-muted); margin-bottom: 4px; }

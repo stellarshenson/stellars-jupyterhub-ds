@@ -353,7 +353,7 @@ export default function Servers() {
           headerTitle={<ScopeFilterPills value={scope} onChange={setScope} scopes={scopes} />}
           toolBarRender={() => [
             search,
-            <Button key="reset" onClick={() => resetActivity()}>Reset Samples</Button>,
+            <Button key="reset" onClick={() => resetActivity()}>Reset Activity</Button>,
             <Button key="report" icon={<Icon name="download" size={14} />} disabled={!filtered.length} onClick={downloadReport}>Report</Button>,
             <Button key="refresh" icon={<Icon name="restart" size={14} />} onClick={() => invalidate(['servers'], ['stats'], ['resources'])}>Refresh</Button>,
           ]}

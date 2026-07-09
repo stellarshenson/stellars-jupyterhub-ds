@@ -121,7 +121,7 @@ export default function DesignSystem() {
         </Row>
         <Row label="list (small)">
           <Button type="primary" size="small">Authorize</Button>
-          <Button size="small">Reset samples</Button>
+          <Button size="small">Reset activity</Button>
           <Button danger size="small">Discard</Button>
         </Row>
         <Row label="action icons - non-list (filled if a fill exists)">
