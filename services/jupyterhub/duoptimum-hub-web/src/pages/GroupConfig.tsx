@@ -12,7 +12,7 @@ import { Icon } from '../components/Icon'
 import { Notice } from '../components/Notice'
 import { GroupPolicyTab } from '../components/GroupPolicyTab'
 import { useGroupConfig, useGroups, useUserCorpus } from '../hooks/queries'
-import { notify } from '../services/actions'
+import { appModal, notify } from '../services/actions'
 import { addMember, deleteGroup, removeMember, reorderGroups, saveGroupConfig } from '../services/ops'
 import type { PolicyConfig } from '../services/types'
 
@@ -75,10 +75,19 @@ export default function GroupConfig() {
     }
   }
 
-  const removeGroup = async () => {
-    await deleteGroup(name)
-    navigate('/groups')
-  }
+  // Delete is gated by the same danger confirm the Groups list uses, so the config
+  // page's Delete Group button can never destroy a group's config on a single click.
+  const removeGroup = () =>
+    appModal.confirm({
+      title: 'Delete group',
+      content: `Delete "${name}"? Its configuration is removed permanently; members are not deleted. This cannot be undone.`,
+      okText: 'Delete',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        await deleteGroup(name)
+        navigate('/groups')
+      },
+    })
 
   // client-side export of the live editor config (falls back to the stored config)
   const downloadPolicy = () => {

@@ -98,3 +98,36 @@ def test_priority_reorder(admin_portal):
     _row(page, lower).get_by_role("button", name="Move up").click()
     expect(page.locator("tr.ant-table-row td:nth-child(3) a").first).to_have_text(lower)
     assert order()[0] == lower
+
+
+@pytest.mark.acc_crit(
+    "duoptimumhub::Confirm before delete (config page)",
+    "duoptimumhub::Edge: cancel on config page",
+)
+def test_group_config_page_delete_confirms(admin_portal):
+    """The group CONFIG page's Delete Group button gates deletion behind the same
+    danger confirm the list uses - a single click must not destroy the group.
+    Covers the config-page confirm (deletion only on confirm) and the cancel no-op."""
+    name = "scen-cfg-del"
+    _create_group_via_ui(admin_portal, name)
+
+    # open the group's config/detail page and click Delete Group
+    page = admin_portal.goto(f"/groups/{name}")
+    page.get_by_role("button", name="Delete Group").click()
+    # a confirm modal naming the group must appear - deletion is gated, not outright
+    modal = page.locator(".ant-modal-confirm")
+    expect(modal).to_be_visible()
+    expect(modal).to_contain_text(name)
+
+    # cancel: the modal closes and the group still exists (no-op)
+    modal.get_by_role("button", name="Cancel", exact=True).click()
+    expect(page.locator(".ant-modal-confirm")).to_have_count(0)
+    page = admin_portal.goto("/groups")
+    expect(_row(page, name)).to_be_visible()
+
+    # confirm for real from the config page: back to /groups, the group is gone
+    page = admin_portal.goto(f"/groups/{name}")
+    page.get_by_role("button", name="Delete Group").click()
+    page.locator(".ant-modal-confirm-btns").get_by_role("button", name="Delete", exact=True).click()
+    page.wait_for_url(lambda u: u.rstrip("/").endswith("/groups"))
+    expect(_row(page, name)).to_have_count(0)

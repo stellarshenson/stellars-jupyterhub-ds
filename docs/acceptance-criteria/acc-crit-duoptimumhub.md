@@ -4679,14 +4679,23 @@ Functional audit of the docker resources the platform creates - names, labels an
 
 ## Group delete confirmation
 
-Deleting a group from the Groups admin page requires an explicit confirmation, like the volume-reset and remove-user flows - a single click on the row delete icon must not destroy a group's config outright.
+Deleting a group requires an explicit confirmation from EVERY entry point - the Groups list row action AND the group config page's Delete Group button - like the volume-reset and remove-user flows; a single click must not destroy a group's config outright.
 
-- [ ] **Confirm before delete** - the Groups list delete row action opens a confirmation popup naming the group; the group is removed only on confirm
+- [x] **Confirm before delete (list)** - the Groups list delete row action opens a confirmation popup naming the group; the group is removed only on confirm
   - log: 2026-06-20 requirement added (new); gap found - `Groups.tsx:138` calls `deleteGroup(g.name)` directly, no confirm
-- [ ] **Cancel is a no-op** - dismissing the popup leaves the group and its config untouched
+  - log: 2026-07-09 met - `Groups.tsx` `confirmDelete` opens `appModal.confirm` (names the group) before `deleteGroup`
+- [x] **Cancel is a no-op** - dismissing the popup leaves the group and its config untouched
   - log: 2026-06-20 requirement added (new)
-- [ ] **Destructive styling** - the confirm action is styled danger (red), consistent with the other destructive confirms
+  - log: 2026-07-09 met - antd `Modal.confirm` cancel path runs no action
+- [x] **Destructive styling** - the confirm action is styled danger (red), consistent with the other destructive confirms
   - log: 2026-06-20 requirement added (new)
+  - log: 2026-07-09 met - `okButtonProps: { danger: true }`, okText "Delete"
+- [x] **Confirm before delete (config page)** - MAJOR - the "Delete Group" button on the group config/detail page (`GroupConfig.tsx` FormFooter) must open the SAME danger confirmation naming the group before deleting; the group is removed only on confirm
+  - log: 2026-07-09 requirement added (major); gap found - `GroupConfig.tsx:78` `removeGroup` calls `deleteGroup(name)` directly then navigates away, no confirm - inconsistent with the list action and every other destructive flow (remove-user, volume-reset)
+  - log: 2026-07-09 met - `removeGroup` now wraps `appModal.confirm` (title "Delete group", danger OK, names the group), deletes + navigates only on confirm; functional `test_group_config_page_delete_confirms`, verified on rebuilt image (v4.0.22, id 9079f6c) - full gate 227/227
+- [x] **Edge: cancel on config page** - dismissing the config-page confirm leaves the group and stays on the config page
+  - log: 2026-07-09 requirement added
+  - log: 2026-07-09 met - functional test cancels the modal, asserts the group still exists (MET)
 
 ## Notifications history range and clear
 
