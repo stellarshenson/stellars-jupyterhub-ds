@@ -9,7 +9,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "duoptimum-hub-web"
-version = "4.0.21"
+version = "4.0.22"
 description = "Duoptimum Hub - JupyterHub-served React portal (UI bundle + hub integration)"
 requires-python = ">=3.10"
 # Runtime integration rides on the hub's own deps (jupyterhub.handlers.BaseHandler,
