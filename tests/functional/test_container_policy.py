@@ -131,3 +131,21 @@ def test_policies_applied_to_container(admin_api, docker_client, base_url):
         assert labels.get("hub.container.role") == "lab", "spawned lab missing hub.container.role=lab"
     finally:
         _stop_server(admin_api, base)
+
+
+@pytest.mark.acc_crit("system-env-sudo::Lab default exported")
+def test_lab_user_env_default_in_settings_api(admin_api, base_url):
+    """The lab default JUPYTERHUB_LAB_USER_ENV_ENABLE is imported by the settings
+    loader and exported on the read-only settings API (the admin Settings page's
+    source). Asserts it is present with its live value, alongside its sibling
+    JUPYTERHUB_LAB_SUDO_ENABLE - guards against one being wired but not the other."""
+    r = admin_api.get(f"{base_url}/hub/api/settings", timeout=30)
+    assert r.status_code == 200, f"settings API failed: {r.status_code} {r.text}"
+    by_name = {s["name"]: s for s in r.json().get("settings", [])}
+    assert "JUPYTERHUB_LAB_USER_ENV_ENABLE" in by_name, \
+        "system-env lab default missing from the settings export (dictionary drift)"
+    assert by_name["JUPYTERHUB_LAB_USER_ENV_ENABLE"]["value"] == "1", \
+        "system-env lab default should export its live value (default 1)"
+    # its sibling exports the same way through the same dictionary
+    assert by_name.get("JUPYTERHUB_LAB_SUDO_ENABLE", {}).get("value") == "1", \
+        "sudo lab default missing/incorrect in the settings export"

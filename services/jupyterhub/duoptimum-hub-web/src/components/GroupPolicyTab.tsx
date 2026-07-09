@@ -10,6 +10,7 @@ import type { ReactNode } from 'react'
 import { Alert, Button, Checkbox, Input, InputNumber, Modal, Radio, Select, Switch, Table, Tooltip } from 'antd'
 import { Icon } from './Icon'
 import type { IconKey } from './Icon'
+import { Notice } from './Notice'
 import { EnvVarEditor } from './EnvVarEditor'
 import type { EnvVar } from './EnvVarEditor'
 import { useTotalResources } from '../hooks/queries'
@@ -500,7 +501,7 @@ export function GroupPolicyTab({ cfg, onChange }: { cfg?: GroupConfig; onChange?
         <div className="doh-row"><Switch size="small" checked={userEnvEnable} onChange={(v) => { setUserEnvEnable(v); if (!v) setSudoEnable(false) }} /><span>Allow changing system environment variables</span></div>
         <div className="doh-row"><Switch size="small" checked={userEnvEnable && sudoEnable} disabled={!userEnvEnable} onChange={setSudoEnable} /><span>Enable sudo for members</span></div>
         {!userEnvEnable && (
-          <Alert type="warning" showIcon className="doh-pol-alert" message="Sudo is off because system environment variables are off. Turn the setting above back on to enable sudo." />
+          <div className="doh-pol-notice"><Notice type="warning">Sudo requires system environment variables - turn them on above</Notice></div>
         )}
       </Section>
     </div>

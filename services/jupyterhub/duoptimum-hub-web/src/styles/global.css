@@ -61,7 +61,7 @@ body { margin: 0; font-family: var(--font-sans); }
 .doh-row { display: flex; align-items: center; gap: var(--space-2); }
 /* nested/child row - indented to show it depends on the control above (e.g. sudo under system-env) */
 .doh-pol-body .doh-row + .doh-row { margin-top: var(--space-2); }
-.doh-pol-alert { margin-top: var(--space-3); }
+.doh-pol-notice { margin-top: var(--space-3); }
 /* tighter gap for per-row server-control icon clusters (~15% under .doh-row) */
 .doh-actions { gap: calc(var(--space-2) * 0.85); }
 .doh-section-title { font-size: var(--text-sm); text-transform: uppercase; letter-spacing: .5px; color: var(--color-text-subtle); margin: var(--space-6) 0 var(--space-3); }
