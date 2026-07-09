@@ -33,20 +33,16 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
 - [DEF-27: GPU utilisation bar shows non-zero fill at 0% load](#def-27-gpu-utilisation-bar-shows-non-zero-fill-at-0-load) - open
 - [DEF-28: TTL extend animation reads as ~0.5s, not the intended 3s](#def-28-ttl-extend-animation-reads-as-05s-not-the-intended-3s) - open
 - [DEF-29: TTL extend glow (box-shadow halo) looks awful and bleeds onto the controls](#def-29-ttl-extend-glow-box-shadow-halo-looks-awful-and-bleeds-onto-the-controls) - open
-- [DEF-30: GroupConfig GET/PUT fabricate a phantom config for a non-existent group](#def-30-groupconfig-getput-fabricate-a-phantom-config-for-a-non-existent-group) - open
-- [DEF-31: User names colliding with static /users routes (new, bulk) not reserved](#def-31-user-names-colliding-with-static-users-routes-new-bulk-not-reserved) - open
+- [DEF-30: GroupConfig GET/PUT fabricate a phantom config for a non-existent group](#def-30-groupconfig-getput-fabricate-a-phantom-config-for-a-non-existent-group) - fixed
+- [DEF-31: User names colliding with static /users routes (new, bulk) not reserved](#def-31-user-names-colliding-with-static-users-routes-new-bulk-not-reserved) - fixed
+- [DEF-32: Reserved-name guards bypassable via JupyterHub's stock group/user APIs](#def-32-reserved-name-guards-bypassable-via-jupyterhubs-stock-groupuser-apis) - open
 
 ## Open
 
-### DEF-31: User names colliding with static /users routes (new, bulk) not reserved
+### DEF-32: Reserved-name guards bypassable via JupyterHub's stock group/user APIs
 
-- [ ] **LOW** - the SPA router registers `users/new`, `users/bulk`, `users/bulk/result` as static siblings of `users/:name`, so a user literally named `new` or `bulk` would misroute the same way a group named `new`/`export` did before the group-side fix. `DuoptimumNativeAuthenticator.validate_username` (`services/jupyterhub/duoptimum-hub-services/duoptimum_hub_services/auth.py`) has no equivalent reserved list. Pre-existing; surfaced by the architect adversarial pass while adding the group-side `_RESERVED_GROUP_NAMES` guard. Fix: mirror the group guard - reject `new`, `bulk` (case-insensitive) in username validation. Cross-ref acc-crit `duoptimumhub::Edge: route-colliding name reserved` (group side, done)
-  - log: 2026-07-09 reported (architect adversarial review, round 4 of the create-then-configure feature) - deferred as out of that feature's scope; group side fixed, user side left for a dedicated change
-
-### DEF-30: GroupConfig GET/PUT fabricate a phantom config for a non-existent group
-
-- [ ] **MEDIUM** - `GroupsConfigHandler.get`/`.put` (`services/jupyterhub/duoptimum-hub-services/duoptimum_hub_services/handlers/groups.py`) act on the raw `group_name` path param via `ensure_config`/`save_config` with no check that the group exists in `jupyterhub.orm.Group`, unlike `GroupsDeleteHandler.delete` which 404s. Hitting `/groups/{typo}` or a just-deleted name (stale bookmark, back-button after delete, concurrent second-admin delete) silently creates/updates a phantom `groups_config` row and returns 200. Orphan configs are only reaped one-directionally as a side effect of the group-list GET. Pre-existing; NOT triggered by the create-then-configure feature (which always routes to a just-created, existing group). Fix: look up `orm.Group` first in `get`/`put` and 404 like `delete`
-  - log: 2026-07-09 reported (architect adversarial review, round 4 of the create-then-configure feature) - deferred as out of that feature's scope; the create flow's target always exists, so the feature itself is unaffected
+- [ ] **LOW** - the reserved-name guards (`_RESERVED_GROUP_NAMES` via `validate_group_name`, `_RESERVED_USERNAMES` via `validate_username`) reject `new`/`export`/`bulk` on the SPA's create paths and, for users, on JupyterHub's stock user-create API (JupyterHub calls `validate_username` there). Two bypass vectors remain, both admin-scope, raw-API only, not reachable through the SPA: (1) JupyterHub's stock `POST /hub/api/groups/<name>` (`GroupAPIHandler.post`) constructs `orm.Group(name=...)` without `validate_group_name`; (2) group/user RENAME - `UserRenameHandler` sets `user.name` and the stock `PATCH /hub/api/users/<name>` / group rename never re-validate. Result: an admin using the raw API could create/rename to a route-colliding name and self-inflict a SPA misroute at `/groups/{name}` or `/users/{name}`. Surfaced by the architect/bug-hunter adversarial pass on DEF-30/31. Deliberately deferred: an ORM `@event.listens_for(<model>.name, 'set')` chokepoint was prototyped but reverted - raising in an ORM event yields an opaque 500 on the stock handlers (not a clean 400) and risks a boot-time crash if a pre-existing row already holds a reserved name. Fix direction when picked up: re-validate on the rename handlers (clean 400), and treat the stock-API create as an accepted low-severity limit or wrap it. Cross-ref acc-crit `duoptimumhub::Edge: route-colliding name reserved` (group create) and `::Edge: route-colliding username reserved` (user create)
+  - log: 2026-07-09 reported (architect + bug-hunter adversarial review of DEF-30/31); SPA + stock user-create paths are guarded, the raw-API group-create and both rename paths are deferred as low-severity admin-only edges
 
 ### DEF-29: TTL extend glow (box-shadow halo) looks awful and bleeds onto the controls
 
@@ -168,6 +164,18 @@ Defect tracker, acc-crit style. Grouped `## Open` / `## Fixed` for addressed-vs-
   - ref: acc-crit volume-size reporting; task #347
 
 ## Fixed
+
+### DEF-31: User names colliding with static /users routes (new, bulk) not reserved
+
+- [x] **LOW** - the SPA router registers `users/new`, `users/bulk`, `users/bulk/result` as static siblings of `users/:name`, so a user literally named `new` or `bulk` would misroute the user detail screen the same way a group named `new`/`export` did before the group-side fix. Pre-existing; surfaced by the architect adversarial pass while adding the group-side `_RESERVED_GROUP_NAMES` guard. Fixed - `DuoptimumNativeAuthenticator.validate_username` (`auth.py`) rejects `_RESERVED_USERNAMES = {new, bulk}` case-insensitively; JupyterHub calls `validate_username` on both signup and the admin user-create API (`apihandlers/users.py:247`), so both paths are covered. Cross-ref acc-crit `duoptimumhub::Edge: route-colliding name reserved` (group side)
+  - log: 2026-07-09 reported (architect adversarial review, round 4 of the create-then-configure feature) - deferred as out of that feature's scope
+  - log: 2026-07-09 fix applied - `_RESERVED_USERNAMES` guard in `validate_username`; unit `test_authenticator_bootstrap.py::test_route_colliding_usernames_reserved`; functional `test_scenarios.py::test_reserved_username_rejected` (POST /hub/api/users/new|bulk -> 400); verified on the rebuilt image, full gate green
+
+### DEF-30: GroupConfig GET/PUT fabricate a phantom config for a non-existent group
+
+- [x] **MEDIUM** - `GroupsConfigHandler.get`/`.put` (`handlers/groups.py`) acted on the raw `group_name` path param via `ensure_config`/`save_config` with no check that the group exists in `jupyterhub.orm.Group`, unlike `GroupsDeleteHandler.delete` which 404s. Hitting `/groups/{typo}` or a just-deleted name (stale bookmark, back-button after delete, concurrent second-admin delete) silently created/updated a phantom `groups_config` row and returned 200. Pre-existing; NOT triggered by the create-then-configure feature (which always routes to a just-created, existing group). Fixed - a shared `_require_group(db, group_name)` looks up `orm.Group` first and 404s; called by both `get` and `put`
+  - log: 2026-07-09 reported (architect adversarial review, round 4 of the create-then-configure feature) - deferred as out of that feature's scope
+  - log: 2026-07-09 fix applied - `_require_group` guard on GET/PUT; unit `test_imports.py::test_require_group_404_on_missing`; functional `test_scenarios.py::test_group_config_api_404_on_missing_group` (GET+PUT on a ghost name -> 404); verified on the rebuilt image, full gate green
 
 ### DEF-24: GPU undetected (sidecar down) still spawns labs with GPU - crash
 

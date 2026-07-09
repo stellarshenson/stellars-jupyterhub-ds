@@ -78,3 +78,25 @@ def test_signup_on_has_no_bootstrap_gate(tmp_path, monkeypatch):
     auth, _ = _make(tmp_path, monkeypatch, admin_username="admin", signup_enabled=True)
     assert auth.enable_signup is True
     assert auth.validate_username("anyone") is True        # no window when signup is on
+
+
+def test_route_colliding_usernames_reserved(tmp_path, monkeypatch):
+    # `new` / `bulk` collide with the SPA's static /users/new, /users/bulk routes -
+    # must be rejected case-insensitively, mirroring the group-side guard (DEF-31)
+    auth, _ = _make(tmp_path, monkeypatch, admin_username="admin", signup_enabled=True)
+    for reserved in ("new", "bulk", "New", "BULK"):
+        assert auth.validate_username(reserved) is False, reserved
+    # names that merely contain the reserved word are fine
+    assert auth.validate_username("newbie") is True
+    assert auth.validate_username("bulkars") is True
+
+
+def test_reserved_admin_username_fails_fast(tmp_path, monkeypatch):
+    # an admin username that is itself a reserved route-collision name would be vetoed
+    # by validate_username forever, locking the first admin out with no diagnostic -
+    # __init__ must fail loud instead (DEF-31, caught by the bug-hunter/architect review)
+    for i, bad in enumerate(("new", "bulk", "Bulk")):
+        d = tmp_path / f"case{i}"       # a fresh db dir per case; _make creates the table
+        d.mkdir()
+        with pytest.raises(SystemExit):
+            _make(d, monkeypatch, admin_username=bad, signup_enabled=True)

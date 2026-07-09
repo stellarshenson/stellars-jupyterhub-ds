@@ -367,6 +367,38 @@ def test_groups_config():
         assert "reserved" in msg
 
 
+def test_require_group_404_on_missing():
+    # DEF-30: GroupsConfigHandler GET/PUT must 404 when the group has no orm.Group
+    # row (stale bookmark / just-deleted), not fabricate a phantom config
+    import pytest
+    from tornado import web
+    from duoptimum_hub_services.handlers.groups import _require_group
+
+    class _Query:
+        def __init__(self, result):
+            self._result = result
+
+        def filter(self, *a, **k):
+            return self
+
+        def first(self):
+            return self._result
+
+    class _DB:
+        def __init__(self, result):
+            self._result = result
+
+        def query(self, _model):
+            return _Query(self._result)
+
+    # no matching group -> 404
+    with pytest.raises(web.HTTPError) as exc:
+        _require_group(_DB(None), "ghost")
+    assert exc.value.status_code == 404
+    # an existing group row -> no raise
+    _require_group(_DB(object()), "real-group")
+
+
 def test_group_resolver():
     from duoptimum_hub_services.policy import resolve_policies as resolve_group_config
     from duoptimum_hub_services.policy import is_reserved_env_var

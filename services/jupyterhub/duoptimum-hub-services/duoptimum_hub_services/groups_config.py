@@ -25,10 +25,11 @@ GroupsConfigBase = declarative_base()
 _GROUP_NAME_RE = re.compile(r'^[a-zA-Z][a-zA-Z0-9_-]*$')
 
 # Names the SPA router declares as STATIC routes under /groups (groups/new,
-# groups/export). React Router ranks a static segment above the dynamic
-# groups/:name, so a group with one of these names would misroute to the create
-# or export screen instead of its own config after create. Reserve them (compared
-# case-insensitively - React Router matching is case-insensitive by default).
+# groups/export - see duoptimum-hub-web/src/router.tsx). React Router ranks a static
+# segment above the dynamic groups/:name, so a group with one of these names would
+# misroute to the create or export screen instead of its own config. Reserve them
+# (compared case-insensitively - React Router matching is case-insensitive by default).
+# Keep this set in step with the static /groups children in router.tsx.
 _RESERVED_GROUP_NAMES = frozenset({'new', 'export'})
 
 

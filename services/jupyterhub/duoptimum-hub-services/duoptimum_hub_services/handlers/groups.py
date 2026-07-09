@@ -131,12 +131,7 @@ class GroupsDeleteHandler(BaseHandler):
         if not current_user.admin:
             raise web.HTTPError(403, "Only administrators can delete groups")
 
-        from jupyterhub.orm import Group
-
-        group = self.db.query(Group).filter(Group.name == group_name).first()
-        if not group:
-            raise web.HTTPError(404, f"Group '{group_name}' not found")
-
+        group = _require_group(self.db, group_name)
         self.db.delete(group)
         self.db.commit()
 
@@ -148,6 +143,21 @@ class GroupsDeleteHandler(BaseHandler):
         self.finish({'success': True})
 
 
+def _require_group(db, group_name):
+    """Return the jupyterhub Group with this name, or raise 404 if it has no row.
+    ``group_name`` comes from the URL path, so GET/PUT/DELETE must not act on - or
+    fabricate a config row for - a group that was never created or was already deleted
+    (a typo'd or stale name). This is a check-then-act guard: it closes the common
+    stale-name cases, not a lock against a delete racing the very same request. Single
+    404 shape for all three group-config handlers (DEF-30)."""
+    from jupyterhub.orm import Group
+
+    group = db.query(Group).filter(Group.name == group_name).first()
+    if group is None:
+        raise web.HTTPError(404, f"Group '{group_name}' not found")
+    return group
+
+
 class GroupsConfigHandler(BaseHandler):
     """Handler for reading and updating group configuration."""
 
@@ -157,6 +167,7 @@ class GroupsConfigHandler(BaseHandler):
         if not current_user.admin:
             raise web.HTTPError(403, "Only administrators can access group config")
 
+        _require_group(self.db, group_name)
         manager = GroupsConfigManager.get_instance()
         config = manager.ensure_config(group_name)
         self.finish(config)
@@ -167,6 +178,7 @@ class GroupsConfigHandler(BaseHandler):
         if not current_user.admin:
             raise web.HTTPError(403, "Only administrators can update group config")
 
+        _require_group(self.db, group_name)
         body = json.loads(self.request.body)
         description = body.get('description')
 

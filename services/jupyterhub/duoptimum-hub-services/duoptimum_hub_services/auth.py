@@ -181,6 +181,15 @@ class _AdminPromotionMixin:
         return authentication
 
 
+# Usernames the SPA router declares as STATIC routes under /users (users/new,
+# users/bulk - see duoptimum-hub-web/src/router.tsx). React Router ranks a static
+# segment above the dynamic users/:name, so a user with one of these names would
+# misroute the user detail screen to the create/bulk pages. Reserve them (compared
+# case-insensitively), mirroring the group-side _RESERVED_GROUP_NAMES guard (DEF-31).
+# Keep this set in step with the static /users children in router.tsx.
+_RESERVED_USERNAMES = frozenset({'new', 'bulk'})
+
+
 class _NativeBootstrapMixin:
     """First-admin bootstrap: env-provision / signup-off self-signup window /
     normal-signup auto-authorise, with fail-fast when the admin can never be created.
@@ -206,6 +215,16 @@ class _NativeBootstrapMixin:
         # not at config import: on a fresh volume config-import is too early (no table
         # yet -> the env INSERT silently no-ops, the old admin-login bug).
         super().__init__(*args, **kwargs)
+        # A reserved admin username would be permanently vetoed by validate_username
+        # (below), so the first admin could never sign up or be provisioned - an
+        # undiagnosable lockout. Fail loud at startup instead, mirroring the
+        # admin_unreachable fail-fast.
+        if self.admin_username and self.admin_username.lower() in _RESERVED_USERNAMES:
+            raise SystemExit(
+                f"[Admin Bootstrap] FATAL: JUPYTERHUB_ADMIN_USERNAME='{self.admin_username}' is a "
+                f"reserved name ({', '.join(sorted(_RESERVED_USERNAMES))}) that collides with a static "
+                "/users route - the admin could never be created. Choose a different username."
+            )
         # INITIAL-ONLY secret read straight from env - never a config=True trait (see class body).
         # .strip() preserves the old config's parity: a whitespace-only value -> '' -> no
         # provisioning, and a newline/space-suffixed secret (common from a mounted-file secret)
@@ -261,6 +280,8 @@ class _NativeBootstrapMixin:
 
     def validate_username(self, username):
         if not super().validate_username(username):
+            return False
+        if username and username.lower() in _RESERVED_USERNAMES:
             return False
         if self._bootstrap_admin_pending() and username and username != self.admin_username:
             return False

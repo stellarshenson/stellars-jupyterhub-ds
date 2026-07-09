@@ -130,6 +130,40 @@ def test_group_create_routes_to_config(admin_portal):
     expect(page.get_by_role("tab", name="Members")).to_be_visible()
 
 
+@pytest.mark.acc_crit("duoptimumhub::Edge: config API 404 on missing group")
+def test_group_config_api_404_on_missing_group(admin_api, base_url):
+    """DEF-30: GET/PUT of a group's config for a name with no orm.Group row must 404,
+    not silently fabricate a phantom config."""
+    ghost = "no-such-group-def30"
+    r = admin_api.get(f"{base_url}/hub/api/admin/groups/{ghost}/config",
+                      headers={"X-XSRFToken": _xsrf(admin_api)}, timeout=30)
+    assert r.status_code == 404, f"GET expected 404, got {r.status_code}: {r.text}"
+    r = admin_api.put(f"{base_url}/hub/api/admin/groups/{ghost}/config",
+                      json={"description": "x"},
+                      headers={"X-XSRFToken": _xsrf(admin_api)}, timeout=30)
+    assert r.status_code == 404, f"PUT expected 404, got {r.status_code}: {r.text}"
+
+
+@pytest.mark.acc_crit("duoptimumhub::Edge: route-colliding username reserved")
+def test_reserved_username_rejected(admin_api, base_url):
+    """DEF-31: a username that collides with a static /users route (new, bulk) is
+    rejected by validate_username on the admin user-create path; a normal name works.
+    (Case-insensitivity of the guard is proven in the unit test - JupyterHub lowercases
+    the name before validate_username, so this API path always sees the normalised form.)"""
+    hdr = {"X-XSRFToken": _xsrf(admin_api)}
+    for name in ("new", "bulk"):
+        r = admin_api.post(f"{base_url}/hub/api/users/{name}", headers=hdr, timeout=30)
+        assert r.status_code == 400, f"expected 400 reject for {name!r}, got {r.status_code}: {r.text}"
+        # the reserved name must not have been created (rolled back), else a later run
+        # would see a 409 and mask a broken guard
+        assert admin_api.get(f"{base_url}/hub/api/users/{name}", timeout=30).status_code == 404, \
+            f"reserved user {name!r} should not exist after a rejected create"
+    # a non-colliding name still creates fine, then clean up
+    r = admin_api.post(f"{base_url}/hub/api/users/def31ok", headers=hdr, timeout=30)
+    assert r.status_code < 400, f"normal name should create: {r.status_code} {r.text}"
+    admin_api.delete(f"{base_url}/hub/api/users/def31ok", headers=hdr, timeout=30)
+
+
 @pytest.mark.acc_crit(
     "duoptimumhub::Confirm before delete (config page)",
     "duoptimumhub::Edge: cancel on config page",
